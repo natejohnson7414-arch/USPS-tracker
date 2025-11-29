@@ -19,7 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Camera, User, Calendar, Info, FileText, X } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Camera, User, Calendar, Info, FileText, X, ImagePlus, Library, Video } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 
 interface WorkOrderDetailsProps {
@@ -31,7 +32,10 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
   const [workOrder, setWorkOrder] = useState<WorkOrder>(initialWorkOrder);
   const [newNote, setNewNote] = useState('');
   const [newNotePhoto, setNewNotePhoto] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+  const takePhotoInputRef = useRef<HTMLInputElement>(null);
+  const chooseFromLibraryInputRef = useRef<HTMLInputElement>(null);
 
   const assignedTechnician = getTechnicianById(workOrder.assignedTechnicianId || '');
 
@@ -41,13 +45,12 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
       const reader = new FileReader();
       reader.onload = e => {
         setNewNotePhoto(e.target?.result as string);
+        setIsSheetOpen(false); // Close sheet after selection
       };
       reader.readAsDataURL(file);
     }
-  };
-
-  const handleAttachPhotoClick = () => {
-    fileInputRef.current?.click();
+     // Reset the input value to allow selecting the same file again
+    event.target.value = '';
   };
 
   const handleAddNote = () => {
@@ -119,13 +122,41 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
               )}
               <div className="flex justify-between items-center">
                  <div>
-                    <Button variant="outline" onClick={handleAttachPhotoClick}>
-                      <Camera className="mr-2 h-4 w-4" />
-                      Attach Photo
-                    </Button>
+                    <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                      <SheetTrigger asChild>
+                        <Button variant="outline">
+                          <Camera className="mr-2 h-4 w-4" />
+                          Attach Photo
+                        </Button>
+                      </SheetTrigger>
+                      <SheetContent side="bottom">
+                        <SheetHeader>
+                          <SheetTitle>Add a photo</SheetTitle>
+                        </SheetHeader>
+                        <div className="grid gap-4 py-4">
+                          <Button variant="outline" className="justify-start" onClick={() => takePhotoInputRef.current?.click()}>
+                            <Video className="mr-4 h-5 w-5" />
+                            Take Photo
+                          </Button>
+                          <Button variant="outline" className="justify-start" onClick={() => chooseFromLibraryInputRef.current?.click()}>
+                             <Library className="mr-4 h-5 w-5" />
+                            Choose from Library
+                          </Button>
+                        </div>
+                      </SheetContent>
+                    </Sheet>
+
                     <input
                       type="file"
-                      ref={fileInputRef}
+                      ref={takePhotoInputRef}
+                      onChange={handleFileChange}
+                      className="hidden"
+                      accept="image/*"
+                      capture="environment"
+                    />
+                     <input
+                      type="file"
+                      ref={chooseFromLibraryInputref}
                       onChange={handleFileChange}
                       className="hidden"
                       accept="image/*"
@@ -212,3 +243,5 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
     </div>
   );
 }
+
+    
