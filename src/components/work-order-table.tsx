@@ -12,8 +12,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { StatusBadge } from './status-badge';
 import { PriorityIcon } from './priority-icon';
-import { format, formatDistanceToNow } from 'date-fns';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { format } from 'date-fns';
+import { DueDateTooltip } from './due-date-tooltip';
 
 interface WorkOrderTableProps {
   workOrders: WorkOrder[];
@@ -80,20 +80,9 @@ export function WorkOrderTable({ workOrders, technicians }: WorkOrderTableProps)
                        </Link>
                     </TableCell>
                     <TableCell>
-                    <Link href={`/work-orders/${order.id}`} className="block">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <span className={new Date(order.dueDate) < new Date() ? 'text-destructive' : ''}>
-                              {format(new Date(order.dueDate), 'MMM d, yyyy')}
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{formatDistanceToNow(new Date(order.dueDate), { addSuffix: true })}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                       </Link>
+                      <Link href={`/work-orders/${order.id}`} className="block">
+                        <DueDateTooltip dueDate={order.dueDate} />
+                      </Link>
                     </TableCell>
                   </TableRow>
                 );

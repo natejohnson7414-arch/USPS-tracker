@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 import { getTechnicianById } from '@/lib/data';
 import type { WorkOrder, Technician, WorkOrderNote } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Camera, Paperclip, User, Calendar, Info, FileText } from 'lucide-react';
+import { NoteActivityItem } from './note-activity-item';
 
 interface WorkOrderDetailsProps {
   initialWorkOrder: WorkOrder;
@@ -89,35 +90,9 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
             </div>
             <Separator />
             <div className="space-y-6">
-                {workOrder.notes.map(note => {
-                    const author = getTechnicianById(note.authorId);
-                    return (
-                        <div key={note.id} className="flex gap-4">
-                            <Avatar>
-                                <AvatarImage src={author?.avatarUrl} />
-                                <AvatarFallback><User /></AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                                <div className="flex items-center justify-between">
-                                    <p className="font-semibold">{author?.name}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        {formatDistanceToNow(new Date(note.createdAt), { addSuffix: true })}
-                                    </p>
-                                </div>
-                                <p className="text-sm text-muted-foreground mt-1">{note.text}</p>
-                                {note.photoUrls && (
-                                    <div className="mt-4 grid grid-cols-2 gap-4">
-                                        {note.photoUrls.map((url, index) => (
-                                          <div key={index} className="relative aspect-video rounded-lg overflow-hidden border">
-                                            <Image src={url} alt={`Work photo ${index+1}`} fill style={{ objectFit: 'cover' }} />
-                                          </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    );
-                })}
+                {workOrder.notes.map(note => (
+                  <NoteActivityItem key={note.id} note={note} />
+                ))}
                  {workOrder.notes.length === 0 && (
                     <p className="text-center text-sm text-muted-foreground py-4">No notes or activity yet.</p>
                 )}
