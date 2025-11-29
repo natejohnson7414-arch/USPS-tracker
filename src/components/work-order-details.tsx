@@ -156,7 +156,7 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
                     />
                      <input
                       type="file"
-                      ref={chooseFromLibraryInputref}
+                      ref={chooseFromLibraryInputRef}
                       onChange={handleFileChange}
                       className="hidden"
                       accept="image/*"
@@ -243,5 +243,3 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
     </div>
   );
 }
-
-    
