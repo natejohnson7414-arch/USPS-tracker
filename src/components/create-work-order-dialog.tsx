@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -38,6 +38,7 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
   const [priority, setPriority] = useState<WorkOrder['priority'] | undefined>();
   const [assignedTechnicianId, setAssignedTechnicianId] = useState<string | undefined>();
   const [dueDate, setDueDate] = useState<Date | undefined>();
+  const [idCounter, setIdCounter] = useState(100);
   const { toast } = useToast();
 
   const handleSubmit = () => {
@@ -50,8 +51,11 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
       return;
     }
 
+    const newId = `WO-${String(idCounter).padStart(3, '0')}`;
+    setIdCounter(prev => prev + 1);
+
     const newWorkOrder: WorkOrder = {
-      id: `WO-${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')}`,
+      id: newId,
       title,
       description,
       priority,
@@ -85,30 +89,24 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
           Create Work Order
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Create New Work Order</DialogTitle>
           <DialogDescription>Fill in the details below to create a new work order.</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="title" className="text-right">
-              Title
-            </Label>
-            <Input id="title" value={title} onChange={e => setTitle(e.target.value)} className="col-span-3" />
+        <div className="grid gap-4 py-4 sm:grid-cols-2 sm:gap-6">
+          <div className="sm:col-span-2">
+            <Label htmlFor="title">Title</Label>
+            <Input id="title" value={title} onChange={e => setTitle(e.target.value)} />
           </div>
-          <div className="grid grid-cols-4 items-start gap-4">
-            <Label htmlFor="description" className="text-right pt-2">
-              Description
-            </Label>
-            <Textarea id="description" value={description} onChange={e => setDescription(e.target.value)} className="col-span-3" />
+          <div className="sm:col-span-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea id="description" value={description} onChange={e => setDescription(e.target.value)} />
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="priority" className="text-right">
-              Priority
-            </Label>
+          <div>
+            <Label htmlFor="priority">Priority</Label>
             <Select onValueChange={value => setPriority(value as WorkOrder['priority'])}>
-              <SelectTrigger className="col-span-3">
+              <SelectTrigger>
                 <SelectValue placeholder="Select priority" />
               </SelectTrigger>
               <SelectContent>
@@ -118,12 +116,14 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="technician" className="text-right">
-              Assign To
-            </Label>
+           <div>
+            <Label htmlFor="dueDate">Due Date</Label>
+            <DatePicker date={dueDate} setDate={setDueDate} />
+          </div>
+          <div className="sm:col-span-2">
+            <Label htmlFor="technician">Assign To</Label>
             <Select onValueChange={setAssignedTechnicianId}>
-              <SelectTrigger className="col-span-3">
+              <SelectTrigger>
                 <SelectValue placeholder="Select a technician" />
               </SelectTrigger>
               <SelectContent>
@@ -135,14 +135,9 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="dueDate" className="text-right">
-              Due Date
-            </Label>
-            <DatePicker date={dueDate} setDate={setDueDate} className="col-span-3" />
-          </div>
         </div>
         <DialogFooter>
+          <Button onClick={() => setOpen(false)} variant="outline">Cancel</Button>
           <Button onClick={handleSubmit}>Create Order</Button>
         </DialogFooter>
       </DialogContent>
