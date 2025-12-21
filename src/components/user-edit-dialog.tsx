@@ -55,7 +55,7 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
     }
   }, [user, isOpen, roles]);
 
-  const handleSave = async () => {
+  const handleSave = () => {
     const [firstName, ...lastNameParts] = name.split(' ');
     const lastName = lastNameParts.join(' ');
     const userRole = roles.find(r => r.id === roleId);
@@ -71,7 +71,7 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
     if (user) {
         // Update existing user
         const userRef = doc(db, 'technicians', user.id);
-        await setDocumentNonBlocking(userRef, {
+        setDocumentNonBlocking(userRef, {
             firstName,
             lastName,
             email,
@@ -81,7 +81,7 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
         // Create new user - This part needs a secure way to create a Firebase Auth user
         // and then create the firestore doc. For now, just creating the doc.
         const newUserRef = doc(db, 'technicians', savedUser.id);
-        await setDocumentNonBlocking(newUserRef, {
+        setDocumentNonBlocking(newUserRef, {
             id: savedUser.id,
             firstName,
             lastName,

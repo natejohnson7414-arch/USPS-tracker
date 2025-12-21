@@ -69,7 +69,7 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
     event.target.value = '';
   };
 
-  const handleAddNote = async () => {
+  const handleAddNote = () => {
     if (!user || (newNote.trim() === '' && !newNotePhoto)) return;
 
     const newNoteData = {
@@ -81,7 +81,7 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
     };
 
     const notesColRef = collection(db, 'work_orders', workOrder.id, 'updates');
-    await addDocumentNonBlocking(notesColRef, newNoteData);
+    addDocumentNonBlocking(notesColRef, newNoteData);
     
     // Optimistically update UI
     const optimisticNote: WorkOrderNote = {

@@ -67,7 +67,7 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
       dueDate: dueDate.toISOString(),
     };
 
-    const workOrderRef = doc(collection(db, 'work_orders'), newId);
+    const workOrderRef = doc(db, 'work_orders', newId);
     setDocumentNonBlocking(workOrderRef, newWorkOrderData, { merge: false });
     
     const optimisticWorkOrder: WorkOrder = {
