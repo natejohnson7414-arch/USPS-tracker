@@ -1,0 +1,304 @@
+{
+  "entities": {
+    "WorkOrder": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WorkOrder",
+      "type": "object",
+      "description": "Represents a work order in the system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the WorkOrder entity."
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the work order."
+        },
+        "priority": {
+          "type": "string",
+          "description": "Priority level of the work order (e.g., High, Medium, Low)."
+        },
+        "status": {
+          "type": "string",
+          "description": "Current status of the work order (e.g., Open, Assigned, In Progress, Completed)."
+        },
+        "assignedTechnicianId": {
+          "type": "string",
+          "description": "Reference to Technician. (Relationship: Technician 1:N WorkOrder)"
+        },
+        "createdDate": {
+          "type": "string",
+          "description": "Date when the work order was created.",
+          "format": "date-time"
+        },
+        "dueDate": {
+          "type": "string",
+          "description": "Date when the work order is due.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "description",
+        "priority",
+        "status",
+        "assignedTechnicianId",
+        "createdDate",
+        "dueDate"
+      ]
+    },
+    "Technician": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Technician",
+      "type": "object",
+      "description": "Represents a technician in the system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Technician entity."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the technician."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the technician."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the technician.",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number of the technician."
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "email",
+        "phone"
+      ]
+    },
+    "WorkOrderUpdate": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WorkOrderUpdate",
+      "type": "object",
+      "description": "Represents an update to a work order, including notes and photos.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the WorkOrderUpdate entity."
+        },
+        "workOrderId": {
+          "type": "string",
+          "description": "Reference to WorkOrder. (Relationship: WorkOrder 1:N WorkOrderUpdate)"
+        },
+        "technicianId": {
+          "type": "string",
+          "description": "Reference to Technician. (Relationship: Technician 1:N WorkOrderUpdate)"
+        },
+        "updateDate": {
+          "type": "string",
+          "description": "Date and time when the update was made.",
+          "format": "date-time"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Notes about the work order update."
+        },
+        "photoUrls": {
+          "type": "array",
+          "description": "URLs of photos related to the work order update.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "workOrderId",
+        "technicianId",
+        "updateDate",
+        "notes"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user account within the application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        },
+        "passwordHash": {
+          "type": "string",
+          "description": "Hashed password for authentication.  Important: Store only the hash, never the plain text password."
+        },
+        "roleId": {
+          "type": "string",
+          "description": "Reference to Role. (Relationship: Role 1:N User)"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "passwordHash",
+        "roleId"
+      ]
+    },
+    "Role": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Role",
+      "type": "object",
+      "description": "Represents a role within the application, defining access permissions.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the role."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the role (e.g., Administrator, Technician, Read-Only)."
+        },
+        "permissions": {
+          "type": "array",
+          "description": "List of permissions associated with the role.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "permissions"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles, including email, password hash, and role. Role assignment determines access control.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "Unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles/{roleId}",
+        "definition": {
+          "entityName": "Role",
+          "schema": {
+            "$ref": "#/backend/entities/Role"
+          },
+          "description": "Defines roles and their associated permissions.",
+          "params": [
+            {
+              "name": "roleId",
+              "description": "Unique identifier for the role."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/technicians/{technicianId}",
+        "definition": {
+          "entityName": "Technician",
+          "schema": {
+            "$ref": "#/backend/entities/Technician"
+          },
+          "description": "Stores technician profiles.",
+          "params": [
+            {
+              "name": "technicianId",
+              "description": "Unique identifier for the technician."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/work_orders/{workOrderId}",
+        "definition": {
+          "entityName": "WorkOrder",
+          "schema": {
+            "$ref": "#/backend/entities/WorkOrder"
+          },
+          "description": "Stores work orders. Includes the denormalized field `assignedTechnicianId` for authorization independence.",
+          "params": [
+            {
+              "name": "workOrderId",
+              "description": "Unique identifier for the work order."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/technicians/{technicianId}/work_orders/{workOrderId}",
+        "definition": {
+          "entityName": "WorkOrder",
+          "schema": {
+            "$ref": "#/backend/entities/WorkOrder"
+          },
+          "description": "Stores work orders assigned to a specific technician. Includes denormalized `assignedTechnicianId` to avoid `get()` calls in security rules.  Duplicates data from /work_orders/{workOrderId}.",
+          "params": [
+            {
+              "name": "technicianId",
+              "description": "Unique identifier for the technician."
+            },
+            {
+              "name": "workOrderId",
+              "description": "Unique identifier for the work order."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/work_orders/{workOrderId}/updates/{updateId}",
+        "definition": {
+          "entityName": "WorkOrderUpdate",
+          "schema": {
+            "$ref": "#/backend/entities/WorkOrderUpdate"
+          },
+          "description": "Stores updates to work orders, including notes and photos. Includes denormalized `technicianId` from the parent `work_order` document for authorization independence.",
+          "params": [
+            {
+              "name": "workOrderId",
+              "description": "Unique identifier for the work order."
+            },
+            {
+              "name": "updateId",
+              "description": "Unique identifier for the work order update."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support a work order tracking application with user roles and technician assignments. It emphasizes authorization independence and secure list operations (QAPs) through denormalization and structural segregation.  User authentication is handled via email/password.\n\n*   `/users/{userId}`: Stores user profiles, including email, password hash, and a reference to their role.\n*   `/roles/{roleId}`: Defines roles and their associated permissions.  Users are assigned roles which determine their access control.\n*   `/technicians/{technicianId}`: Stores technician profiles.\n*   `/work_orders/{workOrderId}`: Stores work orders. The `assignedTechnicianId` field links work orders to technicians. Includes the denormalized field `technicianId`.\n*   `/technicians/{technicianId}/work_orders/{workOrderId}`: This subcollection holds work orders assigned to a specific technician.  It improves query performance when a technician needs to list their assigned work orders.  Critically, it duplicates all the `work_orders` data but includes a denormalized `technicianId` to avoid `get()` calls.\n*   `/work_orders/{workOrderId}/updates/{updateId}`: Stores updates to work orders, including notes and photos. Includes the denormalized `technicianId`.\n\n**Authorization Independence (CRITICAL):**\n\n*   The most crucial aspect of this design is authorization independence. For example, `/work_orders/{workOrderId}/updates/{updateId}` denormalizes the `technicianId`. This removes the need to perform `get()` operations in security rules to check the technician's role or ownership of the parent `work_order` document.  The rules can directly validate if `request.auth.uid == resource.data.technicianId`.\n*   Similarly, the `/technicians/{technicianId}/work_orders/{workOrderId}` collection also denormalizes `technicianId` to enable authorization without relying on `get()` calls.\n\n**QAPs (Rules are not Filters):**\n\n*   The structure facilitates secure `list` operations. For instance, a technician can securely list work orders assigned to them by querying `/technicians/{technicianId}/work_orders`.  The security rules will only allow access to work orders where `resource.data.technicianId == request.auth.uid`.\n*   Roles are implemented using simple document existence checks in `/roles/{roleId}`, which allows efficient QAPs.\n\n**DBAC (No Custom Claims):**\n\nThe roles are stored directly in the database in the `/roles/{roleId}` collection and referenced by `users/{userId}` documents. The existence of role documents is checked to establish authorization."
+  }
+}

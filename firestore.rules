@@ -1,0 +1,191 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * Core Philosophy: This ruleset enforces a strict Database-based Access Control (DBAC)
+     * model combined with user ownership. Access is determined by a user's role, which is
+     * stored in the `/users/{userId}` document and links to a definition in the `/roles`
+     * collection. There are two primary roles: 'Administrator' with broad permissions,
+     * and 'Technician' with access restricted to their assigned work orders.
+     *
+     * Data Structure: The data is organized into top-level collections for `users`, `roles`,
+     * `technicians`, and `work_orders`. This structure includes denormalized collections like
+     * `/technicians/{technicianId}/work_orders` to facilitate secure and performant queries
+     * for technicians listing their assigned tasks.
+     *
+     * Key Security Decisions:
+     * - Default Deny: All operations are denied by default. Access must be explicitly granted.
+     * - Role-Based Access: The `isAdmin()` and `isTechnician()` helper functions perform
+     *   `get()` calls to user and role documents to determine permissions dynamically.
+     * - No User Enumeration: Listing users or technicians is restricted to administrators
+     *   to protect user privacy.
+     * - Prototyping Flexibility: Data shapes are not strictly validated, but authorization
+     *   fields (like `assignedTechnicianId`) are rigorously enforced to maintain security
+     *   while allowing for rapid application development.
+     *
+     * Denormalization for Authorization: The rules heavily leverage denormalized fields to
+     * avoid costly or impossible security checks. For instance, `work_orders` and their
+     * `updates` subcollection contain an `assignedTechnicianId` or `technicianId`. This allows
+     * rules to directly check for ownership (`resource.data.technicianId == request.auth.uid`)
+     * without needing extra `get()` calls to parent documents for most operations.
+     *
+     * Structural Segregation: The `/technicians/{technicianId}/work_orders` collection provides
+     * a segregated data view. This allows a technician to safely perform list queries on their
+     * own work orders, as the rules can secure the entire collection path based on their user ID.
+     */
+
+    // --------------------------------------------------------------------------
+    // Helper Functions
+    // --------------------------------------------------------------------------
+
+    /**
+     * Checks if a user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently authenticated user's UID matches the provided userId.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Retrieves the authenticated user's profile document.
+     */
+    function getUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    /**
+     * Checks if the authenticated user has a specific role by name.
+     * This performs two reads: one for the user document and one for the role document.
+     */
+    function userHasRole(roleName) {
+      let userDoc = getUserDoc();
+      return isSignedIn() && userDoc.data.roleId != null &&
+        get(/databases/$(database)/documents/roles/$(userDoc.data.roleId)).data.name == roleName;
+    }
+
+    /**
+     * Checks if the user is an Administrator.
+     */
+    function isAdmin() {
+      return userHasRole('Administrator');
+    }
+
+    /**
+     * Checks if the user is a Technician.
+     */
+    function isTechnician() {
+      return userHasRole('Technician');
+    }
+
+    /**
+     * Validates that a document being created has an `id` field matching the user's auth UID.
+     */
+    function isCreatingOwnProfile(userId) {
+      return isOwner(userId) && request.resource.data.id == userId;
+    }
+
+    /**
+     * Validates that a user is updating their own profile and that the `id` field is immutable.
+     */
+    function isUpdatingOwnProfile(userId) {
+      return isOwner(userId) && resource != null && request.resource.data.id == resource.data.id;
+    }
+
+    // --------------------------------------------------------------------------
+    // Collection Rules
+    // --------------------------------------------------------------------------
+
+    /**
+     * @description Governs access to user profile documents, which store auth info and role assignments.
+     * @path /users/{userId}
+     * @allow (create) A new user signing up, creating their own document at `/users/abc` with UID 'abc'.
+     * @deny (get) User 'xyz' attempting to read the profile of user 'abc'.
+     * @principle Restricts access to a user's own data tree, with an Admin override for management.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isCreatingOwnProfile(userId);
+      allow update: if isUpdatingOwnProfile(userId);
+      allow delete: if isAdmin() && resource != null;
+    }
+
+    /**
+     * @description Manages access to role definition documents.
+     * @path /roles/{roleId}
+     * @allow (get) Any signed-in user reading a role to understand its name or permissions.
+     * @deny (create) A non-admin user trying to create a new role.
+     * @principle Defines roles as readable by authenticated users but writable only by Administrators.
+     */
+    match /roles/{roleId} {
+      allow get, list: if isSignedIn();
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin() && resource != null;
+    }
+
+    /**
+     * @description Governs access to technician profile documents.
+     * @path /technicians/{technicianId}
+     * @allow (update) Technician 'tech123' updating their own profile at `/technicians/tech123`.
+     * @deny (list) Any non-admin user trying to list all technician profiles.
+     * @principle Enforces document ownership for writes and self-creation, with an Admin override.
+     */
+    match /technicians/{technicianId} {
+      allow get: if isOwner(technicianId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isCreatingOwnProfile(technicianId);
+      allow update: if isUpdatingOwnProfile(technicianId);
+      allow delete: if isAdmin() && resource != null;
+    }
+
+    /**
+     * @description Manages access to the primary collection of work order documents.
+     * @path /work_orders/{workOrderId}
+     * @allow (get) Technician 'tech123' reading a work order where `assignedTechnicianId` is 'tech123'.
+     * @deny (get) Technician 'tech456' reading a work order assigned to 'tech123'.
+     * @principle Enforces shared access based on the denormalized `assignedTechnicianId` field, with full access for Admins.
+     */
+    match /work_orders/{workOrderId} {
+      allow get: if isAdmin() || (isTechnician() && request.auth.uid == resource.data.assignedTechnicianId);
+      allow list: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if (isAdmin() || (isTechnician() && request.auth.uid == resource.data.assignedTechnicianId)) && resource != null;
+      allow delete: if isAdmin() && resource != null;
+
+      /**
+       * @description Manages access to updates on a specific work order.
+       * @path /work_orders/{workOrderId}/updates/{updateId}
+       * @allow (create) Technician 'tech123' creating an update with `technicianId` set to 'tech123'.
+       * @deny (create) Technician 'tech456' creating an update on a work order assigned to 'tech123'.
+       * @principle Access is granted to Admins or the technician assigned to the parent work order.
+       */
+      match /updates/{updateId} {
+        allow get: if isAdmin() || isOwner(resource.data.technicianId);
+        allow list: if isAdmin() || (isTechnician() && get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.assignedTechnicianId == request.auth.uid);
+        allow create: if (isAdmin() || (isTechnician() && request.resource.data.technicianId == request.auth.uid)) && request.resource.data.workOrderId == workOrderId;
+        allow update, delete: if (isAdmin() || isOwner(resource.data.technicianId)) && resource != null;
+      }
+    }
+
+    /**
+     * @description Secures the denormalized work orders for technician-specific queries.
+     * @path /technicians/{technicianId}/work_orders/{workOrderId}
+     * @allow (list) Technician 'tech123' listing all documents under `/technicians/tech123/work_orders`.
+     * @deny (list) Technician 'tech456' attempting to list documents under `/technicians/tech123/work_orders`.
+     * @principle Enforces strict ownership based on the path, enabling secure and efficient queries for technicians.
+     */
+    match /technicians/{technicianId}/work_orders/{workOrderId} {
+      allow get, list: if isOwner(technicianId);
+      allow create: if isOwner(technicianId) && request.resource.data.assignedTechnicianId == technicianId;
+      allow update: if isOwner(technicianId) && resource != null && request.resource.data.assignedTechnicianId == resource.data.assignedTechnicianId;
+      allow delete: if isOwner(technicianId) && resource != null;
+    }
+  }
+}
