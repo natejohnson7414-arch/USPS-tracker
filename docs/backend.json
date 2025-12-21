@@ -82,6 +82,10 @@
         "roleId": {
             "type": "string",
             "description": "Reference to the role of the technician."
+        },
+        "disabled": {
+            "type": "boolean",
+            "description": "Indicates if the technician's account is disabled."
         }
       },
       "required": [

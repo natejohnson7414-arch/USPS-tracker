@@ -1,9 +1,11 @@
+
 export type Technician = {
   id: string;
   name: string;
   avatarUrl: string;
   email?: string;
   roleId?: string;
+  disabled?: boolean;
 };
 
 export type WorkOrderNote = {
@@ -37,4 +39,5 @@ export type AppUser = {
     email: string;
     avatarUrl: string;
     role: string;
+    disabled?: boolean;
 }

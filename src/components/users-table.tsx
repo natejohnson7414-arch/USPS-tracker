@@ -13,21 +13,25 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import type { AppUser } from '@/lib/types';
-import { ShieldCheck, User, MoreHorizontal } from 'lucide-react';
+import { ShieldCheck, User, MoreHorizontal, EyeOff } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from './ui/button';
+import { cn } from '@/lib/utils';
 
 interface UsersTableProps {
   users: AppUser[];
   onEditUser: (user: AppUser) => void;
+  onDeleteUser: (user: AppUser) => void;
+  onToggleDisableUser: (user: AppUser) => void;
 }
 
-export function UsersTable({ users, onEditUser }: UsersTableProps) {
+export function UsersTable({ users, onEditUser, onDeleteUser, onToggleDisableUser }: UsersTableProps) {
   return (
     <Card>
       <CardContent className="p-0">
@@ -43,7 +47,7 @@ export function UsersTable({ users, onEditUser }: UsersTableProps) {
           <TableBody>
             {users.length > 0 ? (
               users.map(user => (
-                <TableRow key={user.id}>
+                <TableRow key={user.id} className={cn(user.disabled && 'bg-muted/50 opacity-60')}>
                   <TableCell>
                     <div className="flex items-center gap-4">
                       <Avatar className="h-10 w-10">
@@ -62,17 +66,25 @@ export function UsersTable({ users, onEditUser }: UsersTableProps) {
                     <div className="text-muted-foreground">{user.email}</div>
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      variant={user.role === 'Administrator' ? 'default' : 'secondary'}
-                      className="capitalize gap-1.5 pl-2"
-                    >
-                      {user.role === 'Administrator' ? (
-                        <ShieldCheck className="h-3.5 w-3.5" />
-                      ) : (
-                        <User className="h-3.5 w-3.5" />
-                      )}
-                      {user.role}
-                    </Badge>
+                     <div className="flex items-center gap-2">
+                        <Badge
+                        variant={user.role === 'Administrator' ? 'default' : 'secondary'}
+                        className="capitalize gap-1.5 pl-2"
+                        >
+                        {user.role === 'Administrator' ? (
+                            <ShieldCheck className="h-3.5 w-3.5" />
+                        ) : (
+                            <User className="h-3.5 w-3.5" />
+                        )}
+                        {user.role}
+                        </Badge>
+                        {user.disabled && (
+                            <Badge variant="destructive" className="capitalize gap-1.5 pl-2">
+                                <EyeOff className="h-3.5 w-3.5" />
+                                Disabled
+                            </Badge>
+                        )}
+                    </div>
                   </TableCell>
                    <TableCell className="text-right">
                     <DropdownMenu>
@@ -85,6 +97,16 @@ export function UsersTable({ users, onEditUser }: UsersTableProps) {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => onEditUser(user)}>
                           Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onToggleDisableUser(user)}>
+                          {user.disabled ? 'Enable' : 'Disable'}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                            onClick={() => onDeleteUser(user)}
+                            className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                        >
+                            Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

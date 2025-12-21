@@ -8,15 +8,29 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { UserEditDialog } from '@/components/user-edit-dialog';
-import { useFirestore } from '@/firebase';
+import { useFirestore, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { doc } from 'firebase/firestore';
+
 
 export default function UsersPage() {
   const db = useFirestore();
   const [users, setUsers] = useState<AppUser[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AppUser | null>(null);
+  const [deletingUser, setDeletingUser] = useState<AppUser | null>(null);
 
   const fetchAndSetData = async () => {
     if (!db) return;
@@ -36,7 +50,9 @@ export default function UsersPage() {
   };
 
   useEffect(() => {
-    fetchAndSetData();
+    if (db) {
+        fetchAndSetData();
+    }
   }, [db]);
 
   const handleUserSaved = () => {
@@ -47,13 +63,38 @@ export default function UsersPage() {
 
   const handleEditUser = (user: AppUser) => {
     setEditingUser(user);
-    setIsDialogOpen(true);
+    setIsEditDialogOpen(true);
   };
   
   const handleAddNewUser = () => {
     setEditingUser(null);
-    setIsDialogOpen(true);
+    setIsEditDialogOpen(true);
   }
+  
+  const handleDeleteUser = (user: AppUser) => {
+    setDeletingUser(user);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteUser = () => {
+    if (deletingUser) {
+        const userRef = doc(db, 'technicians', deletingUser.id);
+        deleteDocumentNonBlocking(userRef);
+        // Optimistic update
+        setUsers(users.filter(u => u.id !== deletingUser.id));
+        setDeletingUser(null);
+        setIsDeleteDialogOpen(false);
+    }
+  };
+
+  const handleToggleDisableUser = (user: AppUser) => {
+    const userRef = doc(db, 'technicians', user.id);
+    const newDisabledState = !user.disabled;
+    updateDocumentNonBlocking(userRef, { disabled: newDisabledState });
+     // Optimistic update
+    setUsers(users.map(u => u.id === user.id ? { ...u, disabled: newDisabledState } : u));
+  };
+
 
   if (isLoading) {
     return (
@@ -81,16 +122,36 @@ export default function UsersPage() {
           </Button>
         </div>
         <div className="mt-8">
-          <UsersTable users={users} onEditUser={handleEditUser} />
+          <UsersTable 
+            users={users} 
+            onEditUser={handleEditUser} 
+            onDeleteUser={handleDeleteUser}
+            onToggleDisableUser={handleToggleDisableUser}
+          />
         </div>
       </div>
        <UserEditDialog
-        isOpen={isDialogOpen}
-        setIsOpen={setIsDialogOpen}
+        isOpen={isEditDialogOpen}
+        setIsOpen={setIsEditDialogOpen}
         user={editingUser}
         roles={roles}
         onUserSaved={handleUserSaved}
       />
+       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the user
+              account for <span className="font-bold">{deletingUser?.name}</span> and remove their data from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteUser}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }

@@ -32,6 +32,7 @@ export const seedDatabase = async (db: any) => {
                     email: tech.email,
                     avatarUrl: tech.avatarUrl,
                     roleId: technicianRole?.id,
+                    disabled: false,
                 };
                 return addDocumentNonBlocking(collection(db, 'technicians'), techData);
             })
@@ -129,6 +130,7 @@ export const getTechnicians = async (db: any): Promise<Technician[]> => {
             avatarUrl: data.avatarUrl,
             email: data.email,
             roleId: data.roleId,
+            disabled: data.disabled || false,
         } as Technician;
     });
     return techList;
@@ -146,6 +148,7 @@ export const getTechnicianById = async (db: any, id: string): Promise<Technician
             avatarUrl: data.avatarUrl,
             email: data.email,
             roleId: data.roleId,
+            disabled: data.disabled || false,
         } as Technician;
     }
     return undefined;
@@ -168,7 +171,8 @@ export const getUsers = async (db: any, roles: Role[]): Promise<AppUser[]> => {
             name: tech.name,
             email: tech.email || 'N/A',
             avatarUrl: tech.avatarUrl,
-            role: role?.name || 'Unknown'
+            role: role?.name || 'Unknown',
+            disabled: tech.disabled || false,
         };
     });
 };
