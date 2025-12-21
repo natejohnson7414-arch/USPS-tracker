@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -38,7 +38,6 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
   const [priority, setPriority] = useState<WorkOrder['priority'] | undefined>();
   const [assignedTechnicianId, setAssignedTechnicianId] = useState<string | undefined>();
   const [dueDate, setDueDate] = useState<Date | undefined>();
-  const [idCounter, setIdCounter] = useState(100);
   const { toast } = useToast();
 
   const handleSubmit = () => {
@@ -51,9 +50,8 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
       return;
     }
 
-    const newId = `WO-${String(idCounter).padStart(3, '0')}`;
-    setIdCounter(prev => prev + 1);
-
+    const newId = `WO-${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')}`;
+    
     const newWorkOrder: WorkOrder = {
       id: newId,
       title,

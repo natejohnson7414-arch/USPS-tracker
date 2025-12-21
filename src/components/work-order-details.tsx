@@ -172,10 +172,10 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
             </div>
             <Separator />
             <div className="space-y-6">
-              {workOrder.notes.map(note => (
+              {isClient ? workOrder.notes.map(note => (
                 <NoteActivityItem key={note.id} note={note} />
-              ))}
-              {workOrder.notes.length === 0 && (
+              )) : <p className="text-center text-sm text-muted-foreground py-4">Loading notes...</p>}
+              {isClient && workOrder.notes.length === 0 && (
                 <p className="text-center text-sm text-muted-foreground py-4">No notes or activity yet.</p>
               )}
             </div>
