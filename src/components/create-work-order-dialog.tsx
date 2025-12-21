@@ -50,7 +50,7 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
       return;
     }
 
-    const newId = `WO-${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')}`;
+    const newId = `WO-${Date.now()}`;
     
     const newWorkOrder: WorkOrder = {
       id: newId,
