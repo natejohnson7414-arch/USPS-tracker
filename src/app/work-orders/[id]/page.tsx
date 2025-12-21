@@ -20,6 +20,7 @@ export default function WorkOrderDetailPage({ params }: { params: { id: string }
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!db) return;
       setIsLoading(true);
       const [fetchedWorkOrder, fetchedTechnicians] = await Promise.all([
         getWorkOrderById(db, params.id),
