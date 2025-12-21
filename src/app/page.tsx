@@ -1,11 +1,11 @@
 
 'use client';
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { getTechnicians, seedDatabase } from '@/lib/data';
 import { DashboardClient } from './dashboard-client';
 import { MainLayout } from '@/components/main-layout';
 import type { WorkOrder, Technician } from '@/lib/types';
-import { useFirestore, useCollection, useUser } from '@/firebase';
+import { useFirestore, useCollection, useUser, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 
 export default function DashboardPage() {
@@ -16,7 +16,7 @@ export default function DashboardPage() {
   const hasSeeded = useRef(false);
 
   // Memoize the query to prevent re-creating it on every render
-  const workOrdersQuery = useMemo(() => {
+  const workOrdersQuery = useMemoFirebase(() => {
     if (!db) return null;
     return query(collection(db, 'work_orders'));
   }, [db]);

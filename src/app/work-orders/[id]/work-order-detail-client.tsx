@@ -9,7 +9,7 @@ import { MainLayout } from '@/components/main-layout';
 import { WorkOrderDetails } from '@/components/work-order-details';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
-import { useFirestore, useDoc, useCollection } from '@/firebase';
+import { useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import type { WorkOrder, Technician, WorkOrderNote } from '@/lib/types';
 import { doc, collection, query } from 'firebase/firestore';
 
@@ -22,12 +22,12 @@ export function WorkOrderDetailClient({ id }: WorkOrderDetailClientProps) {
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const workOrderRef = useMemo(() => {
+  const workOrderRef = useMemoFirebase(() => {
     if (!db) return null;
     return doc(db, 'work_orders', id);
   }, [db, id]);
 
-  const notesQuery = useMemo(() => {
+  const notesQuery = useMemoFirebase(() => {
     if (!workOrderRef) return null;
     return query(collection(workOrderRef, 'updates'));
   }, [workOrderRef]);
