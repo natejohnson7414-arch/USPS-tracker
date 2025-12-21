@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -20,12 +21,17 @@ export default function LoginPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    if (!isUserLoading && user) {
+    setIsClient(true);
+  }, []);
+  
+  useEffect(() => {
+    if (isClient && !isUserLoading && user) {
       router.push('/');
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, isClient]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +45,15 @@ export default function LoginPage() {
     }
     initiateEmailSignIn(auth, email, password);
   };
+  
+  if (isUserLoading || (isClient && user)) {
+     return (
+        <div className="flex min-h-screen items-center justify-center">
+            <p>Loading...</p>
+        </div>
+    );
+  }
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
