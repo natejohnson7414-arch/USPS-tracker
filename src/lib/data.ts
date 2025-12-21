@@ -4,6 +4,63 @@ import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote } from '@/lib/
 import { collection, getDoc, doc } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 import { getTechnicianById as getTechById } from '@/lib/data';
+import { sampleRoles, sampleTechnicians, sampleWorkOrders } from './sample-data';
+import { setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
+
+export const seedDatabase = async (db: any) => {
+    // Check if roles exist
+    const rolesSnapshot = await getCollectionNonBlocking(collection(db, 'roles'));
+    if (rolesSnapshot.empty) {
+        console.log("Seeding database with sample data...");
+        // Seed Roles
+        const roleRefs = await Promise.all(
+            sampleRoles.map(role => addDocumentNonBlocking(collection(db, 'roles'), role))
+        );
+        const roles = await Promise.all(
+             roleRefs.map(async (ref, i) => ({ id: ref.id, ...sampleRoles[i] }))
+        );
+
+        const adminRole = roles.find(r => r.name === 'Administrator');
+        const technicianRole = roles.find(r => r.name === 'Technician');
+
+        // Seed Technicians
+        const technicianRefs = await Promise.all(
+            sampleTechnicians.map(tech => {
+                const [firstName, ...lastName] = tech.name.split(' ');
+                const techData = {
+                    firstName,
+                    lastName: lastName.join(' '),
+                    email: tech.email,
+                    avatarUrl: tech.avatarUrl,
+                    roleId: technicianRole?.id,
+                };
+                return addDocumentNonBlocking(collection(db, 'technicians'), techData);
+            })
+        );
+        
+        const technicians = await Promise.all(
+            technicianRefs.map(async (ref) => getDocumentNonBlocking(ref))
+        );
+
+
+        // Seed Work Orders
+        sampleWorkOrders.forEach((wo, index) => {
+            const assignedTechnician = technicians[index % technicians.length]; // Cycle through technicians
+            const newId = `WO-${Date.now() + index}`;
+            const woRef = doc(db, 'work_orders', newId);
+            const woData = {
+                ...wo,
+                id: newId,
+                assignedTechnicianId: assignedTechnician.id,
+            };
+            setDocumentNonBlocking(woRef, woData, { merge: false });
+        });
+         console.log("Database seeding complete.");
+    } else {
+        console.log("Database already contains data. Skipping seed.");
+    }
+}
+
 
 // This function now needs to be async and fetch from Firestore.
 export const getWorkOrders = async (db: any): Promise<WorkOrder[]> => {
