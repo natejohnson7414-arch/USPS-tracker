@@ -19,12 +19,20 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<AppUser | null>(null);
 
   const fetchAndSetData = async () => {
+    if (!db) return;
     setIsLoading(true);
-    const fetchedRoles = await getRoles(db);
-    const fetchedUsers = await getUsers(db, fetchedRoles);
-    setRoles(fetchedRoles);
-    setUsers(fetchedUsers);
-    setIsLoading(false);
+    try {
+      const fetchedRoles = await getRoles(db);
+      setRoles(fetchedRoles);
+      // Now that roles are set, fetch users
+      const fetchedUsers = await getUsers(db, fetchedRoles);
+      setUsers(fetchedUsers);
+    } catch (error) {
+      console.error("Failed to fetch user and role data:", error);
+      // Optionally set an error state to show in the UI
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
