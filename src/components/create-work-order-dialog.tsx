@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -26,8 +26,9 @@ import { DatePicker } from './ui/date-picker';
 import { PlusCircle } from 'lucide-react';
 import type { Technician, WorkOrder } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, setDocumentNonBlocking } from '@/firebase';
-import { doc, collection } from 'firebase/firestore';
+import { useFirestore, useUser, setDocumentNonBlocking, getDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { doc, getDoc, runTransaction } from 'firebase/firestore';
+import { format } from 'date-fns';
 
 interface CreateWorkOrderDialogProps {
   technicians: Technician[];
@@ -36,16 +37,61 @@ interface CreateWorkOrderDialogProps {
 
 export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateWorkOrderDialogProps) {
   const db = useFirestore();
+  const { user } = useUser();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<WorkOrder['priority'] | undefined>();
   const [assignedTechnicianId, setAssignedTechnicianId] = useState<string | undefined>();
   const [dueDate, setDueDate] = useState<Date | undefined>();
+  const [workOrderId, setWorkOrderId] = useState('');
+  const [isLoadingId, setIsLoadingId] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = () => {
-    if (!title || !description || !priority || !dueDate) {
+  const isAdmin = user?.email === 'admin@crawford-company.com';
+
+  const getNextWorkOrderId = async () => {
+    if (!db) return '';
+    const year = format(new Date(), 'yy');
+    const counterRef = doc(db, 'counters', `work_orders_${year}`);
+
+    try {
+      const newNumber = await runTransaction(db, async (transaction) => {
+        const counterDoc = await transaction.get(counterRef);
+        let nextNumber = 1;
+        if (counterDoc.exists()) {
+          nextNumber = counterDoc.data().lastNumber + 1;
+        }
+        transaction.set(counterRef, { lastNumber: nextNumber }, { merge: true });
+        return nextNumber;
+      });
+      return `WO-${year}-${String(newNumber).padStart(4, '0')}`;
+    } catch (error) {
+      console.error("Error getting next work order ID: ", error);
+      toast({
+        title: 'Error',
+        description: 'Could not generate a new Work Order ID. Please try again.',
+        variant: 'destructive',
+      });
+      return '';
+    }
+  };
+
+  useEffect(() => {
+    if (open && !workOrderId) {
+      setIsLoadingId(true);
+      getNextWorkOrderId().then(id => {
+        setWorkOrderId(id);
+        setIsLoadingId(false);
+      });
+    } else if (!open) {
+      // Reset when dialog is closed
+      setWorkOrderId('');
+    }
+  }, [open]);
+
+  const handleSubmit = async () => {
+    if (!title || !description || !priority || !dueDate || !workOrderId) {
       toast({
         title: 'Missing Information',
         description: 'Please fill out all required fields.',
@@ -54,10 +100,24 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
       return;
     }
 
-    const newId = `WO-${Date.now()}`;
-    
+    const workOrderRef = doc(db, 'work_orders', workOrderId);
+
+    // Check for duplicates if admin edits the ID
+    if (isAdmin) {
+        const docSnap = await getDocumentNonBlocking(workOrderRef);
+        if (docSnap.exists()) {
+            toast({
+                title: 'Duplicate ID',
+                description: `Work Order ID ${workOrderId} already exists. Please use a different ID.`,
+                variant: 'destructive',
+            });
+            return;
+        }
+    }
+
+
     const newWorkOrderData = {
-      id: newId,
+      id: workOrderId,
       title,
       description,
       priority,
@@ -67,7 +127,6 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
       dueDate: dueDate.toISOString(),
     };
 
-    const workOrderRef = doc(db, 'work_orders', newId);
     setDocumentNonBlocking(workOrderRef, newWorkOrderData, { merge: false });
     
     const optimisticWorkOrder: WorkOrder = {
@@ -88,6 +147,7 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
     setPriority(undefined);
     setAssignedTechnicianId(undefined);
     setDueDate(undefined);
+    setWorkOrderId('');
     setOpen(false);
   };
 
@@ -105,6 +165,15 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
           <DialogDescription>Fill in the details below to create a new work order.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4 sm:grid-cols-2 sm:gap-6">
+           <div className="sm:col-span-2">
+            <Label htmlFor="workOrderId">Work Order ID</Label>
+            <Input 
+                id="workOrderId" 
+                value={isLoadingId ? 'Generating...' : workOrderId} 
+                onChange={e => setWorkOrderId(e.target.value)} 
+                disabled={!isAdmin || isLoadingId}
+            />
+          </div>
           <div className="sm:col-span-2">
             <Label htmlFor="title">Title</Label>
             <Input id="title" value={title} onChange={e => setTitle(e.target.value)} />
@@ -154,3 +223,5 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
     </Dialog>
   );
 }
+
+    

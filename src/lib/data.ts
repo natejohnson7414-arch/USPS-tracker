@@ -1,10 +1,11 @@
 
 'use client';
 import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote } from '@/lib/types';
-import { collection, getDoc, doc } from 'firebase/firestore';
+import { collection, getDoc, doc, runTransaction } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 import { sampleRoles, sampleTechnicians, sampleWorkOrders } from './sample-data';
 import { setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
+import { format } from 'date-fns';
 
 export const seedDatabase = async (db: any) => {
     // Check if roles exist
@@ -42,11 +43,22 @@ export const seedDatabase = async (db: any) => {
             technicianRefs.map(async (ref) => getDocumentNonBlocking(ref))
         );
 
-
         // Seed Work Orders
-        sampleWorkOrders.forEach((wo, index) => {
-            const assignedTechnician = technicians[index % technicians.length]; // Cycle through technicians
-            const newId = `WO-${Date.now() + index}`;
+        for (const [index, wo] of sampleWorkOrders.entries()) {
+            const assignedTechnician = technicians[index % technicians.length];
+            const year = format(new Date(), 'yy');
+            const counterRef = doc(db, 'counters', `work_orders_${year}`);
+
+            const newId = await runTransaction(db, async (transaction) => {
+                const counterDoc = await transaction.get(counterRef);
+                let nextNumber = 1;
+                if (counterDoc.exists()) {
+                    nextNumber = counterDoc.data().lastNumber + 1;
+                }
+                transaction.set(counterRef, { lastNumber: nextNumber }, { merge: true });
+                return `WO-${year}-${String(nextNumber).padStart(4, '0')}`;
+            });
+
             const woRef = doc(db, 'work_orders', newId);
             const woData = {
                 ...wo,
@@ -54,8 +66,9 @@ export const seedDatabase = async (db: any) => {
                 assignedTechnicianId: assignedTechnician.id,
             };
             setDocumentNonBlocking(woRef, woData, { merge: false });
-        });
-         console.log("Database seeding complete.");
+        }
+        
+        console.log("Database seeding complete.");
     } else {
         console.log("Database already contains data. Skipping seed.");
     }
@@ -176,3 +189,5 @@ export const getUsers = async (db: any, roles: Role[]): Promise<AppUser[]> => {
         };
     });
 };
+
+    
