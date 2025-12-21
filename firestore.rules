@@ -141,8 +141,8 @@ service cloud.firestore {
     match /technicians/{technicianId} {
       allow get: if isOwner(technicianId) || isAdmin();
       allow list: if isSignedIn();
-      allow create: if isCreatingOwnProfile(technicianId);
-      allow update: if isUpdatingOwnProfile(technicianId);
+      allow create: if isCreatingOwnProfile(technicianId) || isAdmin();
+      allow update: if isUpdatingOwnProfile(technicianId) || isAdmin();
       allow delete: if isAdmin() && resource != null;
     }
 
