@@ -20,9 +20,10 @@ service cloud.firestore {
      *   `get()` calls to user and role documents to determine permissions dynamically.
      * - No User Enumeration: Listing users or technicians is restricted to administrators
      *   to protect user privacy.
-     * - Prototyping Flexibility: Data shapes are not strictly validated, but authorization
-     *   fields (like `assignedTechnicianId`) are rigorously enforced to maintain security
-     *   while allowing for rapid application development.
+     *
+     * Prototyping Flexibility: Data shapes are not strictly validated, but authorization
+     * fields (like `assignedTechnicianId`) are rigorously enforced to maintain security
+     * while allowing for rapid application development.
      *
      * Denormalization for Authorization: The rules heavily leverage denormalized fields to
      * avoid costly or impossible security checks. For instance, `work_orders` and their
@@ -139,7 +140,7 @@ service cloud.firestore {
      */
     match /technicians/{technicianId} {
       allow get: if isOwner(technicianId) || isAdmin();
-      allow list: if isAdmin();
+      allow list: if isSignedIn();
       allow create: if isCreatingOwnProfile(technicianId);
       allow update: if isUpdatingOwnProfile(technicianId);
       allow delete: if isAdmin() && resource != null;
