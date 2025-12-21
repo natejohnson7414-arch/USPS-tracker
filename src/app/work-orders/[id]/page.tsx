@@ -23,7 +23,7 @@ export default function WorkOrderDetailPage({ params }: { params: { id: string }
   const workOrderRef = useMemo(() => {
     if (!db) return null;
     return doc(db, 'work_orders', params.id);
-  }, [db, params.id]);
+  }, [db, params]);
 
   const notesQuery = useMemo(() => {
     if (!workOrderRef) return null;
