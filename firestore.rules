@@ -155,7 +155,7 @@ service cloud.firestore {
      */
     match /work_orders/{workOrderId} {
       allow get: if isAdmin() || (isTechnician() && request.auth.uid == resource.data.assignedTechnicianId);
-      allow list: if isAdmin();
+      allow list: if isSignedIn();
       allow create: if isAdmin();
       allow update: if (isAdmin() || (isTechnician() && request.auth.uid == resource.data.assignedTechnicianId)) && resource != null;
       allow delete: if isAdmin() && resource != null;
@@ -190,3 +190,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
