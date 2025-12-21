@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { getWorkOrderById, getTechnicians } from '@/lib/data';
+import { getTechnicians } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
@@ -15,15 +15,15 @@ import { doc, collection, query } from 'firebase/firestore';
 import { useCollection } from '@/firebase';
 
 
-export default function WorkOrderDetailPage({ params: { id } }: { params: { id: string } }) {
+export default function WorkOrderDetailPage({ params }: { params: { id: string } }) {
   const db = useFirestore();
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const workOrderRef = useMemo(() => {
     if (!db) return null;
-    return doc(db, 'work_orders', id);
-  }, [db, id]);
+    return doc(db, 'work_orders', params.id);
+  }, [db, params.id]);
 
   const notesQuery = useMemo(() => {
     if (!workOrderRef) return null;
