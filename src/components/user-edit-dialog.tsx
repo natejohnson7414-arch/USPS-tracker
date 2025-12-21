@@ -13,20 +13,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { AppUser, Role } from '@/lib/types';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { doc, collection } from 'firebase/firestore';
+import { useFirestore, setDocumentNonBlocking } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { Upload, X } from 'lucide-react';
 
 interface UserEditDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   user: AppUser | null;
   roles: Role[];
-  onUserSaved: (user: AppUser) => void;
+  onUserSaved: () => void;
 }
 
 const avatarOptions = PlaceHolderImages.filter(img => img.id.startsWith('tech-'));
@@ -37,6 +38,7 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
   const [email, setEmail] = useState('');
   const [roleId, setRoleId] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -47,6 +49,7 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
         setRoleId(userRole?.id || '');
         setAvatarUrl(user.avatarUrl);
       } else {
+        // Reset for new user
         setName('');
         setEmail('');
         setRoleId('');
@@ -58,40 +61,44 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
   const handleSave = () => {
     const [firstName, ...lastNameParts] = name.split(' ');
     const lastName = lastNameParts.join(' ');
-    const userRole = roles.find(r => r.id === roleId);
 
-    const savedUser: AppUser = {
-      id: user?.id || `tech-${Date.now()}`,
-      name,
+    const userData = {
+      firstName,
+      lastName,
       email,
-      role: userRole?.name || '',
+      roleId,
+      // In a real app, you'd upload the avatar to a storage service and save the URL.
+      // For this demo, we're saving the potentially long data URI directly.
       avatarUrl: avatarUrl,
     };
 
     if (user) {
-        // Update existing user
-        const userRef = doc(db, 'technicians', user.id);
-        setDocumentNonBlocking(userRef, {
-            firstName,
-            lastName,
-            email,
-            roleId,
-        }, { merge: true });
+      const userRef = doc(db, 'technicians', user.id);
+      setDocumentNonBlocking(userRef, userData, { merge: true });
     } else {
-        // Create new user - This part needs a secure way to create a Firebase Auth user
-        // and then create the firestore doc. For now, just creating the doc.
-        const newUserRef = doc(db, 'technicians', savedUser.id);
-        setDocumentNonBlocking(newUserRef, {
-            id: savedUser.id,
-            firstName,
-            lastName,
-            email,
-            roleId,
-        }, { merge: false });
+      const newId = `tech-${Date.now()}`;
+      const newUserRef = doc(db, 'technicians', newId);
+      setDocumentNonBlocking(newUserRef, { ...userData, id: newId }, { merge: false });
     }
 
-    onUserSaved(savedUser);
+    onUserSaved();
     setIsOpen(false);
+  };
+  
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        setAvatarUrl(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+    event.target.value = ''; // Reset input
+  };
+  
+  const handleRemoveAvatar = () => {
+    setAvatarUrl('');
   };
 
   return (
@@ -118,20 +125,29 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
           </div>
            <div>
                 <Label>Avatar</Label>
-                <div className="mt-2 grid grid-cols-5 gap-2">
+                <div className="mt-2 flex items-center gap-2">
                     {avatarOptions.map(image => (
                     <button
                         key={image.id}
                         type="button"
                         onClick={() => setAvatarUrl(image.imageUrl)}
                         className={cn(
-                        'relative aspect-square rounded-full overflow-hidden transition-all ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                        'relative h-12 w-12 rounded-full overflow-hidden transition-all ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                         avatarUrl === image.imageUrl ? 'ring-2 ring-primary' : 'ring-1 ring-transparent hover:ring-primary'
                         )}
                     >
-                        <Image src={image.imageUrl} alt={image.description} fill sizes="64px" className="object-cover" />
+                        <Image src={image.imageUrl} alt={image.description} fill sizes="48px" className="object-cover" />
                     </button>
                     ))}
+                     <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+                     <Button variant="outline" size="icon" className="h-12 w-12 rounded-full" onClick={() => fileInputRef.current?.click()}>
+                        <Upload className="h-5 w-5"/>
+                        <span className="sr-only">Upload Photo</span>
+                    </Button>
+                    <Button variant="outline" size="icon" className="h-12 w-12 rounded-full" onClick={handleRemoveAvatar}>
+                        <X className="h-5 w-5"/>
+                        <span className="sr-only">Remove Avatar</span>
+                    </Button>
                 </div>
             </div>
           <div className="grid grid-cols-4 items-center gap-4">

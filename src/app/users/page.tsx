@@ -18,31 +18,22 @@ export default function UsersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AppUser | null>(null);
 
+  const fetchAndSetData = async () => {
+    setIsLoading(true);
+    const fetchedRoles = await getRoles(db);
+    const fetchedUsers = await getUsers(db, fetchedRoles);
+    setRoles(fetchedRoles);
+    setUsers(fetchedUsers);
+    setIsLoading(false);
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-        setIsLoading(true);
-        const [fetchedUsers, fetchedRoles] = await Promise.all([
-            getUsers(db),
-            getRoles(db),
-        ]);
-        setUsers(fetchedUsers);
-        setRoles(fetchedRoles);
-        setIsLoading(false);
-    };
-    fetchData();
+    fetchAndSetData();
   }, [db]);
 
-  const handleUserSaved = async (user: AppUser) => {
-    // This is a client-side update. For a real app, you'd save to Firestore
-    // and then refetch or optimistically update.
-    if (editingUser) {
-      setUsers(users.map(u => (u.id === user.id ? user : u)));
-    } else {
-      const newUser = { ...user, id: `user-${Date.now()}` };
-      setUsers([newUser, ...users]);
-    }
-    const fetchedUsers = await getUsers(db);
-    setUsers(fetchedUsers);
+  const handleUserSaved = () => {
+    // Refetch all data to ensure the UI is consistent with the database
+    fetchAndSetData();
     setEditingUser(null);
   };
 

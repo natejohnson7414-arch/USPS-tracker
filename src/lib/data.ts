@@ -1,13 +1,9 @@
 
 'use client';
 import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote } from '@/lib/types';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, getDoc, doc } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
-
-const getImage = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageUrl || '';
-
-// In a real app, these would be API calls.
+import { getTechnicianById as getTechById } from '@/lib/data';
 
 // This function now needs to be async and fetch from Firestore.
 export const getWorkOrders = async (db: any): Promise<WorkOrder[]> => {
@@ -74,7 +70,7 @@ export const getTechnicians = async (db: any): Promise<Technician[]> => {
         return {
             id: doc.id,
             name: `${data.firstName} ${data.lastName}`,
-            avatarUrl: getImage(doc.id) || getImage('tech-1'), // Fallback avatar
+            avatarUrl: data.avatarUrl,
             email: data.email,
             roleId: data.roleId,
         } as Technician;
@@ -91,7 +87,7 @@ export const getTechnicianById = async (db: any, id: string): Promise<Technician
          return {
             id: techSnap.id,
             name: `${data.firstName} ${data.lastName}`,
-            avatarUrl: getImage(techSnap.id) || getImage('tech-1'),
+            avatarUrl: data.avatarUrl,
             email: data.email,
             roleId: data.roleId,
         } as Technician;
@@ -106,9 +102,8 @@ export const getRoles = async (db: any): Promise<Role[]> => {
     return roleSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Role));
 };
 
-export const getUsers = async (db: any): Promise<AppUser[]> => {
+export const getUsers = async (db: any, roles: Role[]): Promise<AppUser[]> => {
     const technicians = await getTechnicians(db);
-    const roles = await getRoles(db);
     
     return technicians.map(tech => {
         const role = roles.find(r => r.id === tech.roleId);
