@@ -3,7 +3,7 @@
 import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote } from '@/lib/types';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
-import { getSdks } from '@/firebase'; // Assuming getSdks is exported and gives firestore instance
+import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 
 const getImage = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageUrl || '';
 
@@ -12,7 +12,7 @@ const getImage = (id: string) => PlaceHolderImages.find(img => img.id === id)?.i
 // This function now needs to be async and fetch from Firestore.
 export const getWorkOrders = async (db: any): Promise<WorkOrder[]> => {
   const workOrdersCol = collection(db, 'work_orders');
-  const workOrderSnapshot = await getDocs(workOrdersCol);
+  const workOrderSnapshot = await getCollectionNonBlocking(workOrdersCol);
   const workOrdersList = workOrderSnapshot.docs.map(doc => {
     const data = doc.data();
     return {
@@ -32,12 +32,12 @@ export const getWorkOrders = async (db: any): Promise<WorkOrder[]> => {
 
 export const getWorkOrderById = async (db: any, id: string): Promise<WorkOrder | undefined> => {
   const workOrderRef = doc(db, 'work_orders', id);
-  const workOrderSnap = await getDoc(workOrderRef);
+  const workOrderSnap = await getDocumentNonBlocking(workOrderRef);
 
   if (workOrderSnap.exists()) {
     const data = workOrderSnap.data();
     const notesCol = collection(db, 'work_orders', id, 'updates');
-    const notesSnapshot = await getDocs(notesCol);
+    const notesSnapshot = await getCollectionNonBlocking(notesCol);
     const notesList = notesSnapshot.docs.map(noteDoc => {
         const noteData = noteDoc.data();
         return {
@@ -68,7 +68,7 @@ export const getWorkOrderById = async (db: any, id: string): Promise<WorkOrder |
 
 export const getTechnicians = async (db: any): Promise<Technician[]> => {
     const techniciansCol = collection(db, 'technicians');
-    const techSnapshot = await getDocs(techniciansCol);
+    const techSnapshot = await getCollectionNonBlocking(techniciansCol);
     const techList = techSnapshot.docs.map(doc => {
         const data = doc.data();
         return {
@@ -85,7 +85,7 @@ export const getTechnicians = async (db: any): Promise<Technician[]> => {
 export const getTechnicianById = async (db: any, id: string): Promise<Technician | undefined> => {
     if (!id) return undefined;
     const techRef = doc(db, 'technicians', id);
-    const techSnap = await getDoc(techRef);
+    const techSnap = await getDocumentNonBlocking(techRef);
     if(techSnap.exists()) {
         const data = techSnap.data();
          return {
@@ -102,7 +102,7 @@ export const getTechnicianById = async (db: any, id: string): Promise<Technician
 
 export const getRoles = async (db: any): Promise<Role[]> => {
     const rolesCol = collection(db, 'roles');
-    const roleSnapshot = await getDocs(rolesCol);
+    const roleSnapshot = await getCollectionNonBlocking(rolesCol);
     return roleSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Role));
 };
 
