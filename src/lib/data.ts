@@ -129,6 +129,10 @@ export const getTechnicianById = (id: string) => {
   return technicians.find(tech => tech.id === id);
 };
 
+export const getRoles = () => {
+    return roles;
+}
+
 export const getUsers = (): AppUser[] => {
     return technicians.map(tech => {
         const role = roles.find(r => r.id === tech.roleId);
