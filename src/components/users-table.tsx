@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -46,7 +47,7 @@ export function UsersTable({ users, onEditUser }: UsersTableProps) {
                   <TableCell>
                     <div className="flex items-center gap-4">
                       <Avatar className="h-10 w-10">
-                        <AvatarImage src={user.avatarUrl} alt={user.name} />
+                        <AvatarImage src={user.avatarUrl ?? undefined} alt={user.name} />
                         <AvatarFallback>
                           {user.name
                             .split(' ')

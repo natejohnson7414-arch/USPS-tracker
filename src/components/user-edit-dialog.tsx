@@ -37,7 +37,7 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [roleId, setRoleId] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -47,13 +47,13 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
         setName(user.name);
         setEmail(user.email);
         setRoleId(userRole?.id || '');
-        setAvatarUrl(user.avatarUrl);
+        setAvatarUrl(user.avatarUrl || null);
       } else {
         // Reset for new user
         setName('');
         setEmail('');
         setRoleId('');
-        setAvatarUrl(avatarOptions[0]?.imageUrl || '');
+        setAvatarUrl(avatarOptions[0]?.imageUrl || null);
       }
     }
   }, [user, isOpen, roles]);
@@ -98,7 +98,7 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
   };
   
   const handleRemoveAvatar = () => {
-    setAvatarUrl('');
+    setAvatarUrl(null);
   };
 
   return (
@@ -113,7 +113,7 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
         <div className="grid gap-6 py-4">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
-                <AvatarImage src={avatarUrl} />
+                <AvatarImage src={avatarUrl ?? undefined} />
                 <AvatarFallback>{name.charAt(0)}</AvatarFallback>
             </Avatar>
             <div className="grid grid-cols-4 items-center gap-4 flex-1">
