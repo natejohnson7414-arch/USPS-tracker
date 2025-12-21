@@ -73,9 +73,10 @@ service cloud.firestore {
 
     /**
      * Checks if the user is an Administrator.
+     * The user is an admin if their email is 'admin@crawford-company.com' OR they have the 'Administrator' role.
      */
     function isAdmin() {
-      return userHasRole('Administrator');
+      return isSignedIn() && (request.auth.token.email == 'admin@crawford-company.com' || userHasRole('Administrator'));
     }
 
     /**
@@ -190,5 +191,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
