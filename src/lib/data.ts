@@ -3,7 +3,6 @@
 import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote } from '@/lib/types';
 import { collection, getDoc, doc } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
-import { getTechnicianById as getTechById } from '@/lib/data';
 import { sampleRoles, sampleTechnicians, sampleWorkOrders } from './sample-data';
 import { setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 

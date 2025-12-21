@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { getWorkOrderById, getTechnicians } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
@@ -9,37 +9,59 @@ import { MainLayout } from '@/components/main-layout';
 import { WorkOrderDetails } from '@/components/work-order-details';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
-import { useFirestore } from '@/firebase';
-import type { WorkOrder, Technician } from '@/lib/types';
+import { useFirestore, useDoc } from '@/firebase';
+import type { WorkOrder, Technician, WorkOrderNote } from '@/lib/types';
+import { doc, collection, query } from 'firebase/firestore';
+import { useCollection } from '@/firebase';
+
 
 export default function WorkOrderDetailPage({ params }: { params: { id: string } }) {
   const db = useFirestore();
-  const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const workOrderRef = useMemo(() => {
+    if (!db) return null;
+    return doc(db, 'work_orders', params.id);
+  }, [db, params.id]);
+
+  const notesQuery = useMemo(() => {
+    if (!workOrderRef) return null;
+    return query(collection(workOrderRef, 'updates'));
+  }, [workOrderRef]);
+
+  const { data: workOrderData, isLoading: isWorkOrderLoading } = useDoc<Omit<WorkOrder, 'notes'>>(workOrderRef);
+  const { data: notesData, isLoading: areNotesLoading } = useCollection<WorkOrderNote>(notesQuery);
+
+  const workOrder = useMemo(() => {
+    if (!workOrderData) return null;
+    return {
+      ...workOrderData,
+      notes: notesData ? notesData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) : []
+    };
+  }, [workOrderData, notesData]);
+
 
   useEffect(() => {
     const fetchData = async () => {
       if (!db) return;
       setIsLoading(true);
-      const [fetchedWorkOrder, fetchedTechnicians] = await Promise.all([
-        getWorkOrderById(db, params.id),
-        getTechnicians(db),
-      ]);
-      
-      if (!fetchedWorkOrder) {
-        notFound();
-        return;
-      }
-
-      setWorkOrder(fetchedWorkOrder);
+      const fetchedTechnicians = await getTechnicians(db);
       setTechnicians(fetchedTechnicians);
       setIsLoading(false);
     };
     fetchData();
-  }, [db, params.id]);
+  }, [db]);
 
-  if (isLoading || !workOrder) {
+  useEffect(() => {
+    if(!isWorkOrderLoading && !workOrderData) {
+        notFound();
+    }
+  }, [isWorkOrderLoading, workOrderData]);
+
+  const isPageLoading = isLoading || isWorkOrderLoading || areNotesLoading;
+
+  if (isPageLoading || !workOrder) {
     return (
       <MainLayout>
         <div className="flex items-center justify-center h-full">
