@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -22,6 +23,8 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Camera, User, Calendar, Info, FileText, X, Video, Library } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
+import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
+import { doc, collection } from 'firebase/firestore';
 
 interface WorkOrderDetailsProps {
   initialWorkOrder: WorkOrder;
@@ -29,7 +32,10 @@ interface WorkOrderDetailsProps {
 }
 
 export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDetailsProps) {
+  const db = useFirestore();
+  const { user } = useUser();
   const [workOrder, setWorkOrder] = useState<WorkOrder>(initialWorkOrder);
+  const [assignedTechnician, setAssignedTechnician] = useState<Technician | undefined>();
   const [newNote, setNewNote] = useState('');
   const [newNotePhoto, setNewNotePhoto] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -37,12 +43,17 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
 
   useEffect(() => {
     setIsClient(true);
-  }, []);
+    const fetchTechnician = async () => {
+        if (workOrder.assignedTechnicianId) {
+            const tech = await getTechnicianById(db, workOrder.assignedTechnicianId);
+            setAssignedTechnician(tech);
+        }
+    }
+    fetchTechnician();
+  }, [db, workOrder.assignedTechnicianId]);
 
   const takePhotoInputRef = useRef<HTMLInputElement>(null);
   const chooseFromLibraryInputRef = useRef<HTMLInputElement>(null);
-
-  const assignedTechnician = getTechnicianById(workOrder.assignedTechnicianId || '');
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -58,26 +69,40 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
     event.target.value = '';
   };
 
-  const handleAddNote = () => {
-    if (newNote.trim() === '' && !newNotePhoto) return;
+  const handleAddNote = async () => {
+    if (!user || (newNote.trim() === '' && !newNotePhoto)) return;
 
-    const note: WorkOrderNote = {
-      id: `note-${Date.now()}`,
-      authorId: 'tech-1', // In a real app, this would be the current user's ID
-      text: newNote,
-      createdAt: new Date().toISOString(),
-      photoUrls: newNotePhoto ? [newNotePhoto] : [],
+    const newNoteData = {
+        workOrderId: workOrder.id,
+        technicianId: user.uid,
+        updateDate: new Date().toISOString(),
+        notes: newNote,
+        photoUrls: newNotePhoto ? [newNotePhoto] : [],
     };
+
+    const notesColRef = collection(db, 'work_orders', workOrder.id, 'updates');
+    await addDocumentNonBlocking(notesColRef, newNoteData);
+    
+    // Optimistically update UI
+    const optimisticNote: WorkOrderNote = {
+        id: `note-${Date.now()}`,
+        authorId: user.uid,
+        text: newNote,
+        createdAt: new Date().toISOString(),
+        photoUrls: newNotePhoto ? [newNotePhoto] : [],
+    }
 
     setWorkOrder(prev => ({
       ...prev,
-      notes: [note, ...prev.notes],
+      notes: [optimisticNote, ...prev.notes],
     }));
     setNewNote('');
     setNewNotePhoto(null);
   };
 
   const handleStatusChange = (status: WorkOrder['status']) => {
+    const workOrderRef = doc(db, 'work_orders', workOrder.id);
+    setDocumentNonBlocking(workOrderRef, { status }, { merge: true });
     setWorkOrder(prev => ({ ...prev, status }));
   };
 
@@ -167,13 +192,13 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
                       accept="image/*"
                     />
                  </div>
-                <Button onClick={handleAddNote}>Add Note</Button>
+                <Button onClick={handleAddNote} disabled={!user}>Add Note</Button>
               </div>
             </div>
             <Separator />
             <div className="space-y-6">
               {isClient ? workOrder.notes.map(note => (
-                <NoteActivityItem key={note.id} note={note} />
+                <NoteActivityItem key={note.id} note={note} technicians={technicians} />
               )) : <p className="text-center text-sm text-muted-foreground py-4">Loading notes...</p>}
               {isClient && workOrder.notes.length === 0 && (
                 <p className="text-center text-sm text-muted-foreground py-4">No notes or activity yet.</p>

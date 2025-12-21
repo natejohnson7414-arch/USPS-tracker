@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -25,6 +26,8 @@ import { DatePicker } from './ui/date-picker';
 import { PlusCircle } from 'lucide-react';
 import type { Technician, WorkOrder } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { useFirestore, setDocumentNonBlocking } from '@/firebase';
+import { doc, collection } from 'firebase/firestore';
 
 interface CreateWorkOrderDialogProps {
   technicians: Technician[];
@@ -32,6 +35,7 @@ interface CreateWorkOrderDialogProps {
 }
 
 export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateWorkOrderDialogProps) {
+  const db = useFirestore();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -52,22 +56,30 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
 
     const newId = `WO-${Date.now()}`;
     
-    const newWorkOrder: WorkOrder = {
+    const newWorkOrderData = {
       id: newId,
       title,
       description,
       priority,
       status: 'Open',
-      assignedTechnicianId,
+      assignedTechnicianId: assignedTechnicianId || null,
       createdAt: new Date().toISOString(),
       dueDate: dueDate.toISOString(),
-      notes: [],
     };
+
+    const workOrderRef = doc(collection(db, 'work_orders'), newId);
+    setDocumentNonBlocking(workOrderRef, newWorkOrderData, { merge: false });
     
-    onWorkOrderAdded(newWorkOrder);
+    const optimisticWorkOrder: WorkOrder = {
+        ...newWorkOrderData,
+        notes: [],
+        assignedTechnicianId: assignedTechnicianId,
+    }
+
+    onWorkOrderAdded(optimisticWorkOrder);
     toast({
         title: 'Work Order Created',
-        description: `Successfully created work order ${newWorkOrder.id}.`,
+        description: `Successfully created work order ${newWorkOrderData.id}.`,
     });
 
     // Reset form and close dialog

@@ -1,25 +1,30 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import { getTechnicianById } from '@/lib/data';
-import type { WorkOrderNote } from '@/lib/types';
+import type { WorkOrderNote, Technician } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User } from 'lucide-react';
+import { useFirestore } from '@/firebase';
 
 interface NoteActivityItemProps {
   note: WorkOrderNote;
+  technicians: Technician[];
 }
 
-export function NoteActivityItem({ note }: NoteActivityItemProps) {
+export function NoteActivityItem({ note, technicians }: NoteActivityItemProps) {
   const [isClient, setIsClient] = useState(false);
+  const [author, setAuthor] = useState<Technician | undefined>();
+  const db = useFirestore();
 
   useEffect(() => {
     setIsClient(true);
-  }, []);
-
-  const author = getTechnicianById(note.authorId);
+    const tech = technicians.find(t => t.id === note.authorId);
+    setAuthor(tech);
+  }, [note.authorId, technicians]);
 
   return (
     <div className="flex gap-4">
@@ -31,7 +36,7 @@ export function NoteActivityItem({ note }: NoteActivityItemProps) {
       </Avatar>
       <div className="flex-1">
         <div className="flex items-center justify-between">
-          <p className="font-semibold">{author?.name}</p>
+          <p className="font-semibold">{author?.name || "Loading..."}</p>
           <p className="text-xs text-muted-foreground">
             {isClient ? formatDistanceToNow(new Date(note.createdAt), { addSuffix: true }) : '...'}
           </p>

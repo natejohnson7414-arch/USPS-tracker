@@ -1,3 +1,4 @@
+
 'use client';
 import {
   Dialog,
@@ -17,6 +18,8 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
+import { doc, collection } from 'firebase/firestore';
 
 interface UserEditDialogProps {
   isOpen: boolean;
@@ -29,35 +32,64 @@ interface UserEditDialogProps {
 const avatarOptions = PlaceHolderImages.filter(img => img.id.startsWith('tech-'));
 
 export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: UserEditDialogProps) {
+  const db = useFirestore();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState('');
+  const [roleId, setRoleId] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
 
   useEffect(() => {
     if (isOpen) {
       if (user) {
+        const userRole = roles.find(r => r.name === user.role);
         setName(user.name);
         setEmail(user.email);
-        setRole(user.role);
+        setRoleId(userRole?.id || '');
         setAvatarUrl(user.avatarUrl);
       } else {
         setName('');
         setEmail('');
-        setRole('');
+        setRoleId('');
         setAvatarUrl(avatarOptions[0]?.imageUrl || '');
       }
     }
-  }, [user, isOpen]);
+  }, [user, isOpen, roles]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    const [firstName, ...lastNameParts] = name.split(' ');
+    const lastName = lastNameParts.join(' ');
+    const userRole = roles.find(r => r.id === roleId);
+
     const savedUser: AppUser = {
-      id: user?.id || '',
+      id: user?.id || `tech-${Date.now()}`,
       name,
       email,
-      role,
+      role: userRole?.name || '',
       avatarUrl: avatarUrl,
     };
+
+    if (user) {
+        // Update existing user
+        const userRef = doc(db, 'technicians', user.id);
+        await setDocumentNonBlocking(userRef, {
+            firstName,
+            lastName,
+            email,
+            roleId,
+        }, { merge: true });
+    } else {
+        // Create new user - This part needs a secure way to create a Firebase Auth user
+        // and then create the firestore doc. For now, just creating the doc.
+        const newUserRef = doc(db, 'technicians', savedUser.id);
+        await setDocumentNonBlocking(newUserRef, {
+            id: savedUser.id,
+            firstName,
+            lastName,
+            email,
+            roleId,
+        }, { merge: false });
+    }
+
     onUserSaved(savedUser);
     setIsOpen(false);
   };
@@ -112,13 +144,13 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
             <Label htmlFor="role" className="text-right">
               Role
             </Label>
-            <Select value={role} onValueChange={setRole}>
+            <Select value={roleId} onValueChange={setRoleId}>
                 <SelectTrigger className="col-span-3">
                     <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
                 <SelectContent>
                     {roles.map(r => (
-                        <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>
+                        <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                     ))}
                 </SelectContent>
             </Select>
