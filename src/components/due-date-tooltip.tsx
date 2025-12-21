@@ -15,6 +15,10 @@ export function DueDateTooltip({ dueDate }: DueDateTooltipProps) {
     setIsClient(true);
   }, []);
 
+  if (!isClient) {
+    return <span>Loading...</span>;
+  }
+
   const dueDateObj = new Date(dueDate);
 
   return (
@@ -26,7 +30,7 @@ export function DueDateTooltip({ dueDate }: DueDateTooltipProps) {
           </span>
         </TooltipTrigger>
         <TooltipContent>
-          {isClient ? <p>{formatDistanceToNow(dueDateObj, { addSuffix: true })}</p> : <p>Loading...</p>}
+          <p>{formatDistanceToNow(dueDateObj, { addSuffix: true })}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

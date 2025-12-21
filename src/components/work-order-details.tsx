@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { getTechnicianById } from '@/lib/data';
@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, User, Calendar, Info, FileText, X, ImagePlus, Library, Video } from 'lucide-react';
+import { Camera, User, Calendar, Info, FileText, X, Video, Library } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 
 interface WorkOrderDetailsProps {
@@ -33,6 +33,11 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
   const [newNote, setNewNote] = useState('');
   const [newNotePhoto, setNewNotePhoto] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const takePhotoInputRef = useRef<HTMLInputElement>(null);
   const chooseFromLibraryInputRef = useRef<HTMLInputElement>(null);
@@ -228,14 +233,22 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
                 <Calendar className="h-4 w-4" />
                 Created
               </span>
-              <span className="font-medium">{format(new Date(workOrder.createdAt), 'MMM d, yyyy')}</span>
+                {isClient ? (
+                  <span className="font-medium">{format(new Date(workOrder.createdAt), 'MMM d, yyyy')}</span>
+                ) : (
+                  <span className="font-medium">Loading...</span>
+                )}
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-primary" />
                 Due Date
               </span>
-              <span className="font-medium">{format(new Date(workOrder.dueDate), 'MMM d, yyyy')}</span>
+              {isClient ? (
+                <span className="font-medium">{format(new Date(workOrder.dueDate), 'MMM d, yyyy')}</span>
+              ) : (
+                <span className="font-medium">Loading...</span>
+              )}
             </div>
           </CardContent>
         </Card>
