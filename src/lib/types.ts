@@ -2,6 +2,8 @@ export type Technician = {
   id: string;
   name: string;
   avatarUrl: string;
+  email?: string;
+  roleId?: string;
 };
 
 export type WorkOrderNote = {
@@ -23,3 +25,16 @@ export type WorkOrder = {
   dueDate: string;
   notes: WorkOrderNote[];
 };
+
+export type Role = {
+    id: string;
+    name: string;
+}
+
+export type AppUser = {
+    id: string;
+    name: string;
+    email: string;
+    avatarUrl: string;
+    role: string;
+}

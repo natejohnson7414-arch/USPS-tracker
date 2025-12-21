@@ -1,13 +1,18 @@
-import type { Technician, WorkOrder } from '@/lib/types';
+import type { AppUser, Role, Technician, WorkOrder } from '@/lib/types';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const getImage = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageUrl || '';
 
 export const technicians: Technician[] = [
-  { id: 'tech-1', name: 'Sarah Chen', avatarUrl: getImage('tech-1') },
-  { id: 'tech-2', name: 'David Rodriguez', avatarUrl: getImage('tech-2') },
-  { id: 'tech-3', name: 'Maria Garcia', avatarUrl: getImage('tech-3') },
-  { id: 'tech-4', name: 'Ben Carter', avatarUrl: getImage('tech-4') },
+  { id: 'tech-1', name: 'Sarah Chen', avatarUrl: getImage('tech-1'), email: 's.chen@workflow.com', roleId: 'role-admin' },
+  { id: 'tech-2', name: 'David Rodriguez', avatarUrl: getImage('tech-2'), email: 'd.rodriguez@workflow.com', roleId: 'role-tech' },
+  { id: 'tech-3', name: 'Maria Garcia', avatarUrl: getImage('tech-3'), email: 'm.garcia@workflow.com', roleId: 'role-tech' },
+  { id: 'tech-4', name: 'Ben Carter', avatarUrl: getImage('tech-4'), email: 'b.carter@workflow.com', roleId: 'role-tech' },
+];
+
+export const roles: Role[] = [
+    { id: 'role-admin', name: 'Administrator' },
+    { id: 'role-tech', name: 'Technician' },
 ];
 
 let workOrders: WorkOrder[] = [
@@ -122,4 +127,17 @@ export const getTechnicians = () => {
 
 export const getTechnicianById = (id: string) => {
   return technicians.find(tech => tech.id === id);
+};
+
+export const getUsers = (): AppUser[] => {
+    return technicians.map(tech => {
+        const role = roles.find(r => r.id === tech.roleId);
+        return {
+            id: tech.id,
+            name: tech.name,
+            email: tech.email || 'N/A',
+            avatarUrl: tech.avatarUrl,
+            role: role?.name || 'Unknown'
+        };
+    });
 };
