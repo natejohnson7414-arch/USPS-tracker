@@ -26,7 +26,8 @@ export function Header() {
   const handleLogout = async () => {
     if (auth) {
       await signOut(auth);
-      router.push('/login');
+      // Use window.location to force a full page reload and avoid Next.js router cache issues on logout.
+      window.location.href = '/login';
     }
   };
 
