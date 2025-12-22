@@ -133,6 +133,7 @@ export const getWorkOrderById = async (db: any, id: string): Promise<WorkOrder |
 
 
 export const getTechnicians = async (db: any): Promise<Technician[]> => {
+    if (!db) return [];
     const techniciansCol = collection(db, 'technicians');
     const techSnapshot = await getCollectionNonBlocking(techniciansCol);
     const techList = techSnapshot.docs.map(doc => {
@@ -189,5 +190,3 @@ export const getUsers = async (db: any, roles: Role[]): Promise<AppUser[]> => {
         };
     });
 };
-
-    
