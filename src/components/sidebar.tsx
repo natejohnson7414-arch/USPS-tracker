@@ -38,7 +38,7 @@ export function Sidebar() {
         <SheetTrigger asChild>
             <Button variant="ghost" className="hidden sm:flex items-center gap-2 font-bold text-lg p-0 h-auto">
                <Wrench className="h-6 w-6 text-primary" />
-              <span className="font-headline">WorkFlow</span>
+              <span className="font-headline">USPS WO Tracker</span>
             </Button>
         </SheetTrigger>
       </div>
@@ -51,7 +51,7 @@ export function Sidebar() {
                 onClick={() => setIsOpen(false)}
               >
                 <Package2 className="h-6 w-6 text-primary" />
-                <span className="font-headline">WorkFlow</span>
+                <span className="font-headline">USPS WO Tracker</span>
               </Link>
             </SheetTitle>
         </SheetHeader>

@@ -59,9 +59,9 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-6">
-          <Link href="/" className="flex items-center gap-3 text-2xl font-bold">
+          <Link href="/" className="flex items-center gap-3 text-xl font-bold">
             <Wrench className="h-8 w-8 text-primary" />
-            <span className="font-headline">WorkFlow</span>
+            <span className="font-headline">USPS WO Tracker</span>
           </Link>
         </div>
         <Card>

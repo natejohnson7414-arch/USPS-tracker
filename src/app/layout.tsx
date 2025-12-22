@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
@@ -8,8 +9,8 @@ import { FirebaseClientProvider } from '@/firebase';
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: 'WorkFlow',
-  description: 'A robust work order tracking app for managing and streamlining tasks.',
+  title: 'USPS WO Tracker',
+  description: 'A robust work order tracking app for managing and streamlining tasks for USPS.',
 };
 
 export default function RootLayout({
