@@ -52,7 +52,6 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
   const [clientId, setClientId] = useState<string | undefined>();
   const [poNumber, setPoNumber] = useState('');
   const [contactInfo, setContactInfo] = useState('');
-  const [jobName, setJobName] = useState('');
   const [workSiteId, setWorkSiteId] = useState<string | undefined>();
   const [description, setDescription] = useState('');
   const [serviceScheduleDate, setServiceScheduleDate] = useState<Date | undefined>();
@@ -77,7 +76,6 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
     setClientId(undefined);
     setPoNumber('');
     setContactInfo('');
-    setJobName('');
     setWorkSiteId(undefined);
     setDescription('');
     setServiceScheduleDate(undefined);
@@ -120,7 +118,6 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
             if (matchedClient) setClientId(matchedClient.id);
             if (extractedData.poNumber) setPoNumber(extractedData.poNumber);
             if (extractedData.contactInfo) setContactInfo(extractedData.contactInfo);
-            if (extractedData.jobName) setJobName(extractedData.jobName);
             if (matchedWorkSite) setWorkSiteId(matchedWorkSite.id);
             if (extractedData.description) setDescription(extractedData.description);
             if (extractedData.serviceScheduleDate) setServiceScheduleDate(new Date(extractedData.serviceScheduleDate));
@@ -161,10 +158,10 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
     const selectedWorkSite = workSites.find(ws => ws.id === workSiteId);
     const selectedClient = clients.find(c => c.id === clientId);
     
-    if (!db || !jobId || !jobName || !description) {
+    if (!db || !jobId || !selectedWorkSite || !description) {
       toast({
         title: 'Missing Information',
-        description: 'Job #, Job Name, and Description are required.',
+        description: 'Job #, Job Site, and Description are required.',
         variant: 'destructive',
       });
       return;
@@ -182,7 +179,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
         clientId: clientId || null,
         poNumber,
         contactInfo,
-        jobName,
+        jobName: selectedWorkSite.name,
         workSiteId: workSiteId || null,
         description,
         serviceScheduleDate: serviceScheduleDate?.toISOString() || null,
@@ -300,11 +297,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
                 </Select>
             </div>
              <div className="grid gap-2">
-                <Label htmlFor="jobName">Job Name</Label>
-                <Input id="jobName" value={jobName} onChange={e => setJobName(e.target.value)} required />
-            </div>
-             <div className="grid gap-2">
-                <Label htmlFor="workSite">Job Site</Label>
+                <Label htmlFor="workSite">Job Site / Name</Label>
                  <Select onValueChange={setWorkSiteId} value={workSiteId} disabled={isSubmitting}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a work site" />
@@ -416,3 +409,5 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
     </Dialog>
   );
 }
+
+    

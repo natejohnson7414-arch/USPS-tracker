@@ -32,7 +32,6 @@ export default function WorkOrderDetailPage() {
   const [isAddingNote, setIsAddingNote] = useState(false);
   
   // Editable fields state - initialized when workOrder is loaded
-  const [jobName, setJobName] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<WorkOrder['status']>('Open');
   const [assignedTechnicianId, setAssignedTechnicianId] = useState<string | undefined>(undefined);
@@ -69,7 +68,6 @@ export default function WorkOrderDetailPage() {
   }, [workOrderDocRef]);
 
   const initializeEditState = (wo: WorkOrder) => {
-    setJobName(wo.jobName);
     setDescription(wo.description);
     setStatus(wo.status);
     setAssignedTechnicianId(wo.assignedTechnicianId);
@@ -194,9 +192,10 @@ export default function WorkOrderDetailPage() {
     if (!workOrderDocRef) return;
     
     const selectedClient = clients.find(c => c.id === clientId);
+    const selectedWorkSite = workSites.find(ws => ws.id === workSiteId);
 
     const updatedData = {
-        jobName,
+        jobName: selectedWorkSite?.name,
         description,
         status,
         assignedTechnicianId,
@@ -231,12 +230,11 @@ export default function WorkOrderDetailPage() {
 
     updateDocumentNonBlocking(workOrderDocRef, updatedData);
 
-    const updatedWorkSite = workSites.find(ws => ws.id === workSiteId);
     
     // Optimistically update the local state
     setWorkOrder(prev => {
         if (!prev) return null;
-        return { ...prev, ...updatedData, workSite: updatedWorkSite, client: selectedClient } as WorkOrder;
+        return { ...prev, ...updatedData, workSite: selectedWorkSite, client: selectedClient } as WorkOrder;
     });
     
     toast({ title: "Work Order Saved", description: "Changes have been saved successfully." });
@@ -312,7 +310,6 @@ export default function WorkOrderDetailPage() {
           onNotePhotoDelete={handleNotePhotoDelete}
           isAddingNote={isAddingNote}
           editableFields={{
-            jobName, setJobName,
             description, setDescription,
             status, setStatus,
             assignedTechnicianId, setAssignedTechnicianId,
@@ -342,3 +339,5 @@ export default function WorkOrderDetailPage() {
     </MainLayout>
   );
 }
+
+    

@@ -29,8 +29,6 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from './ui/checkbox';
 
 interface EditableFields {
-  jobName: string;
-  setJobName: (value: string) => void;
   description: string;
   setDescription: (value: string) => void;
   status: WorkOrder['status'];
@@ -116,7 +114,6 @@ export function WorkOrderDetails({
 
   const { 
     // Destructure all the new editable fields
-    jobName, setJobName,
     description, setDescription,
     status, setStatus,
     assignedTechnicianId, setAssignedTechnicianId,
@@ -211,11 +208,7 @@ export function WorkOrderDetails({
               <div className="flex justify-between items-start">
                 <div>
                     <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                        {isEditing ? (
-                            <Input value={jobName} onChange={(e) => setJobName(e.target.value)} placeholder="Job Name" className="text-2xl" />
-                        ) : (
-                            workOrder.jobName
-                        )}
+                       {workOrder.jobName}
                     </CardTitle>
                     <CardDescription>
                         Job # {workOrder.id}
@@ -479,3 +472,5 @@ export function WorkOrderDetails({
     </form>
   );
 }
+
+    
