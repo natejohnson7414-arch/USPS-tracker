@@ -32,7 +32,7 @@ export function WorkSiteForm({ onSiteAdded, onCancel }: WorkSiteFormProps) {
     const [notes, setNotes] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if(!db) {
             toast({ title: "Error", description: "Database not available", variant: 'destructive' });
@@ -62,23 +62,27 @@ export function WorkSiteForm({ onSiteAdded, onCancel }: WorkSiteFormProps) {
             notes
         };
 
-        try {
-            const docRef = await addDocumentNonBlocking(workSitesRef, newSiteData);
-            
-            const newSite: WorkSite = {
-                id: docRef.id,
-                ...newSiteData
-            };
-            
-            toast({ title: "Work Site Created", description: `Successfully created "${name}".`});
-            onSiteAdded(newSite);
-
-        } catch (error) {
-             toast({ title: "Error", description: "Could not create work site. Please try again.", variant: 'destructive' });
-             console.error("Error creating work site:", error);
-        } finally {
-            setIsLoading(false);
-        }
+        addDocumentNonBlocking(workSitesRef, newSiteData)
+          .then((docRef) => {
+                const newSite: WorkSite = {
+                    id: docRef.id,
+                    ...newSiteData
+                };
+                
+                toast({ title: "Work Site Created", description: `Successfully created "${name}".`});
+                onSiteAdded(newSite);
+            })
+          .catch((error) => {
+                // The global error emitter will catch permission errors.
+                // We can show a generic toast for other potential issues.
+                if (!error.name.includes('Firebase')) { // Avoid double-toasting for permission errors
+                    toast({ title: "Error", description: "Could not create work site. Please try again.", variant: 'destructive' });
+                }
+                console.error("Error creating work site:", error);
+            })
+          .finally(() => {
+                setIsLoading(false);
+            });
     };
 
 
