@@ -47,30 +47,27 @@ export default function DashboardPage() {
       }
     };
     
-    fetchData();
-  }, [db, user]);
-
-  useEffect(() => {
-    const seed = async () => {
-      // Ensure all conditions are met before seeding
-      if (
+    // Seed the database if necessary, then fetch data
+    const seedAndFetch = async () => {
+       if (
         db &&
         user &&
         user.email === 'admin@crawford-company.com' &&
-        !isWorkOrdersLoading &&
-        workOrders?.length === 0 &&
         !hasSeeded.current
       ) {
         hasSeeded.current = true; // Prevent re-seeding
-        console.log("Seeding database...");
+        console.log("Checking if seeding is needed...");
         await seedDatabase(db);
       }
-    };
+      await fetchData();
+    }
 
-    seed();
+    if(db && user) {
+        seedAndFetch();
+    }
     // This effect should only depend on the data it needs to decide *whether* to seed,
     // not the data that changes *as a result* of other operations.
-  }, [db, user, workOrders, isWorkOrdersLoading]);
+  }, [db, user]);
 
 
   const isDataLoading = isAuthLoading || isLoading || isWorkOrdersLoading;

@@ -3,7 +3,7 @@
 import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client } from '@/lib/types';
 import { collection, getDoc, doc } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
-import { sampleRoles, sampleTechnicians, sampleWorkOrders } from './sample-data';
+import { sampleRoles, sampleTechnicians, sampleWorkOrders, sampleWorkSites, sampleClients } from './sample-data';
 import { setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 
 export const seedDatabase = async (db: any) => {
@@ -26,6 +26,7 @@ export const seedDatabase = async (db: any) => {
             sampleTechnicians.map(tech => {
                 const [firstName, ...lastName] = tech.name.split(' ');
                 const techData = {
+                    id: tech.id, // Use the id from sample data
                     firstName,
                     lastName: lastName.join(' '),
                     email: tech.email,
@@ -33,18 +34,24 @@ export const seedDatabase = async (db: any) => {
                     roleId: technicianRole?.id,
                     disabled: false,
                 };
-                return addDocumentNonBlocking(collection(db, 'technicians'), techData);
+                return setDocumentNonBlocking(doc(db, 'technicians', tech.id), techData, { merge: false });
             })
         );
         
-        const technicians = await Promise.all(
-            technicianRefs.map(async (ref) => getDocumentNonBlocking(ref))
+        // Seed work sites
+        await Promise.all(
+            sampleWorkSites.map(site => setDocumentNonBlocking(doc(db, 'work_sites', site.id), site, { merge: false }))
         );
+        
+        // Seed clients
+         await Promise.all(
+            sampleClients.map(client => setDocumentNonBlocking(doc(db, 'clients', client.id), client, { merge: false }))
+        );
+
 
         // Seed Work Orders
         for (const [index, wo] of sampleWorkOrders.entries()) {
-            const assignedTechnician = technicians[index % technicians.length];
-
+            const assignedTechnician = sampleTechnicians[index % sampleTechnicians.length];
             const woRef = doc(db, 'work_orders', wo.id);
             const woData = {
                 ...wo,
