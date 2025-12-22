@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -19,10 +20,11 @@ export function DashboardClient({ initialWorkOrders, technicians, workSites }: D
   const filteredWorkOrders = useMemo(() => {
     return workOrders.filter(order => {
       const matchesStatus = statusFilter === 'All' || order.status === statusFilter;
+      const lowerSearchTerm = searchTerm.toLowerCase();
       const matchesSearch =
-        order.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.description.toLowerCase().includes(searchTerm.toLowerCase());
+        order.jobName?.toLowerCase().includes(lowerSearchTerm) ||
+        order.id?.toLowerCase().includes(lowerSearchTerm) ||
+        order.description?.toLowerCase().includes(lowerSearchTerm);
       return matchesStatus && matchesSearch;
     });
   }, [workOrders, searchTerm, statusFilter]);

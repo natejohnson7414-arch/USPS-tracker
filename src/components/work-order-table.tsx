@@ -39,6 +39,7 @@ export function WorkOrderTable({ workOrders, technicians }: WorkOrderTableProps)
             {workOrders.length > 0 ? (
               workOrders.map(order => {
                 const technician = getTechnician(order.assignedTechnicianId);
+                const isValidDate = order.createdDate && !isNaN(new Date(order.createdDate).getTime());
                 return (
                   <TableRow key={order.id} className="cursor-pointer">
                     <TableCell>
@@ -77,7 +78,9 @@ export function WorkOrderTable({ workOrders, technicians }: WorkOrderTableProps)
                     </TableCell>
                     <TableCell>
                       <Link href={`/work-orders/${order.id}`} className="block">
-                        <div className="font-medium">{format(new Date(order.createdDate), 'MMM d, yyyy')}</div>
+                        <div className="font-medium">
+                            {isValidDate ? format(new Date(order.createdDate), 'MMM d, yyyy') : 'Invalid Date'}
+                        </div>
                       </Link>
                     </TableCell>
                   </TableRow>
@@ -96,5 +99,3 @@ export function WorkOrderTable({ workOrders, technicians }: WorkOrderTableProps)
     </Card>
   );
 }
-
-    
