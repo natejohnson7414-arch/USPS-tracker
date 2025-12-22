@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -56,7 +57,7 @@ export function DashboardClient({ initialWorkOrders, technicians, initialWorkSit
           onWorkOrderAdded={handleAddWorkOrder}
           onWorkSiteAdded={handleAddWorkSite}
         />
-        <WorkOrderTable workOrders={filteredWorkOrders} technicians={technicians} />
+        <WorkOrderTable workOrders={filteredWorkOrders} technicians={technicians} workSites={workSites} />
       </div>
     </div>
   );

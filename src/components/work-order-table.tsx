@@ -10,17 +10,28 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { WorkOrder, Technician } from '@/lib/types';
+import type { WorkOrder, Technician, WorkSite } from '@/lib/types';
 import { StatusBadge } from './status-badge';
 import { format } from 'date-fns';
+import { Button } from './ui/button';
+import { Map } from 'lucide-react';
 
 interface WorkOrderTableProps {
   workOrders: WorkOrder[];
   technicians: Technician[];
+  workSites: WorkSite[];
 }
 
-export function WorkOrderTable({ workOrders, technicians }: WorkOrderTableProps) {
+export function WorkOrderTable({ workOrders, technicians, workSites }: WorkOrderTableProps) {
   const getTechnician = (id?: string) => technicians.find(t => t.id === id);
+  const getWorkSite = (id?: string) => workSites.find(ws => ws.id === id);
+  
+  const handleDirectionsClick = (address: string) => {
+    if (address) {
+      const query = encodeURIComponent(address);
+      window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+    }
+  };
 
   return (
     <Card>
@@ -33,15 +44,17 @@ export function WorkOrderTable({ workOrders, technicians }: WorkOrderTableProps)
               <TableHead className="w-[120px]">Status</TableHead>
               <TableHead className="w-[180px]">Assigned To</TableHead>
               <TableHead className="w-[180px]">Date</TableHead>
+              <TableHead className="w-[80px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {workOrders.length > 0 ? (
               workOrders.map(order => {
                 const technician = getTechnician(order.assignedTechnicianId);
+                const workSite = getWorkSite(order.workSiteId);
                 const isValidDate = order.createdDate && !isNaN(new Date(order.createdDate).getTime());
                 return (
-                  <TableRow key={order.id} className="cursor-pointer">
+                  <TableRow key={order.id}>
                     <TableCell>
                       <Link href={`/work-orders/${order.id}`} className="font-medium text-accent hover:underline">
                         {order.id}
@@ -83,12 +96,20 @@ export function WorkOrderTable({ workOrders, technicians }: WorkOrderTableProps)
                         </div>
                       </Link>
                     </TableCell>
+                     <TableCell className="text-right">
+                        {workSite?.address && (
+                            <Button variant="outline" size="icon" onClick={() => handleDirectionsClick(workSite.address)}>
+                                <Map className="h-4 w-4" />
+                                <span className="sr-only">Get Directions</span>
+                            </Button>
+                        )}
+                    </TableCell>
                   </TableRow>
                 );
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
+                <TableCell colSpan={6} className="h-24 text-center">
                   No work orders found.
                 </TableCell>
               </TableRow>
