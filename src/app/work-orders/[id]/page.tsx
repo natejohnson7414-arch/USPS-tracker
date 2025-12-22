@@ -223,7 +223,7 @@ export default function WorkOrderDetailPage() {
     // Firestore does not allow `undefined` values. We clean them here.
     Object.keys(updatedData).forEach(key => {
         const k = key as keyof typeof updatedData;
-        if (updatedData[k] === undefined) {
+        if ((updatedData as any)[k] === undefined) {
           (updatedData as any)[k] = null;
         }
     });
@@ -283,61 +283,62 @@ export default function WorkOrderDetailPage() {
                 Back to Dashboard
               </Link>
             </Button>
-             <div className="flex gap-2">
-              {isEditing ? (
-                  <>
-                    <Button variant="outline" onClick={handleCancelEdit}>
-                      <Ban className="mr-2 h-4 w-4" /> Cancel
-                    </Button>
-                    <Button form="work-order-form" type="submit">
-                      <Save className="mr-2 h-4 w-4" /> Save
-                    </Button>
-                  </>
-                ) : (
-                  <Button variant="outline" onClick={() => setIsEditing(true)}>
-                    <Pencil className="mr-2 h-4 w-4" /> Edit
-                  </Button>
-                )}
-            </div>
+            {!isEditing && (
+              <Button variant="outline" onClick={() => setIsEditing(true)}>
+                <Pencil className="mr-2 h-4 w-4" /> Edit
+              </Button>
+            )}
         </div>
-        <WorkOrderDetails
-          initialWorkOrder={workOrder}
-          technicians={technicians}
-          workSites={workSites}
-          clients={clients}
-          isEditing={isEditing}
-          onNoteAdded={handleNoteAdded}
-          onNotePhotoDelete={handleNotePhotoDelete}
-          isAddingNote={isAddingNote}
-          editableFields={{
-            description, setDescription,
-            status, setStatus,
-            assignedTechnicianId, setAssignedTechnicianId,
-            workSiteId, setWorkSiteId,
-            clientId, setClientId,
-            createdDate, setCreatedDate,
-            billTo, setBillTo,
-            poNumber, setPoNumber,
-            contactInfo, setContactInfo,
-            serviceScheduleDate, setServiceScheduleDate,
-            quotedAmount: quotedAmount || 0, setQuotedAmount,
-            timeAndMaterial, setTimeAndMaterial,
-            permit, setPermit,
-            permitCost: permitCost || 0, setPermitCost,
-            permitFiled, setPermitFiled,
-            coi, setCoi,
-            coiRequested, setCoiRequested,
-            certifiedPayroll, setCertifiedPayroll,
-            certifiedPayrollRequested, setCertifiedPayrollRequested,
-            intercoPO, setIntercoPO,
-            customerPO, setCustomerPO,
-            estimator, setEstimator
-          }}
-          onWorkOrderUpdate={handleSave}
-        />
+        <div className="pb-24">
+            <WorkOrderDetails
+            initialWorkOrder={workOrder}
+            technicians={technicians}
+            workSites={workSites}
+            clients={clients}
+            isEditing={isEditing}
+            onNoteAdded={handleNoteAdded}
+            onNotePhotoDelete={handleNotePhotoDelete}
+            isAddingNote={isAddingNote}
+            editableFields={{
+                description, setDescription,
+                status, setStatus,
+                assignedTechnicianId, setAssignedTechnicianId,
+                workSiteId, setWorkSiteId,
+                clientId, setClientId,
+                createdDate, setCreatedDate,
+                billTo, setBillTo,
+                poNumber, setPoNumber,
+                contactInfo, setContactInfo,
+                serviceScheduleDate, setServiceScheduleDate,
+                quotedAmount: quotedAmount || 0, setQuotedAmount,
+                timeAndMaterial, setTimeAndMaterial,
+                permit, setPermit,
+                permitCost: permitCost || 0, setPermitCost,
+                permitFiled, setPermitFiled,
+                coi, setCoi,
+                coiRequested, setCoiRequested,
+                certifiedPayroll, setCertifiedPayroll,
+                certifiedPayrollRequested, setCertifiedPayrollRequested,
+                intercoPO, setIntercoPO,
+                customerPO, setCustomerPO,
+                estimator, setEstimator
+            }}
+            onWorkOrderUpdate={handleSave}
+            />
+        </div>
       </div>
+      {isEditing && (
+         <div className="fixed bottom-0 left-0 w-full bg-background border-t shadow-lg">
+            <div className="container mx-auto py-3 px-4 flex justify-end gap-2">
+                <Button variant="outline" onClick={handleCancelEdit}>
+                  <Ban className="mr-2 h-4 w-4" /> Cancel
+                </Button>
+                <Button form="work-order-form" type="submit">
+                  <Save className="mr-2 h-4 w-4" /> Save Changes
+                </Button>
+            </div>
+         </div>
+      )}
     </MainLayout>
   );
 }
-
-    

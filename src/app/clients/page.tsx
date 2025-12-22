@@ -57,10 +57,12 @@ export default function ClientsPage() {
         </div>
         
         {isFormOpen ? (
-            <ClientForm 
-                onClientAdded={handleClientAdded} 
-                onCancel={() => setIsFormOpen(false)}
-            />
+            <div className="pb-24">
+                <ClientForm 
+                    onClientAdded={handleClientAdded} 
+                    onCancel={() => setIsFormOpen(false)}
+                />
+            </div>
         ) : (
              <Card>
                 <CardHeader>

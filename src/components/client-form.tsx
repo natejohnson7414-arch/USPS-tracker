@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -85,11 +85,11 @@ export function ClientForm({ onClientAdded, onCancel }: ClientFormProps) {
 
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Add New Client</CardTitle>
-            </CardHeader>
-            <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit}>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Add New Client</CardTitle>
+                </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                          <div className="space-y-2">
@@ -130,14 +130,16 @@ export function ClientForm({ onClientAdded, onCancel }: ClientFormProps) {
                         </div>
                     </div>
                 </CardContent>
-                <CardFooter className="flex justify-end gap-2">
+            </Card>
+            <div className="fixed bottom-0 left-0 w-full bg-background border-t shadow-lg">
+                <div className="container mx-auto py-3 px-4 flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>Cancel</Button>
                     <Button type="submit" disabled={isLoading}>
                          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Save Client
                     </Button>
-                </CardFooter>
-            </form>
-        </Card>
+                </div>
+            </div>
+        </form>
     );
 }

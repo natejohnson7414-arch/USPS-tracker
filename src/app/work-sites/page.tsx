@@ -97,7 +97,7 @@ export default function WorkSitesPage() {
     }
     
     const confirmDelete = () => {
-        if (deletingSite) {
+        if (deletingSite && db) {
             const siteRef = doc(db, 'work_sites', deletingSite.id);
             deleteDocumentNonBlocking(siteRef);
             // Optimistic update handled by useCollection
@@ -123,11 +123,13 @@ export default function WorkSitesPage() {
         </div>
         
         {isFormOpen ? (
-            <WorkSiteForm 
-                site={editingSite}
-                onFormSaved={handleFormSaved} 
-                onCancel={handleCancel}
-            />
+            <div className="pb-24">
+                <WorkSiteForm 
+                    site={editingSite}
+                    onFormSaved={handleFormSaved} 
+                    onCancel={handleCancel}
+                />
+            </div>
         ) : (
              <Card>
                 <CardHeader>
@@ -177,5 +179,3 @@ export default function WorkSitesPage() {
     </MainLayout>
   );
 }
-
-    

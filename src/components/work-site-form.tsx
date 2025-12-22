@@ -86,10 +86,13 @@ export function WorkSiteForm({ site, onFormSaved, onCancel }: WorkSiteFormProps)
             },
             notes
         };
-
-        const promise = site 
-            ? setDocumentNonBlocking(doc(db, 'work_sites', site.id), siteData, { merge: true })
-            : addDocumentNonBlocking(collection(db, 'work_sites'), siteData);
+        
+        let promise;
+        if (site) {
+             promise = setDocumentNonBlocking(doc(db, 'work_sites', site.id), siteData, { merge: true });
+        } else {
+             promise = addDocumentNonBlocking(collection(db, 'work_sites'), siteData);
+        }
 
         promise
           .then(() => {
@@ -112,11 +115,11 @@ export function WorkSiteForm({ site, onFormSaved, onCancel }: WorkSiteFormProps)
 
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>{site ? 'Edit Work Site' : 'Add New Work Site'}</CardTitle>
-            </CardHeader>
-            <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit}>
+            <Card>
+                <CardHeader>
+                    <CardTitle>{site ? 'Edit Work Site' : 'Add New Work Site'}</CardTitle>
+                </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                          <div className="space-y-2">
@@ -161,14 +164,16 @@ export function WorkSiteForm({ site, onFormSaved, onCancel }: WorkSiteFormProps)
                         </div>
                     </div>
                 </CardContent>
-                <CardFooter className="flex justify-end gap-2">
+            </Card>
+            <div className="fixed bottom-0 left-0 w-full bg-background border-t shadow-lg">
+                 <div className="container mx-auto py-3 px-4 flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>Cancel</Button>
                     <Button type="submit" disabled={isLoading}>
                          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {site ? 'Save Changes' : 'Save Site'}
                     </Button>
-                </CardFooter>
-            </form>
-        </Card>
+                </div>
+            </div>
+        </form>
     );
 }
