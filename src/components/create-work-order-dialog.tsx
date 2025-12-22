@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -23,11 +23,11 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from './ui/date-picker';
-import { PlusCircle } from 'lucide-react';
+import { Loader2, PlusCircle } from 'lucide-react';
 import type { Technician, WorkOrder } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, setDocumentNonBlocking, getDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { doc, getDoc, runTransaction } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import { doc, runTransaction } from 'firebase/firestore';
 import { format } from 'date-fns';
 
 interface CreateWorkOrderDialogProps {
@@ -37,61 +37,25 @@ interface CreateWorkOrderDialogProps {
 
 export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateWorkOrderDialogProps) {
   const db = useFirestore();
-  const { user } = useUser();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<WorkOrder['priority'] | undefined>();
   const [assignedTechnicianId, setAssignedTechnicianId] = useState<string | undefined>();
   const [dueDate, setDueDate] = useState<Date | undefined>();
-  const [workOrderId, setWorkOrderId] = useState('');
-  const [isLoadingId, setIsLoadingId] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  const isAdmin = user?.email === 'admin@crawford-company.com';
-
-  const getNextWorkOrderId = async () => {
-    if (!db) return '';
-    const year = format(new Date(), 'yy');
-    const counterRef = doc(db, 'counters', `work_orders_${year}`);
-
-    try {
-      const newNumber = await runTransaction(db, async (transaction) => {
-        const counterDoc = await transaction.get(counterRef);
-        let nextNumber = 1;
-        if (counterDoc.exists()) {
-          nextNumber = counterDoc.data().lastNumber + 1;
-        }
-        transaction.set(counterRef, { lastNumber: nextNumber }, { merge: true });
-        return nextNumber;
-      });
-      return `WO-${year}-${String(newNumber).padStart(4, '0')}`;
-    } catch (error) {
-      console.error("Error getting next work order ID: ", error);
-      toast({
-        title: 'Error',
-        description: 'Could not generate a new Work Order ID. Please try again.',
-        variant: 'destructive',
-      });
-      return '';
-    }
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setPriority(undefined);
+    setAssignedTechnicianId(undefined);
+    setDueDate(undefined);
   };
-
-  useEffect(() => {
-    if (open && !workOrderId) {
-      setIsLoadingId(true);
-      getNextWorkOrderId().then(id => {
-        setWorkOrderId(id);
-        setIsLoadingId(false);
-      });
-    } else if (!open) {
-      // Reset when dialog is closed
-      setWorkOrderId('');
-    }
-  }, [open]);
-
+  
   const handleSubmit = async () => {
-    if (!title || !description || !priority || !dueDate || !workOrderId) {
+    if (!db || !title || !description || !priority || !dueDate) {
       toast({
         title: 'Missing Information',
         description: 'Please fill out all required fields.',
@@ -100,55 +64,63 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
       return;
     }
 
-    const workOrderRef = doc(db, 'work_orders', workOrderId);
+    setIsSubmitting(true);
 
-    // Check for duplicates if admin edits the ID
-    if (isAdmin) {
-        const docSnap = await getDocumentNonBlocking(workOrderRef);
-        if (docSnap.exists()) {
-            toast({
-                title: 'Duplicate ID',
-                description: `Work Order ID ${workOrderId} already exists. Please use a different ID.`,
-                variant: 'destructive',
-            });
-            return;
+    try {
+      const year = format(new Date(), 'yy');
+      const counterRef = doc(db, 'counters', `work_orders_${year}`);
+
+      const newWorkOrder = await runTransaction(db, async (transaction) => {
+        const counterDoc = await transaction.get(counterRef);
+        let nextNumber = 1;
+        if (counterDoc.exists()) {
+          nextNumber = counterDoc.data().lastNumber + 1;
         }
+
+        const newWorkOrderId = `WO-${year}-${String(nextNumber).padStart(4, '0')}`;
+        const workOrderRef = doc(db, 'work_orders', newWorkOrderId);
+
+        const newWorkOrderData = {
+          id: newWorkOrderId,
+          title,
+          description,
+          priority,
+          status: 'Open' as const,
+          assignedTechnicianId: assignedTechnicianId || null,
+          createdAt: new Date().toISOString(),
+          dueDate: dueDate.toISOString(),
+        };
+
+        transaction.set(counterRef, { lastNumber: nextNumber }, { merge: true });
+        transaction.set(workOrderRef, newWorkOrderData);
+        
+        return {
+            ...newWorkOrderData,
+            notes: [],
+            assignedTechnicianId: assignedTechnicianId,
+        } as WorkOrder;
+      });
+
+      if (newWorkOrder) {
+        onWorkOrderAdded(newWorkOrder);
+        toast({
+            title: 'Work Order Created',
+            description: `Successfully created work order ${newWorkOrder.id}.`,
+        });
+        resetForm();
+        setOpen(false);
+      }
+
+    } catch (error) {
+      console.error("Error creating work order:", error);
+      toast({
+        title: 'Error',
+        description: 'Could not create work order. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-
-
-    const newWorkOrderData = {
-      id: workOrderId,
-      title,
-      description,
-      priority,
-      status: 'Open',
-      assignedTechnicianId: assignedTechnicianId || null,
-      createdAt: new Date().toISOString(),
-      dueDate: dueDate.toISOString(),
-    };
-
-    setDocumentNonBlocking(workOrderRef, newWorkOrderData, { merge: false });
-    
-    const optimisticWorkOrder: WorkOrder = {
-        ...newWorkOrderData,
-        notes: [],
-        assignedTechnicianId: assignedTechnicianId,
-    }
-
-    onWorkOrderAdded(optimisticWorkOrder);
-    toast({
-        title: 'Work Order Created',
-        description: `Successfully created work order ${newWorkOrderData.id}.`,
-    });
-
-    // Reset form and close dialog
-    setTitle('');
-    setDescription('');
-    setPriority(undefined);
-    setAssignedTechnicianId(undefined);
-    setDueDate(undefined);
-    setWorkOrderId('');
-    setOpen(false);
   };
 
   return (
@@ -169,22 +141,21 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
             <Label htmlFor="workOrderId">Work Order ID</Label>
             <Input 
                 id="workOrderId" 
-                value={isLoadingId ? 'Generating...' : workOrderId} 
-                onChange={e => setWorkOrderId(e.target.value)} 
-                disabled={!isAdmin || isLoadingId}
+                value="Will be auto-generated" 
+                disabled
             />
           </div>
           <div className="sm:col-span-2">
             <Label htmlFor="title">Title</Label>
-            <Input id="title" value={title} onChange={e => setTitle(e.target.value)} />
+            <Input id="title" value={title} onChange={e => setTitle(e.target.value)} disabled={isSubmitting}/>
           </div>
           <div className="sm:col-span-2">
             <Label htmlFor="description">Description</Label>
-            <Textarea id="description" value={description} onChange={e => setDescription(e.target.value)} />
+            <Textarea id="description" value={description} onChange={e => setDescription(e.target.value)} disabled={isSubmitting}/>
           </div>
           <div>
             <Label htmlFor="priority">Priority</Label>
-            <Select onValueChange={value => setPriority(value as WorkOrder['priority'])}>
+            <Select onValueChange={value => setPriority(value as WorkOrder['priority'])} disabled={isSubmitting}>
               <SelectTrigger>
                 <SelectValue placeholder="Select priority" />
               </SelectTrigger>
@@ -201,7 +172,7 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
           </div>
           <div className="sm:col-span-2">
             <Label htmlFor="technician">Assign To</Label>
-            <Select onValueChange={setAssignedTechnicianId}>
+            <Select onValueChange={setAssignedTechnicianId} disabled={isSubmitting}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a technician" />
               </SelectTrigger>
@@ -216,12 +187,13 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={() => setOpen(false)} variant="outline">Cancel</Button>
-          <Button onClick={handleSubmit}>Create Order</Button>
+          <Button onClick={() => setOpen(false)} variant="outline" disabled={isSubmitting}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isSubmitting ? 'Creating...' : 'Create Order'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-
-    
