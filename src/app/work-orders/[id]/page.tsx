@@ -176,7 +176,7 @@ export default function WorkOrderDetailPage() {
             if (!prev) return null;
             return {
                 ...prev,
-                notes: [optimisticNote, ...prev.notes],
+                notes: [optimisticNote, ...(prev.notes || [])],
             };
         });
         toast({ title: "Note Added", description: "Your note and photos have been added." });

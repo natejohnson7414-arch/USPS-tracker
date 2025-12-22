@@ -63,7 +63,7 @@ export function addDocumentNonBlocking(colRef: CollectionReference, data: any) {
  * Does NOT await the write operation internally.
  */
 export function updateDocumentNonBlocking(docRef: DocumentReference, data: any) {
-  updateDoc(docRef, data)
+  const promise = updateDoc(docRef, data)
     .catch(error => {
       errorEmitter.emit(
         'permission-error',
@@ -76,6 +76,7 @@ export function updateDocumentNonBlocking(docRef: DocumentReference, data: any) 
       // Re-throw the error so the caller's catch block can also handle it if needed.
       throw error;
     });
+    return promise;
 }
 
 
@@ -84,7 +85,7 @@ export function updateDocumentNonBlocking(docRef: DocumentReference, data: any) 
  * Does NOT await the write operation internally.
  */
 export function deleteDocumentNonBlocking(docRef: DocumentReference) {
-  deleteDoc(docRef)
+  const promise = deleteDoc(docRef)
     .catch(error => {
       errorEmitter.emit(
         'permission-error',
@@ -96,4 +97,5 @@ export function deleteDocumentNonBlocking(docRef: DocumentReference) {
       // Re-throw the error so the caller's catch block can also handle it if needed.
       throw error;
     });
+    return promise;
 }

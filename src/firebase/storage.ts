@@ -1,13 +1,11 @@
+
 'use client';
 
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { initializeFirebase } from './index';
 
 // Initialize Firebase and get the app instance
-const { firebaseApp } = initializeFirebase();
-
-// Get a reference to the storage service
-const storage = getStorage(firebaseApp);
+const { storage } = initializeFirebase();
 
 /**
  * Uploads an image file to Firebase Storage.
