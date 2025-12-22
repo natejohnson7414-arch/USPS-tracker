@@ -25,7 +25,7 @@ export function Sidebar() {
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
-        <Button size="icon" variant="outline" className="sm:hidden">
+        <Button size="icon" variant="ghost" className="sm:hidden">
           <PanelLeft className="h-5 w-5" />
           <span className="sr-only">Toggle Menu</span>
         </Button>
