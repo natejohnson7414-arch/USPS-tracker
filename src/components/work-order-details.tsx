@@ -5,7 +5,7 @@ import { useState, useRef, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { getTechnicianById } from '@/lib/data';
-import type { WorkOrder, Technician, WorkOrderNote } from '@/lib/types';
+import type { WorkOrder, Technician, WorkOrderNote, WorkSite } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { DatePicker } from './ui/date-picker';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, User, Calendar, Info, FileText, X, Video, Library, Loader2 } from 'lucide-react';
+import { Camera, User, Calendar, Info, FileText, X, Video, Library, Loader2, MapPin } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { useFirestore, useUser } from '@/firebase';
 import { Label } from '@/components/ui/label';
@@ -39,6 +39,8 @@ interface EditableFields {
   setStatus: (value: WorkOrder['status']) => void;
   assignedTechnicianId?: string;
   setAssignedTechnicianId: (value?: string) => void;
+  workSiteId?: string;
+  setWorkSiteId: (value?: string) => void;
   dueDate?: Date;
   setDueDate: (value?: Date) => void;
 }
@@ -46,6 +48,7 @@ interface EditableFields {
 interface WorkOrderDetailsProps {
   initialWorkOrder: WorkOrder;
   technicians: Technician[];
+  workSites: WorkSite[];
   isEditing: boolean;
   editableFields: EditableFields;
   onWorkOrderUpdate: (e: FormEvent) => void;
@@ -57,6 +60,7 @@ interface WorkOrderDetailsProps {
 export function WorkOrderDetails({
   initialWorkOrder,
   technicians,
+  workSites,
   isEditing,
   editableFields,
   onWorkOrderUpdate,
@@ -81,6 +85,7 @@ export function WorkOrderDetails({
     priority, setPriority,
     status, setStatus,
     assignedTechnicianId, setAssignedTechnicianId,
+    workSiteId, setWorkSiteId,
     dueDate, setDueDate 
   } = editableFields;
 
@@ -144,13 +149,25 @@ export function WorkOrderDetails({
               <div className="flex justify-between items-start">
                 {isEditing ? (
                   <div className="flex-1 mr-4">
-                      <Label htmlFor="edit-title" className="sr-only">Title</Label>
-                      <Input id="edit-title" value={title} onChange={(e) => setTitle(e.target.value)} className="text-2xl font-bold h-auto p-0 border-0 shadow-none focus-visible:ring-0" />
+                      <Label htmlFor="edit-work-site" className="text-sm text-muted-foreground">Work Site Location</Label>
+                      <Select value={workSiteId} onValueChange={setWorkSiteId}>
+                        <SelectTrigger id="edit-work-site">
+                            <SelectValue placeholder="Select a work site" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {workSites.map(site => (
+                                <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
                   </div>
                 ) : (
                   <div>
-                      <CardTitle className="text-2xl font-bold">{workOrder.title}</CardTitle>
-                      <CardDescription>Work Order ID: {workOrder.id}</CardDescription>
+                      <CardTitle className="text-2xl font-bold flex items-center gap-2">
+                        <MapPin className="h-6 w-6 text-primary" />
+                        {workOrder.workSite?.name || 'No Work Site Assigned'}
+                      </CardTitle>
+                      <CardDescription>{workOrder.workSite?.address}</CardDescription>
                   </div>
                 )}
                 {isEditing ? <StatusBadge status={status} /> : <StatusBadge status={workOrder.status} />}
@@ -158,12 +175,21 @@ export function WorkOrderDetails({
             </CardHeader>
             <CardContent>
               {isEditing ? (
-                  <div>
-                      <Label htmlFor="edit-description" className="sr-only">Description</Label>
-                      <Textarea id="edit-description" value={description} onChange={(e) => setDescription(e.target.value)} rows={4}/>
+                  <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="edit-title">Task Title</Label>
+                        <Input id="edit-title" value={title} onChange={(e) => setTitle(e.target.value)} />
+                      </div>
+                      <div>
+                          <Label htmlFor="edit-description">Description</Label>
+                          <Textarea id="edit-description" value={description} onChange={(e) => setDescription(e.target.value)} rows={4}/>
+                      </div>
                   </div>
               ) : (
-                  <p className="text-muted-foreground">{workOrder.description}</p>
+                <>
+                  <h3 className="font-semibold text-lg">{workOrder.title}</h3>
+                  <p className="text-muted-foreground mt-1">{workOrder.description}</p>
+                </>
               )}
             </CardContent>
           </Card>

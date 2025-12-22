@@ -1,4 +1,5 @@
 
+
 export type Technician = {
   id: string;
   name: string;
@@ -24,6 +25,7 @@ export type WorkOrder = {
   status: 'Open' | 'In Progress' | 'On Hold' | 'Completed';
   assignedTechnicianId?: string;
   workSiteId?: string;
+  workSite?: WorkSite;
   createdAt: string;
   dueDate: string;
   notes: WorkOrderNote[];

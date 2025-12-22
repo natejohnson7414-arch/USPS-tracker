@@ -1,6 +1,6 @@
 
 'use client';
-import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote } from '@/lib/types';
+import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite } from '@/lib/types';
 import { collection, getDoc, doc, runTransaction } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 import { sampleRoles, sampleTechnicians, sampleWorkOrders } from './sample-data';
@@ -102,6 +102,12 @@ export const getWorkOrderById = async (db: any, id: string): Promise<WorkOrder |
 
   if (workOrderSnap.exists()) {
     const data = workOrderSnap.data();
+    
+    let workSite;
+    if (data.workSiteId) {
+        workSite = await getWorkSiteById(db, data.workSiteId);
+    }
+    
     const notesCol = collection(db, 'work_orders', id, 'updates');
     const notesSnapshot = await getCollectionNonBlocking(notesCol);
     const notesList = notesSnapshot.docs.map(noteDoc => {
@@ -122,6 +128,8 @@ export const getWorkOrderById = async (db: any, id: string): Promise<WorkOrder |
       priority: data.priority,
       status: data.status,
       assignedTechnicianId: data.assignedTechnicianId,
+      workSiteId: data.workSiteId,
+      workSite: workSite,
       createdAt: data.createdAt,
       dueDate: data.dueDate,
       notes: notesList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
@@ -189,4 +197,21 @@ export const getUsers = async (db: any, roles: Role[]): Promise<AppUser[]> => {
             disabled: tech.disabled || false,
         };
     });
+};
+
+export const getWorkSites = async (db: any): Promise<WorkSite[]> => {
+    if (!db) return [];
+    const workSitesCol = collection(db, 'work_sites');
+    const workSiteSnapshot = await getCollectionNonBlocking(workSitesCol);
+    return workSiteSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WorkSite));
+};
+
+export const getWorkSiteById = async (db: any, id: string): Promise<WorkSite | undefined> => {
+    if (!id) return undefined;
+    const workSiteRef = doc(db, 'work_sites', id);
+    const workSiteSnap = await getDocumentNonBlocking(workSiteRef);
+    if (workSiteSnap.exists()) {
+        return { id: workSiteSnap.id, ...workSiteSnap.data() } as WorkSite;
+    }
+    return undefined;
 };

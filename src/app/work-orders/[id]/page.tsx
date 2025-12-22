@@ -2,15 +2,15 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, FormEvent } from 'react';
-import { getTechnicians, getWorkOrderById } from '@/lib/data';
-import { notFound, useRouter, useParams } from 'next/navigation';
+import { getTechnicians, getWorkOrderById, getWorkSites } from '@/lib/data';
+import { notFound, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
 import { WorkOrderDetails } from '@/components/work-order-details';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Ban, Pencil, Save } from 'lucide-react';
 import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import type { WorkOrder, Technician, WorkOrderNote } from '@/lib/types';
+import type { WorkOrder, Technician, WorkOrderNote, WorkSite } from '@/lib/types';
 import { doc, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImage } from '@/firebase/storage';
@@ -21,9 +21,9 @@ export default function WorkOrderDetailPage() {
   const db = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
-  const router = useRouter();
 
   const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [workSites, setWorkSites] = useState<WorkSite[]>([]);
   const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDataChecked, setIsDataChecked] = useState(false);
@@ -36,6 +36,7 @@ export default function WorkOrderDetailPage() {
   const [editPriority, setEditPriority] = useState<WorkOrder['priority']>('Low');
   const [editStatus, setEditStatus] = useState<WorkOrder['status']>('Open');
   const [editAssignedTechnicianId, setEditAssignedTechnicianId] = useState<string | undefined>(undefined);
+  const [editWorkSiteId, setEditWorkSiteId] = useState<string | undefined>(undefined);
   const [editDueDate, setEditDueDate] = useState<Date | undefined>(undefined);
 
 
@@ -55,12 +56,14 @@ export default function WorkOrderDetailPage() {
       if (!db || !user) return;
       setIsLoading(true);
       try {
-        const [fetchedTechnicians, fetchedWorkOrder] = await Promise.all([
+        const [fetchedTechnicians, fetchedWorkOrder, fetchedWorkSites] = await Promise.all([
           getTechnicians(db),
           getWorkOrderById(db, id),
+          getWorkSites(db),
         ]);
 
         setTechnicians(fetchedTechnicians);
+        setWorkSites(fetchedWorkSites);
         
         if (fetchedWorkOrder) {
             setWorkOrder(fetchedWorkOrder);
@@ -70,6 +73,7 @@ export default function WorkOrderDetailPage() {
             setEditPriority(fetchedWorkOrder.priority);
             setEditStatus(fetchedWorkOrder.status);
             setEditAssignedTechnicianId(fetchedWorkOrder.assignedTechnicianId);
+            setEditWorkSiteId(fetchedWorkOrder.workSiteId);
             setEditDueDate(new Date(fetchedWorkOrder.dueDate));
         } else {
             setWorkOrder(null);
@@ -99,6 +103,7 @@ export default function WorkOrderDetailPage() {
     setEditPriority(workOrder.priority);
     setEditStatus(workOrder.status);
     setEditAssignedTechnicianId(workOrder.assignedTechnicianId);
+    setEditWorkSiteId(workOrder.workSiteId);
     setEditDueDate(new Date(workOrder.dueDate));
   };
   
@@ -162,15 +167,18 @@ export default function WorkOrderDetailPage() {
         priority: editPriority,
         status: editStatus,
         assignedTechnicianId: editAssignedTechnicianId,
+        workSiteId: editWorkSiteId,
         dueDate: editDueDate.toISOString(),
     };
 
     updateDocumentNonBlocking(workOrderDocRef, updatedData);
 
+    const updatedWorkSite = workSites.find(ws => ws.id === editWorkSiteId);
+
     // Optimistically update the local state
     setWorkOrder(prev => {
         if (!prev) return null;
-        return { ...prev, ...updatedData } as WorkOrder;
+        return { ...prev, ...updatedData, workSite: updatedWorkSite } as WorkOrder;
     });
     
     toast({ title: "Work Order Saved", description: "Changes have been saved successfully." });
@@ -239,6 +247,7 @@ export default function WorkOrderDetailPage() {
         <WorkOrderDetails
           initialWorkOrder={workOrder}
           technicians={technicians}
+          workSites={workSites}
           isEditing={isEditing}
           onNoteAdded={handleNoteAdded}
           onNotePhotoDelete={handleNotePhotoDelete}
@@ -254,6 +263,8 @@ export default function WorkOrderDetailPage() {
             setStatus: setEditStatus,
             assignedTechnicianId: editAssignedTechnicianId,
             setAssignedTechnicianId: setEditAssignedTechnicianId,
+            workSiteId: editWorkSiteId,
+            setWorkSiteId: setEditWorkSiteId,
             dueDate: editDueDate,
             setDueDate: setEditDueDate,
           }}
