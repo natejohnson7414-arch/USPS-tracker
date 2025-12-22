@@ -51,7 +51,7 @@ export function WorkOrderDetails({
   const [assignedTechnician, setAssignedTechnician] = useState<Technician | undefined>();
   
   const [newNote, setNewNote] = useState('');
-  const [newNotePhoto, setNewNotePhoto] = useState<string | null>(null);
+  const [newNotePhotos, setNewNotePhotos] = useState<string[]>([]);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
@@ -90,33 +90,43 @@ export function WorkOrderDetails({
   const chooseFromLibraryInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = e => {
-        setNewNotePhoto(e.target?.result as string);
-        setIsSheetOpen(false);
-      };
-      reader.readAsDataURL(file);
+    const files = event.target.files;
+    if (files) {
+      const newPhotos: string[] = [];
+      for(let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const reader = new FileReader();
+        reader.onload = e => {
+          if(e.target?.result) {
+            setNewNotePhotos(prev => [...prev, e.target?.result as string]);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+      setIsSheetOpen(false);
     }
     event.target.value = '';
   };
+  
+  const handleRemoveNewPhoto = (photoUrlToRemove: string) => {
+    setNewNotePhotos(prev => prev.filter(photo => photo !== photoUrlToRemove));
+  };
 
   const handleAddNote = () => {
-    if (!user || (newNote.trim() === '' && !newNotePhoto)) return;
+    if (!user || (newNote.trim() === '' && newNotePhotos.length === 0)) return;
 
     const optimisticNote: WorkOrderNote = {
         id: `note-${Date.now()}`,
         authorId: user.uid,
         text: newNote,
         createdAt: new Date().toISOString(),
-        photoUrls: newNotePhoto ? [newNotePhoto] : [],
+        photoUrls: newNotePhotos,
     }
 
     onNoteAdded(optimisticNote);
     
     setNewNote('');
-    setNewNotePhoto(null);
+    setNewNotePhotos([]);
   };
   
   const handleSave = (e: FormEvent) => {
@@ -181,18 +191,22 @@ export function WorkOrderDetails({
                   value={newNote}
                   onChange={e => setNewNote(e.target.value)}
                 />
-                {newNotePhoto && (
-                  <div className="relative w-40 h-40 border rounded-md">
-                    <Image src={newNotePhoto} alt="Note preview" fill style={{ objectFit: 'cover' }} className="rounded-md" />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon"
-                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                      onClick={() => setNewNotePhoto(null)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                {newNotePhotos.length > 0 && (
+                  <div className="grid grid-cols-3 gap-4">
+                    {newNotePhotos.map((photo, index) => (
+                        <div key={index} className="relative w-full aspect-square border rounded-md">
+                            <Image src={photo} alt={`Note preview ${index + 1}`} fill style={{ objectFit: 'cover' }} className="rounded-md" />
+                            <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                            onClick={() => handleRemoveNewPhoto(photo)}
+                            >
+                            <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ))}
                   </div>
                 )}
                 <div className="flex justify-between items-center">
@@ -228,6 +242,7 @@ export function WorkOrderDetails({
                         className="hidden"
                         accept="image/*"
                         capture="environment"
+                        multiple
                       />
                       <input
                         type="file"
@@ -235,6 +250,7 @@ export function WorkOrderDetails({
                         onChange={handleFileChange}
                         className="hidden"
                         accept="image/*"
+                        multiple
                       />
                   </div>
                   <Button type="button" onClick={handleAddNote} disabled={!user}>Add Note</Button>
@@ -362,3 +378,5 @@ export function WorkOrderDetails({
     </form>
   );
 }
+
+    
