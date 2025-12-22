@@ -54,7 +54,7 @@ export function WorkOrderTable({ workOrders, technicians, workSites }: WorkOrder
   return (
     <>
       {/* Mobile View */}
-      <div className="grid gap-4 md:hidden">
+      <div className="space-y-4 md:hidden">
         {workOrders.map(order => {
           const technician = getTechnician(order.assignedTechnicianId);
           const workSite = getWorkSite(order.workSiteId);

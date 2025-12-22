@@ -24,8 +24,8 @@ export function WorkOrderCard({ order, technician, workSite, onDirectionsClick }
         <Card>
             <CardHeader>
                 <div className="flex justify-between items-start gap-4">
-                    <Link href={`/work-orders/${order.id}`}>
-                        <CardTitle className="hover:underline">{order.jobName}</CardTitle>
+                    <Link href={`/work-orders/${order.id}`} className="overflow-hidden">
+                        <CardTitle className="hover:underline truncate">{order.jobName}</CardTitle>
                         <p className="text-sm text-muted-foreground">Job # {order.id}</p>
                     </Link>
                     <StatusBadge status={order.status} />
