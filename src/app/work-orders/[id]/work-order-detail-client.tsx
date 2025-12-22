@@ -21,6 +21,7 @@ export function WorkOrderDetailClient({ id }: WorkOrderDetailClientProps) {
   const db = useFirestore();
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDataChecked, setIsDataChecked] = useState(false);
 
   const workOrderRef = useMemoFirebase(() => {
     if (!db) return null;
@@ -56,12 +57,16 @@ export function WorkOrderDetailClient({ id }: WorkOrderDetailClientProps) {
   }, [db]);
 
   useEffect(() => {
-    if(!isWorkOrderLoading && !workOrderData) {
+    // Only check for notFound after the initial loading is complete
+    if (!isWorkOrderLoading) {
+      setIsDataChecked(true);
+    }
+    if (!isWorkOrderLoading && isDataChecked && !workOrderData) {
         notFound();
     }
-  }, [isWorkOrderLoading, workOrderData]);
+  }, [isWorkOrderLoading, workOrderData, isDataChecked]);
 
-  const isPageLoading = isLoading || isWorkOrderLoading || areNotesLoading;
+  const isPageLoading = isLoading || isWorkOrderLoading || areNotesLoading || !isDataChecked;
 
   if (isPageLoading || !workOrder) {
     return (
