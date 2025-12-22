@@ -1,0 +1,45 @@
+
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    /**
+     * Helper function to check if the authenticated user has a specific role.
+     * This performs a `get()` call to Firestore to check the user's role document.
+     */
+    function userHasRole(roleName) {
+      // Assumes a /users/{userId} document exists with a `roleId` field
+      // that references a document in the /roles collection.
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return request.auth != null && userDoc.data.roleId != null &&
+        get(/databases/$(database)/documents/roles/$(userDoc.data.roleId)).data.name == roleName;
+    }
+
+    /**
+     * Checks if the user is an Administrator.
+     */
+    function isAdmin() {
+      // An email check is included as a fallback, similar to firestore.rules
+      return request.auth != null && (request.auth.token.email == 'admin@crawford-company.com' || userHasRole('Administrator'));
+    }
+
+    /**
+     * @description Secures all files related to work orders.
+     * @path /work-orders/{workOrderId}/{allPaths=**}
+     * @allow (read) The assigned technician or an Administrator.
+     * @allow (write) Only the assigned technician.
+     * @principle Enforces data ownership by linking storage access to the `assignedTechnicianId`
+     *            field in the corresponding Firestore `/work_orders/{workOrderId}` document.
+     */
+    match /work-orders/{workOrderId}/{allPaths=**} {
+      allow read: if request.auth != null && (
+                    get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.assignedTechnicianId == request.auth.uid || 
+                    isAdmin()
+                  );
+                  
+      allow write: if request.auth != null && 
+                     get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.assignedTechnicianId == request.auth.uid;
+    }
+  }
+}
