@@ -172,5 +172,3 @@ export function WorkSiteForm({ site, onFormSaved, onCancel }: WorkSiteFormProps)
         </Card>
     );
 }
-
-    

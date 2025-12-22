@@ -325,7 +325,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
       <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>Small Job Form</DialogTitle>
-           <div className="flex justify-between items-center">
+           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
             <DialogDescription>Fill in the details below to create a new work order.</DialogDescription>
              <div>
                 <input
@@ -335,7 +335,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
                     className="hidden"
                     accept="application/pdf"
                 />
-                <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isExtracting || isSubmitting}>
+                <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isExtracting || isSubmitting} className="w-full sm:w-auto">
                     {isExtracting ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
@@ -529,5 +529,3 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
     </Dialog>
   );
 }
-
-    
