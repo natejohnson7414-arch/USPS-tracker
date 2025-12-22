@@ -2,14 +2,14 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { getTechnicians } from '@/lib/data';
+import { getTechnicians, getWorkOrderById } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
 import { WorkOrderDetails } from '@/components/work-order-details';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
-import { useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useDoc, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import type { WorkOrder, Technician, WorkOrderNote } from '@/lib/types';
 import { doc, collection, query } from 'firebase/firestore';
 
@@ -19,56 +19,40 @@ interface WorkOrderDetailClientProps {
 
 export function WorkOrderDetailClient({ id }: WorkOrderDetailClientProps) {
   const db = useFirestore();
+  const { user } = useUser();
   const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [initialWorkOrder, setInitialWorkOrder] = useState<WorkOrder | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDataChecked, setIsDataChecked] = useState(false);
-
-  const workOrderRef = useMemoFirebase(() => {
-    if (!db) return null;
-    return doc(db, 'work_orders', id);
-  }, [db, id]);
-
-  const notesQuery = useMemoFirebase(() => {
-    if (!workOrderRef) return null;
-    return query(collection(workOrderRef, 'updates'));
-  }, [workOrderRef]);
-
-  const { data: workOrderData, isLoading: isWorkOrderLoading } = useDoc<Omit<WorkOrder, 'notes'>>(workOrderRef);
-  const { data: notesData, isLoading: areNotesLoading } = useCollection<WorkOrderNote>(notesQuery);
-
-  const workOrder = useMemo(() => {
-    if (!workOrderData) return null;
-    return {
-      ...workOrderData,
-      notes: notesData ? notesData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) : []
-    };
-  }, [workOrderData, notesData]);
-
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!db) return;
+      if (!db || !user) return;
       setIsLoading(true);
-      const fetchedTechnicians = await getTechnicians(db);
-      setTechnicians(fetchedTechnicians);
-      setIsLoading(false);
+      try {
+        const [fetchedTechnicians, fetchedWorkOrder] = await Promise.all([
+          getTechnicians(db),
+          getWorkOrderById(db, id),
+        ]);
+        
+        setTechnicians(fetchedTechnicians);
+
+        if (fetchedWorkOrder) {
+          setInitialWorkOrder(fetchedWorkOrder);
+        } else {
+          notFound();
+        }
+      } catch (error) {
+        console.error("Failed to fetch initial data:", error);
+        notFound();
+      } finally {
+        setIsLoading(false);
+      }
     };
     fetchData();
-  }, [db]);
+  }, [db, id, user]);
 
-  useEffect(() => {
-    // Only check for notFound after the initial loading is complete
-    if (!isWorkOrderLoading) {
-      setIsDataChecked(true);
-    }
-    if (!isWorkOrderLoading && isDataChecked && !workOrderData) {
-        notFound();
-    }
-  }, [isWorkOrderLoading, workOrderData, isDataChecked]);
 
-  const isPageLoading = isLoading || isWorkOrderLoading || areNotesLoading || !isDataChecked;
-
-  if (isPageLoading || !workOrder) {
+  if (isLoading || !initialWorkOrder) {
     return (
       <MainLayout>
         <div className="flex items-center justify-center h-full">
@@ -89,7 +73,7 @@ export function WorkOrderDetailClient({ id }: WorkOrderDetailClientProps) {
             </Link>
           </Button>
         </div>
-        <WorkOrderDetails initialWorkOrder={workOrder} technicians={technicians} />
+        <WorkOrderDetails initialWorkOrder={initialWorkOrder} technicians={technicians} />
       </div>
     </MainLayout>
   );

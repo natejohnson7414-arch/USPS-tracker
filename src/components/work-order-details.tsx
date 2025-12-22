@@ -21,10 +21,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, User, Calendar, Info, FileText, X, Video, Library } from 'lucide-react';
+import { Camera, User, Calendar, Info, FileText, X, Video, Library, Pencil } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import { doc, collection } from 'firebase/firestore';
+import { WorkOrderEditDialog } from './work-order-edit-dialog';
 
 interface WorkOrderDetailsProps {
   initialWorkOrder: WorkOrder;
@@ -40,6 +41,7 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
   const [newNotePhoto, setNewNotePhoto] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -47,10 +49,16 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
         if (workOrder.assignedTechnicianId) {
             const tech = await getTechnicianById(db, workOrder.assignedTechnicianId);
             setAssignedTechnician(tech);
+        } else {
+            setAssignedTechnician(undefined);
         }
     }
     fetchTechnician();
   }, [db, workOrder.assignedTechnicianId]);
+  
+  useEffect(() => {
+    setWorkOrder(initialWorkOrder);
+  },[initialWorkOrder])
 
   const takePhotoInputRef = useRef<HTMLInputElement>(null);
   const chooseFromLibraryInputRef = useRef<HTMLInputElement>(null);
@@ -70,7 +78,7 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
   };
 
   const handleAddNote = () => {
-    if (!user || (newNote.trim() === '' && !newNotePhoto)) return;
+    if (!db || !user || (newNote.trim() === '' && !newNotePhoto)) return;
 
     const newNoteData = {
         workOrderId: workOrder.id,
@@ -101,10 +109,15 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
   };
 
   const handleStatusChange = (status: WorkOrder['status']) => {
+    if (!db) return;
     const workOrderRef = doc(db, 'work_orders', workOrder.id);
     setDocumentNonBlocking(workOrderRef, { status }, { merge: true });
     setWorkOrder(prev => ({ ...prev, status }));
   };
+  
+  const handleWorkOrderUpdate = (updatedWorkOrder: Partial<WorkOrder>) => {
+    setWorkOrder(prev => ({ ...prev, ...updatedWorkOrder }));
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -211,10 +224,16 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
       <div className="space-y-8">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Info className="h-5 w-5" />
-              Details
-            </CardTitle>
+             <div className="flex justify-between items-center">
+              <CardTitle className="flex items-center gap-2">
+                <Info className="h-5 w-5" />
+                Details
+              </CardTitle>
+               <Button variant="outline" size="icon" onClick={() => setIsEditDialogOpen(true)}>
+                  <Pencil className="h-4 w-4" />
+                  <span className="sr-only">Edit Work Order</span>
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <div className="flex justify-between">
@@ -278,6 +297,13 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
           </CardContent>
         </Card>
       </div>
+       <WorkOrderEditDialog
+        isOpen={isEditDialogOpen}
+        setIsOpen={setIsEditDialogOpen}
+        workOrder={workOrder}
+        technicians={technicians}
+        onWorkOrderUpdated={handleWorkOrderUpdate}
+      />
     </div>
   );
 }
