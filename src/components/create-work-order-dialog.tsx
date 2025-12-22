@@ -32,6 +32,7 @@ import { Checkbox } from './ui/checkbox';
 import { extractWorkOrderInfo } from '@/ai/flows/extract-work-order-flow';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { ScrollArea } from './ui/scroll-area';
 
 interface CreateWorkOrderDialogProps {
   technicians: Technician[];
@@ -52,6 +53,8 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
   // State for the "create new site" prompt
   const [showCreateSitePrompt, setShowCreateSitePrompt] = useState(false);
   const [extractedAddress, setExtractedAddress] = useState<string | null>(null);
+  const [extractedCity, setExtractedCity] = useState<string | null>(null);
+  const [extractedState, setExtractedState] = useState<string | null>(null);
   const [newSiteName, setNewSiteName] = useState<string>('');
 
 
@@ -103,6 +106,8 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
     setAssignedTechnicianId(undefined);
     setShowCreateSitePrompt(false);
     setExtractedAddress(null);
+    setExtractedCity(null);
+    setExtractedState(null);
     setNewSiteName('');
   };
   
@@ -144,6 +149,8 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
                 // If no match is found but an address was extracted, show the prompt
                 setShowCreateSitePrompt(true);
                 setExtractedAddress(extractedData.jobSiteAddress || null);
+                setExtractedCity(extractedData.jobSiteCity || null);
+                setExtractedState(extractedData.jobSiteState || null);
                 setNewSiteName(extractedData.jobName || extractedData.jobSiteAddress || '');
             }
 
@@ -198,7 +205,9 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
         const newSiteData: Omit<WorkSite, 'id'> = {
             name: newSiteName,
             address: extractedAddress || '',
-            city: '', state: '', zip: '', // These can be added later
+            city: extractedCity || '', 
+            state: extractedState || '', 
+            zip: '', // Zip can be added later
         };
 
         const docRef = await addDocumentNonBlocking(workSitesRef, newSiteData);
@@ -209,7 +218,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
         }
 
         onWorkSiteAdded(newSite);
-        setWorkSiteId(newSite.id); // This is the crucial line.
+        setWorkSiteId(newSite.id);
         setShowCreateSitePrompt(false);
         toast({ title: "Work Site Created", description: "New work site has been created and selected." });
 
@@ -280,7 +289,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
         }
       });
       
-      setDocumentNonBlocking(workOrderRef, newWorkOrderData, { merge: false });
+      await setDocumentNonBlocking(workOrderRef, newWorkOrderData, { merge: false });
 
       const newWorkOrder: WorkOrder = {
           ...(newWorkOrderData as any),
@@ -346,7 +355,8 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
             </div>
            </div>
         </DialogHeader>
-        <div className="grid gap-4 py-4 md:grid-cols-2 md:gap-6 max-h-[70vh] overflow-y-auto pr-6">
+        <ScrollArea className="max-h-[70vh] -mr-6">
+        <div className="grid gap-4 py-4 md:grid-cols-2 md:gap-6 pr-6">
           {/* Left Column */}
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -391,6 +401,24 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
                                 onChange={(e) => setNewSiteName(e.target.value)}
                                 placeholder="Enter a name for the new site"
                             />
+                        </div>
+                         <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="new-site-city">City</Label>
+                                <Input 
+                                    id="new-site-city" 
+                                    value={extractedCity || ''} 
+                                    onChange={(e) => setExtractedCity(e.target.value)}
+                                />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="new-site-state">State</Label>
+                                <Input 
+                                    id="new-site-state" 
+                                    value={extractedState || ''} 
+                                    onChange={(e) => setExtractedState(e.target.value)}
+                                />
+                            </div>
                         </div>
                         <Button className="w-full" onClick={handleCreateNewSite} disabled={isSubmitting}>
                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
@@ -518,7 +546,8 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
             </div>
           </div>
         </div>
-        <DialogFooter>
+        </ScrollArea>
+        <DialogFooter className="pr-6">
           <Button onClick={() => setOpen(false)} variant="outline" disabled={isSubmitting}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={isSubmitting || showCreateSitePrompt}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
