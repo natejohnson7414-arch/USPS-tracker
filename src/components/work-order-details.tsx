@@ -28,6 +28,7 @@ import { NoteActivityItem } from './note-activity-item';
 import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { doc, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { Label } from '@/components/ui/label';
 
 
 interface WorkOrderDetailsProps {
@@ -443,4 +444,3 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
   );
 }
 
-    
