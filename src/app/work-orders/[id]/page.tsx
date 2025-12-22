@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState, useMemo, FormEvent } from 'react';
 import { getTechnicians, getWorkOrderById } from '@/lib/data';
-import { notFound, useRouter } from 'next/navigation';
+import { notFound, useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
 import { WorkOrderDetails } from '@/components/work-order-details';
@@ -15,7 +15,9 @@ import { doc, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImage } from '@/firebase/storage';
 
-export default function WorkOrderDetailPage({ params: { id } }: { params: { id: string } }) {
+export default function WorkOrderDetailPage() {
+  const params = useParams();
+  const id = params.id as string;
   const db = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
