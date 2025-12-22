@@ -9,9 +9,9 @@ import { MainLayout } from '@/components/main-layout';
 import { WorkOrderDetails } from '@/components/work-order-details';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Ban, Pencil, Save } from 'lucide-react';
-import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client } from '@/lib/types';
-import { doc, collection } from 'firebase/firestore';
+import { doc, collection, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImage } from '@/firebase/storage';
 import { MapProviderSelection } from '@/components/map-provider-selection';
@@ -161,10 +161,10 @@ export default function WorkOrderDetailPage() {
             photoUrls: photoUrls,
         };
 
-        const newDocRef = await addDocumentNonBlocking(notesColRef, newNoteData);
+        const docRef = await addDoc(notesColRef, newNoteData);
 
         const optimisticNote: WorkOrderNote = {
-            id: newDocRef.id,
+            id: docRef.id,
             authorId: user.uid,
             text: newNote.text,
             createdAt: newNote.createdAt,
@@ -174,9 +174,10 @@ export default function WorkOrderDetailPage() {
         // Optimistically update UI
         setWorkOrder(prev => {
             if (!prev) return null;
+            const updatedNotes = [optimisticNote, ...(prev.notes || [])];
             return {
                 ...prev,
-                notes: [optimisticNote, ...(prev.notes || [])],
+                notes: updatedNotes,
             };
         });
         toast({ title: "Note Added", description: "Your note and photos have been added." });
