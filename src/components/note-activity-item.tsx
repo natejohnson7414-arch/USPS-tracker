@@ -4,21 +4,21 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
-import { getTechnicianById } from '@/lib/data';
 import type { WorkOrderNote, Technician } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User } from 'lucide-react';
-import { useFirestore } from '@/firebase';
+import { Button } from './ui/button';
+import { User, X } from 'lucide-react';
 
 interface NoteActivityItemProps {
   note: WorkOrderNote;
   technicians: Technician[];
+  isEditing: boolean;
+  onPhotoDelete: (noteId: string, photoUrl: string) => void;
 }
 
-export function NoteActivityItem({ note, technicians }: NoteActivityItemProps) {
+export function NoteActivityItem({ note, technicians, isEditing, onPhotoDelete }: NoteActivityItemProps) {
   const [isClient, setIsClient] = useState(false);
   const [author, setAuthor] = useState<Technician | undefined>();
-  const db = useFirestore();
 
   useEffect(() => {
     setIsClient(true);
@@ -45,8 +45,21 @@ export function NoteActivityItem({ note, technicians }: NoteActivityItemProps) {
         {note.photoUrls && (
           <div className="mt-4 grid grid-cols-2 gap-4">
             {note.photoUrls.map((url, index) => (
-              <div key={index} className="relative aspect-video rounded-lg overflow-hidden border">
+              <div key={index} className="relative group aspect-video rounded-lg overflow-hidden border">
                 <Image src={url} alt={`Work photo ${index + 1}`} fill style={{ objectFit: 'cover' }} />
+                {isEditing && (
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                         <Button
+                            variant="destructive"
+                            size="icon"
+                            className="h-8 w-8 rounded-full"
+                            onClick={() => onPhotoDelete(note.id, url)}
+                        >
+                            <X className="h-4 w-4" />
+                            <span className="sr-only">Delete Photo</span>
+                        </Button>
+                    </div>
+                )}
               </div>
             ))}
           </div>
@@ -55,3 +68,5 @@ export function NoteActivityItem({ note, technicians }: NoteActivityItemProps) {
     </div>
   );
 }
+
+    

@@ -20,12 +20,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { DatePicker } from './ui/date-picker';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, User, Calendar, Info, FileText, X, Video, Library, Pencil } from 'lucide-react';
+import { Camera, User, Calendar, Info, FileText, X, Video, Library, Pencil, Save, Ban } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
-import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { doc, collection } from 'firebase/firestore';
-import { WorkOrderEditDialog } from './work-order-edit-dialog';
+import { useToast } from '@/hooks/use-toast';
+
 
 interface WorkOrderDetailsProps {
   initialWorkOrder: WorkOrder;
@@ -35,13 +38,24 @@ interface WorkOrderDetailsProps {
 export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDetailsProps) {
   const db = useFirestore();
   const { user } = useUser();
+  const { toast } = useToast();
+
   const [workOrder, setWorkOrder] = useState<WorkOrder>(initialWorkOrder);
   const [assignedTechnician, setAssignedTechnician] = useState<Technician | undefined>();
+  
   const [newNote, setNewNote] = useState('');
   const [newNotePhoto, setNewNotePhoto] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  // Editing state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(initialWorkOrder.title);
+  const [editDescription, setEditDescription] = useState(initialWorkOrder.description);
+  const [editPriority, setEditPriority] = useState<WorkOrder['priority']>(initialWorkOrder.priority);
+  const [editStatus, setEditStatus] = useState<WorkOrder['status']>(initialWorkOrder.status);
+  const [editAssignedTechnicianId, setEditAssignedTechnicianId] = useState(initialWorkOrder.assignedTechnicianId);
+  const [editDueDate, setEditDueDate] = useState<Date | undefined>(new Date(initialWorkOrder.dueDate));
 
   useEffect(() => {
     setIsClient(true);
@@ -58,6 +72,12 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
   
   useEffect(() => {
     setWorkOrder(initialWorkOrder);
+    setEditTitle(initialWorkOrder.title);
+    setEditDescription(initialWorkOrder.description);
+    setEditPriority(initialWorkOrder.priority);
+    setEditStatus(initialWorkOrder.status);
+    setEditAssignedTechnicianId(initialWorkOrder.assignedTechnicianId);
+    setEditDueDate(new Date(initialWorkOrder.dueDate));
   },[initialWorkOrder])
 
   const takePhotoInputRef = useRef<HTMLInputElement>(null);
@@ -107,17 +127,66 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
     setNewNote('');
     setNewNotePhoto(null);
   };
-
-  const handleStatusChange = (status: WorkOrder['status']) => {
-    if (!db) return;
-    const workOrderRef = doc(db, 'work_orders', workOrder.id);
-    setDocumentNonBlocking(workOrderRef, { status }, { merge: true });
-    setWorkOrder(prev => ({ ...prev, status }));
-  };
   
-  const handleWorkOrderUpdate = (updatedWorkOrder: Partial<WorkOrder>) => {
-    setWorkOrder(prev => ({ ...prev, ...updatedWorkOrder }));
+  const handleCancelEdit = () => {
+    // Reset edit state to original work order state
+    setEditTitle(workOrder.title);
+    setEditDescription(workOrder.description);
+    setEditPriority(workOrder.priority);
+    setEditStatus(workOrder.status);
+    setEditAssignedTechnicianId(workOrder.assignedTechnicianId);
+    setEditDueDate(new Date(workOrder.dueDate));
+    setIsEditing(false);
   }
+
+  const handleSave = () => {
+    if (!db || !editDueDate) {
+         toast({ title: "Error", description: "Something went wrong.", variant: "destructive" });
+        return;
+    };
+    
+    const updatedData: Partial<WorkOrder> = {
+        title: editTitle,
+        description: editDescription,
+        priority: editPriority,
+        status: editStatus,
+        assignedTechnicianId: editAssignedTechnicianId,
+        dueDate: editDueDate.toISOString(),
+    };
+
+    const workOrderRef = doc(db, 'work_orders', workOrder.id);
+    updateDocumentNonBlocking(workOrderRef, updatedData);
+
+    // Optimistically update the local state
+    setWorkOrder(prev => ({ ...prev, ...updatedData }));
+    
+    toast({ title: "Work Order Saved", description: "Changes have been saved successfully." });
+    setIsEditing(false);
+  }
+
+  const handlePhotoDelete = (noteId: string, photoUrl: string) => {
+    if (!db) return;
+
+    // Optimistically update UI
+    const updatedNotes = workOrder.notes.map(note => {
+        if (note.id === noteId) {
+            return {
+                ...note,
+                photoUrls: note.photoUrls?.filter(url => url !== photoUrl),
+            };
+        }
+        return note;
+    });
+    setWorkOrder(prev => ({ ...prev, notes: updatedNotes }));
+
+    // Update Firestore
+    const noteRef = doc(db, 'work_orders', workOrder.id, 'updates', noteId);
+    const updatedNote = updatedNotes.find(n => n.id === noteId);
+    if(updatedNote) {
+      updateDocumentNonBlocking(noteRef, { photoUrls: updatedNote.photoUrls || [] });
+    }
+  }
+
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -125,15 +194,29 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
         <Card>
           <CardHeader>
             <div className="flex justify-between items-start">
-              <div>
-                <CardTitle className="text-2xl font-bold">{workOrder.title}</CardTitle>
-                <CardDescription>Work Order ID: {workOrder.id}</CardDescription>
-              </div>
-              <StatusBadge status={workOrder.status} />
+              {isEditing ? (
+                 <div className="flex-1 mr-4">
+                    <Label htmlFor="edit-title">Title</Label>
+                    <Input id="edit-title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-2xl font-bold h-auto p-0 border-0 shadow-none focus-visible:ring-0" />
+                 </div>
+              ) : (
+                <div>
+                    <CardTitle className="text-2xl font-bold">{workOrder.title}</CardTitle>
+                    <CardDescription>Work Order ID: {workOrder.id}</CardDescription>
+                </div>
+              )}
+              {isEditing ? <StatusBadge status={editStatus} /> : <StatusBadge status={workOrder.status} />}
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">{workOrder.description}</p>
+            {isEditing ? (
+                <div>
+                    <Label htmlFor="edit-description">Description</Label>
+                    <Textarea id="edit-description" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={4}/>
+                </div>
+            ) : (
+                <p className="text-muted-foreground">{workOrder.description}</p>
+            )}
           </CardContent>
         </Card>
 
@@ -211,7 +294,7 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
             <Separator />
             <div className="space-y-6">
               {isClient ? workOrder.notes.map(note => (
-                <NoteActivityItem key={note.id} note={note} technicians={technicians} />
+                <NoteActivityItem key={note.id} note={note} technicians={technicians} isEditing={isEditing} onPhotoDelete={handlePhotoDelete} />
               )) : <p className="text-center text-sm text-muted-foreground py-4">Loading notes...</p>}
               {isClient && workOrder.notes.length === 0 && (
                 <p className="text-center text-sm text-muted-foreground py-4">No notes or activity yet.</p>
@@ -229,30 +312,71 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
                 <Info className="h-5 w-5" />
                 Details
               </CardTitle>
-               <Button variant="outline" size="icon" onClick={() => setIsEditDialogOpen(true)}>
-                  <Pencil className="h-4 w-4" />
-                  <span className="sr-only">Edit Work Order</span>
-              </Button>
+                {isEditing ? (
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={handleCancelEdit}>
+                      <Ban className="mr-2 h-4 w-4" /> Cancel
+                    </Button>
+                    <Button onClick={handleSave}>
+                      <Save className="mr-2 h-4 w-4" /> Save
+                    </Button>
+                  </div>
+                ) : (
+                  <Button variant="outline" onClick={() => setIsEditing(true)}>
+                    <Pencil className="mr-2 h-4 w-4" /> Edit
+                  </Button>
+                )}
             </div>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Priority</span>
-              <PriorityIcon priority={workOrder.priority} />
+              {isEditing ? (
+                <Select value={editPriority} onValueChange={(val) => setEditPriority(val as WorkOrder['priority'])}>
+                    <SelectTrigger className="w-[180px] h-8">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="Low">Low</SelectItem>
+                        <SelectItem value="Medium">Medium</SelectItem>
+                        <SelectItem value="High">High</SelectItem>
+                    </SelectContent>
+                </Select>
+              ) : (
+                <PriorityIcon priority={workOrder.priority} />
+              )}
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Status</span>
-              <Select value={workOrder.status} onValueChange={handleStatusChange}>
-                <SelectTrigger className="w-[180px] h-8">
-                  <SelectValue placeholder="Update status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Open">Open</SelectItem>
-                  <SelectItem value="In Progress">In Progress</SelectItem>
-                  <SelectItem value="On Hold">On Hold</SelectItem>
-                  <SelectItem value="Completed">Completed</SelectItem>
-                </SelectContent>
-              </Select>
+              {isEditing ? (
+                 <Select value={editStatus} onValueChange={(val) => setEditStatus(val as WorkOrder['status'])}>
+                    <SelectTrigger className="w-[180px] h-8">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="Open">Open</SelectItem>
+                        <SelectItem value="In Progress">In Progress</SelectItem>
+                        <SelectItem value="On Hold">On Hold</SelectItem>
+                        <SelectItem value="Completed">Completed</SelectItem>
+                    </SelectContent>
+                </Select>
+              ) : (
+                 <Select value={workOrder.status} onValueChange={(status) => {
+                    const workOrderRef = doc(db, 'work_orders', workOrder.id);
+                    setDocumentNonBlocking(workOrderRef, { status }, { merge: true });
+                    setWorkOrder(prev => ({ ...prev, status }));
+                 }}>
+                    <SelectTrigger className="w-[180px] h-8">
+                      <SelectValue placeholder="Update status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Open">Open</SelectItem>
+                      <SelectItem value="In Progress">In Progress</SelectItem>
+                      <SelectItem value="On Hold">On Hold</SelectItem>
+                      <SelectItem value="Completed">Completed</SelectItem>
+                    </SelectContent>
+                </Select>
+              )}
             </div>
             <Separator />
             <div className="flex justify-between items-center">
@@ -260,19 +384,33 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
                 <User className="h-4 w-4" />
                 Assigned To
               </span>
-              {assignedTechnician ? (
-                <div className="flex items-center gap-2 font-medium">
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src={assignedTechnician.avatarUrl} />
-                    <AvatarFallback>{assignedTechnician.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <span>{assignedTechnician.name}</span>
-                </div>
+              {isEditing ? (
+                <Select value={editAssignedTechnicianId} onValueChange={setEditAssignedTechnicianId}>
+                    <SelectTrigger className="w-[180px] h-8">
+                        <SelectValue placeholder="Select technician" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {technicians.map(tech => (
+                            <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
               ) : (
-                <span className="font-medium">Unassigned</span>
+                  assignedTechnician ? (
+                    <div className="flex items-center gap-2 font-medium">
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={assignedTechnician.avatarUrl} />
+                        <AvatarFallback>{assignedTechnician.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <span>{assignedTechnician.name}</span>
+                    </div>
+                  ) : (
+                    <span className="font-medium">Unassigned</span>
+                  )
               )}
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span className="text-muted-foreground flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
                 Created
@@ -283,27 +421,26 @@ export function WorkOrderDetails({ initialWorkOrder, technicians }: WorkOrderDet
                   <span className="font-medium">Loading...</span>
                 )}
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span className="text-muted-foreground flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-primary" />
                 Due Date
               </span>
-              {isClient ? (
-                <span className="font-medium">{format(new Date(workOrder.dueDate), 'MMM d, yyyy')}</span>
+              {isEditing ? (
+                <DatePicker date={editDueDate} setDate={setEditDueDate} className="w-[180px] h-8" />
               ) : (
-                <span className="font-medium">Loading...</span>
+                 isClient ? (
+                    <span className="font-medium">{format(new Date(workOrder.dueDate), 'MMM d, yyyy')}</span>
+                ) : (
+                    <span className="font-medium">Loading...</span>
+                )
               )}
             </div>
           </CardContent>
         </Card>
       </div>
-       <WorkOrderEditDialog
-        isOpen={isEditDialogOpen}
-        setIsOpen={setIsEditDialogOpen}
-        workOrder={workOrder}
-        technicians={technicians}
-        onWorkOrderUpdated={handleWorkOrderUpdate}
-      />
     </div>
   );
 }
+
+    

@@ -9,9 +9,8 @@ import { MainLayout } from '@/components/main-layout';
 import { WorkOrderDetails } from '@/components/work-order-details';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
-import { useFirestore, useDoc, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import type { WorkOrder, Technician, WorkOrderNote } from '@/lib/types';
-import { doc, collection, query } from 'firebase/firestore';
+import { useFirestore, useUser } from '@/firebase';
+import type { WorkOrder, Technician } from '@/lib/types';
 
 interface WorkOrderDetailClientProps {
   id: string;
@@ -21,7 +20,7 @@ export function WorkOrderDetailClient({ id }: WorkOrderDetailClientProps) {
   const db = useFirestore();
   const { user } = useUser();
   const [technicians, setTechnicians] = useState<Technician[]>([]);
-  const [initialWorkOrder, setInitialWorkOrder] = useState<WorkOrder | null>(null);
+  const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -37,7 +36,7 @@ export function WorkOrderDetailClient({ id }: WorkOrderDetailClientProps) {
         setTechnicians(fetchedTechnicians);
 
         if (fetchedWorkOrder) {
-          setInitialWorkOrder(fetchedWorkOrder);
+          setWorkOrder(fetchedWorkOrder);
         } else {
           notFound();
         }
@@ -52,7 +51,7 @@ export function WorkOrderDetailClient({ id }: WorkOrderDetailClientProps) {
   }, [db, id, user]);
 
 
-  if (isLoading || !initialWorkOrder) {
+  if (isLoading || !workOrder) {
     return (
       <MainLayout>
         <div className="flex items-center justify-center h-full">
@@ -73,8 +72,10 @@ export function WorkOrderDetailClient({ id }: WorkOrderDetailClientProps) {
             </Link>
           </Button>
         </div>
-        <WorkOrderDetails initialWorkOrder={initialWorkOrder} technicians={technicians} />
+        <WorkOrderDetails initialWorkOrder={workOrder} technicians={technicians} />
       </div>
     </MainLayout>
   );
 }
+
+    
