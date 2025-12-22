@@ -22,7 +22,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { DatePicker } from './ui/date-picker';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, User, Calendar, Info, FileText, X, Video, Library } from 'lucide-react';
+import { Camera, User, Calendar, Info, FileText, X, Video, Library, Loader2 } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { useFirestore, useUser } from '@/firebase';
 import { Label } from '@/components/ui/label';
@@ -32,8 +32,9 @@ interface WorkOrderDetailsProps {
   technicians: Technician[];
   isEditing: boolean;
   onWorkOrderUpdate: (updatedData: Partial<WorkOrder>) => void;
-  onNoteAdded: (note: WorkOrderNote) => void;
+  onNoteAdded: (note: Omit<WorkOrderNote, 'id' | 'authorId'> & { photoFiles: File[] }) => void;
   onNotePhotoDelete: (noteId: string, photoUrl: string) => void;
+  isAddingNote: boolean;
 }
 
 export function WorkOrderDetails({
@@ -43,6 +44,7 @@ export function WorkOrderDetails({
   onWorkOrderUpdate,
   onNoteAdded,
   onNotePhotoDelete,
+  isAddingNote,
 }: WorkOrderDetailsProps) {
   const db = useFirestore();
   const { user } = useUser();
@@ -51,7 +53,7 @@ export function WorkOrderDetails({
   const [assignedTechnician, setAssignedTechnician] = useState<Technician | undefined>();
   
   const [newNote, setNewNote] = useState('');
-  const [newNotePhotos, setNewNotePhotos] = useState<string[]>([]);
+  const [newNotePhotos, setNewNotePhotos] = useState<{ url: string, file: File }[]>([]);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
@@ -92,13 +94,12 @@ export function WorkOrderDetails({
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
-      const newPhotos: string[] = [];
-      for(let i = 0; i < files.length; i++) {
+      for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const reader = new FileReader();
         reader.onload = e => {
-          if(e.target?.result) {
-            setNewNotePhotos(prev => [...prev, e.target?.result as string]);
+          if (e.target?.result) {
+            setNewNotePhotos(prev => [...prev, { url: e.target?.result as string, file: file }]);
           }
         };
         reader.readAsDataURL(file);
@@ -109,21 +110,18 @@ export function WorkOrderDetails({
   };
   
   const handleRemoveNewPhoto = (photoUrlToRemove: string) => {
-    setNewNotePhotos(prev => prev.filter(photo => photo !== photoUrlToRemove));
+    setNewNotePhotos(prev => prev.filter(photo => photo.url !== photoUrlToRemove));
   };
 
   const handleAddNote = () => {
     if (!user || (newNote.trim() === '' && newNotePhotos.length === 0)) return;
 
-    const optimisticNote: WorkOrderNote = {
-        id: `note-${Date.now()}`,
-        authorId: user.uid,
-        text: newNote,
-        createdAt: new Date().toISOString(),
-        photoUrls: newNotePhotos,
-    }
-
-    onNoteAdded(optimisticNote);
+    onNoteAdded({
+      text: newNote,
+      createdAt: new Date().toISOString(),
+      photoFiles: newNotePhotos.map(p => p.file),
+      photoUrls: [], // This will be populated after upload
+    });
     
     setNewNote('');
     setNewNotePhotos([]);
@@ -190,18 +188,20 @@ export function WorkOrderDetails({
                   placeholder="Add a new note or update..."
                   value={newNote}
                   onChange={e => setNewNote(e.target.value)}
+                  disabled={isAddingNote}
                 />
                 {newNotePhotos.length > 0 && (
                   <div className="grid grid-cols-3 gap-4">
                     {newNotePhotos.map((photo, index) => (
                         <div key={index} className="relative w-full aspect-square border rounded-md">
-                            <Image src={photo} alt={`Note preview ${index + 1}`} fill style={{ objectFit: 'cover' }} className="rounded-md" />
+                            <Image src={photo.url} alt={`Note preview ${index + 1}`} fill style={{ objectFit: 'cover' }} className="rounded-md" />
                             <Button
                             type="button"
                             variant="destructive"
                             size="icon"
                             className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                            onClick={() => handleRemoveNewPhoto(photo)}
+                            onClick={() => handleRemoveNewPhoto(photo.url)}
+                            disabled={isAddingNote}
                             >
                             <X className="h-4 w-4" />
                             </Button>
@@ -213,7 +213,7 @@ export function WorkOrderDetails({
                   <div>
                       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                         <SheetTrigger asChild>
-                          <Button type="button" variant="outline">
+                          <Button type="button" variant="outline" disabled={isAddingNote}>
                             <Camera className="mr-2 h-4 w-4" />
                             Attach Photo
                           </Button>
@@ -253,7 +253,10 @@ export function WorkOrderDetails({
                         multiple
                       />
                   </div>
-                  <Button type="button" onClick={handleAddNote} disabled={!user}>Add Note</Button>
+                  <Button type="button" onClick={handleAddNote} disabled={!user || isAddingNote}>
+                    {isAddingNote && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isAddingNote ? "Adding..." : "Add Note"}
+                  </Button>
                 </div>
               </div>
               <Separator />
@@ -378,5 +381,3 @@ export function WorkOrderDetails({
     </form>
   );
 }
-
-    

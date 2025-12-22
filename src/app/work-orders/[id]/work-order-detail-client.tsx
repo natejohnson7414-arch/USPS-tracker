@@ -8,10 +8,11 @@ import { MainLayout } from '@/components/main-layout';
 import { WorkOrderDetails } from '@/components/work-order-details';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Ban, Pencil, Save } from 'lucide-react';
-import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import type { WorkOrder, Technician, WorkOrderNote } from '@/lib/types';
-import { doc, collection, addDoc } from 'firebase/firestore';
+import { doc, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { uploadImage } from '@/firebase/storage';
 
 interface WorkOrderDetailClientProps {
   id: string;
@@ -27,6 +28,7 @@ export function WorkOrderDetailClient({ id }: WorkOrderDetailClientProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isDataChecked, setIsDataChecked] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isAddingNote, setIsAddingNote] = useState(false);
 
   const workOrderDocRef = useMemoFirebase(() => {
     if (!db) return null;
@@ -68,29 +70,49 @@ export function WorkOrderDetailClient({ id }: WorkOrderDetailClientProps) {
     }
   }, [isLoading, isDataChecked, workOrder]);
 
-  const handleNoteAdded = (newNote: WorkOrderNote) => {
-    if (!db || !user) return;
+  const handleNoteAdded = async (newNote: Omit<WorkOrderNote, 'id' | 'authorId'> & { photoFiles: File[] }) => {
+    if (!db || !user || !notesColRef) return;
+    setIsAddingNote(true);
 
-    const newNoteData = {
-        workOrderId: workOrder?.id,
-        technicianId: user.uid,
-        updateDate: newNote.createdAt,
-        notes: newNote.text,
-        photoUrls: newNote.photoUrls || [],
-    };
-    
-    if (notesColRef) {
-        addDoc(notesColRef, newNoteData); // Non-blocking
-    }
-    
-    // Optimistically update UI
-    setWorkOrder(prev => {
-        if (!prev) return null;
-        return {
-            ...prev,
-            notes: [newNote, ...prev.notes],
+    try {
+        const photoUrls = await Promise.all(
+            newNote.photoFiles.map(file => uploadImage(file, `work-orders/${id}/${file.name}`))
+        );
+
+        const newNoteData = {
+            workOrderId: workOrder?.id,
+            technicianId: user.uid,
+            updateDate: newNote.createdAt,
+            notes: newNote.text,
+            photoUrls: photoUrls,
         };
-    });
+
+        const newDocRef = await addDocumentNonBlocking(notesColRef, newNoteData);
+
+        const optimisticNote: WorkOrderNote = {
+            id: newDocRef.id,
+            authorId: user.uid,
+            text: newNote.text,
+            createdAt: newNote.createdAt,
+            photoUrls: photoUrls,
+        };
+        
+        // Optimistically update UI
+        setWorkOrder(prev => {
+            if (!prev) return null;
+            return {
+                ...prev,
+                notes: [optimisticNote, ...prev.notes],
+            };
+        });
+        toast({ title: "Note Added", description: "Your note and photos have been added." });
+
+    } catch (error) {
+        console.error("Error adding note:", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not add your note. Please try again." });
+    } finally {
+        setIsAddingNote(false);
+    }
   };
 
   const handleWorkOrderUpdate = (updatedData: Partial<WorkOrder>) => {
@@ -126,6 +148,7 @@ export function WorkOrderDetailClient({ id }: WorkOrderDetailClientProps) {
     const updatedNote = updatedNotes.find(n => n.id === noteId);
     if(updatedNote) {
       updateDocumentNonBlocking(noteRef, { photoUrls: updatedNote.photoUrls || [] });
+      // Note: This doesn't delete the photo from Storage. A more complete solution would.
     }
   };
 
@@ -174,6 +197,7 @@ export function WorkOrderDetailClient({ id }: WorkOrderDetailClientProps) {
           onWorkOrderUpdate={handleWorkOrderUpdate}
           onNoteAdded={handleNoteAdded}
           onNotePhotoDelete={handleNotePhotoDelete}
+          isAddingNote={isAddingNote}
         />
       </div>
     </MainLayout>
