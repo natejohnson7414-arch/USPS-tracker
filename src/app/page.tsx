@@ -1,10 +1,10 @@
 
 'use client';
 import React, { useEffect, useState, useRef } from 'react';
-import { getTechnicians, seedDatabase, getWorkSites } from '@/lib/data';
+import { getTechnicians, seedDatabase, getWorkSites, getClients } from '@/lib/data';
 import { DashboardClient } from './dashboard-client';
 import { MainLayout } from '@/components/main-layout';
-import type { WorkOrder, Technician, WorkSite } from '@/lib/types';
+import type { WorkOrder, Technician, WorkSite, Client } from '@/lib/types';
 import { useFirestore, useCollection, useUser, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 
@@ -13,6 +13,7 @@ export default function DashboardPage() {
   const { user, isUserLoading: isAuthLoading } = useUser();
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [workSites, setWorkSites] = useState<WorkSite[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const hasSeeded = useRef(false);
 
@@ -31,12 +32,14 @@ export default function DashboardPage() {
       if (!db || !user) return;
       setIsLoading(true);
       try {
-        const [fetchedTechnicians, fetchedWorkSites] = await Promise.all([
+        const [fetchedTechnicians, fetchedWorkSites, fetchedClients] = await Promise.all([
           getTechnicians(db),
           getWorkSites(db),
+          getClients(db),
         ]);
         setTechnicians(fetchedTechnicians);
         setWorkSites(fetchedWorkSites);
+        setClients(fetchedClients);
       } catch (error) {
         console.error("Failed to fetch initial dashboard data:", error);
       } finally {
@@ -88,6 +91,7 @@ export default function DashboardPage() {
         initialWorkOrders={workOrders || []} 
         technicians={technicians} 
         workSites={workSites}
+        clients={clients}
       />
     </MainLayout>
   );

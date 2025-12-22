@@ -5,7 +5,7 @@ import { useState, useRef, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { getTechnicianById } from '@/lib/data';
-import type { WorkOrder, Technician, WorkOrderNote, WorkSite } from '@/lib/types';
+import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { DatePicker } from './ui/date-picker';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, User, Calendar, Info, FileText, X, Video, Library, Loader2, MapPin, Hash, DollarSign } from 'lucide-react';
+import { Camera, User, Calendar, Info, FileText, X, Video, Library, Loader2, MapPin, Hash, DollarSign, Building } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { useFirestore, useUser } from '@/firebase';
 import { Label } from '@/components/ui/label';
@@ -39,6 +39,8 @@ interface EditableFields {
   setAssignedTechnicianId: (value?: string) => void;
   workSiteId?: string;
   setWorkSiteId: (value?: string) => void;
+  clientId?: string;
+  setClientId: (value?: string) => void;
   // All new fields from the form
   createdDate?: Date;
   setCreatedDate: (value?: Date) => void;
@@ -80,6 +82,7 @@ interface WorkOrderDetailsProps {
   initialWorkOrder: WorkOrder;
   technicians: Technician[];
   workSites: WorkSite[];
+  clients: Client[];
   isEditing: boolean;
   editableFields: EditableFields;
   onWorkOrderUpdate: (e: FormEvent) => void;
@@ -92,6 +95,7 @@ export function WorkOrderDetails({
   initialWorkOrder,
   technicians,
   workSites,
+  clients,
   isEditing,
   editableFields,
   onWorkOrderUpdate,
@@ -117,6 +121,7 @@ export function WorkOrderDetails({
     status, setStatus,
     assignedTechnicianId, setAssignedTechnicianId,
     workSiteId, setWorkSiteId,
+    clientId, setClientId,
     createdDate, setCreatedDate,
     billTo, setBillTo,
     poNumber, setPoNumber,
@@ -352,7 +357,23 @@ export function WorkOrderDetails({
             <CardContent className="space-y-4 text-sm">
                 <DetailItem label="Date" value={workOrder.createdDate} isDate/>
                 <DetailItem label="Bill To">
-                    {isEditing ? <Input className="h-8 text-right" value={billTo} onChange={(e) => setBillTo(e.target.value)} /> : <span className="font-medium">{workOrder.billTo || 'N/A'}</span>}
+                    {isEditing ? (
+                       <Select value={clientId} onValueChange={setClientId}>
+                            <SelectTrigger className="w-[180px] h-8">
+                                <SelectValue placeholder="Select a client" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {clients.map(client => (
+                                    <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    ) : (
+                       <div className="text-right">
+                         <p className="font-medium">{workOrder.client?.name || workOrder.billTo || 'N/A'}</p>
+                         <p className="text-muted-foreground">{workOrder.client?.address}</p>
+                       </div>
+                    )}
                 </DetailItem>
                 <DetailItem label="PO #">
                     {isEditing ? <Input className="h-8 text-right" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} /> : <span className="font-medium">{workOrder.poNumber || 'N/A'}</span>}
@@ -458,5 +479,3 @@ export function WorkOrderDetails({
     </form>
   );
 }
-
-    

@@ -11,7 +11,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { PanelLeft, Wrench, Package2, Home, Users, MapPin } from 'lucide-react';
+import { PanelLeft, Wrench, Package2, Home, Users, MapPin, Building } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
@@ -19,6 +19,7 @@ const navLinks = [
   { href: '/', label: 'Work Orders', icon: Home },
   { href: '/users', label: 'Users', icon: Users },
   { href: '/work-sites', label: 'Work Sites', icon: MapPin },
+  { href: '/clients', label: 'Clients', icon: Building },
 ];
 
 export function Sidebar() {

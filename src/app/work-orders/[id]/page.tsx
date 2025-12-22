@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, FormEvent } from 'react';
-import { getTechnicians, getWorkOrderById, getWorkSites } from '@/lib/data';
+import { getTechnicians, getWorkOrderById, getWorkSites, getClients } from '@/lib/data';
 import { notFound, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
@@ -10,7 +10,7 @@ import { WorkOrderDetails } from '@/components/work-order-details';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Ban, Pencil, Save } from 'lucide-react';
 import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import type { WorkOrder, Technician, WorkOrderNote, WorkSite } from '@/lib/types';
+import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client } from '@/lib/types';
 import { doc, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImage } from '@/firebase/storage';
@@ -24,6 +24,7 @@ export default function WorkOrderDetailPage() {
 
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [workSites, setWorkSites] = useState<WorkSite[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDataChecked, setIsDataChecked] = useState(false);
@@ -36,6 +37,7 @@ export default function WorkOrderDetailPage() {
   const [status, setStatus] = useState<WorkOrder['status']>('Open');
   const [assignedTechnicianId, setAssignedTechnicianId] = useState<string | undefined>(undefined);
   const [workSiteId, setWorkSiteId] = useState<string | undefined>(undefined);
+  const [clientId, setClientId] = useState<string | undefined>(undefined);
   
   const [createdDate, setCreatedDate] = useState<Date | undefined>();
   const [billTo, setBillTo] = useState<string>('');
@@ -72,6 +74,7 @@ export default function WorkOrderDetailPage() {
     setStatus(wo.status);
     setAssignedTechnicianId(wo.assignedTechnicianId);
     setWorkSiteId(wo.workSiteId);
+    setClientId(wo.clientId);
     setCreatedDate(wo.createdDate ? new Date(wo.createdDate) : undefined);
     setBillTo(wo.billTo || '');
     setPoNumber(wo.poNumber || '');
@@ -96,14 +99,16 @@ export default function WorkOrderDetailPage() {
       if (!db || !user) return;
       setIsLoading(true);
       try {
-        const [fetchedTechnicians, fetchedWorkOrder, fetchedWorkSites] = await Promise.all([
+        const [fetchedTechnicians, fetchedWorkOrder, fetchedWorkSites, fetchedClients] = await Promise.all([
           getTechnicians(db),
           getWorkOrderById(db, id),
           getWorkSites(db),
+          getClients(db),
         ]);
 
         setTechnicians(fetchedTechnicians);
         setWorkSites(fetchedWorkSites);
+        setClients(fetchedClients);
         
         if (fetchedWorkOrder) {
             setWorkOrder(fetchedWorkOrder);
@@ -188,14 +193,17 @@ export default function WorkOrderDetailPage() {
     e.preventDefault();
     if (!workOrderDocRef) return;
     
+    const selectedClient = clients.find(c => c.id === clientId);
+
     const updatedData: Partial<WorkOrder> = {
         jobName,
         description,
         status,
         assignedTechnicianId,
         workSiteId,
+        clientId,
+        billTo: selectedClient?.name,
         createdDate: createdDate?.toISOString(),
-        billTo,
         poNumber,
         contactInfo,
         serviceScheduleDate: serviceScheduleDate?.toISOString(),
@@ -216,11 +224,11 @@ export default function WorkOrderDetailPage() {
     updateDocumentNonBlocking(workOrderDocRef, updatedData);
 
     const updatedWorkSite = workSites.find(ws => ws.id === workSiteId);
-
+    
     // Optimistically update the local state
     setWorkOrder(prev => {
         if (!prev) return null;
-        return { ...prev, ...updatedData, workSite: updatedWorkSite } as WorkOrder;
+        return { ...prev, ...updatedData, workSite: updatedWorkSite, client: selectedClient } as WorkOrder;
     });
     
     toast({ title: "Work Order Saved", description: "Changes have been saved successfully." });
@@ -290,6 +298,7 @@ export default function WorkOrderDetailPage() {
           initialWorkOrder={workOrder}
           technicians={technicians}
           workSites={workSites}
+          clients={clients}
           isEditing={isEditing}
           onNoteAdded={handleNoteAdded}
           onNotePhotoDelete={handleNotePhotoDelete}
@@ -300,6 +309,7 @@ export default function WorkOrderDetailPage() {
             status, setStatus,
             assignedTechnicianId, setAssignedTechnicianId,
             workSiteId, setWorkSiteId,
+            clientId, setClientId,
             createdDate, setCreatedDate,
             billTo, setBillTo,
             poNumber, setPoNumber,
@@ -324,5 +334,3 @@ export default function WorkOrderDetailPage() {
     </MainLayout>
   );
 }
-
-    

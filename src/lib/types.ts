@@ -21,6 +21,8 @@ export type WorkOrder = {
   id: string; // Job #
   createdDate: string; // DATE
   billTo?: string; // BILL TO
+  clientId?: string; // Client ID
+  client?: Client; // Client (populated)
   poNumber?: string; // PO#
   contactInfo?: string; // CONTACT INFO
   jobName: string; // JOB NAME
@@ -83,4 +85,16 @@ export type WorkSite = {
     notes?: string;
 }
 
-    
+export type Client = {
+    id: string;
+    name: string;
+    address: string;
+    city: string;
+    state: string;
+    zip: string;
+    contact?: {
+        name: string;
+        phone: string;
+        email: string;
+    };
+}

@@ -18,7 +18,11 @@
         },
         "billTo": {
             "type": "string",
-            "description": "Who to bill for the job."
+            "description": "The name of the client to bill."
+        },
+        "clientId": {
+            "type": "string",
+            "description": "Reference to the Client to bill for the job."
         },
         "poNumber": {
             "type": "string",
@@ -336,6 +340,48 @@
         }
       },
       "required": ["id", "name", "address"]
+    },
+    "Client": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Client",
+      "type": "object",
+      "description": "Represents a client to be billed for work orders.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Client entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the client."
+        },
+        "address": {
+          "type": "string",
+          "description": "The billing address of the client."
+        },
+        "city": {
+          "type": "string",
+          "description": "City of the client."
+        },
+        "state": {
+          "type": "string",
+          "description": "State or province of the client."
+        },
+        "zip": {
+          "type": "string",
+          "description": "Postal code of the client."
+        },
+        "contact": {
+          "type": "object",
+          "description": "Primary contact person for the client.",
+          "properties": {
+            "name": { "type": "string" },
+            "phone": { "type": "string" },
+            "email": { "type": "string", "format": "email" }
+          }
+        }
+      },
+      "required": ["id", "name", "address"]
     }
   },
   "auth": {
@@ -465,10 +511,24 @@
             }
           ]
         }
+      },
+      {
+        "path": "/clients/{clientId}",
+        "definition": {
+          "entityName": "Client",
+          "schema": {
+            "$ref": "#/backend/entities/Client"
+          },
+          "description": "Stores information about clients for billing.",
+          "params": [
+            {
+              "name": "clientId",
+              "description": "Unique identifier for the client."
+            }
+          ]
+        }
       }
     ],
-    "reasoning": "The Firestore structure is designed to support a work order tracking application with user roles and technician assignments. It emphasizes authorization independence and secure list operations (QAPs) through denormalization and structural segregation.  User authentication is handled via email/password.\n\n*   `/users/{userId}`: Stores user profiles, including email, password hash, and a reference to their role.\n*   `/roles/{roleId}`: Defines roles and their associated permissions.  Users are assigned roles which determine their access control.\n*   `/technicians/{technicianId}`: Stores technician profiles.\n*   `/work_orders/{workOrderId}`: Stores work orders. The `assignedTechnicianId` field links work orders to technicians. Includes the denormalized field `technicianId`.\n*   `/technicians/{technicianId}/work_orders/{workOrderId}`: This subcollection holds work orders assigned to a specific technician.  It improves query performance when a technician needs to list their assigned work orders.  Critically, it duplicates all the `work_orders` data but includes a denormalized `technicianId` to avoid `get()` calls.\n*   `/work_orders/{workOrderId}/updates/{updateId}`: Stores updates to work orders, including notes and photos. Includes the denormalized `technicianId`.\n*   `/counters/{counterId}`: Stores atomic counters to generate unique sequential IDs for entities like Work Orders. This prevents race conditions and ensures ID uniqueness.\n*   `/work_sites/{workSiteId}`: Stores information about physical work locations, which can be linked to work orders.\n\n**Authorization Independence (CRITICAL):**\n\n*   The most crucial aspect of this design is authorization independence. For example, `/work_orders/{workOrderId}/updates/{updateId}` denormalizes the `technicianId`. This removes the need to perform `get()` operations in security rules to check the technician's role or ownership of the parent `work_order` document.  The rules can directly validate if `request.auth.uid == resource.data.technicianId`.\n*   Similarly, the `/technicians/{technicianId}/work_orders` collection also denormalizes `technicianId` to enable authorization without relying on `get()` calls.\n\n**QAPs (Rules are not Filters):**\n\n*   The structure facilitates secure `list` operations. For instance, a technician can securely list work orders assigned to them by querying `/technicians/{technicianId}/work_orders`.  The security rules will only allow access to work orders where `resource.data.technicianId == request.auth.uid`.\n*   Roles are implemented using simple document existence checks in `/roles/{roleId}`, which allows efficient QAPs.\n\n**DBAC (No Custom Claims):**\n\nThe roles are stored directly in the database in the `/roles/{roleId}` collection and referenced by `users/{userId}` documents. The existence of role documents is checked to establish authorization."
+    "reasoning": "The Firestore structure is designed to support a work order tracking application with user roles and technician assignments. It emphasizes authorization independence and secure list operations (QAPs) through denormalization and structural segregation.  User authentication is handled via email/password.\n\n*   `/users/{userId}`: Stores user profiles, including email, password hash, and a reference to their role.\n*   `/roles/{roleId}`: Defines roles and their associated permissions.  Users are assigned roles which determine their access control.\n*   `/technicians/{technicianId}`: Stores technician profiles.\n*   `/work_orders/{workOrderId}`: Stores work orders. The `assignedTechnicianId` field links work orders to technicians. Includes the denormalized field `technicianId`.\n*   `/technicians/{technicianId}/work_orders/{workOrderId}`: This subcollection holds work orders assigned to a specific technician.  It improves query performance when a technician needs to list their assigned work orders.  Critically, it duplicates all the `work_orders` data but includes a denormalized `technicianId` to avoid `get()` calls.\n*   `/work_orders/{workOrderId}/updates/{updateId}`: Stores updates to work orders, including notes and photos. Includes the denormalized `technicianId`.\n*   `/counters/{counterId}`: Stores atomic counters to generate unique sequential IDs for entities like Work Orders. This prevents race conditions and ensures ID uniqueness.\n*   `/work_sites/{workSiteId}`: Stores information about physical work locations, which can be linked to work orders.\n*   `/clients/{clientId}`: Stores information about clients that can be billed.\n\n**Authorization Independence (CRITICAL):**\n\n*   The most crucial aspect of this design is authorization independence. For example, `/work_orders/{workOrderId}/updates/{updateId}` denormalizes the `technicianId`. This removes the need to perform `get()` operations in security rules to check the technician's role or ownership of the parent `work_order` document.  The rules can directly validate if `request.auth.uid == resource.data.technicianId`.\n*   Similarly, the `/technicians/{technicianId}/work_orders` collection also denormalizes `technicianId` to enable authorization without relying on `get()` calls.\n\n**QAPs (Rules are not Filters):**\n\n*   The structure facilitates secure `list` operations. For instance, a technician can securely list work orders assigned to them by querying `/technicians/{technicianId}/work_orders`.  The security rules will only allow access to work orders where `resource.data.technicianId == request.auth.uid`.\n*   Roles are implemented using simple document existence checks in `/roles/{roleId}`, which allows efficient QAPs.\n\n**DBAC (No Custom Claims):**\n\nThe roles are stored directly in the database in the `/roles/{roleId}` collection and referenced by `users/{userId}` documents. The existence of role documents is checked to establish authorization."
   }
 }
-
-    

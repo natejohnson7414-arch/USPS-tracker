@@ -24,7 +24,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from './ui/date-picker';
 import { Loader2, PlusCircle } from 'lucide-react';
-import type { Technician, WorkOrder, WorkSite } from '@/lib/types';
+import type { Technician, WorkOrder, WorkSite, Client } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, setDocumentNonBlocking } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -33,10 +33,11 @@ import { Checkbox } from './ui/checkbox';
 interface CreateWorkOrderDialogProps {
   technicians: Technician[];
   workSites: WorkSite[];
+  clients: Client[];
   onWorkOrderAdded: (newOrder: WorkOrder) => void;
 }
 
-export function CreateWorkOrderDialog({ technicians, workSites, onWorkOrderAdded }: CreateWorkOrderDialogProps) {
+export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkOrderAdded }: CreateWorkOrderDialogProps) {
   const db = useFirestore();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,7 +46,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, onWorkOrderAdded
   // Form state based on the new template
   const [jobId, setJobId] = useState('');
   const [createdDate, setCreatedDate] = useState<Date | undefined>(new Date());
-  const [billTo, setBillTo] = useState('');
+  const [clientId, setClientId] = useState<string | undefined>();
   const [poNumber, setPoNumber] = useState('');
   const [contactInfo, setContactInfo] = useState('');
   const [jobName, setJobName] = useState('');
@@ -70,7 +71,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, onWorkOrderAdded
   const resetForm = () => {
     setJobId('');
     setCreatedDate(new Date());
-    setBillTo('');
+    setClientId(undefined);
     setPoNumber('');
     setContactInfo('');
     setJobName('');
@@ -94,6 +95,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, onWorkOrderAdded
   
   const handleSubmit = async () => {
     const selectedWorkSite = workSites.find(ws => ws.id === workSiteId);
+    const selectedClient = clients.find(c => c.id === clientId);
     
     if (!db || !jobId || !jobName || !description) {
       toast({
@@ -109,10 +111,11 @@ export function CreateWorkOrderDialog({ technicians, workSites, onWorkOrderAdded
     try {
       const workOrderRef = doc(db, 'work_orders', jobId);
 
-      const newWorkOrderData: Omit<WorkOrder, 'notes' | 'workSite'> = {
+      const newWorkOrderData: Omit<WorkOrder, 'notes' | 'workSite' | 'client'> = {
         id: jobId,
         createdDate: (createdDate || new Date()).toISOString(),
-        billTo,
+        billTo: selectedClient?.name,
+        clientId,
         poNumber,
         contactInfo,
         jobName,
@@ -141,6 +144,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, onWorkOrderAdded
           ...newWorkOrderData,
           notes: [],
           workSite: selectedWorkSite,
+          client: selectedClient
       };
 
       onWorkOrderAdded(newWorkOrder);
@@ -191,7 +195,18 @@ export function CreateWorkOrderDialog({ technicians, workSites, onWorkOrderAdded
             </div>
              <div className="grid gap-2">
                 <Label htmlFor="billTo">Bill To</Label>
-                <Input id="billTo" value={billTo} onChange={e => setBillTo(e.target.value)} />
+                <Select onValueChange={setClientId} value={clientId} disabled={isSubmitting}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map(client => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
             </div>
              <div className="grid gap-2">
                 <Label htmlFor="jobName">Job Name</Label>
@@ -310,5 +325,3 @@ export function CreateWorkOrderDialog({ technicians, workSites, onWorkOrderAdded
     </Dialog>
   );
 }
-
-    

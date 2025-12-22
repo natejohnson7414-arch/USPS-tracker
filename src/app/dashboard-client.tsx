@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import type { WorkOrder, Technician, WorkSite } from '@/lib/types';
+import type { WorkOrder, Technician, WorkSite, Client } from '@/lib/types';
 import { WorkOrderTable } from '@/components/work-order-table';
 import { WorkOrderTableToolbar } from '@/components/work-order-table-toolbar';
 
@@ -10,9 +10,10 @@ interface DashboardClientProps {
   initialWorkOrders: WorkOrder[];
   technicians: Technician[];
   workSites: WorkSite[];
+  clients: Client[];
 }
 
-export function DashboardClient({ initialWorkOrders, technicians, workSites }: DashboardClientProps) {
+export function DashboardClient({ initialWorkOrders, technicians, workSites, clients }: DashboardClientProps) {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -43,6 +44,7 @@ export function DashboardClient({ initialWorkOrders, technicians, workSites }: D
           currentFilter={statusFilter}
           technicians={technicians}
           workSites={workSites}
+          clients={clients}
           onWorkOrderAdded={handleAddWorkOrder}
         />
         <WorkOrderTable workOrders={filteredWorkOrders} technicians={technicians} />

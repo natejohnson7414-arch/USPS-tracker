@@ -1,6 +1,6 @@
 
 'use client';
-import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite } from '@/lib/types';
+import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client } from '@/lib/types';
 import { collection, getDoc, doc } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 import { sampleRoles, sampleTechnicians, sampleWorkOrders } from './sample-data';
@@ -87,6 +87,11 @@ export const getWorkOrderById = async (db: any, id: string): Promise<WorkOrder |
         workSite = await getWorkSiteById(db, data.workSiteId);
     }
     
+    let client;
+    if (data.clientId) {
+        client = await getClientById(db, data.clientId);
+    }
+    
     const notesCol = collection(db, 'work_orders', id, 'updates');
     const notesSnapshot = await getCollectionNonBlocking(notesCol);
     const notesList = notesSnapshot.docs.map(noteDoc => {
@@ -104,6 +109,7 @@ export const getWorkOrderById = async (db: any, id: string): Promise<WorkOrder |
       ...data,
       id: workOrderSnap.id,
       workSite: workSite,
+      client: client,
       notes: notesList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     } as WorkOrder;
   } else {
@@ -188,4 +194,19 @@ export const getWorkSiteById = async (db: any, id: string): Promise<WorkSite | u
     return undefined;
 };
 
-    
+export const getClients = async (db: any): Promise<Client[]> => {
+    if (!db) return [];
+    const clientsCol = collection(db, 'clients');
+    const clientSnapshot = await getCollectionNonBlocking(clientsCol);
+    return clientSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
+};
+
+export const getClientById = async (db: any, id: string): Promise<Client | undefined> => {
+    if (!id) return undefined;
+    const clientRef = doc(db, 'clients', id);
+    const clientSnap = await getDocumentNonBlocking(clientRef);
+    if (clientSnap.exists()) {
+        return { id: clientSnap.id, ...clientSnap.data() } as Client;
+    }
+    return undefined;
+};

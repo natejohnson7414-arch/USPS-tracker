@@ -169,6 +169,18 @@ service cloud.firestore {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isAdmin();
     }
+    
+    /**
+     * @description Governs access to client documents for billing.
+     * @path /clients/{clientId}
+     * @allow (list) Any authenticated user can list clients to assign them to work orders.
+     * @deny (create) A non-admin trying to create a new client.
+     * @principle Clients are considered public information within the organization, but only Admins can manage them.
+     */
+    match /clients/{clientId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
 
 
     /**
@@ -215,5 +227,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
