@@ -28,6 +28,7 @@ const WorkOrderExtractionOutputSchema = z.object({
     poNumber: z.string().optional().describe("The PO #."),
     contactInfo: z.string().optional().describe("The contact information."),
     jobName: z.string().optional().describe("The Job Name."),
+    jobSiteAddress: z.string().optional().describe("The full address of the job site, including street, city, state, and zip if available."),
     description: z.string().optional().describe("The Job Description."),
     serviceScheduleDate: z.string().optional().describe("The Service Schedule Date. (format: YYYY-MM-DD)"),
     quotedAmount: z.number().optional().describe("The Quoted Amount."),
@@ -55,6 +56,8 @@ const prompt = ai.definePrompt({
   input: { schema: WorkOrderExtractionInputSchema },
   output: { schema: WorkOrderExtractionOutputSchema },
   prompt: `You are an expert data entry assistant. Your task is to extract information from the provided PDF, which is a 'Small Job Form', and return it as a structured JSON object.
+
+  Pay close attention to the 'Job Site / Name' field and extract the full address into the 'jobSiteAddress' field.
 
   Carefully analyze the document and extract the following fields. If a field is not present, omit it from the output. For dates, provide them in YYYY-MM-DD format. For checkboxes, return true if checked and false if not.
 
