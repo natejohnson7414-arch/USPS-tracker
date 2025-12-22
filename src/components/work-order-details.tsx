@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, FormEvent } from 'react';
@@ -27,11 +28,27 @@ import { NoteActivityItem } from './note-activity-item';
 import { useFirestore, useUser } from '@/firebase';
 import { Label } from '@/components/ui/label';
 
+interface EditableFields {
+  title: string;
+  setTitle: (value: string) => void;
+  description: string;
+  setDescription: (value: string) => void;
+  priority: WorkOrder['priority'];
+  setPriority: (value: WorkOrder['priority']) => void;
+  status: WorkOrder['status'];
+  setStatus: (value: WorkOrder['status']) => void;
+  assignedTechnicianId?: string;
+  setAssignedTechnicianId: (value?: string) => void;
+  dueDate?: Date;
+  setDueDate: (value?: Date) => void;
+}
+
 interface WorkOrderDetailsProps {
   initialWorkOrder: WorkOrder;
   technicians: Technician[];
   isEditing: boolean;
-  onWorkOrderUpdate: (updatedData: Partial<WorkOrder>) => void;
+  editableFields: EditableFields;
+  onWorkOrderUpdate: (e: FormEvent) => void;
   onNoteAdded: (note: Omit<WorkOrderNote, 'id' | 'authorId'> & { photoFiles: File[] }) => void;
   onNotePhotoDelete: (noteId: string, photoUrl: string) => void;
   isAddingNote: boolean;
@@ -41,6 +58,7 @@ export function WorkOrderDetails({
   initialWorkOrder,
   technicians,
   isEditing,
+  editableFields,
   onWorkOrderUpdate,
   onNoteAdded,
   onNotePhotoDelete,
@@ -57,13 +75,14 @@ export function WorkOrderDetails({
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
-  // Editable fields state
-  const [editTitle, setEditTitle] = useState(initialWorkOrder.title);
-  const [editDescription, setEditDescription] = useState(initialWorkOrder.description);
-  const [editPriority, setEditPriority] = useState<WorkOrder['priority']>(initialWorkOrder.priority);
-  const [editStatus, setEditStatus] = useState<WorkOrder['status']>(initialWorkOrder.status);
-  const [editAssignedTechnicianId, setEditAssignedTechnicianId] = useState(initialWorkOrder.assignedTechnicianId);
-  const [editDueDate, setEditDueDate] = useState<Date | undefined>(new Date(initialWorkOrder.dueDate));
+  const { 
+    title, setTitle,
+    description, setDescription,
+    priority, setPriority,
+    status, setStatus,
+    assignedTechnicianId, setAssignedTechnicianId,
+    dueDate, setDueDate 
+  } = editableFields;
 
   useEffect(() => {
     setIsClient(true);
@@ -80,13 +99,7 @@ export function WorkOrderDetails({
   
   useEffect(() => {
     setWorkOrder(initialWorkOrder);
-    setEditTitle(initialWorkOrder.title);
-    setEditDescription(initialWorkOrder.description);
-    setEditPriority(initialWorkOrder.priority);
-    setEditStatus(initialWorkOrder.status);
-    setEditAssignedTechnicianId(initialWorkOrder.assignedTechnicianId);
-    setEditDueDate(new Date(initialWorkOrder.dueDate));
-  },[initialWorkOrder, isEditing]) // Reset on isEditing change too
+  },[initialWorkOrder])
 
   const takePhotoInputRef = useRef<HTMLInputElement>(null);
   const chooseFromLibraryInputRef = useRef<HTMLInputElement>(null);
@@ -94,16 +107,11 @@ export function WorkOrderDetails({
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const reader = new FileReader();
-        reader.onload = e => {
-          if (e.target?.result) {
-            setNewNotePhotos(prev => [...prev, { url: e.target?.result as string, file: file }]);
-          }
-        };
-        reader.readAsDataURL(file);
-      }
+      const newFiles = Array.from(files).map(file => ({
+        url: URL.createObjectURL(file),
+        file
+      }));
+      setNewNotePhotos(prev => [...prev, ...newFiles]);
       setIsSheetOpen(false);
     }
     event.target.value = '';
@@ -126,25 +134,9 @@ export function WorkOrderDetails({
     setNewNote('');
     setNewNotePhotos([]);
   };
-  
-  const handleSave = (e: FormEvent) => {
-    e.preventDefault();
-    if (!editDueDate) return;
-    
-    const updatedData: Partial<WorkOrder> = {
-        title: editTitle,
-        description: editDescription,
-        priority: editPriority,
-        status: editStatus,
-        assignedTechnicianId: editAssignedTechnicianId,
-        dueDate: editDueDate.toISOString(),
-    };
-
-    onWorkOrderUpdate(updatedData);
-  }
 
   return (
-    <form id="work-order-form" onSubmit={handleSave}>
+    <form id="work-order-form" onSubmit={onWorkOrderUpdate}>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           <Card>
@@ -153,7 +145,7 @@ export function WorkOrderDetails({
                 {isEditing ? (
                   <div className="flex-1 mr-4">
                       <Label htmlFor="edit-title" className="sr-only">Title</Label>
-                      <Input id="edit-title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-2xl font-bold h-auto p-0 border-0 shadow-none focus-visible:ring-0" />
+                      <Input id="edit-title" value={title} onChange={(e) => setTitle(e.target.value)} className="text-2xl font-bold h-auto p-0 border-0 shadow-none focus-visible:ring-0" />
                   </div>
                 ) : (
                   <div>
@@ -161,14 +153,14 @@ export function WorkOrderDetails({
                       <CardDescription>Work Order ID: {workOrder.id}</CardDescription>
                   </div>
                 )}
-                {isEditing ? <StatusBadge status={editStatus} /> : <StatusBadge status={workOrder.status} />}
+                {isEditing ? <StatusBadge status={status} /> : <StatusBadge status={workOrder.status} />}
               </div>
             </CardHeader>
             <CardContent>
               {isEditing ? (
                   <div>
                       <Label htmlFor="edit-description" className="sr-only">Description</Label>
-                      <Textarea id="edit-description" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={4}/>
+                      <Textarea id="edit-description" value={description} onChange={(e) => setDescription(e.target.value)} rows={4}/>
                   </div>
               ) : (
                   <p className="text-muted-foreground">{workOrder.description}</p>
@@ -253,7 +245,7 @@ export function WorkOrderDetails({
                         multiple
                       />
                   </div>
-                  <Button type="button" onClick={handleAddNote} disabled={!user || isAddingNote}>
+                  <Button type="button" onClick={handleAddNote} disabled={!user || isAddingNote || (newNote.trim() === '' && newNotePhotos.length === 0)}>
                     {isAddingNote && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {isAddingNote ? "Adding..." : "Add Note"}
                   </Button>
@@ -284,7 +276,7 @@ export function WorkOrderDetails({
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Priority</span>
                 {isEditing ? (
-                  <Select value={editPriority} onValueChange={(val) => setEditPriority(val as WorkOrder['priority'])}>
+                  <Select value={priority} onValueChange={(val) => setPriority(val as WorkOrder['priority'])}>
                       <SelectTrigger className="w-[180px] h-8">
                           <SelectValue />
                       </SelectTrigger>
@@ -301,7 +293,7 @@ export function WorkOrderDetails({
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Status</span>
                 {isEditing ? (
-                  <Select value={editStatus} onValueChange={(val) => setEditStatus(val as WorkOrder['status'])}>
+                  <Select value={status} onValueChange={(val) => setStatus(val as WorkOrder['status'])}>
                       <SelectTrigger className="w-[180px] h-8">
                           <SelectValue />
                       </SelectTrigger>
@@ -323,7 +315,7 @@ export function WorkOrderDetails({
                   Assigned To
                 </span>
                 {isEditing ? (
-                  <Select value={editAssignedTechnicianId} onValueChange={setEditAssignedTechnicianId}>
+                  <Select value={assignedTechnicianId || 'unassigned'} onValueChange={(val) => setAssignedTechnicianId(val === 'unassigned' ? undefined : val)}>
                       <SelectTrigger className="w-[180px] h-8">
                           <SelectValue placeholder="Select technician" />
                       </SelectTrigger>
@@ -365,7 +357,7 @@ export function WorkOrderDetails({
                   Due Date
                 </span>
                 {isEditing ? (
-                  <DatePicker date={editDueDate} setDate={setEditDueDate} className="w-[180px] h-8" />
+                  <DatePicker date={dueDate} setDate={setDueDate} className="w-[180px] h-8" />
                 ) : (
                   isClient ? (
                       <span className="font-medium">{format(new Date(workOrder.dueDate), 'MMM d, yyyy')}</span>
