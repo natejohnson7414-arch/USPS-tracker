@@ -1,3 +1,4 @@
+
 import type { Role, Technician, WorkOrder } from '@/lib/types';
 import { PlaceHolderImages } from './placeholder-images';
 
@@ -29,54 +30,56 @@ export const sampleTechnicians: Omit<Technician, 'id' | 'roleId'>[] = [
   },
 ];
 
-export const sampleWorkOrders: Omit<WorkOrder, 'assignedTechnicianId' | 'notes'>[] = [
+export const sampleWorkOrders: Omit<WorkOrder, 'assignedTechnicianId' | 'notes' | 'workSite'>[] = [
   {
-    id: 'WO-24-0001',
-    customerOrderId: 'CUST-A4B3',
-    title: 'Fix leaking faucet in breakroom',
+    id: '25-6775',
+    customerPO: 'SC4185',
+    jobName: 'No Heat Boiler',
     description: 'The main faucet in the employee breakroom is continuously dripping. Please inspect and repair.',
-    priority: 'High',
     status: 'Open',
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+    createdDate: new Date('2025-06-19').toISOString(),
+    billTo: 'CTS',
+    estimator: 'Scott Stubblefield',
+    timeAndMaterial: true,
+    permit: false,
+    coi: false,
+    certifiedPayroll: true,
+    certifiedPayrollRequested: new Date('2025-12-16').toISOString(),
+    workSiteId: 'usps-indianapolis' // Example, you'd create this work site
   },
   {
     id: 'WO-24-0002',
-    customerOrderId: 'CUST-X9Y8',
-    title: 'Replace broken window in Conference Room A',
+    customerPO: 'CUST-X9Y8',
+    jobName: 'Replace broken window',
     description: 'A window pane was cracked during the recent storm. Needs to be replaced.',
-    priority: 'Medium',
     status: 'Open',
-    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    createdDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    serviceScheduleDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: 'WO-24-0003',
-    title: 'HVAC unit on rooftop making loud noises',
+    jobName: 'HVAC unit noisy',
     description: 'The HVAC unit for the west wing is making a loud clanking noise. Suspect a loose fan belt.',
-    priority: 'High',
     status: 'In Progress',
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
+    createdDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    serviceScheduleDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: 'WO-24-0004',
-    customerOrderId: 'CUST-Z1C2',
-    title: 'Annual fire extinguisher inspection',
+    customerPO: 'CUST-Z1C2',
+    jobName: 'Fire extinguisher inspection',
     description: 'Perform the annual inspection for all fire extinguishers in the building.',
-    priority: 'Low',
     status: 'Completed',
-    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-    dueDate: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(),
+    createdDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+    serviceScheduleDate: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(),
   },
     {
     id: 'WO-24-0005',
-    title: 'Repair faulty wiring in main server room',
+    jobName: 'Repair faulty server room wiring',
     description: 'Lights are flickering in the server room. Possible faulty wiring or breaker issue. Urgent attention required.',
-    priority: 'High',
     status: 'Open',
-    createdAt: new Date().toISOString(),
-    dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
+    createdDate: new Date().toISOString(),
+    serviceScheduleDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
   },
 ];
 

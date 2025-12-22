@@ -67,19 +67,12 @@ export const getWorkOrders = async (db: any): Promise<WorkOrder[]> => {
   const workOrdersList = workOrderSnapshot.docs.map(doc => {
     const data = doc.data();
     return {
+      ...data,
       id: doc.id,
-      title: data.title,
-      description: data.description,
-      priority: data.priority,
-      status: data.status,
-      assignedTechnicianId: data.assignedTechnicianId,
-      customerOrderId: data.customerOrderId,
-      createdAt: data.createdAt,
-      dueDate: data.dueDate,
       notes: [], // Notes should be fetched separately if needed
     } as WorkOrder;
   });
-  return workOrdersList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return workOrdersList.sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime());
 };
 
 export const getWorkOrderById = async (db: any, id: string): Promise<WorkOrder | undefined> => {
@@ -108,17 +101,9 @@ export const getWorkOrderById = async (db: any, id: string): Promise<WorkOrder |
     });
 
     return {
+      ...data,
       id: workOrderSnap.id,
-      title: data.title,
-      customerOrderId: data.customerOrderId,
-      description: data.description,
-      priority: data.priority,
-      status: data.status,
-      assignedTechnicianId: data.assignedTechnicianId,
-      workSiteId: data.workSiteId,
       workSite: workSite,
-      createdAt: data.createdAt,
-      dueDate: data.dueDate,
       notes: notesList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     } as WorkOrder;
   } else {

@@ -31,14 +31,29 @@ export default function WorkOrderDetailPage() {
   const [isAddingNote, setIsAddingNote] = useState(false);
   
   // Editable fields state - initialized when workOrder is loaded
-  const [editTitle, setEditTitle] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editPriority, setEditPriority] = useState<WorkOrder['priority']>('Low');
-  const [editStatus, setEditStatus] = useState<WorkOrder['status']>('Open');
-  const [editAssignedTechnicianId, setEditAssignedTechnicianId] = useState<string | undefined>(undefined);
-  const [editWorkSiteId, setEditWorkSiteId] = useState<string | undefined>(undefined);
-  const [editDueDate, setEditDueDate] = useState<Date | undefined>(undefined);
-  const [editCustomerOrderId, setEditCustomerOrderId] = useState<string | undefined>(undefined);
+  const [jobName, setJobName] = useState('');
+  const [description, setDescription] = useState('');
+  const [status, setStatus] = useState<WorkOrder['status']>('Open');
+  const [assignedTechnicianId, setAssignedTechnicianId] = useState<string | undefined>(undefined);
+  const [workSiteId, setWorkSiteId] = useState<string | undefined>(undefined);
+  
+  const [createdDate, setCreatedDate] = useState<Date | undefined>();
+  const [billTo, setBillTo] = useState<string>('');
+  const [poNumber, setPoNumber] = useState<string>('');
+  const [contactInfo, setContactInfo] = useState<string>('');
+  const [serviceScheduleDate, setServiceScheduleDate] = useState<Date | undefined>();
+  const [quotedAmount, setQuotedAmount] = useState<number | undefined>();
+  const [timeAndMaterial, setTimeAndMaterial] = useState<boolean>(false);
+  const [permit, setPermit] = useState<boolean>(false);
+  const [permitCost, setPermitCost] = useState<number | undefined>();
+  const [permitFiled, setPermitFiled] = useState<Date | undefined>();
+  const [coi, setCoi] = useState<boolean>(false);
+  const [coiRequested, setCoiRequested] = useState<Date | undefined>();
+  const [certifiedPayroll, setCertifiedPayroll] = useState<boolean>(false);
+  const [certifiedPayrollRequested, setCertifiedPayrollRequested] = useState<Date | undefined>();
+  const [intercoPO, setIntercoPO] = useState<string>('');
+  const [customerPO, setCustomerPO] = useState<string>('');
+  const [estimator, setEstimator] = useState<string>('');
 
 
   const workOrderDocRef = useMemoFirebase(() => {
@@ -51,6 +66,30 @@ export default function WorkOrderDetailPage() {
     return collection(workOrderDocRef, 'updates');
   }, [workOrderDocRef]);
 
+  const initializeEditState = (wo: WorkOrder) => {
+    setJobName(wo.jobName);
+    setDescription(wo.description);
+    setStatus(wo.status);
+    setAssignedTechnicianId(wo.assignedTechnicianId);
+    setWorkSiteId(wo.workSiteId);
+    setCreatedDate(wo.createdDate ? new Date(wo.createdDate) : undefined);
+    setBillTo(wo.billTo || '');
+    setPoNumber(wo.poNumber || '');
+    setContactInfo(wo.contactInfo || '');
+    setServiceScheduleDate(wo.serviceScheduleDate ? new Date(wo.serviceScheduleDate) : undefined);
+    setQuotedAmount(wo.quotedAmount);
+    setTimeAndMaterial(wo.timeAndMaterial || false);
+    setPermit(wo.permit || false);
+    setPermitCost(wo.permitCost);
+    setPermitFiled(wo.permitFiled ? new Date(wo.permitFiled) : undefined);
+    setCoi(wo.coi || false);
+    setCoiRequested(wo.coiRequested ? new Date(wo.coiRequested) : undefined);
+    setCertifiedPayroll(wo.certifiedPayroll || false);
+    setCertifiedPayrollRequested(wo.certifiedPayrollRequested ? new Date(wo.certifiedPayrollRequested) : undefined);
+    setIntercoPO(wo.intercoPO || '');
+    setCustomerPO(wo.customerPO || '');
+    setEstimator(wo.estimator || '');
+  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -68,15 +107,7 @@ export default function WorkOrderDetailPage() {
         
         if (fetchedWorkOrder) {
             setWorkOrder(fetchedWorkOrder);
-            // Initialize edit state here
-            setEditTitle(fetchedWorkOrder.title);
-            setEditDescription(fetchedWorkOrder.description);
-            setEditPriority(fetchedWorkOrder.priority);
-            setEditStatus(fetchedWorkOrder.status);
-            setEditAssignedTechnicianId(fetchedWorkOrder.assignedTechnicianId);
-            setEditWorkSiteId(fetchedWorkOrder.workSiteId);
-            setEditDueDate(new Date(fetchedWorkOrder.dueDate));
-            setEditCustomerOrderId(fetchedWorkOrder.customerOrderId);
+            initializeEditState(fetchedWorkOrder);
         } else {
             setWorkOrder(null);
         }
@@ -100,14 +131,7 @@ export default function WorkOrderDetailPage() {
   
   const resetEditState = () => {
     if (!workOrder) return;
-    setEditTitle(workOrder.title);
-    setEditDescription(workOrder.description);
-    setEditPriority(workOrder.priority);
-    setEditStatus(workOrder.status);
-    setEditAssignedTechnicianId(workOrder.assignedTechnicianId);
-    setEditWorkSiteId(workOrder.workSiteId);
-    setEditDueDate(new Date(workOrder.dueDate));
-    setEditCustomerOrderId(workOrder.customerOrderId);
+    initializeEditState(workOrder);
   };
   
   const handleCancelEdit = () => {
@@ -162,22 +186,36 @@ export default function WorkOrderDetailPage() {
   
   const handleSave = (e: FormEvent) => {
     e.preventDefault();
-    if (!workOrderDocRef || !editDueDate) return;
+    if (!workOrderDocRef) return;
     
     const updatedData: Partial<WorkOrder> = {
-        title: editTitle,
-        description: editDescription,
-        priority: editPriority,
-        status: editStatus,
-        assignedTechnicianId: editAssignedTechnicianId,
-        workSiteId: editWorkSiteId,
-        dueDate: editDueDate.toISOString(),
-        customerOrderId: editCustomerOrderId
+        jobName,
+        description,
+        status,
+        assignedTechnicianId,
+        workSiteId,
+        createdDate: createdDate?.toISOString(),
+        billTo,
+        poNumber,
+        contactInfo,
+        serviceScheduleDate: serviceScheduleDate?.toISOString(),
+        quotedAmount,
+        timeAndMaterial,
+        permit,
+        permitCost,
+        permitFiled: permitFiled?.toISOString(),
+        coi,
+        coiRequested: coiRequested?.toISOString(),
+        certifiedPayroll,
+        certifiedPayrollRequested: certifiedPayrollRequested?.toISOString(),
+        intercoPO,
+        customerPO,
+        estimator
     };
 
     updateDocumentNonBlocking(workOrderDocRef, updatedData);
 
-    const updatedWorkSite = workSites.find(ws => ws.id === editWorkSiteId);
+    const updatedWorkSite = workSites.find(ws => ws.id === workSiteId);
 
     // Optimistically update the local state
     setWorkOrder(prev => {
@@ -257,22 +295,28 @@ export default function WorkOrderDetailPage() {
           onNotePhotoDelete={handleNotePhotoDelete}
           isAddingNote={isAddingNote}
           editableFields={{
-            title: editTitle,
-            setTitle: setEditTitle,
-            description: editDescription,
-            setDescription: setEditDescription,
-            priority: editPriority,
-            setPriority: setEditPriority,
-            status: editStatus,
-            setStatus: setEditStatus,
-            assignedTechnicianId: editAssignedTechnicianId,
-            setAssignedTechnicianId: setEditAssignedTechnicianId,
-            workSiteId: editWorkSiteId,
-            setWorkSiteId: setEditWorkSiteId,
-            dueDate: editDueDate,
-            setDueDate: setEditDueDate,
-            customerOrderId: editCustomerOrderId,
-            setCustomerOrderId: setEditCustomerOrderId,
+            jobName, setJobName,
+            description, setDescription,
+            status, setStatus,
+            assignedTechnicianId, setAssignedTechnicianId,
+            workSiteId, setWorkSiteId,
+            createdDate, setCreatedDate,
+            billTo, setBillTo,
+            poNumber, setPoNumber,
+            contactInfo, setContactInfo,
+            serviceScheduleDate, setServiceScheduleDate,
+            quotedAmount: quotedAmount || 0, setQuotedAmount,
+            timeAndMaterial, setTimeAndMaterial,
+            permit, setPermit,
+            permitCost: permitCost || 0, setPermitCost,
+            permitFiled, setPermitFiled,
+            coi, setCoi,
+            coiRequested, setCoiRequested,
+            certifiedPayroll, setCertifiedPayroll,
+            certifiedPayrollRequested, setCertifiedPayrollRequested,
+            intercoPO, setIntercoPO,
+            customerPO, setCustomerPO,
+            estimator, setEstimator
           }}
           onWorkOrderUpdate={handleSave}
         />

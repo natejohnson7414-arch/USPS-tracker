@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -99,6 +100,16 @@ service cloud.firestore {
     function isUpdatingOwnProfile(userId) {
       return isOwner(userId) && resource != null && request.resource.data.id == resource.data.id;
     }
+    
+    // Check if the required fields for a work order exist
+    function hasRequiredWorkOrderFields() {
+        let data = request.resource.data;
+        return data.id != null && 
+               data.jobName != null &&
+               data.description != null &&
+               data.status != null &&
+               data.createdDate != null;
+    }
 
     // --------------------------------------------------------------------------
     // Collection Rules
@@ -170,7 +181,7 @@ service cloud.firestore {
     match /work_orders/{workOrderId} {
       allow get: if isAdmin() || (isTechnician() && request.auth.uid == resource.data.assignedTechnicianId);
       allow list: if isSignedIn();
-      allow create: if isAdmin();
+      allow create: if isAdmin() && hasRequiredWorkOrderFields();
       allow update: if (isAdmin() || (isTechnician() && request.auth.uid == resource.data.assignedTechnicianId)) && resource != null;
       allow delete: if isAdmin() && resource != null;
 
@@ -204,3 +215,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

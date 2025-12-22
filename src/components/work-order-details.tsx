@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
-import { PriorityIcon } from './priority-icon';
 import {
   Select,
   SelectContent,
@@ -23,28 +22,58 @@ import {
 import { Input } from '@/components/ui/input';
 import { DatePicker } from './ui/date-picker';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, User, Calendar, Info, FileText, X, Video, Library, Loader2, MapPin, Hash } from 'lucide-react';
+import { Camera, User, Calendar, Info, FileText, X, Video, Library, Loader2, MapPin, Hash, DollarSign } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { useFirestore, useUser } from '@/firebase';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from './ui/checkbox';
 
 interface EditableFields {
-  title: string;
-  setTitle: (value: string) => void;
+  jobName: string;
+  setJobName: (value: string) => void;
   description: string;
   setDescription: (value: string) => void;
-  priority: WorkOrder['priority'];
-  setPriority: (value: WorkOrder['priority']) => void;
   status: WorkOrder['status'];
   setStatus: (value: WorkOrder['status']) => void;
   assignedTechnicianId?: string;
   setAssignedTechnicianId: (value?: string) => void;
   workSiteId?: string;
   setWorkSiteId: (value?: string) => void;
-  dueDate?: Date;
-  setDueDate: (value?: Date) => void;
-  customerOrderId?: string;
-  setCustomerOrderId: (value?: string) => void;
+  // All new fields from the form
+  createdDate?: Date;
+  setCreatedDate: (value?: Date) => void;
+  billTo?: string;
+  setBillTo: (value: string) => void;
+  poNumber?: string;
+  setPoNumber: (value: string) => void;
+  contactInfo?: string;
+  setContactInfo: (value: string) => void;
+  serviceScheduleDate?: Date;
+  setServiceScheduleDate: (value?: Date) => void;
+  quotedAmount?: number;
+  setQuotedAmount: (value: number) => void;
+  timeAndMaterial: boolean;
+  setTimeAndMaterial: (value: boolean) => void;
+  permit: boolean;
+  setPermit: (value: boolean) => void;
+  permitCost?: number;
+  setPermitCost: (value: number) => void;
+  permitFiled?: Date;
+  setPermitFiled: (value?: Date) => void;
+  coi: boolean;
+  setCoi: (value: boolean) => void;
+  coiRequested?: Date;
+  setCoiRequested: (value?: Date) => void;
+  certifiedPayroll: boolean;
+  setCertifiedPayroll: (value: boolean) => void;
+  certifiedPayrollRequested?: Date;
+  setCertifiedPayrollRequested: (value?: Date) => void;
+  intercoPO?: string;
+  setIntercoPO: (value: string) => void;
+  customerPO?: string;
+  setCustomerPO: (value: string) => void;
+  estimator?: string;
+  setEstimator: (value: string) => void;
 }
 
 interface WorkOrderDetailsProps {
@@ -82,14 +111,29 @@ export function WorkOrderDetails({
   const [isClient, setIsClient] = useState(false);
 
   const { 
-    title, setTitle,
+    // Destructure all the new editable fields
+    jobName, setJobName,
     description, setDescription,
-    priority, setPriority,
     status, setStatus,
     assignedTechnicianId, setAssignedTechnicianId,
     workSiteId, setWorkSiteId,
-    dueDate, setDueDate,
-    customerOrderId, setCustomerOrderId,
+    createdDate, setCreatedDate,
+    billTo, setBillTo,
+    poNumber, setPoNumber,
+    contactInfo, setContactInfo,
+    serviceScheduleDate, setServiceScheduleDate,
+    quotedAmount, setQuotedAmount,
+    timeAndMaterial, setTimeAndMaterial,
+    permit, setPermit,
+    permitCost, setPermitCost,
+    permitFiled, setPermitFiled,
+    coi, setCoi,
+    coiRequested, setCoiRequested,
+    certifiedPayroll, setCertifiedPayroll,
+    certifiedPayrollRequested, setCertifiedPayrollRequested,
+    intercoPO, setIntercoPO,
+    customerPO, setCustomerPO,
+    estimator, setEstimator
   } = editableFields;
 
   useEffect(() => {
@@ -143,6 +187,16 @@ export function WorkOrderDetails({
     setNewNotePhotos([]);
   };
 
+  const DetailItem = ({ label, value, icon, isDate, children }: { label: string, value?: string | number | null, icon?: React.ReactNode, isDate?: boolean, children?: React.ReactNode }) => {
+    if (!children && !value && value !== 0) return null;
+    return (
+        <div className="flex justify-between items-start">
+            <span className="text-muted-foreground flex items-center gap-2">{icon}{label}</span>
+            {children ? <div className="text-right">{children}</div> : <span className="font-medium text-right">{isDate && value ? format(new Date(value), 'MM-dd-yy') : value}</span>}
+        </div>
+    )
+  }
+
   return (
     <form id="work-order-form" onSubmit={onWorkOrderUpdate}>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -150,49 +204,43 @@ export function WorkOrderDetails({
           <Card>
             <CardHeader>
               <div className="flex justify-between items-start">
-                {isEditing ? (
-                  <div className="flex-1 mr-4">
-                      <Label htmlFor="edit-work-site" className="text-sm text-muted-foreground">Work Site Location</Label>
-                      <Select value={workSiteId} onValueChange={setWorkSiteId}>
-                        <SelectTrigger id="edit-work-site">
-                            <SelectValue placeholder="Select a work site" />
+                <div>
+                    <CardTitle className="text-2xl font-bold flex items-center gap-2">
+                        {isEditing ? (
+                            <Input value={jobName} onChange={(e) => setJobName(e.target.value)} placeholder="Job Name" className="text-2xl" />
+                        ) : (
+                            workOrder.jobName
+                        )}
+                    </CardTitle>
+                    <CardDescription>
+                        Job # {workOrder.id}
+                    </CardDescription>
+                </div>
+                {isEditing ? 
+                    <Select value={status} onValueChange={(val) => setStatus(val as WorkOrder['status'])}>
+                        <SelectTrigger className="w-[180px] h-8">
+                            <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            {workSites.map(site => (
-                                <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
-                            ))}
+                            <SelectItem value="Open">Open</SelectItem>
+                            <SelectItem value="In Progress">In Progress</SelectItem>
+                            <SelectItem value="On Hold">On Hold</SelectItem>
+                            <SelectItem value="Completed">Completed</SelectItem>
                         </SelectContent>
-                      </Select>
-                  </div>
-                ) : (
-                  <div>
-                      <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                        <MapPin className="h-6 w-6 text-primary" />
-                        {workOrder.workSite?.name || 'No Work Site Assigned'}
-                      </CardTitle>
-                      <CardDescription>{workOrder.workSite?.address}</CardDescription>
-                  </div>
-                )}
-                {isEditing ? <StatusBadge status={status} /> : <StatusBadge status={workOrder.status} />}
+                    </Select>
+                 : <StatusBadge status={workOrder.status} />}
               </div>
             </CardHeader>
             <CardContent>
               {isEditing ? (
                   <div className="space-y-4">
                       <div>
-                        <Label htmlFor="edit-title">Task Title</Label>
-                        <Input id="edit-title" value={title} onChange={(e) => setTitle(e.target.value)} />
-                      </div>
-                      <div>
-                          <Label htmlFor="edit-description">Description</Label>
+                          <Label htmlFor="edit-description">Job Description</Label>
                           <Textarea id="edit-description" value={description} onChange={(e) => setDescription(e.target.value)} rows={4}/>
                       </div>
                   </div>
               ) : (
-                <>
-                  <h3 className="font-semibold text-lg">{workOrder.title}</h3>
-                  <p className="text-muted-foreground mt-1">{workOrder.description}</p>
-                </>
+                <p className="text-muted-foreground mt-1">{workOrder.description}</p>
               )}
             </CardContent>
           </Card>
@@ -302,115 +350,107 @@ export function WorkOrderDetails({
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground flex items-center gap-2">
-                    <Hash className="h-4 w-4" />
-                    Customer Order ID
-                  </span>
-                  {isEditing ? (
-                     <Input 
-                        className="w-[180px] h-8" 
-                        value={customerOrderId || ''}
-                        onChange={(e) => setCustomerOrderId(e.target.value)}
-                        placeholder="e.g. CUST-A4B3"
-                     />
-                  ) : (
-                    <span className="font-medium">{workOrder.customerOrderId || 'N/A'}</span>
-                  )}
-                </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Priority</span>
-                {isEditing ? (
-                  <Select value={priority} onValueChange={(val) => setPriority(val as WorkOrder['priority'])}>
-                      <SelectTrigger className="w-[180px] h-8">
-                          <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                          <SelectItem value="Low">Low</SelectItem>
-                          <SelectItem value="Medium">Medium</SelectItem>
-                          <SelectItem value="High">High</SelectItem>
-                      </SelectContent>
-                  </Select>
-                ) : (
-                  <PriorityIcon priority={workOrder.priority} />
-                )}
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Status</span>
-                {isEditing ? (
-                  <Select value={status} onValueChange={(val) => setStatus(val as WorkOrder['status'])}>
-                      <SelectTrigger className="w-[180px] h-8">
-                          <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                          <SelectItem value="Open">Open</SelectItem>
-                          <SelectItem value="In Progress">In Progress</SelectItem>
-                          <SelectItem value="On Hold">On Hold</SelectItem>
-                          <SelectItem value="Completed">Completed</SelectItem>
-                      </SelectContent>
-                  </Select>
-                ) : (
-                  <StatusBadge status={workOrder.status} />
-                )}
-              </div>
-              <Separator />
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Assigned To
-                </span>
-                {isEditing ? (
-                  <Select value={assignedTechnicianId || 'unassigned'} onValueChange={(val) => setAssignedTechnicianId(val === 'unassigned' ? undefined : val)}>
-                      <SelectTrigger className="w-[180px] h-8">
-                          <SelectValue placeholder="Select technician" />
-                      </SelectTrigger>
-                      <SelectContent>
-                          <SelectItem value="unassigned">Unassigned</SelectItem>
-                          {technicians.map(tech => (
-                              <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>
-                          ))}
-                      </SelectContent>
-                  </Select>
-                ) : (
-                    assignedTechnician ? (
-                      <div className="flex items-center gap-2 font-medium">
-                        <Avatar className="h-6 w-6">
-                          <AvatarImage src={assignedTechnician.avatarUrl} />
-                          <AvatarFallback>{assignedTechnician.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <span>{assignedTechnician.name}</span>
-                      </div>
+                <DetailItem label="Date" value={workOrder.createdDate} isDate/>
+                <DetailItem label="Bill To">
+                    {isEditing ? <Input className="h-8 text-right" value={billTo} onChange={(e) => setBillTo(e.target.value)} /> : <span className="font-medium">{workOrder.billTo || 'N/A'}</span>}
+                </DetailItem>
+                <DetailItem label="PO #">
+                    {isEditing ? <Input className="h-8 text-right" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} /> : <span className="font-medium">{workOrder.poNumber || 'N/A'}</span>}
+                </DetailItem>
+                <DetailItem label="Contact Info">
+                     {isEditing ? <Textarea className="text-right" value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} /> : <span className="font-medium whitespace-pre-wrap text-right">{workOrder.contactInfo || 'N/A'}</span>}
+                </DetailItem>
+                <Separator/>
+                <DetailItem label="Job Site">
+                    {isEditing ? (
+                        <Select value={workSiteId} onValueChange={setWorkSiteId}>
+                            <SelectTrigger className="w-[180px] h-8">
+                                <SelectValue placeholder="Select a work site" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {workSites.map(site => (
+                                    <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     ) : (
-                      <span className="font-medium">Unassigned</span>
-                    )
-                )}
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Created
-                </span>
-                  {isClient ? (
-                    <span className="font-medium">{format(new Date(workOrder.createdAt), 'MMM d, yyyy')}</span>
-                  ) : (
-                    <span className="font-medium">Loading...</span>
-                  )}
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-primary" />
-                  Due Date
-                </span>
-                {isEditing ? (
-                  <DatePicker date={dueDate} setDate={setDueDate} className="w-[180px] h-8" />
-                ) : (
-                  isClient ? (
-                      <span className="font-medium">{format(new Date(workOrder.dueDate), 'MMM d, yyyy')}</span>
-                  ) : (
-                      <span className="font-medium">Loading...</span>
-                  )
-                )}
-              </div>
+                       <div className="text-right">
+                         <p className="font-medium">{workOrder.workSite?.name || 'N/A'}</p>
+                         <p className="text-muted-foreground">{workOrder.workSite?.address}</p>
+                       </div>
+                    )}
+                </DetailItem>
+                 <DetailItem label="Assigned To">
+                    {isEditing ? (
+                      <Select value={assignedTechnicianId || 'unassigned'} onValueChange={(val) => setAssignedTechnicianId(val === 'unassigned' ? undefined : val)}>
+                          <SelectTrigger className="w-[180px] h-8">
+                              <SelectValue placeholder="Select technician" />
+                          </SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="unassigned">Unassigned</SelectItem>
+                              {technicians.map(tech => (
+                                  <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>
+                              ))}
+                          </SelectContent>
+                      </Select>
+                    ) : (
+                        assignedTechnician ? (
+                          <div className="flex items-center justify-end gap-2 font-medium">
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={assignedTechnician.avatarUrl} />
+                              <AvatarFallback>{assignedTechnician.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <span>{assignedTechnician.name}</span>
+                          </div>
+                        ) : (
+                          <span className="font-medium">Unassigned</span>
+                        )
+                    )}
+                </DetailItem>
+                 <Separator/>
+                 <DetailItem label="Service Schedule Date">
+                     {isEditing ? <DatePicker date={serviceScheduleDate} setDate={setServiceScheduleDate} /> : <span className="font-medium">{workOrder.serviceScheduleDate ? format(new Date(workOrder.serviceScheduleDate), 'MMM d, yyyy') : 'N/A'}</span>}
+                 </DetailItem>
+                <DetailItem label="Quoted Amount">
+                    {isEditing ? <Input className="h-8 text-right" type="number" value={quotedAmount} onChange={(e) => setQuotedAmount(Number(e.target.value))} /> : <span className="font-medium">{workOrder.quotedAmount ? `$${workOrder.quotedAmount}` : 'N/A'}</span>}
+                </DetailItem>
+                <DetailItem label="Time & Material">
+                    {isEditing ? <Checkbox checked={timeAndMaterial} onCheckedChange={(c) => setTimeAndMaterial(Boolean(c))} /> : <span className="font-medium">{workOrder.timeAndMaterial ? 'Yes' : 'No'}</span>}
+                </DetailItem>
+                <Separator />
+                <DetailItem label="Permit">
+                    {isEditing ? <Checkbox checked={permit} onCheckedChange={(c) => setPermit(Boolean(c))} /> : <span className="font-medium">{workOrder.permit ? 'Yes' : 'No'}</span>}
+                </DetailItem>
+                 <DetailItem label="Permit Cost">
+                    {isEditing ? <Input className="h-8 text-right" type="number" value={permitCost} onChange={(e) => setPermitCost(Number(e.target.value))} /> : <span className="font-medium">{workOrder.permitCost ? `$${workOrder.permitCost}` : 'N/A'}</span>}
+                </DetailItem>
+                 <DetailItem label="Permit Filed">
+                    {isEditing ? <DatePicker date={permitFiled} setDate={setPermitFiled} /> : <span className="font-medium">{workOrder.permitFiled ? format(new Date(workOrder.permitFiled), 'MMM d, yyyy') : 'N/A'}</span>}
+                 </DetailItem>
+                 <Separator />
+                 <DetailItem label="COI">
+                    {isEditing ? <Checkbox checked={coi} onCheckedChange={(c) => setCoi(Boolean(c))} /> : <span className="font-medium">{workOrder.coi ? 'Yes' : 'No'}</span>}
+                </DetailItem>
+                 <DetailItem label="COI Requested">
+                    {isEditing ? <DatePicker date={coiRequested} setDate={setCoiRequested} /> : <span className="font-medium">{workOrder.coiRequested ? format(new Date(workOrder.coiRequested), 'MMM d, yyyy') : 'N/A'}</span>}
+                 </DetailItem>
+                 <Separator />
+                  <DetailItem label="Certified Payroll">
+                    {isEditing ? <Checkbox checked={certifiedPayroll} onCheckedChange={(c) => setCertifiedPayroll(Boolean(c))} /> : <span className="font-medium">{workOrder.certifiedPayroll ? 'Yes' : 'No'}</span>}
+                </DetailItem>
+                 <DetailItem label="Certified Payroll Requested">
+                    {isEditing ? <DatePicker date={certifiedPayrollRequested} setDate={setCertifiedPayrollRequested} /> : <span className="font-medium">{workOrder.certifiedPayrollRequested ? format(new Date(workOrder.certifiedPayrollRequested), 'MMM d, yyyy') : 'N/A'}</span>}
+                 </DetailItem>
+                 <Separator />
+                 <DetailItem label="Interco PO#">
+                    {isEditing ? <Input className="h-8 text-right" value={intercoPO} onChange={(e) => setIntercoPO(e.target.value)} /> : <span className="font-medium">{workOrder.intercoPO || 'N/A'}</span>}
+                </DetailItem>
+                 <DetailItem label="Customer PO#">
+                    {isEditing ? <Input className="h-8 text-right" value={customerPO} onChange={(e) => setCustomerPO(e.target.value)} /> : <span className="font-medium">{workOrder.customerPO || 'N/A'}</span>}
+                </DetailItem>
+                 <DetailItem label="Estimator/Requested By">
+                    {isEditing ? <Input className="h-8 text-right" value={estimator} onChange={(e) => setEstimator(e.target.value)} /> : <span className="font-medium">{workOrder.estimator || 'N/A'}</span>}
+                </DetailItem>
             </CardContent>
           </Card>
         </div>

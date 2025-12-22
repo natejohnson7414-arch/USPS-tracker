@@ -5,27 +5,130 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "WorkOrder",
       "type": "object",
-      "description": "Represents a work order in the system.",
+      "description": "Represents a work order in the system based on the Small Job Form.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the WorkOrder entity."
+          "description": "Unique identifier for the WorkOrder entity (Job #)."
         },
-        "customerOrderId": {
+        "createdDate": {
           "type": "string",
-          "description": "An optional ID provided by the customer for their reference."
+          "description": "Date when the work order was created.",
+          "format": "date-time"
         },
-        "title": {
+        "billTo": {
+            "type": "string",
+            "description": "Who to bill for the job."
+        },
+        "poNumber": {
+            "type": "string",
+            "description": "Purchase Order number."
+        },
+        "contactInfo": {
+            "type": "string",
+            "description": "Contact information for the job."
+        },
+        "jobName": {
+            "type": "string",
+            "description": "Name of the job (e.g., No Heat Boiler)."
+        },
+        "workSiteId": {
           "type": "string",
-          "description": "A short title for the work order."
+          "description": "Reference to the WorkSite where the order is located."
         },
         "description": {
           "type": "string",
           "description": "Detailed description of the work order."
         },
-        "priority": {
-          "type": "string",
-          "description": "Priority level of the work order (e.g., High, Medium, Low)."
+        "serviceScheduleDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date for the scheduled service."
+        },
+        "quotedAmount": {
+            "type": "number",
+            "description": "The quoted amount for the job."
+        },
+        "taxable": {
+            "type": "boolean",
+            "description": "Is the job taxable."
+        },
+        "timeAndMaterial": {
+            "type": "boolean",
+            "description": "Is the job billed based on time and material."
+        },
+        "exempt": {
+            "type": "boolean",
+            "description": "Is the job exempt from tax."
+        },
+        "permit": {
+            "type": "boolean",
+            "description": "Is a permit required."
+        },
+        "locates": {
+            "type": "string",
+            "description": "Information about utility locates."
+        },
+        "locatesDone": {
+             "type": "string",
+             "format": "date-time",
+            "description": "Date when locates were done."
+        },
+        "permitCost": {
+            "type": "number",
+            "description": "Cost of the permit."
+        },
+        "digNumber": {
+            "type": "string",
+            "description": "Dig safe number."
+        },
+        "permitFiled": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date when the permit was filed."
+        },
+        "coi": {
+            "type": "boolean",
+            "description": "Is a Certificate of Insurance required."
+        },
+        "coiRequested": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date when COI was requested."
+        },
+        "bondNeeded": {
+            "type": "string",
+            "description": "Information about any bond needed."
+        },
+        "bondAppliedFor": {
+            "type": "string",
+            "description": "Information about bond application."
+        },
+        "bondSent": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date when the bond was sent."
+        },
+        "certifiedPayroll": {
+            "type": "boolean",
+            "description": "Is certified payroll required."
+        },
+        "certifiedPayrollRequested": {
+             "type": "string",
+             "format": "date-time",
+            "description": "Date when certified payroll was requested."
+        },
+        "intercoPO": {
+            "type": "string",
+            "description": "Intercompany Purchase Order number."
+        },
+        "customerPO": {
+            "type": "string",
+            "description": "Customer Purchase Order number."
+        },
+        "estimator": {
+            "type": "string",
+            "description": "Name of the estimator or requester."
         },
         "status": {
           "type": "string",
@@ -34,30 +137,14 @@
         "assignedTechnicianId": {
           "type": "string",
           "description": "Reference to Technician. (Relationship: Technician 1:N WorkOrder)"
-        },
-        "workSiteId": {
-          "type": "string",
-          "description": "Reference to the WorkSite where the order is located."
-        },
-        "createdDate": {
-          "type": "string",
-          "description": "Date when the work order was created.",
-          "format": "date-time"
-        },
-        "dueDate": {
-          "type": "string",
-          "description": "Date when the work order is due.",
-          "format": "date-time"
         }
       },
       "required": [
         "id",
-        "title",
-        "description",
-        "priority",
-        "status",
         "createdDate",
-        "dueDate"
+        "jobName",
+        "description",
+        "status"
       ]
     },
     "Technician": {

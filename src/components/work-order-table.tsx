@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import {
   Table,
@@ -11,9 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { WorkOrder, Technician } from '@/lib/types';
 import { StatusBadge } from './status-badge';
-import { PriorityIcon } from './priority-icon';
 import { format } from 'date-fns';
-import { DueDateTooltip } from './due-date-tooltip';
 
 interface WorkOrderTableProps {
   workOrders: WorkOrder[];
@@ -29,12 +28,11 @@ export function WorkOrderTable({ workOrders, technicians }: WorkOrderTableProps)
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[150px]">Order ID</TableHead>
-              <TableHead>Title</TableHead>
+              <TableHead className="w-[150px]">Job #</TableHead>
+              <TableHead>Job Name</TableHead>
               <TableHead className="w-[120px]">Status</TableHead>
-              <TableHead className="w-[120px]">Priority</TableHead>
               <TableHead className="w-[180px]">Assigned To</TableHead>
-              <TableHead className="w-[180px]">Due Date</TableHead>
+              <TableHead className="w-[180px]">Date</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -47,24 +45,19 @@ export function WorkOrderTable({ workOrders, technicians }: WorkOrderTableProps)
                       <Link href={`/work-orders/${order.id}`} className="font-medium text-accent hover:underline">
                         {order.id}
                       </Link>
-                      {order.customerOrderId && (
-                        <div className="text-xs text-muted-foreground mt-1">{order.customerOrderId}</div>
+                      {order.customerPO && (
+                        <div className="text-xs text-muted-foreground mt-1">PO: {order.customerPO}</div>
                       )}
                     </TableCell>
                     <TableCell>
                        <Link href={`/work-orders/${order.id}`} className="block">
-                        <div className="font-medium">{order.title}</div>
+                        <div className="font-medium">{order.jobName}</div>
                         <div className="text-sm text-muted-foreground truncate max-w-xs">{order.description}</div>
                       </Link>
                     </TableCell>
                     <TableCell>
                        <Link href={`/work-orders/${order.id}`} className="block">
                         <StatusBadge status={order.status} />
-                       </Link>
-                    </TableCell>
-                    <TableCell>
-                       <Link href={`/work-orders/${order.id}`} className="block">
-                        <PriorityIcon priority={order.priority} />
                        </Link>
                     </TableCell>
                     <TableCell>
@@ -84,7 +77,7 @@ export function WorkOrderTable({ workOrders, technicians }: WorkOrderTableProps)
                     </TableCell>
                     <TableCell>
                       <Link href={`/work-orders/${order.id}`} className="block">
-                        <DueDateTooltip dueDate={order.dueDate} />
+                        <div className="font-medium">{format(new Date(order.createdDate), 'MMM d, yyyy')}</div>
                       </Link>
                     </TableCell>
                   </TableRow>
@@ -92,7 +85,7 @@ export function WorkOrderTable({ workOrders, technicians }: WorkOrderTableProps)
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={5} className="h-24 text-center">
                   No work orders found.
                 </TableCell>
               </TableRow>
