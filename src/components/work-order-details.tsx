@@ -22,7 +22,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { DatePicker } from './ui/date-picker';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, User, Calendar, Info, FileText, X, Video, Library, Loader2, MapPin, Hash, DollarSign, Building } from 'lucide-react';
+import { Camera, User, Calendar, Info, FileText, X, Video, Library, Loader2, MapPin, Hash, DollarSign, Building, Map } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { useFirestore, useUser } from '@/firebase';
 import { Label } from '@/components/ui/label';
@@ -189,6 +189,13 @@ export function WorkOrderDetails({
     setNewNotePhotos([]);
   };
 
+  const handleDirectionsClick = () => {
+    if (workOrder.workSite?.address) {
+      const query = encodeURIComponent(workOrder.workSite.address);
+      window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+    }
+  };
+
   const DetailItem = ({ label, value, icon, isDate, children }: { label: string, value?: string | number | null, icon?: React.ReactNode, isDate?: boolean, children?: React.ReactNode }) => {
     if (!children && !value && value !== 0) return null;
     return (
@@ -342,10 +349,18 @@ export function WorkOrderDetails({
         <div className="space-y-8">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                  <Info className="h-5 w-5" />
-                  Details
-                </CardTitle>
+                <div className="flex justify-between items-center">
+                    <CardTitle className="flex items-center gap-2">
+                        <Info className="h-5 w-5" />
+                        Details
+                    </CardTitle>
+                     {workOrder.workSite?.address && !isEditing && (
+                        <Button variant="outline" size="icon" onClick={handleDirectionsClick}>
+                            <Map className="h-4 w-4" />
+                            <span className="sr-only">Get Directions</span>
+                        </Button>
+                    )}
+                </div>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
                 <DetailItem label="Date" value={workOrder.createdDate} isDate/>
