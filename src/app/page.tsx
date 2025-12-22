@@ -90,8 +90,8 @@ export default function DashboardPage() {
       <DashboardClient 
         initialWorkOrders={workOrders || []} 
         technicians={technicians} 
-        workSites={workSites}
-        clients={clients}
+        initialWorkSites={workSites}
+        initialClients={clients}
       />
     </MainLayout>
   );

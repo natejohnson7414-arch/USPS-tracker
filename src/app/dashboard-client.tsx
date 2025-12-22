@@ -1,20 +1,24 @@
-
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { WorkOrder, Technician, WorkSite, Client } from '@/lib/types';
 import { WorkOrderTable } from '@/components/work-order-table';
 import { WorkOrderTableToolbar } from '@/components/work-order-table-toolbar';
+import { useFirestore, useCollection, useUser, useMemoFirebase } from '@/firebase';
+import { collection, query } from 'firebase/firestore';
+import { getTechnicians, getWorkSites as fetchWorkSites, getClients as fetchClients } from '@/lib/data';
 
 interface DashboardClientProps {
   initialWorkOrders: WorkOrder[];
   technicians: Technician[];
-  workSites: WorkSite[];
-  clients: Client[];
+  initialWorkSites: WorkSite[];
+  initialClients: Client[];
 }
 
-export function DashboardClient({ initialWorkOrders, technicians, workSites, clients }: DashboardClientProps) {
+export function DashboardClient({ initialWorkOrders, technicians, initialWorkSites, initialClients }: DashboardClientProps) {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
+  const [workSites, setWorkSites] = useState<WorkSite[]>(initialWorkSites);
+  const [clients, setClients] = useState<Client[]>(initialClients);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
 
@@ -33,6 +37,10 @@ export function DashboardClient({ initialWorkOrders, technicians, workSites, cli
   const handleAddWorkOrder = (newOrder: WorkOrder) => {
     setWorkOrders(prev => [newOrder, ...prev]);
   };
+  
+  const handleAddWorkSite = (newSite: WorkSite) => {
+    setWorkSites(prev => [newSite, ...prev]);
+  }
 
   return (
     <div className="container mx-auto py-8">
@@ -46,6 +54,7 @@ export function DashboardClient({ initialWorkOrders, technicians, workSites, cli
           workSites={workSites}
           clients={clients}
           onWorkOrderAdded={handleAddWorkOrder}
+          onWorkSiteAdded={handleAddWorkSite}
         />
         <WorkOrderTable workOrders={filteredWorkOrders} technicians={technicians} />
       </div>

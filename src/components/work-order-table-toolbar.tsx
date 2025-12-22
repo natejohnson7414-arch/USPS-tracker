@@ -13,6 +13,7 @@ interface WorkOrderTableToolbarProps {
   workSites: WorkSite[];
   clients: Client[];
   onWorkOrderAdded: (newOrder: WorkOrder) => void;
+  onWorkSiteAdded: (newSite: WorkSite) => void;
 }
 
 const statuses = ['All', 'Open', 'In Progress', 'On Hold', 'Completed'];
@@ -24,7 +25,8 @@ export function WorkOrderTableToolbar({
   technicians,
   workSites,
   clients,
-  onWorkOrderAdded
+  onWorkOrderAdded,
+  onWorkSiteAdded
 }: WorkOrderTableToolbarProps) {
   return (
     <div className="flex flex-col md:flex-row items-center justify-between gap-4">
@@ -48,7 +50,13 @@ export function WorkOrderTableToolbar({
             </TabsList>
           </ScrollArea>
         </Tabs>
-        <CreateWorkOrderDialog technicians={technicians} workSites={workSites} clients={clients} onWorkOrderAdded={onWorkOrderAdded} />
+        <CreateWorkOrderDialog 
+            technicians={technicians} 
+            workSites={workSites} 
+            clients={clients} 
+            onWorkOrderAdded={onWorkOrderAdded} 
+            onWorkSiteAdded={onWorkSiteAdded}
+        />
       </div>
     </div>
   );

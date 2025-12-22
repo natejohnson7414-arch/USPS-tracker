@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -38,9 +37,10 @@ interface CreateWorkOrderDialogProps {
   workSites: WorkSite[];
   clients: Client[];
   onWorkOrderAdded: (newOrder: WorkOrder) => void;
+  onWorkSiteAdded: (newSite: WorkSite) => void;
 }
 
-export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkOrderAdded }: CreateWorkOrderDialogProps) {
+export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkOrderAdded, onWorkSiteAdded }: CreateWorkOrderDialogProps) {
   const db = useFirestore();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -202,10 +202,13 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
 
         const docRef = await addDocumentNonBlocking(workSitesRef, newSiteData);
         
-        // This is a simplification. In a real app, you'd want to refetch work sites
-        // or add the new one to the local state to update the dropdown.
-        // For now, we'll just set the ID.
-        setWorkSiteId(docRef.id);
+        const newSite: WorkSite = {
+            id: docRef.id,
+            ...newSiteData
+        }
+
+        onWorkSiteAdded(newSite);
+        setWorkSiteId(newSite.id);
         setShowCreateSitePrompt(false);
         toast({ title: "Work Site Created", description: "New work site has been created and selected." });
 
@@ -244,18 +247,20 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
       const newWorkOrderData = {
         id: jobId,
         createdDate: (createdDate || new Date()).toISOString(),
+        jobName: selectedWorkSite.name,
+        description,
+        status: 'Open' as const,
+        assignedTechnicianId,
+        workSiteId,
+        clientId,
         billTo: selectedClient?.name,
-        clientId: clientId,
         poNumber,
         contactInfo,
-        jobName: selectedWorkSite.name,
-        workSiteId: workSiteId,
-        description,
         serviceScheduleDate: serviceScheduleDate?.toISOString(),
-        quotedAmount: quotedAmount,
+        quotedAmount,
         timeAndMaterial,
         permit,
-        permitCost: permitCost,
+        permitCost,
         permitFiled: permitFiled?.toISOString(),
         coi,
         coiRequested: coiRequested?.toISOString(),
@@ -263,9 +268,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
         certifiedPayrollRequested: certifiedPayrollRequested?.toISOString(),
         intercoPO,
         customerPO,
-        estimator,
-        status: 'Open' as const,
-        assignedTechnicianId: assignedTechnicianId,
+        estimator
       };
 
       // Firestore does not allow `undefined` values. We clean them here.
@@ -525,5 +528,3 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
     </Dialog>
   );
 }
-
-    
