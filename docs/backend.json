@@ -200,19 +200,6 @@
         "name"
       ]
     },
-    "WorkOrderCounter": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "WorkOrderCounter",
-      "type": "object",
-      "description": "A counter to generate unique, sequential work order IDs for a given year.",
-      "properties": {
-        "lastNumber": {
-          "type": "number",
-          "description": "The last sequential number used for a work order ID in a specific year."
-        }
-      },
-      "required": ["lastNumber"]
-    },
      "WorkSite": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "WorkSite",
@@ -368,22 +355,6 @@
             {
               "name": "updateId",
               "description": "Unique identifier for the work order update."
-            }
-          ]
-        }
-      },
-       {
-        "path": "/counters/{counterId}",
-        "definition": {
-          "entityName": "WorkOrderCounter",
-          "schema": {
-            "$ref": "#/backend/entities/WorkOrderCounter"
-          },
-          "description": "Stores counters for generating unique IDs. For example, a document with ID 'work_orders_24' would track the last used number for work orders in the year 2024.",
-          "params": [
-            {
-              "name": "counterId",
-              "description": "Identifier for the counter, e.g., 'work_orders_24'."
             }
           ]
         }

@@ -26,9 +26,8 @@ import { DatePicker } from './ui/date-picker';
 import { Loader2, PlusCircle } from 'lucide-react';
 import type { Technician, WorkOrder } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore } from '@/firebase';
-import { doc, runTransaction } from 'firebase/firestore';
-import { format } from 'date-fns';
+import { useFirestore, setDocumentNonBlocking } from '@/firebase';
+import { doc } from 'firebase/firestore';
 
 interface CreateWorkOrderDialogProps {
   technicians: Technician[];
@@ -38,6 +37,7 @@ interface CreateWorkOrderDialogProps {
 export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateWorkOrderDialogProps) {
   const db = useFirestore();
   const [open, setOpen] = useState(false);
+  const [workOrderId, setWorkOrderId] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<WorkOrder['priority'] | undefined>();
@@ -47,6 +47,7 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
   const { toast } = useToast();
 
   const resetForm = () => {
+    setWorkOrderId('');
     setTitle('');
     setDescription('');
     setPriority(undefined);
@@ -55,10 +56,10 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
   };
   
   const handleSubmit = async () => {
-    if (!db || !title || !description || !priority || !dueDate) {
+    if (!db || !workOrderId || !title || !description || !priority || !dueDate) {
       toast({
         title: 'Missing Information',
-        description: 'Please fill out all required fields.',
+        description: 'Please fill out all required fields, including the Work Order ID.',
         variant: 'destructive',
       });
       return;
@@ -67,49 +68,34 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
     setIsSubmitting(true);
 
     try {
-      const year = format(new Date(), 'yy');
-      const counterRef = doc(db, 'counters', `work_orders_${year}`);
+      const workOrderRef = doc(db, 'work_orders', workOrderId);
 
-      const newWorkOrder = await runTransaction(db, async (transaction) => {
-        const counterDoc = await transaction.get(counterRef);
-        let nextNumber = 1;
-        if (counterDoc.exists()) {
-          nextNumber = counterDoc.data().lastNumber + 1;
-        }
+      const newWorkOrderData = {
+        id: workOrderId,
+        title,
+        description,
+        priority,
+        status: 'Open' as const,
+        assignedTechnicianId: assignedTechnicianId || undefined,
+        createdAt: new Date().toISOString(),
+        dueDate: dueDate.toISOString(),
+      };
+      
+      setDocumentNonBlocking(workOrderRef, newWorkOrderData, { merge: false });
 
-        const newWorkOrderId = `WO-${year}-${String(nextNumber).padStart(4, '0')}`;
-        const workOrderRef = doc(db, 'work_orders', newWorkOrderId);
+      const newWorkOrder: WorkOrder = {
+          ...newWorkOrderData,
+          notes: [],
+          assignedTechnicianId: assignedTechnicianId,
+      };
 
-        const newWorkOrderData = {
-          id: newWorkOrderId,
-          title,
-          description,
-          priority,
-          status: 'Open' as const,
-          assignedTechnicianId: assignedTechnicianId || null,
-          createdAt: new Date().toISOString(),
-          dueDate: dueDate.toISOString(),
-        };
-
-        transaction.set(counterRef, { lastNumber: nextNumber }, { merge: true });
-        transaction.set(workOrderRef, newWorkOrderData);
-        
-        return {
-            ...newWorkOrderData,
-            notes: [],
-            assignedTechnicianId: assignedTechnicianId,
-        } as WorkOrder;
+      onWorkOrderAdded(newWorkOrder);
+      toast({
+          title: 'Work Order Created',
+          description: `Successfully created work order ${newWorkOrder.id}.`,
       });
-
-      if (newWorkOrder) {
-        onWorkOrderAdded(newWorkOrder);
-        toast({
-            title: 'Work Order Created',
-            description: `Successfully created work order ${newWorkOrder.id}.`,
-        });
-        resetForm();
-        setOpen(false);
-      }
+      resetForm();
+      setOpen(false);
 
     } catch (error) {
       console.error("Error creating work order:", error);
@@ -141,8 +127,10 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
             <Label htmlFor="workOrderId">Work Order ID</Label>
             <Input 
                 id="workOrderId" 
-                value="Will be auto-generated" 
-                disabled
+                value={workOrderId} 
+                onChange={e => setWorkOrderId(e.target.value)}
+                placeholder="e.g., WO-24-0001"
+                disabled={isSubmitting}
             />
           </div>
           <div className="sm:col-span-2">

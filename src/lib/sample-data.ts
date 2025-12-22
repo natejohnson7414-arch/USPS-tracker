@@ -29,8 +29,9 @@ export const sampleTechnicians: Omit<Technician, 'id' | 'roleId'>[] = [
   },
 ];
 
-export const sampleWorkOrders: Omit<WorkOrder, 'id' | 'assignedTechnicianId' | 'notes'>[] = [
+export const sampleWorkOrders: Omit<WorkOrder, 'assignedTechnicianId' | 'notes'>[] = [
   {
+    id: 'WO-24-0001',
     title: 'Fix leaking faucet in breakroom',
     description: 'The main faucet in the employee breakroom is continuously dripping. Please inspect and repair.',
     priority: 'High',
@@ -39,6 +40,7 @@ export const sampleWorkOrders: Omit<WorkOrder, 'id' | 'assignedTechnicianId' | '
     dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
   },
   {
+    id: 'WO-24-0002',
     title: 'Replace broken window in Conference Room A',
     description: 'A window pane was cracked during the recent storm. Needs to be replaced.',
     priority: 'Medium',
@@ -47,6 +49,7 @@ export const sampleWorkOrders: Omit<WorkOrder, 'id' | 'assignedTechnicianId' | '
     dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   },
   {
+    id: 'WO-24-0003',
     title: 'HVAC unit on rooftop making loud noises',
     description: 'The HVAC unit for the west wing is making a loud clanking noise. Suspect a loose fan belt.',
     priority: 'High',
@@ -55,6 +58,7 @@ export const sampleWorkOrders: Omit<WorkOrder, 'id' | 'assignedTechnicianId' | '
     dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
   },
   {
+    id: 'WO-24-0004',
     title: 'Annual fire extinguisher inspection',
     description: 'Perform the annual inspection for all fire extinguishers in the building.',
     priority: 'Low',
@@ -63,6 +67,7 @@ export const sampleWorkOrders: Omit<WorkOrder, 'id' | 'assignedTechnicianId' | '
     dueDate: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(),
   },
     {
+    id: 'WO-24-0005',
     title: 'Repair faulty wiring in main server room',
     description: 'Lights are flickering in the server room. Possible faulty wiring or breaker issue. Urgent attention required.',
     priority: 'High',

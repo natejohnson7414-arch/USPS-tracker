@@ -1,11 +1,10 @@
 
 'use client';
 import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite } from '@/lib/types';
-import { collection, getDoc, doc, runTransaction } from 'firebase/firestore';
+import { collection, getDoc, doc } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 import { sampleRoles, sampleTechnicians, sampleWorkOrders } from './sample-data';
 import { setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { format } from 'date-fns';
 
 export const seedDatabase = async (db: any) => {
     // Check if roles exist
@@ -20,7 +19,6 @@ export const seedDatabase = async (db: any) => {
              roleRefs.map(async (ref, i) => ({ id: ref.id, ...sampleRoles[i] }))
         );
 
-        const adminRole = roles.find(r => r.name === 'Administrator');
         const technicianRole = roles.find(r => r.name === 'Technician');
 
         // Seed Technicians
@@ -46,23 +44,10 @@ export const seedDatabase = async (db: any) => {
         // Seed Work Orders
         for (const [index, wo] of sampleWorkOrders.entries()) {
             const assignedTechnician = technicians[index % technicians.length];
-            const year = format(new Date(), 'yy');
-            const counterRef = doc(db, 'counters', `work_orders_${year}`);
 
-            const newId = await runTransaction(db, async (transaction) => {
-                const counterDoc = await transaction.get(counterRef);
-                let nextNumber = 1;
-                if (counterDoc.exists()) {
-                    nextNumber = counterDoc.data().lastNumber + 1;
-                }
-                transaction.set(counterRef, { lastNumber: nextNumber }, { merge: true });
-                return `WO-${year}-${String(nextNumber).padStart(4, '0')}`;
-            });
-
-            const woRef = doc(db, 'work_orders', newId);
+            const woRef = doc(db, 'work_orders', wo.id);
             const woData = {
                 ...wo,
-                id: newId,
                 assignedTechnicianId: assignedTechnician.id,
             };
             setDocumentNonBlocking(woRef, woData, { merge: false });
