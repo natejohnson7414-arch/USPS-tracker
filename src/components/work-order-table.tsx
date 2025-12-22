@@ -29,7 +29,7 @@ export function WorkOrderTable({ workOrders, technicians }: WorkOrderTableProps)
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[120px]">Order ID</TableHead>
+              <TableHead className="w-[150px]">Order ID</TableHead>
               <TableHead>Title</TableHead>
               <TableHead className="w-[120px]">Status</TableHead>
               <TableHead className="w-[120px]">Priority</TableHead>
@@ -47,6 +47,9 @@ export function WorkOrderTable({ workOrders, technicians }: WorkOrderTableProps)
                       <Link href={`/work-orders/${order.id}`} className="font-medium text-accent hover:underline">
                         {order.id}
                       </Link>
+                      {order.customerOrderId && (
+                        <div className="text-xs text-muted-foreground mt-1">{order.customerOrderId}</div>
+                      )}
                     </TableCell>
                     <TableCell>
                        <Link href={`/work-orders/${order.id}`} className="block">
@@ -100,3 +103,5 @@ export function WorkOrderTable({ workOrders, technicians }: WorkOrderTableProps)
     </Card>
   );
 }
+
+    

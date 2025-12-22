@@ -19,6 +19,7 @@ export type WorkOrderNote = {
 
 export type WorkOrder = {
   id: string;
+  customerOrderId?: string;
   title: string;
   description: string;
   priority: 'Low' | 'Medium' | 'High';
@@ -59,3 +60,5 @@ export type WorkSite = {
     };
     notes?: string;
 }
+
+    

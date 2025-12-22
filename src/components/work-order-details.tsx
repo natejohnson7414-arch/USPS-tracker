@@ -23,7 +23,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { DatePicker } from './ui/date-picker';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, User, Calendar, Info, FileText, X, Video, Library, Loader2, MapPin } from 'lucide-react';
+import { Camera, User, Calendar, Info, FileText, X, Video, Library, Loader2, MapPin, Hash } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { useFirestore, useUser } from '@/firebase';
 import { Label } from '@/components/ui/label';
@@ -43,6 +43,8 @@ interface EditableFields {
   setWorkSiteId: (value?: string) => void;
   dueDate?: Date;
   setDueDate: (value?: Date) => void;
+  customerOrderId?: string;
+  setCustomerOrderId: (value?: string) => void;
 }
 
 interface WorkOrderDetailsProps {
@@ -86,7 +88,8 @@ export function WorkOrderDetails({
     status, setStatus,
     assignedTechnicianId, setAssignedTechnicianId,
     workSiteId, setWorkSiteId,
-    dueDate, setDueDate 
+    dueDate, setDueDate,
+    customerOrderId, setCustomerOrderId,
   } = editableFields;
 
   useEffect(() => {
@@ -299,6 +302,22 @@ export function WorkOrderDetails({
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <Hash className="h-4 w-4" />
+                    Customer Order ID
+                  </span>
+                  {isEditing ? (
+                     <Input 
+                        className="w-[180px] h-8" 
+                        value={customerOrderId || ''}
+                        onChange={(e) => setCustomerOrderId(e.target.value)}
+                        placeholder="e.g. CUST-A4B3"
+                     />
+                  ) : (
+                    <span className="font-medium">{workOrder.customerOrderId || 'N/A'}</span>
+                  )}
+                </div>
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Priority</span>
                 {isEditing ? (
@@ -399,3 +418,5 @@ export function WorkOrderDetails({
     </form>
   );
 }
+
+    

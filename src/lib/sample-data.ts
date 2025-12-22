@@ -32,6 +32,7 @@ export const sampleTechnicians: Omit<Technician, 'id' | 'roleId'>[] = [
 export const sampleWorkOrders: Omit<WorkOrder, 'assignedTechnicianId' | 'notes'>[] = [
   {
     id: 'WO-24-0001',
+    customerOrderId: 'CUST-A4B3',
     title: 'Fix leaking faucet in breakroom',
     description: 'The main faucet in the employee breakroom is continuously dripping. Please inspect and repair.',
     priority: 'High',
@@ -41,6 +42,7 @@ export const sampleWorkOrders: Omit<WorkOrder, 'assignedTechnicianId' | 'notes'>
   },
   {
     id: 'WO-24-0002',
+    customerOrderId: 'CUST-X9Y8',
     title: 'Replace broken window in Conference Room A',
     description: 'A window pane was cracked during the recent storm. Needs to be replaced.',
     priority: 'Medium',
@@ -59,6 +61,7 @@ export const sampleWorkOrders: Omit<WorkOrder, 'assignedTechnicianId' | 'notes'>
   },
   {
     id: 'WO-24-0004',
+    customerOrderId: 'CUST-Z1C2',
     title: 'Annual fire extinguisher inspection',
     description: 'Perform the annual inspection for all fire extinguishers in the building.',
     priority: 'Low',
@@ -76,3 +79,5 @@ export const sampleWorkOrders: Omit<WorkOrder, 'assignedTechnicianId' | 'notes'>
     dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
   },
 ];
+
+    

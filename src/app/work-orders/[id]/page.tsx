@@ -38,6 +38,7 @@ export default function WorkOrderDetailPage() {
   const [editAssignedTechnicianId, setEditAssignedTechnicianId] = useState<string | undefined>(undefined);
   const [editWorkSiteId, setEditWorkSiteId] = useState<string | undefined>(undefined);
   const [editDueDate, setEditDueDate] = useState<Date | undefined>(undefined);
+  const [editCustomerOrderId, setEditCustomerOrderId] = useState<string | undefined>(undefined);
 
 
   const workOrderDocRef = useMemoFirebase(() => {
@@ -75,6 +76,7 @@ export default function WorkOrderDetailPage() {
             setEditAssignedTechnicianId(fetchedWorkOrder.assignedTechnicianId);
             setEditWorkSiteId(fetchedWorkOrder.workSiteId);
             setEditDueDate(new Date(fetchedWorkOrder.dueDate));
+            setEditCustomerOrderId(fetchedWorkOrder.customerOrderId);
         } else {
             setWorkOrder(null);
         }
@@ -105,6 +107,7 @@ export default function WorkOrderDetailPage() {
     setEditAssignedTechnicianId(workOrder.assignedTechnicianId);
     setEditWorkSiteId(workOrder.workSiteId);
     setEditDueDate(new Date(workOrder.dueDate));
+    setEditCustomerOrderId(workOrder.customerOrderId);
   };
   
   const handleCancelEdit = () => {
@@ -169,6 +172,7 @@ export default function WorkOrderDetailPage() {
         assignedTechnicianId: editAssignedTechnicianId,
         workSiteId: editWorkSiteId,
         dueDate: editDueDate.toISOString(),
+        customerOrderId: editCustomerOrderId
     };
 
     updateDocumentNonBlocking(workOrderDocRef, updatedData);
@@ -267,6 +271,8 @@ export default function WorkOrderDetailPage() {
             setWorkSiteId: setEditWorkSiteId,
             dueDate: editDueDate,
             setDueDate: setEditDueDate,
+            customerOrderId: editCustomerOrderId,
+            setCustomerOrderId: setEditCustomerOrderId,
           }}
           onWorkOrderUpdate={handleSave}
         />
@@ -274,3 +280,5 @@ export default function WorkOrderDetailPage() {
     </MainLayout>
   );
 }
+
+    

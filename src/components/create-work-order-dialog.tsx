@@ -39,6 +39,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, onWorkOrderAdded
   const db = useFirestore();
   const [open, setOpen] = useState(false);
   const [workOrderId, setWorkOrderId] = useState('');
+  const [customerOrderId, setCustomerOrderId] = useState('');
   const [workSiteId, setWorkSiteId] = useState<string | undefined>();
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<WorkOrder['priority'] | undefined>();
@@ -49,6 +50,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, onWorkOrderAdded
 
   const resetForm = () => {
     setWorkOrderId('');
+    setCustomerOrderId('');
     setWorkSiteId(undefined);
     setDescription('');
     setPriority(undefined);
@@ -75,6 +77,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, onWorkOrderAdded
 
       const newWorkOrderData = {
         id: workOrderId,
+        customerOrderId: customerOrderId,
         title: selectedWorkSite.name,
         description,
         priority,
@@ -128,13 +131,23 @@ export function CreateWorkOrderDialog({ technicians, workSites, onWorkOrderAdded
           <DialogDescription>Fill in the details below to create a new work order.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4 sm:grid-cols-2 sm:gap-6">
-           <div className="sm:col-span-2">
+           <div className="grid gap-2">
             <Label htmlFor="workOrderId">Work Order ID</Label>
             <Input 
                 id="workOrderId" 
                 value={workOrderId} 
                 onChange={e => setWorkOrderId(e.target.value)}
                 placeholder="e.g., WO-24-0001"
+                disabled={isSubmitting}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="customerOrderId">Customer Order ID (Optional)</Label>
+            <Input 
+                id="customerOrderId" 
+                value={customerOrderId} 
+                onChange={e => setCustomerOrderId(e.target.value)}
+                placeholder="e.g., CUST-A4B3"
                 disabled={isSubmitting}
             />
           </div>
@@ -201,3 +214,5 @@ export function CreateWorkOrderDialog({ technicians, workSites, onWorkOrderAdded
     </Dialog>
   );
 }
+
+    

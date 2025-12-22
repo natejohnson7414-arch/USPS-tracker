@@ -73,6 +73,7 @@ export const getWorkOrders = async (db: any): Promise<WorkOrder[]> => {
       priority: data.priority,
       status: data.status,
       assignedTechnicianId: data.assignedTechnicianId,
+      customerOrderId: data.customerOrderId,
       createdAt: data.createdAt,
       dueDate: data.dueDate,
       notes: [], // Notes should be fetched separately if needed
@@ -109,6 +110,7 @@ export const getWorkOrderById = async (db: any, id: string): Promise<WorkOrder |
     return {
       id: workOrderSnap.id,
       title: data.title,
+      customerOrderId: data.customerOrderId,
       description: data.description,
       priority: data.priority,
       status: data.status,
@@ -200,3 +202,5 @@ export const getWorkSiteById = async (db: any, id: string): Promise<WorkSite | u
     }
     return undefined;
 };
+
+    
