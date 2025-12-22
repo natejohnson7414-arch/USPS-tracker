@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { uploadImage } from '@/firebase/storage';
 
 export default function WorkOrderDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+  const id = params.id;
   const db = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
