@@ -14,6 +14,7 @@ import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client } from '@/l
 import { doc, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImage } from '@/firebase/storage';
+import { MapProviderSelection } from '@/components/map-provider-selection';
 
 export default function WorkOrderDetailPage() {
   const params = useParams();
@@ -30,6 +31,7 @@ export default function WorkOrderDetailPage() {
   const [isDataChecked, setIsDataChecked] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingNote, setIsAddingNote] = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   
   // Editable fields state - initialized when workOrder is loaded
   const [description, setDescription] = useState('');
@@ -299,6 +301,7 @@ export default function WorkOrderDetailPage() {
             onNoteAdded={handleNoteAdded}
             onNotePhotoDelete={handleNotePhotoDelete}
             isAddingNote={isAddingNote}
+            onDirectionsClick={(address) => setSelectedAddress(address)}
             editableFields={{
                 description, setDescription,
                 status, setStatus,
@@ -339,6 +342,11 @@ export default function WorkOrderDetailPage() {
             </div>
          </div>
       )}
+       <MapProviderSelection 
+            address={selectedAddress} 
+            isOpen={!!selectedAddress} 
+            onOpenChange={() => setSelectedAddress(null)} 
+        />
     </MainLayout>
   );
 }

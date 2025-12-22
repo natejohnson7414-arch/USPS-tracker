@@ -87,6 +87,7 @@ interface WorkOrderDetailsProps {
   onNoteAdded: (note: Omit<WorkOrderNote, 'id' | 'authorId'> & { photoFiles: File[] }) => void;
   onNotePhotoDelete: (noteId: string, photoUrl: string) => void;
   isAddingNote: boolean;
+  onDirectionsClick: (address: string) => void;
 }
 
 export function WorkOrderDetails({
@@ -100,6 +101,7 @@ export function WorkOrderDetails({
   onNoteAdded,
   onNotePhotoDelete,
   isAddingNote,
+  onDirectionsClick,
 }: WorkOrderDetailsProps) {
   const db = useFirestore();
   const { user } = useUser();
@@ -187,13 +189,6 @@ export function WorkOrderDetails({
     
     setNewNote('');
     setNewNotePhotos([]);
-  };
-
-  const handleDirectionsClick = () => {
-    if (workOrder.workSite?.address) {
-      const query = encodeURIComponent(workOrder.workSite.address);
-      window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
-    }
   };
 
   const DetailItem = ({ label, value, icon, isDate, children }: { label: string, value?: string | number | null, icon?: React.ReactNode, isDate?: boolean, children?: React.ReactNode }) => {
@@ -355,7 +350,7 @@ export function WorkOrderDetails({
                         Details
                     </CardTitle>
                      {workOrder.workSite?.address && !isEditing && (
-                        <Button variant="outline" size="icon" onClick={handleDirectionsClick}>
+                        <Button variant="outline" size="icon" onClick={() => onDirectionsClick(workOrder.workSite!.address)}>
                             <Map className="h-4 w-4" />
                             <span className="sr-only">Get Directions</span>
                         </Button>

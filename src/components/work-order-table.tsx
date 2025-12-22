@@ -1,4 +1,5 @@
 
+'use client';
 import Link from 'next/link';
 import {
   Table,
@@ -16,6 +17,8 @@ import { format } from 'date-fns';
 import { Button } from './ui/button';
 import { Map, User } from 'lucide-react';
 import { Separator } from './ui/separator';
+import { useState } from 'react';
+import { MapProviderSelection } from './map-provider-selection';
 
 interface WorkOrderTableProps {
   workOrders: WorkOrder[];
@@ -23,16 +26,9 @@ interface WorkOrderTableProps {
   workSites: WorkSite[];
 }
 
-function WorkOrderCard({ order, technician, workSite }: { order: WorkOrder, technician?: Technician, workSite?: WorkSite }) {
+function WorkOrderCard({ order, technician, workSite, onDirectionsClick }: { order: WorkOrder, technician?: Technician, workSite?: WorkSite, onDirectionsClick: (address: string) => void }) {
     const isValidDate = order.createdDate && !isNaN(new Date(order.createdDate).getTime());
     
-    const handleDirectionsClick = (address: string) => {
-        if (address) {
-            const query = encodeURIComponent(address);
-            window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
-        }
-    };
-
     return (
         <Card>
             <CardHeader>
@@ -73,7 +69,7 @@ function WorkOrderCard({ order, technician, workSite }: { order: WorkOrder, tech
             </CardContent>
             {workSite?.address && (
                  <CardFooter>
-                    <Button variant="outline" className="w-full" onClick={() => handleDirectionsClick(workSite.address)}>
+                    <Button variant="outline" className="w-full" onClick={() => onDirectionsClick(workSite.address)}>
                         <Map className="mr-2 h-4 w-4" />
                         Get Directions
                     </Button>
@@ -84,21 +80,27 @@ function WorkOrderCard({ order, technician, workSite }: { order: WorkOrder, tech
 }
 
 export function WorkOrderTable({ workOrders, technicians, workSites }: WorkOrderTableProps) {
+  const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
+  
   const getTechnician = (id?: string) => technicians.find(t => t.id === id);
   const getWorkSite = (id?: string) => workSites.find(ws => ws.id === id);
   
   const handleDirectionsClick = (address: string) => {
-    if (address) {
-      const query = encodeURIComponent(address);
-      window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
-    }
+    setSelectedAddress(address);
   };
 
   if (workOrders.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        No work orders found.
-      </div>
+      <>
+        <div className="text-center py-12 text-muted-foreground">
+          No work orders found.
+        </div>
+         <MapProviderSelection 
+            address={selectedAddress} 
+            isOpen={!!selectedAddress} 
+            onOpenChange={() => setSelectedAddress(null)} 
+        />
+      </>
     );
   }
 
@@ -110,7 +112,7 @@ export function WorkOrderTable({ workOrders, technicians, workSites }: WorkOrder
           const technician = getTechnician(order.assignedTechnicianId);
           const workSite = getWorkSite(order.workSiteId);
           return (
-            <WorkOrderCard key={order.id} order={order} technician={technician} workSite={workSite} />
+            <WorkOrderCard key={order.id} order={order} technician={technician} workSite={workSite} onDirectionsClick={handleDirectionsClick} />
           );
         })}
       </div>
@@ -194,6 +196,12 @@ export function WorkOrderTable({ workOrders, technicians, workSites }: WorkOrder
           </CardContent>
         </Card>
       </div>
+
+       <MapProviderSelection 
+            address={selectedAddress} 
+            isOpen={!!selectedAddress} 
+            onOpenChange={() => setSelectedAddress(null)} 
+        />
     </>
   );
 }
