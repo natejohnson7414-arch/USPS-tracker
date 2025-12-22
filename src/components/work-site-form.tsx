@@ -1,24 +1,26 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import type { WorkSite } from '@/lib/types';
-import { useFirestore, addDocumentNonBlocking } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { useFirestore, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
 
 interface WorkSiteFormProps {
-    onSiteAdded: (newSite: WorkSite) => void;
+    site: WorkSite | null;
+    onFormSaved: () => void;
     onCancel: () => void;
 }
 
-export function WorkSiteForm({ onSiteAdded, onCancel }: WorkSiteFormProps) {
+export function WorkSiteForm({ site, onFormSaved, onCancel }: WorkSiteFormProps) {
     const db = useFirestore();
     const { toast } = useToast();
     const [name, setName] = useState('');
@@ -31,6 +33,31 @@ export function WorkSiteForm({ onSiteAdded, onCancel }: WorkSiteFormProps) {
     const [contactEmail, setContactEmail] = useState('');
     const [notes, setNotes] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        if (site) {
+            setName(site.name || '');
+            setAddress(site.address || '');
+            setCity(site.city || '');
+            setState(site.state || '');
+            setZip(site.zip || '');
+            setContactName(site.contact?.name || '');
+            setContactPhone(site.contact?.phone || '');
+            setContactEmail(site.contact?.email || '');
+            setNotes(site.notes || '');
+        } else {
+            // Reset form for creating a new site
+            setName('');
+            setAddress('');
+            setCity('');
+            setState('');
+            setZip('');
+            setContactName('');
+            setContactPhone('');
+            setContactEmail('');
+            setNotes('');
+        }
+    }, [site]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -46,9 +73,7 @@ export function WorkSiteForm({ onSiteAdded, onCancel }: WorkSiteFormProps) {
 
         setIsLoading(true);
 
-        const workSitesRef = collection(db, 'work_sites');
-        
-        const newSiteData: Omit<WorkSite, 'id'> = {
+        const siteData: Omit<WorkSite, 'id'> = {
             name,
             address,
             city,
@@ -62,23 +87,23 @@ export function WorkSiteForm({ onSiteAdded, onCancel }: WorkSiteFormProps) {
             notes
         };
 
-        addDocumentNonBlocking(workSitesRef, newSiteData)
-          .then((docRef) => {
-                const newSite: WorkSite = {
-                    id: docRef.id,
-                    ...newSiteData
-                };
-                
-                toast({ title: "Work Site Created", description: `Successfully created "${name}".`});
-                onSiteAdded(newSite);
+        const promise = site 
+            ? setDocumentNonBlocking(doc(db, 'work_sites', site.id), siteData, { merge: true })
+            : addDocumentNonBlocking(collection(db, 'work_sites'), siteData);
+
+        promise
+          .then(() => {
+                const action = site ? "updated" : "created";
+                toast({ title: `Work Site ${action}`, description: `Successfully ${action} "${name}".`});
+                onFormSaved();
             })
           .catch((error) => {
                 // The global error emitter will catch permission errors.
                 // We can show a generic toast for other potential issues.
-                if (!error.name.includes('Firebase')) { // Avoid double-toasting for permission errors
-                    toast({ title: "Error", description: "Could not create work site. Please try again.", variant: 'destructive' });
+                if (!error.message.includes('permission-error')) { 
+                    toast({ title: "Error", description: `Could not ${site ? 'update' : 'create'} work site. Please try again.`, variant: 'destructive' });
                 }
-                console.error("Error creating work site:", error);
+                console.error("Error saving work site:", error);
             })
           .finally(() => {
                 setIsLoading(false);
@@ -89,7 +114,7 @@ export function WorkSiteForm({ onSiteAdded, onCancel }: WorkSiteFormProps) {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Add New Work Site</CardTitle>
+                <CardTitle>{site ? 'Edit Work Site' : 'Add New Work Site'}</CardTitle>
             </CardHeader>
             <form onSubmit={handleSubmit}>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -140,10 +165,12 @@ export function WorkSiteForm({ onSiteAdded, onCancel }: WorkSiteFormProps) {
                     <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>Cancel</Button>
                     <Button type="submit" disabled={isLoading}>
                          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Save Site
+                        {site ? 'Save Changes' : 'Save Site'}
                     </Button>
                 </CardFooter>
             </form>
         </Card>
     );
 }
+
+    

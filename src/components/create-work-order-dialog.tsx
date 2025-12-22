@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -51,7 +51,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
   // State for the "create new site" prompt
   const [showCreateSitePrompt, setShowCreateSitePrompt] = useState(false);
   const [extractedAddress, setExtractedAddress] = useState<string | null>(null);
-  const [extractedJobName, setExtractedJobName] = useState<string | null>(null);
+  const [newSiteName, setNewSiteName] = useState<string>('');
 
 
   // Form state based on the new template
@@ -102,9 +102,16 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
     setAssignedTechnicianId(undefined);
     setShowCreateSitePrompt(false);
     setExtractedAddress(null);
-    setExtractedJobName(null);
+    setNewSiteName('');
   };
   
+  useEffect(() => {
+    // When the dialog opens, if there's an extracted name, pre-fill the input
+    if (showCreateSitePrompt && newSiteName) {
+        setNewSiteName(newSiteName);
+    }
+  }, [showCreateSitePrompt, newSiteName]);
+
   const handlePdfUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -126,17 +133,17 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
 
             // Check for matching work site by address
             const matchedWorkSite = workSites.find(ws => 
-                ws.address.toLowerCase() === extractedData.jobSiteAddress?.toLowerCase() ||
-                ws.name.toLowerCase() === extractedData.jobName?.toLowerCase()
+                (ws.address && extractedData.jobSiteAddress && ws.address.toLowerCase() === extractedData.jobSiteAddress.toLowerCase()) ||
+                (ws.name && extractedData.jobName && ws.name.toLowerCase() === extractedData.jobName.toLowerCase())
             );
 
             if (matchedWorkSite) {
                 setWorkSiteId(matchedWorkSite.id);
-            } else if (extractedData.jobSiteAddress) {
+            } else if (extractedData.jobSiteAddress || extractedData.jobName) {
                 // If no match is found but an address was extracted, show the prompt
                 setShowCreateSitePrompt(true);
-                setExtractedAddress(extractedData.jobSiteAddress);
-                setExtractedJobName(extractedData.jobName || null);
+                setExtractedAddress(extractedData.jobSiteAddress || null);
+                setNewSiteName(extractedData.jobName || extractedData.jobSiteAddress || '');
             }
 
             // Update form state with other data
@@ -180,13 +187,16 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
   };
 
   const handleCreateNewSite = async () => {
-    if (!db || !extractedAddress) return;
+    if (!db || !newSiteName) {
+        toast({title: "Missing Name", description: "Please provide a name for the new work site.", variant: "destructive"});
+        return;
+    }
     setIsSubmitting(true);
     try {
         const workSitesRef = collection(db, 'work_sites');
         const newSiteData: Omit<WorkSite, 'id'> = {
-            name: extractedJobName || extractedAddress, // Use Job Name if available, otherwise address
-            address: extractedAddress,
+            name: newSiteName,
+            address: extractedAddress || '',
             city: '', state: '', zip: '', // These can be added later
         };
 
@@ -234,34 +244,34 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
       const newWorkOrderData = {
         id: jobId,
         createdDate: (createdDate || new Date()).toISOString(),
-        billTo: selectedClient?.name || null,
-        clientId: clientId || null,
+        billTo: selectedClient?.name,
+        clientId: clientId,
         poNumber,
         contactInfo,
         jobName: selectedWorkSite.name,
-        workSiteId: workSiteId || null,
+        workSiteId: workSiteId,
         description,
-        serviceScheduleDate: serviceScheduleDate?.toISOString() || null,
-        quotedAmount: quotedAmount || null,
+        serviceScheduleDate: serviceScheduleDate?.toISOString(),
+        quotedAmount: quotedAmount,
         timeAndMaterial,
         permit,
-        permitCost: permitCost || null,
-        permitFiled: permitFiled?.toISOString() || null,
+        permitCost: permitCost,
+        permitFiled: permitFiled?.toISOString(),
         coi,
-        coiRequested: coiRequested?.toISOString() || null,
+        coiRequested: coiRequested?.toISOString(),
         certifiedPayroll,
-        certifiedPayrollRequested: certifiedPayrollRequested?.toISOString() || null,
+        certifiedPayrollRequested: certifiedPayrollRequested?.toISOString(),
         intercoPO,
         customerPO,
         estimator,
         status: 'Open' as const,
-        assignedTechnicianId: assignedTechnicianId || null,
+        assignedTechnicianId: assignedTechnicianId,
       };
 
       // Firestore does not allow `undefined` values. We clean them here.
       Object.keys(newWorkOrderData).forEach(key => {
         const k = key as keyof typeof newWorkOrderData;
-        if (newWorkOrderData[k] === undefined) {
+        if ((newWorkOrderData as any)[k] === undefined) {
           (newWorkOrderData as any)[k] = null;
         }
       });
@@ -366,9 +376,18 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
                     <Building className="h-4 w-4" />
                     <AlertTitle>New Work Site Detected</AlertTitle>
                     <AlertDescription>
-                        The address <span className="font-semibold">"{extractedAddress}"</span> was not found. Would you like to create a new work site or assign to an existing one?
+                       The address <span className="font-semibold">"{extractedAddress}"</span> was not found. Please name the new site or assign an existing one.
                     </AlertDescription>
                     <div className="mt-4 space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="new-site-name">New Site Name</Label>
+                            <Input 
+                                id="new-site-name" 
+                                value={newSiteName} 
+                                onChange={(e) => setNewSiteName(e.target.value)}
+                                placeholder="Enter a name for the new site"
+                            />
+                        </div>
                         <Button className="w-full" onClick={handleCreateNewSite} disabled={isSubmitting}>
                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
                              Create New Work Site
@@ -506,3 +525,5 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
     </Dialog>
   );
 }
+
+    

@@ -1,23 +1,58 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { List, PlusCircle } from 'lucide-react';
+import { List, PlusCircle, MoreHorizontal } from 'lucide-react';
 import { WorkSiteForm } from '@/components/work-site-form';
 import type { WorkSite } from '@/lib/types';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
+import { collection, query, doc } from 'firebase/firestore';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
-function WorkSiteItem({ site }: { site: WorkSite }) {
+function WorkSiteItem({ site, onEdit, onDelete }: { site: WorkSite, onEdit: () => void, onDelete: () => void }) {
     return (
         <div className="flex items-center justify-between p-4 border-b">
             <div>
                 <p className="font-semibold">{site.name}</p>
                 <p className="text-sm text-muted-foreground">{site.address}</p>
             </div>
-            <Button variant="ghost" size="sm">Details</Button>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                    <MoreHorizontal className="h-4 w-4" />
+                    <span className="sr-only">Work Site Actions</span>
+                </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={onEdit}>
+                    Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    onClick={onDelete}
+                    className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                >
+                    Delete
+                </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
     )
 }
@@ -26,6 +61,8 @@ function WorkSiteItem({ site }: { site: WorkSite }) {
 export default function WorkSitesPage() {
     const db = useFirestore();
     const [isFormOpen, setIsFormOpen] = useState(false);
+    const [editingSite, setEditingSite] = useState<WorkSite | null>(null);
+    const [deletingSite, setDeletingSite] = useState<WorkSite | null>(null);
     
     const workSitesQuery = useMemoFirebase(() => {
         if (!db) return null;
@@ -34,10 +71,40 @@ export default function WorkSitesPage() {
 
     const { data: workSites, isLoading } = useCollection<WorkSite>(workSitesQuery);
 
-    const handleSiteAdded = (newSite: WorkSite) => {
+    const handleFormSaved = () => {
         // The useCollection hook will update the list automatically
         setIsFormOpen(false);
+        setEditingSite(null);
     }
+    
+    const handleCancel = () => {
+        setIsFormOpen(false);
+        setEditingSite(null);
+    }
+    
+    const handleAddNew = () => {
+        setEditingSite(null);
+        setIsFormOpen(true);
+    }
+    
+    const handleEdit = (site: WorkSite) => {
+        setEditingSite(site);
+        setIsFormOpen(true);
+    }
+
+    const handleDelete = (site: WorkSite) => {
+        setDeletingSite(site);
+    }
+    
+    const confirmDelete = () => {
+        if (deletingSite) {
+            const siteRef = doc(db, 'work_sites', deletingSite.id);
+            deleteDocumentNonBlocking(siteRef);
+            // Optimistic update handled by useCollection
+            setDeletingSite(null);
+        }
+    }
+
 
   return (
     <MainLayout>
@@ -49,7 +116,7 @@ export default function WorkSitesPage() {
               Manage and create new work site locations.
             </p>
           </div>
-           <Button onClick={() => setIsFormOpen(true)}>
+           <Button onClick={handleAddNew}>
             <PlusCircle className="mr-2 h-4 w-4" />
             Add Work Site
           </Button>
@@ -57,8 +124,9 @@ export default function WorkSitesPage() {
         
         {isFormOpen ? (
             <WorkSiteForm 
-                onSiteAdded={handleSiteAdded} 
-                onCancel={() => setIsFormOpen(false)}
+                site={editingSite}
+                onFormSaved={handleFormSaved} 
+                onCancel={handleCancel}
             />
         ) : (
              <Card>
@@ -70,7 +138,14 @@ export default function WorkSitesPage() {
                          <div className="p-6 text-center text-muted-foreground">Loading sites...</div>
                     ) : workSites && workSites.length > 0 ? (
                         <div>
-                            {workSites.map(site => <WorkSiteItem key={site.id} site={site} />)}
+                            {workSites.map(site => (
+                                <WorkSiteItem 
+                                    key={site.id} 
+                                    site={site} 
+                                    onEdit={() => handleEdit(site)}
+                                    onDelete={() => handleDelete(site)}
+                                />)
+                            )}
                         </div>
                     ) : (
                          <div className="p-6 text-center text-muted-foreground">
@@ -83,6 +158,24 @@ export default function WorkSitesPage() {
             </Card>
         )}
       </div>
+
+       <AlertDialog open={!!deletingSite} onOpenChange={(open) => !open && setDeletingSite(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the work site
+              for <span className="font-bold">{deletingSite?.name}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
+
+    
