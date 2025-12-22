@@ -23,11 +23,13 @@ export function setDocumentNonBlocking(docRef: DocumentReference, data: any, opt
       'permission-error',
       new FirestorePermissionError({
         path: docRef.path,
-        operation: 'write', // or 'create'/'update' based on options
+        operation: options && 'merge' in options ? 'update' : 'create',
         requestResourceData: data,
       })
-    )
-  })
+    );
+    // Re-throw the error so the caller's catch block can also handle it if needed.
+    throw error;
+  });
   // Execution continues immediately
 }
 
@@ -69,7 +71,9 @@ export function updateDocumentNonBlocking(docRef: DocumentReference, data: any) 
           operation: 'update',
           requestResourceData: data,
         })
-      )
+      );
+      // Re-throw the error so the caller's catch block can also handle it if needed.
+      throw error;
     });
 }
 
@@ -87,6 +91,8 @@ export function deleteDocumentNonBlocking(docRef: DocumentReference) {
           path: docRef.path,
           operation: 'delete',
         })
-      )
+      );
+      // Re-throw the error so the caller's catch block can also handle it if needed.
+      throw error;
     });
 }
