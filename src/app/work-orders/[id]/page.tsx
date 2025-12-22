@@ -195,31 +195,39 @@ export default function WorkOrderDetailPage() {
     
     const selectedClient = clients.find(c => c.id === clientId);
 
-    const updatedData: Partial<WorkOrder> = {
+    const updatedData = {
         jobName,
         description,
         status,
         assignedTechnicianId,
         workSiteId,
         clientId,
-        billTo: selectedClient?.name,
-        createdDate: createdDate?.toISOString(),
+        billTo: selectedClient?.name || null,
+        createdDate: createdDate?.toISOString() || null,
         poNumber,
         contactInfo,
-        serviceScheduleDate: serviceScheduleDate?.toISOString(),
+        serviceScheduleDate: serviceScheduleDate?.toISOString() || null,
         quotedAmount,
         timeAndMaterial,
         permit,
         permitCost,
-        permitFiled: permitFiled?.toISOString(),
+        permitFiled: permitFiled?.toISOString() || null,
         coi,
-        coiRequested: coiRequested?.toISOString(),
+        coiRequested: coiRequested?.toISOString() || null,
         certifiedPayroll,
-        certifiedPayrollRequested: certifiedPayrollRequested?.toISOString(),
+        certifiedPayrollRequested: certifiedPayrollRequested?.toISOString() || null,
         intercoPO,
         customerPO,
         estimator
     };
+
+    // Firestore does not allow `undefined` values. We clean them here.
+    Object.keys(updatedData).forEach(key => {
+        const k = key as keyof typeof updatedData;
+        if (updatedData[k] === undefined) {
+          (updatedData as any)[k] = null;
+        }
+    });
 
     updateDocumentNonBlocking(workOrderDocRef, updatedData);
 

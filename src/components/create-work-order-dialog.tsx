@@ -175,37 +175,45 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
     try {
       const workOrderRef = doc(db, 'work_orders', jobId);
 
-      const newWorkOrderData: Omit<WorkOrder, 'notes' | 'workSite' | 'client'> = {
+      const newWorkOrderData = {
         id: jobId,
         createdDate: (createdDate || new Date()).toISOString(),
-        billTo: selectedClient?.name,
-        clientId,
+        billTo: selectedClient?.name || null,
+        clientId: clientId || null,
         poNumber,
         contactInfo,
         jobName,
-        workSiteId,
+        workSiteId: workSiteId || null,
         description,
-        serviceScheduleDate: serviceScheduleDate?.toISOString(),
-        quotedAmount,
+        serviceScheduleDate: serviceScheduleDate?.toISOString() || null,
+        quotedAmount: quotedAmount || null,
         timeAndMaterial,
         permit,
-        permitCost,
-        permitFiled: permitFiled?.toISOString(),
+        permitCost: permitCost || null,
+        permitFiled: permitFiled?.toISOString() || null,
         coi,
-        coiRequested: coiRequested?.toISOString(),
+        coiRequested: coiRequested?.toISOString() || null,
         certifiedPayroll,
-        certifiedPayrollRequested: certifiedPayrollRequested?.toISOString(),
+        certifiedPayrollRequested: certifiedPayrollRequested?.toISOString() || null,
         intercoPO,
         customerPO,
         estimator,
         status: 'Open' as const,
-        assignedTechnicianId: assignedTechnicianId || undefined,
+        assignedTechnicianId: assignedTechnicianId || null,
       };
+
+      // Firestore does not allow `undefined` values. We clean them here.
+      Object.keys(newWorkOrderData).forEach(key => {
+        const k = key as keyof typeof newWorkOrderData;
+        if (newWorkOrderData[k] === undefined) {
+          (newWorkOrderData as any)[k] = null;
+        }
+      });
       
       setDocumentNonBlocking(workOrderRef, newWorkOrderData, { merge: false });
 
       const newWorkOrder: WorkOrder = {
-          ...newWorkOrderData,
+          ...(newWorkOrderData as any),
           notes: [],
           workSite: selectedWorkSite,
           client: selectedClient
