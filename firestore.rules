@@ -18,8 +18,8 @@ service cloud.firestore {
      * - Default Deny: All operations are denied by default. Access must be explicitly granted.
      * - Role-Based Access: The `isAdmin()` and `isTechnician()` helper functions perform
      *   `get()` calls to user and role documents to determine permissions dynamically.
-     * - No User Enumeration: Listing users or technicians is restricted to administrators
-     *   to protect user privacy.
+     * - No User Enumeration: Listing users is restricted to administrators
+     *   to protect user privacy. Listing technicians is allowed for any signed-in user.
      *
      * Prototyping Flexibility: Data shapes are not strictly validated, but authorization
      * fields (like `assignedTechnicianId`) are rigorously enforced to maintain security
@@ -136,8 +136,8 @@ service cloud.firestore {
      * @description Governs access to technician profile documents.
      * @path /technicians/{technicianId}
      * @allow (update) Technician 'tech123' updating their own profile at `/technicians/tech123`.
-     * @deny (list) Any non-admin user trying to list all technician profiles.
-     * @principle Enforces document ownership for writes and self-creation, with an Admin override.
+     * @deny (list) An unauthenticated user trying to list all technician profiles.
+     * @principle Enforces document ownership for writes and self-creation, with an Admin override. List is allowed for any authenticated user.
      */
     match /technicians/{technicianId} {
       allow get: if isOwner(technicianId) || isAdmin();
