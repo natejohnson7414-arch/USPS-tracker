@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -23,12 +23,13 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from './ui/date-picker';
-import { Loader2, PlusCircle } from 'lucide-react';
+import { Loader2, PlusCircle, FileUp } from 'lucide-react';
 import type { Technician, WorkOrder, WorkSite, Client } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, setDocumentNonBlocking } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { Checkbox } from './ui/checkbox';
+import { extractWorkOrderInfo } from '@/ai/flows/extract-work-order-flow';
 
 interface CreateWorkOrderDialogProps {
   technicians: Technician[];
@@ -41,7 +42,9 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
   const db = useFirestore();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form state based on the new template
   const [jobId, setJobId] = useState('');
@@ -93,6 +96,67 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
     setAssignedTechnicianId(undefined);
   };
   
+  const handlePdfUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsExtracting(true);
+    toast({ title: 'Extracting Data...', description: 'Please wait while the AI analyzes the PDF.' });
+
+    try {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            const dataUri = reader.result as string;
+            const extractedData = await extractWorkOrderInfo({ pdfDataUri: dataUri });
+
+            // Find matching client and work site
+            const matchedClient = clients.find(c => c.name.toLowerCase().includes(extractedData.billTo?.toLowerCase() || ''));
+            const matchedWorkSite = workSites.find(ws => ws.name.toLowerCase().includes(extractedData.jobName?.toLowerCase() || ''));
+
+            // Update form state
+            if (extractedData.id) setJobId(extractedData.id);
+            if (extractedData.createdDate) setCreatedDate(new Date(extractedData.createdDate));
+            if (matchedClient) setClientId(matchedClient.id);
+            if (extractedData.poNumber) setPoNumber(extractedData.poNumber);
+            if (extractedData.contactInfo) setContactInfo(extractedData.contactInfo);
+            if (extractedData.jobName) setJobName(extractedData.jobName);
+            if (matchedWorkSite) setWorkSiteId(matchedWorkSite.id);
+            if (extractedData.description) setDescription(extractedData.description);
+            if (extractedData.serviceScheduleDate) setServiceScheduleDate(new Date(extractedData.serviceScheduleDate));
+            if (extractedData.quotedAmount) setQuotedAmount(extractedData.quotedAmount);
+            if (extractedData.timeAndMaterial) setTimeAndMaterial(extractedData.timeAndMaterial);
+            if (extractedData.permit) setPermit(extractedData.permit);
+            if (extractedData.permitCost) setPermitCost(extractedData.permitCost);
+            if (extractedData.permitFiled) setPermitFiled(new Date(extractedData.permitFiled));
+            if (extractedData.coi) setCoi(extractedData.coi);
+            if (extractedData.coiRequested) setCoiRequested(new Date(extractedData.coiRequested));
+            if (extractedData.certifiedPayroll) setCertifiedPayroll(extractedData.certifiedPayroll);
+            if (extractedData.certifiedPayrollRequested) setCertifiedPayrollRequested(new Date(extractedData.certifiedPayrollRequested));
+            if (extractedData.intercoPO) setIntercoPO(extractedData.intercoPO);
+            if (extractedData.customerPO) setCustomerPO(extractedData.customerPO);
+            if (extractedData.estimator) setEstimator(extractedData.estimator);
+            
+            toast({ title: 'Extraction Complete', description: 'Form has been auto-populated. Please review.' });
+        };
+
+        reader.onerror = (error) => {
+            console.error('Error reading file:', error);
+            toast({ title: 'File Read Error', description: 'Could not read the uploaded file.', variant: 'destructive' });
+        }
+
+    } catch (error) {
+        console.error('Error extracting work order info:', error);
+        toast({ title: 'Extraction Failed', description: 'The AI could not extract data from the PDF.', variant: 'destructive' });
+    } finally {
+        setIsExtracting(false);
+        // Reset file input so the same file can be uploaded again
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    }
+};
+
   const handleSubmit = async () => {
     const selectedWorkSite = workSites.find(ws => ws.id === workSiteId);
     const selectedClient = clients.find(c => c.id === clientId);
@@ -178,7 +242,26 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
       <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>Small Job Form</DialogTitle>
-          <DialogDescription>Fill in the details below to create a new work order.</DialogDescription>
+           <div className="flex justify-between items-center">
+            <DialogDescription>Fill in the details below to create a new work order.</DialogDescription>
+             <div>
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handlePdfUpload}
+                    className="hidden"
+                    accept="application/pdf"
+                />
+                <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isExtracting}>
+                    {isExtracting ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                        <FileUp className="mr-2 h-4 w-4" />
+                    )}
+                    Upload & Autofill from PDF
+                </Button>
+            </div>
+           </div>
         </DialogHeader>
         <div className="grid gap-4 py-4 md:grid-cols-2 md:gap-6 max-h-[70vh] overflow-y-auto pr-6">
           {/* Left Column */}
