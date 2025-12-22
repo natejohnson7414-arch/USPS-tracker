@@ -24,21 +24,22 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from './ui/date-picker';
 import { Loader2, PlusCircle } from 'lucide-react';
-import type { Technician, WorkOrder } from '@/lib/types';
+import type { Technician, WorkOrder, WorkSite } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, setDocumentNonBlocking } from '@/firebase';
 import { doc } from 'firebase/firestore';
 
 interface CreateWorkOrderDialogProps {
   technicians: Technician[];
+  workSites: WorkSite[];
   onWorkOrderAdded: (newOrder: WorkOrder) => void;
 }
 
-export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateWorkOrderDialogProps) {
+export function CreateWorkOrderDialog({ technicians, workSites, onWorkOrderAdded }: CreateWorkOrderDialogProps) {
   const db = useFirestore();
   const [open, setOpen] = useState(false);
   const [workOrderId, setWorkOrderId] = useState('');
-  const [title, setTitle] = useState('');
+  const [workSiteId, setWorkSiteId] = useState<string | undefined>();
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<WorkOrder['priority'] | undefined>();
   const [assignedTechnicianId, setAssignedTechnicianId] = useState<string | undefined>();
@@ -48,7 +49,7 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
 
   const resetForm = () => {
     setWorkOrderId('');
-    setTitle('');
+    setWorkSiteId(undefined);
     setDescription('');
     setPriority(undefined);
     setAssignedTechnicianId(undefined);
@@ -56,10 +57,12 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
   };
   
   const handleSubmit = async () => {
-    if (!db || !workOrderId || !title || !description || !priority || !dueDate) {
+    const selectedWorkSite = workSites.find(ws => ws.id === workSiteId);
+    
+    if (!db || !workOrderId || !description || !priority || !dueDate || !selectedWorkSite) {
       toast({
         title: 'Missing Information',
-        description: 'Please fill out all required fields, including the Work Order ID.',
+        description: 'Please fill out all required fields.',
         variant: 'destructive',
       });
       return;
@@ -72,11 +75,12 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
 
       const newWorkOrderData = {
         id: workOrderId,
-        title,
+        title: selectedWorkSite.name,
         description,
         priority,
         status: 'Open' as const,
         assignedTechnicianId: assignedTechnicianId || undefined,
+        workSiteId: selectedWorkSite.id,
         createdAt: new Date().toISOString(),
         dueDate: dueDate.toISOString(),
       };
@@ -87,6 +91,7 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
           ...newWorkOrderData,
           notes: [],
           assignedTechnicianId: assignedTechnicianId,
+          workSite: selectedWorkSite,
       };
 
       onWorkOrderAdded(newWorkOrder);
@@ -134,8 +139,19 @@ export function CreateWorkOrderDialog({ technicians, onWorkOrderAdded }: CreateW
             />
           </div>
           <div className="sm:col-span-2">
-            <Label htmlFor="title">Title</Label>
-            <Input id="title" value={title} onChange={e => setTitle(e.target.value)} disabled={isSubmitting}/>
+            <Label htmlFor="workSite">Work Site Location</Label>
+             <Select onValueChange={setWorkSiteId} disabled={isSubmitting}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a work site" />
+              </SelectTrigger>
+              <SelectContent>
+                {workSites.map(site => (
+                  <SelectItem key={site.id} value={site.id}>
+                    {site.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="sm:col-span-2">
             <Label htmlFor="description">Description</Label>

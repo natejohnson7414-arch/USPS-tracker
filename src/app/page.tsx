@@ -1,10 +1,10 @@
 
 'use client';
 import React, { useEffect, useState, useRef } from 'react';
-import { getTechnicians, seedDatabase } from '@/lib/data';
+import { getTechnicians, seedDatabase, getWorkSites } from '@/lib/data';
 import { DashboardClient } from './dashboard-client';
 import { MainLayout } from '@/components/main-layout';
-import type { WorkOrder, Technician } from '@/lib/types';
+import type { WorkOrder, Technician, WorkSite } from '@/lib/types';
 import { useFirestore, useCollection, useUser, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 
@@ -12,7 +12,8 @@ export default function DashboardPage() {
   const db = useFirestore();
   const { user, isUserLoading: isAuthLoading } = useUser();
   const [technicians, setTechnicians] = useState<Technician[]>([]);
-  const [isTechniciansLoading, setIsTechniciansLoading] = useState(true);
+  const [workSites, setWorkSites] = useState<WorkSite[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const hasSeeded = useRef(false);
 
   // Memoize the query to prevent re-creating it on every render
@@ -25,16 +26,25 @@ export default function DashboardPage() {
   const { data: workOrders, isLoading: isWorkOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
 
   useEffect(() => {
-    const fetchTechnicians = async () => {
+    const fetchData = async () => {
       // Only fetch if we have a user
       if (!db || !user) return;
-      setIsTechniciansLoading(true);
-      const fetchedTechnicians = await getTechnicians(db);
-      setTechnicians(fetchedTechnicians);
-      setIsTechniciansLoading(false);
+      setIsLoading(true);
+      try {
+        const [fetchedTechnicians, fetchedWorkSites] = await Promise.all([
+          getTechnicians(db),
+          getWorkSites(db),
+        ]);
+        setTechnicians(fetchedTechnicians);
+        setWorkSites(fetchedWorkSites);
+      } catch (error) {
+        console.error("Failed to fetch initial dashboard data:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
     
-    fetchTechnicians();
+    fetchData();
   }, [db, user]);
 
   useEffect(() => {
@@ -60,9 +70,9 @@ export default function DashboardPage() {
   }, [db, user, workOrders, isWorkOrdersLoading]);
 
 
-  const isLoading = isAuthLoading || isWorkOrdersLoading || isTechniciansLoading;
+  const isDataLoading = isAuthLoading || isLoading || isWorkOrdersLoading;
 
-  if (isLoading) {
+  if (isDataLoading) {
     return (
       <MainLayout>
         <div className="flex items-center justify-center h-full">
@@ -74,7 +84,11 @@ export default function DashboardPage() {
 
   return (
     <MainLayout>
-      <DashboardClient initialWorkOrders={workOrders || []} technicians={technicians} />
+      <DashboardClient 
+        initialWorkOrders={workOrders || []} 
+        technicians={technicians} 
+        workSites={workSites}
+      />
     </MainLayout>
   );
 }

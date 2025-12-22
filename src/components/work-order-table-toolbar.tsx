@@ -2,7 +2,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search } from 'lucide-react';
 import { CreateWorkOrderDialog } from './create-work-order-dialog';
-import type { Technician, WorkOrder } from '@/lib/types';
+import type { Technician, WorkOrder, WorkSite } from '@/lib/types';
 import { ScrollArea } from './ui/scroll-area';
 
 interface WorkOrderTableToolbarProps {
@@ -10,6 +10,7 @@ interface WorkOrderTableToolbarProps {
   onStatusChange: (status: string) => void;
   currentFilter: string;
   technicians: Technician[];
+  workSites: WorkSite[];
   onWorkOrderAdded: (newOrder: WorkOrder) => void;
 }
 
@@ -20,6 +21,7 @@ export function WorkOrderTableToolbar({
   onStatusChange,
   currentFilter,
   technicians,
+  workSites,
   onWorkOrderAdded
 }: WorkOrderTableToolbarProps) {
   return (
@@ -44,7 +46,7 @@ export function WorkOrderTableToolbar({
             </TabsList>
           </ScrollArea>
         </Tabs>
-        <CreateWorkOrderDialog technicians={technicians} onWorkOrderAdded={onWorkOrderAdded} />
+        <CreateWorkOrderDialog technicians={technicians} workSites={workSites} onWorkOrderAdded={onWorkOrderAdded} />
       </div>
     </div>
   );
