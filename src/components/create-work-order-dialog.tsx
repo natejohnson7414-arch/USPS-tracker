@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -208,7 +209,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
         }
 
         onWorkSiteAdded(newSite);
-        setWorkSiteId(newSite.id);
+        setWorkSiteId(newSite.id); // This is the crucial line.
         setShowCreateSitePrompt(false);
         toast({ title: "Work Site Created", description: "New work site has been created and selected." });
 
@@ -528,3 +529,5 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
     </Dialog>
   );
 }
+
+    
