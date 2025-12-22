@@ -24,26 +24,39 @@ export default function DashboardPage() {
   const { data: workOrders, isLoading: isWorkOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
 
   useEffect(() => {
-    const fetchTechniciansAndSeed = async () => {
-      if (!db || !user) return;
-
+    const fetchTechnicians = async () => {
+      if (!db) return;
       setIsTechniciansLoading(true);
-      
-      // Check if seeding is needed
-      if (user.email === 'admin@crawford-company.com' && !isWorkOrdersLoading && workOrders?.length === 0 && !hasSeeded.current) {
-        hasSeeded.current = true; // Prevents re-seeding
-        console.log("Seeding database...");
-        await seedDatabase(db);
-      }
-      
-      // Fetch technicians after potentially seeding
       const fetchedTechnicians = await getTechnicians(db);
       setTechnicians(fetchedTechnicians);
       setIsTechniciansLoading(false);
     };
     
-    fetchTechniciansAndSeed();
+    fetchTechnicians();
+  }, [db]);
+
+  useEffect(() => {
+    const seed = async () => {
+      // Ensure all conditions are met before seeding
+      if (
+        db &&
+        user &&
+        user.email === 'admin@crawford-company.com' &&
+        !isWorkOrdersLoading &&
+        workOrders?.length === 0 &&
+        !hasSeeded.current
+      ) {
+        hasSeeded.current = true; // Prevent re-seeding
+        console.log("Seeding database...");
+        await seedDatabase(db);
+      }
+    };
+
+    seed();
+    // This effect should only depend on the data it needs to decide *whether* to seed,
+    // not the data that changes *as a result* of other operations.
   }, [db, user, workOrders, isWorkOrdersLoading]);
+
 
   const isLoading = isWorkOrdersLoading || isTechniciansLoading;
 
