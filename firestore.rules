@@ -148,6 +148,19 @@ service cloud.firestore {
     }
 
     /**
+     * @description Governs access to work site location documents.
+     * @path /work_sites/{workSiteId}
+     * @allow (list) Any authenticated user can list work sites to assign them to work orders.
+     * @deny (create) A non-admin trying to create a new company-wide work site.
+     * @principle Work sites are considered public information within the organization, but only Admins can manage them.
+     */
+    match /work_sites/{workSiteId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+
+    /**
      * @description Manages access to the primary collection of work order documents.
      * @path /work_orders/{workOrderId}
      * @allow (get) Technician 'tech123' reading a work order where `assignedTechnicianId` is 'tech123'.

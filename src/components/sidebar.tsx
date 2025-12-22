@@ -15,7 +15,7 @@ import { useState } from 'react';
 const navLinks = [
   { href: '/', label: 'Work Orders', icon: Home },
   { href: '/users', label: 'Users', icon: Users },
-  { href: '/locations', label: 'Work Site Locations', icon: MapPin },
+  { href: '/work-sites', label: 'Work Sites', icon: MapPin },
 ];
 
 export function Sidebar() {
@@ -24,17 +24,19 @@ export function Sidebar() {
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
-      <SheetTrigger asChild>
-        <Button size="icon" variant="ghost" className="sm:hidden">
-          <PanelLeft className="h-5 w-5" />
-          <span className="sr-only">Toggle Menu</span>
-        </Button>
-      </SheetTrigger>
-       <div className="flex items-center gap-4">
-        <Link href="/" className="hidden sm:flex items-center gap-2 font-bold text-lg">
-           <Wrench className="h-6 w-6 text-primary" />
-          <span className="font-headline">WorkFlow</span>
-        </Link>
+      <div className="flex items-center gap-4">
+        <SheetTrigger asChild>
+           <Button variant="ghost" className="sm:hidden">
+              <PanelLeft className="h-5 w-5" />
+              <span className="sr-only">Toggle Menu</span>
+            </Button>
+        </SheetTrigger>
+        <SheetTrigger asChild>
+            <Button variant="ghost" className="hidden sm:flex items-center gap-2 font-bold text-lg p-0 h-auto">
+               <Wrench className="h-6 w-6 text-primary" />
+              <span className="font-headline">WorkFlow</span>
+            </Button>
+        </SheetTrigger>
       </div>
       <SheetContent side="left" className="sm:max-w-xs">
         <nav className="grid gap-6 text-lg font-medium">

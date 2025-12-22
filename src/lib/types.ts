@@ -23,6 +23,7 @@ export type WorkOrder = {
   priority: 'Low' | 'Medium' | 'High';
   status: 'Open' | 'In Progress' | 'On Hold' | 'Completed';
   assignedTechnicianId?: string;
+  workSiteId?: string;
   createdAt: string;
   dueDate: string;
   notes: WorkOrderNote[];
@@ -40,4 +41,19 @@ export type AppUser = {
     avatarUrl: string;
     role: string;
     disabled?: boolean;
+}
+
+export type WorkSite = {
+    id: string;
+    name: string;
+    address: string;
+    city: string;
+    state: string;
+    zip: string;
+    contact?: {
+        name: string;
+        phone: string;
+        email: string;
+    };
+    notes?: string;
 }
