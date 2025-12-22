@@ -1,3 +1,4 @@
+
 'use client';
     
 import {
@@ -46,7 +47,9 @@ export function addDocumentNonBlocking(colRef: CollectionReference, data: any) {
           operation: 'create',
           requestResourceData: data,
         })
-      )
+      );
+      // Re-throw the error so the caller's catch block can also handle it if needed.
+      throw error;
     });
   return promise;
 }

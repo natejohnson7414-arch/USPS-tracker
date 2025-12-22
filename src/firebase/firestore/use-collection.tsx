@@ -63,6 +63,12 @@ export function useCollection<T = any>(
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
+    // This effect should not run on the server.
+    if (typeof window === 'undefined') {
+        setIsLoading(false);
+        return;
+    }
+
     if (!targetRefOrQuery) {
       setData(null);
       setIsLoading(false);
