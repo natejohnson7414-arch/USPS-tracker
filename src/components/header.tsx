@@ -11,16 +11,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Wrench, LogOut, User, Users } from 'lucide-react';
+import { LogOut, User, Users } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useAuth, useUser } from '@/firebase';
-import { useRouter } from 'next/navigation';
 import { signOut } from 'firebase/auth';
+import { Sidebar } from './sidebar';
+
 
 export function Header() {
   const { user } = useUser();
   const auth = useAuth();
-  const router = useRouter();
   const userAvatar = PlaceHolderImages.find(img => img.id === 'tech-1');
 
   const handleLogout = async () => {
@@ -34,10 +34,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card shadow-sm">
       <div className="container flex h-16 items-center">
-        <Link href="/" className="flex items-center gap-2 font-bold text-lg">
-          <Wrench className="h-6 w-6 text-primary" />
-          <span className="font-headline">WorkFlow</span>
-        </Link>
+        <Sidebar />
         {user && (
           <div className="ml-auto">
             <DropdownMenu>
