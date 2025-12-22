@@ -10,22 +10,24 @@ import { collection, query } from 'firebase/firestore';
 
 export default function DashboardPage() {
   const db = useFirestore();
-  const { user } = useUser();
+  const { user, isUserLoading: isAuthLoading } = useUser();
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [isTechniciansLoading, setIsTechniciansLoading] = useState(true);
   const hasSeeded = useRef(false);
 
   // Memoize the query to prevent re-creating it on every render
+  // Only create the query if we have a user.
   const workOrdersQuery = useMemoFirebase(() => {
-    if (!db) return null;
+    if (!db || !user) return null;
     return query(collection(db, 'work_orders'));
-  }, [db]);
+  }, [db, user]);
 
   const { data: workOrders, isLoading: isWorkOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
 
   useEffect(() => {
     const fetchTechnicians = async () => {
-      if (!db) return;
+      // Only fetch if we have a user
+      if (!db || !user) return;
       setIsTechniciansLoading(true);
       const fetchedTechnicians = await getTechnicians(db);
       setTechnicians(fetchedTechnicians);
@@ -33,7 +35,7 @@ export default function DashboardPage() {
     };
     
     fetchTechnicians();
-  }, [db]);
+  }, [db, user]);
 
   useEffect(() => {
     const seed = async () => {
@@ -58,7 +60,7 @@ export default function DashboardPage() {
   }, [db, user, workOrders, isWorkOrdersLoading]);
 
 
-  const isLoading = isWorkOrdersLoading || isTechniciansLoading;
+  const isLoading = isAuthLoading || isWorkOrdersLoading || isTechniciansLoading;
 
   if (isLoading) {
     return (
