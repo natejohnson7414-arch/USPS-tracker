@@ -200,15 +200,18 @@ service cloud.firestore {
       /**
        * @description Manages access to updates on a specific work order.
        * @path /work_orders/{workOrderId}/updates/{updateId}
-       * @allow (create) Technician 'tech123' creating an update with `technicianId` set to 'tech123'.
-       * @deny (create) Technician 'tech456' creating an update on a work order assigned to 'tech123'.
+       * @allow (create) The technician assigned to the parent work order.
+       * @deny (create) A technician not assigned to the parent work order.
        * @principle Access is granted to Admins or the technician assigned to the parent work order.
        */
       match /updates/{updateId} {
-        allow get: if isAdmin() || isOwner(resource.data.technicianId);
-        allow list: if isAdmin() || (isTechnician() && get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.assignedTechnicianId == request.auth.uid);
-        allow create: if isAdmin() || (isTechnician() && request.resource.data.technicianId == request.auth.uid && get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.assignedTechnicianId == request.auth.uid);
-        allow update, delete: if (isAdmin() || isOwner(resource.data.technicianId)) && resource != null;
+        function isAssignedToParentWorkOrder() {
+          return get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.assignedTechnicianId == request.auth.uid;
+        }
+
+        allow read, list: if isAdmin() || (isTechnician() && isAssignedToParentWorkOrder());
+        allow create: if isAdmin() || (isTechnician() && isAssignedToParentWorkOrder());
+        allow update, delete: if isAdmin() || (isTechnician() && isAssignedToParentWorkOrder() && resource != null);
       }
     }
 
