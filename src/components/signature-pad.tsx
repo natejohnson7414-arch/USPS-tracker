@@ -19,7 +19,7 @@ interface SignaturePadProps {
   onSave: (signatureDataUrl: string) => void;
 }
 
-// Helper function moved outside the component to be stable
+// Helper function to get touch position relative to the canvas
 const getTouchPos = (canvas: HTMLCanvasElement, touch: Touch) => {
     const rect = canvas.getBoundingClientRect();
     return {
@@ -30,7 +30,7 @@ const getTouchPos = (canvas: HTMLCanvasElement, touch: Touch) => {
 
 export function SignaturePad({ isOpen, setIsOpen, onSave }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
+  const isDrawing = useRef(false); // Use ref to track drawing state
   const [hasSigned, setHasSigned] = useState(false);
 
   const getCanvasContext = () => {
@@ -39,21 +39,22 @@ export function SignaturePad({ isOpen, setIsOpen, onSave }: SignaturePadProps) {
     return canvas.getContext('2d');
   };
 
-  const clearCanvas = () => {
+  const clearCanvas = useCallback(() => {
     const context = getCanvasContext();
     if (context && canvasRef.current) {
       context.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
       setHasSigned(false);
+      isDrawing.current = false;
     }
-  };
-  
+  }, []);
+
   const startDrawing = useCallback((event: MouseEvent | TouchEvent) => {
     event.preventDefault();
     const context = getCanvasContext();
     const canvas = canvasRef.current;
     if (!context || !canvas) return;
 
-    setIsDrawing(true);
+    isDrawing.current = true;
     setHasSigned(true);
     
     let x, y;
@@ -71,7 +72,7 @@ export function SignaturePad({ isOpen, setIsOpen, onSave }: SignaturePadProps) {
 
   const draw = useCallback((event: MouseEvent | TouchEvent) => {
     event.preventDefault();
-    if (!isDrawing) return;
+    if (!isDrawing.current) return;
     
     const context = getCanvasContext();
     const canvas = canvasRef.current;
@@ -89,14 +90,14 @@ export function SignaturePad({ isOpen, setIsOpen, onSave }: SignaturePadProps) {
 
     context.lineTo(x, y);
     context.stroke();
-  }, [isDrawing]);
+  }, []);
 
   const stopDrawing = useCallback((event: MouseEvent | TouchEvent) => {
     event.preventDefault();
     const context = getCanvasContext();
     if (!context) return;
     context.closePath();
-    setIsDrawing(false);
+    isDrawing.current = false;
   }, []);
 
   useEffect(() => {
@@ -140,7 +141,8 @@ export function SignaturePad({ isOpen, setIsOpen, onSave }: SignaturePadProps) {
       canvas.removeEventListener('touchmove', draw);
       canvas.removeEventListener('touchend', stopDrawing);
     };
-  }, [isOpen, startDrawing, draw, stopDrawing]);
+    // Dependencies are stable, so this effect runs only when `isOpen` changes.
+  }, [isOpen, startDrawing, draw, stopDrawing, clearCanvas]);
 
   const handleSave = () => {
     const canvas = canvasRef.current;
