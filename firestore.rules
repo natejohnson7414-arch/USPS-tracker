@@ -217,5 +217,15 @@ service cloud.firestore {
       allow update: if isOwner(technicianId) && resource != null && request.resource.data.assignedTechnicianId == resource.data.assignedTechnicianId;
       allow delete: if isOwner(technicianId) && resource != null;
     }
+    
+    /**
+     * @description Manages access to training attendance records.
+     * @path /training_records/{recordId}
+     * @allow (read, write) Any authenticated user can create, read, and update training records.
+     * @principle Training records are considered general internal documents.
+     */
+    match /training_records/{recordId} {
+      allow read, write: if isSignedIn();
+    }
   }
 }

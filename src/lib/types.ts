@@ -101,3 +101,21 @@ export type Client = {
         email: string;
     };
 }
+
+export type TrainingRecord = {
+    id: string;
+    trainingCourse: string;
+    trainer: string;
+    description: string;
+    basUserName: string;
+    basPassword?: string;
+    date?: string;
+    trainerSignatureUrl?: string;
+    attendees: Attendee[];
+};
+
+export type Attendee = {
+    id: string;
+    name: string;
+    signatureUrl?: string;
+};
