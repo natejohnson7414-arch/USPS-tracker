@@ -21,6 +21,11 @@ export function SignaturePad({ onSave, onClear }: SignaturePadProps) {
 
   const handleSave = () => {
     if (sigCanvas.current) {
+      if (sigCanvas.current.isEmpty()) {
+        // You might want to show a toast or alert here
+        alert("Please provide a signature first.");
+        return;
+      }
       const dataUrl = sigCanvas.current.getTrimmedCanvas().toDataURL('image/png');
       onSave(dataUrl);
     }

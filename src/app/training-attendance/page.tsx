@@ -116,9 +116,20 @@ export default function TrainingAttendancePage() {
   const handleSignatureSave = async (signatureDataUrl: string) => {
     if (!signatureTarget) return;
 
+    // Show a saving toast
+    const savingToast = toast({
+      title: 'Saving Signature...',
+      description: 'Uploading signature to storage.',
+    });
+
     try {
-      const path = `signatures/training/${Date.now()}.png`;
-      const url = await uploadImage(await (await fetch(signatureDataUrl)).blob(), path);
+      const path = `signatures/training/${Date.now()}_${signatureTarget.type}.png`;
+      // The data URL from the canvas is already in the correct format with a Base64 string.
+      // We need to convert it to a blob to upload it.
+      const response = await fetch(signatureDataUrl);
+      const blob = await response.blob();
+
+      const url = await uploadImage(blob, path);
 
       if (signatureTarget.type === 'trainer') {
         setTrainerSignatureUrl(url);
@@ -128,11 +139,14 @@ export default function TrainingAttendancePage() {
         setAttendees(newAttendees);
       }
       
+      savingToast.dismiss();
       toast({ title: 'Signature Saved' });
       setIsSignatureDialogOpen(false);
       setSignatureTarget(null);
+
     } catch (error) {
       console.error('Error uploading signature:', error);
+      savingToast.dismiss();
       toast({ title: 'Error', description: 'Could not save signature.', variant: 'destructive' });
     }
   };
@@ -169,7 +183,7 @@ export default function TrainingAttendancePage() {
             trainer,
             description,
             basUserName,
-            basPassword: basPassword || '',
+            basPassword: basPassword || null,
             date: date.toISOString(),
             trainerSignatureUrl: trainerSignatureUrl || null,
             attendees: attendees.filter(a => a.name).map(a => ({

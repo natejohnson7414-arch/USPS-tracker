@@ -4,9 +4,16 @@
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, Storage } from 'firebase/storage';
 import { initializeFirebase } from './index';
 
-// Initialize Firebase once and get all services
-const services = initializeFirebase();
-const storage: Storage = services.storage;
+let storage: Storage;
+
+try {
+    const services = initializeFirebase();
+    storage = services.storage;
+} catch (e) {
+    console.error("Firebase initialization failed in storage.ts:", e);
+    // You might want to have a fallback or a way to handle this case
+}
+
 
 /**
  * Uploads an image file to Firebase Storage.
@@ -15,6 +22,9 @@ const storage: Storage = services.storage;
  * @returns A promise that resolves with the download URL of the uploaded file.
  */
 export const uploadImage = async (file: Blob, path: string): Promise<string> => {
+  if (!storage) {
+    throw new Error("Firebase Storage is not initialized.");
+  }
   const storageRef = ref(storage, path);
   
   try {
@@ -40,6 +50,9 @@ export const uploadImage = async (file: Blob, path: string): Promise<string> => 
  * @returns A promise that resolves when the file is deleted.
  */
 export const deleteImage = async (imageUrl: string): Promise<void> => {
+    if (!storage) {
+        throw new Error("Firebase Storage is not initialized.");
+    }
     try {
         const imageRef = ref(storage, imageUrl);
         await deleteObject(imageRef);
