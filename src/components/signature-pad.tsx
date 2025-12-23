@@ -109,7 +109,8 @@ export function SignaturePad({ isOpen, setIsOpen, onSave }: SignaturePadProps) {
       context.stroke();
     };
 
-    const stopDrawing = () => {
+    const stopDrawing = (event: MouseEvent | TouchEvent) => {
+      event.preventDefault();
       const context = getCanvasContext();
       if (!context) return;
       context.closePath();
