@@ -105,9 +105,7 @@ export const getWorkOrderById = async (db: any, id: string): Promise<WorkOrder |
         const noteData = noteDoc.data();
         return {
             id: noteDoc.id,
-            authorId: noteData.technicianId,
             text: noteData.notes,
-            createdAt: noteData.updateDate,
             photoUrls: noteData.photoUrls || []
         } as WorkOrderNote
     });
@@ -117,7 +115,7 @@ export const getWorkOrderById = async (db: any, id: string): Promise<WorkOrder |
       id: workOrderSnap.id,
       workSite: workSite,
       client: client,
-      notes: notesList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+      notes: notesList,
     } as WorkOrder;
   } else {
     return undefined;

@@ -85,7 +85,7 @@ interface WorkOrderDetailsProps {
   isEditing: boolean;
   editableFields: EditableFields;
   onWorkOrderUpdate: (e: FormEvent) => void;
-  onNoteAdded: (note: Omit<WorkOrderNote, 'id' | 'authorId'> & { photoFiles: File[] }) => void;
+  onNoteAdded: (note: Omit<WorkOrderNote, 'id'> & { photoFiles: File[] }) => void;
   onNotePhotoDelete: (noteId: string, photoUrl: string) => void;
   onNoteDelete: (noteId: string) => void;
   isAddingNote: boolean;
@@ -186,7 +186,6 @@ export function WorkOrderDetails({
 
     onNoteAdded({
       text: newNote,
-      createdAt: new Date().toISOString(),
       photoFiles: newNotePhotos.map(p => p.file),
       photoUrls: [], // This will be populated after upload
     });
@@ -343,7 +342,7 @@ export function WorkOrderDetails({
               <Separator />
               <div className="space-y-6">
                 {isClient ? workOrder.notes.map(note => (
-                  <NoteActivityItem key={note.id} note={note} technicians={technicians} isEditing={isEditing} onPhotoDelete={onNotePhotoDelete} onNoteDelete={setNoteToDelete} />
+                  <NoteActivityItem key={note.id} note={note} isEditing={isEditing} onPhotoDelete={onNotePhotoDelete} onNoteDelete={setNoteToDelete} />
                 )) : <p className="text-center text-sm text-muted-foreground py-4">Loading notes...</p>}
                 {isClient && workOrder.notes.length === 0 && (
                   <p className="text-center text-sm text-muted-foreground py-4">No notes or activity yet.</p>

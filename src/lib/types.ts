@@ -11,10 +11,10 @@ export type Technician = {
 
 export type WorkOrderNote = {
   id: string;
-  authorId: string;
+  authorId?: string;
   text: string;
   photoUrls?: string[];
-  createdAt: string;
+  createdAt?: string;
 };
 
 export type WorkOrder = {

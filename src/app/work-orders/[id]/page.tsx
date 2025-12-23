@@ -144,7 +144,7 @@ export default function WorkOrderDetailPage() {
     resetEditState();
   };
 
-  const handleNoteAdded = async (newNote: Omit<WorkOrderNote, 'id' | 'authorId'> & { photoFiles: File[] }) => {
+  const handleNoteAdded = async (newNote: Omit<WorkOrderNote, 'id'> & { photoFiles: File[] }) => {
     if (!db || !user || !notesColRef || !workOrder) return;
     setIsAddingNote(true);
 
@@ -155,8 +155,6 @@ export default function WorkOrderDetailPage() {
 
         const newNoteData = {
             workOrderId: workOrder.id,
-            technicianId: user.uid,
-            updateDate: newNote.createdAt,
             notes: newNote.text,
             photoUrls: photoUrls,
         };
@@ -165,9 +163,7 @@ export default function WorkOrderDetailPage() {
 
         const optimisticNote: WorkOrderNote = {
             id: docRef.id,
-            authorId: user.uid,
             text: newNote.text,
-            createdAt: newNote.createdAt,
             photoUrls: photoUrls,
         };
         
