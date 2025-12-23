@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -19,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { collection, query, where } from 'firebase/firestore';
 import type { HvacStartupReport, WorkOrder, Technician } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
 const SectionTitle = ({ children }: { children: React.ReactNode }) => (
     <h3 className="font-bold bg-gray-100 p-2 border-b border-t">{children}</h3>
@@ -180,6 +182,9 @@ export default function HvacStartupReportPage() {
                     <LabeledInput label="Unit Tag" value={formState.unitTag || ''} onChange={(val) => handleInputChange('unitTag', val)} />
                     <LabeledInput label="S#" value={formState.sNumber || ''} onChange={(val) => handleInputChange('sNumber', val)} />
                     <LabeledInput label="Equipment Type" value={formState.equipmentType || ''} onChange={(val) => handleInputChange('equipmentType', val)} />
+                    <div className="sm:col-span-2 my-4">
+                        <Separator />
+                    </div>
                     <LabeledInput label="Manufacturer" value={formState.equipmentManufacturer || ''} onChange={(val) => handleInputChange('equipmentManufacturer', val)} />
                     <LabeledInput label="Model" value={formState.model || ''} onChange={(val) => handleInputChange('model', val)} />
                     <LabeledInput label="Serial" value={formState.serial || ''} onChange={(val) => handleInputChange('serial', val)} />

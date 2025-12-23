@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -10,6 +11,7 @@ import { useFirestore } from '@/firebase';
 import type { HvacStartupReport, WorkOrder, Technician } from '@/lib/types';
 import { getHvacStartupReportById, getWorkOrderById, getTechnicianById } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
 
 const SectionTitle = ({ children }: { children: React.ReactNode }) => (
     <h3 className="font-bold bg-gray-100 p-2 border-b border-t">{children}</h3>
@@ -124,6 +126,9 @@ export default function ViewHvacStartupReportPage() {
                             <LabeledInput label="Unit Tag" value={report.unitTag} />
                             <LabeledInput label="S#" value={report.sNumber} />
                             <LabeledInput label="Equipment Type" value={report.equipmentType} />
+                             <div className="sm:col-span-2 my-4">
+                                <Separator />
+                            </div>
                             <LabeledInput label="Manufacturer" value={report.equipmentManufacturer} />
                             <LabeledInput label="Model" value={report.model} />
                             <LabeledInput label="Serial" value={report.serial} />
