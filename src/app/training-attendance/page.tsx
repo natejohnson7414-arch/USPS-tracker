@@ -165,13 +165,6 @@ export default function TrainingAttendancePage() {
             checklist,
         };
 
-        // This removes any top-level undefined properties before sending to Firestore.
-        Object.keys(trainingRecordData).forEach(key => {
-            if ((trainingRecordData as any)[key] === undefined) {
-                (trainingRecordData as any)[key] = null;
-            }
-        });
-
         await addDocumentNonBlocking(collection(db, 'training_records'), trainingRecordData);
 
         toast({ title: 'Training Record Saved' });
