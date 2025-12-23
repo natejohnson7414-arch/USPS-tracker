@@ -149,15 +149,19 @@ export default function TrainingAttendancePage() {
     setIsSaving(true);
     try {
         const trainingRecordData: Omit<TrainingRecord, 'id'> = {
-            workOrderId,
+            workOrderId: workOrderId || undefined,
             trainingCourse,
             trainer,
             description,
             basUserName,
             basPassword,
             date: date.toISOString(),
-            trainerSignatureUrl: trainerSignatureUrl || undefined,
-            attendees: attendees.filter(a => a.name) as Attendee[], // Only save attendees with a name
+            trainerSignatureUrl: trainerSignatureUrl || null,
+            attendees: attendees.filter(a => a.name).map(a => ({
+                id: a.id || `attendee-${Date.now()}`,
+                name: a.name || '',
+                signatureUrl: a.signatureUrl || undefined,
+            })) as Attendee[],
             checklist,
         };
 
