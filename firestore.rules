@@ -227,5 +227,15 @@ service cloud.firestore {
     match /training_records/{recordId} {
       allow read, write: if isSignedIn();
     }
+    
+    /**
+     * @description Manages access to HVAC Start-Up reports.
+     * @path /hvac_startup_reports/{reportId}
+     * @allow (read, write) Any authenticated user can create, read, and update reports.
+     * @principle HVAC reports are considered general internal documents.
+     */
+    match /hvac_startup_reports/{reportId} {
+      allow read, write: if isSignedIn();
+    }
   }
 }

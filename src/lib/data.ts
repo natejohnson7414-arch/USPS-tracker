@@ -1,6 +1,6 @@
 
 'use client';
-import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client, TrainingRecord } from '@/lib/types';
+import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client, TrainingRecord, HvacStartupReport } from '@/lib/types';
 import { collection, getDoc, doc, query, where } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 import { sampleRoles, sampleTechnicians, sampleWorkOrders, sampleWorkSites, sampleClients } from './sample-data';
@@ -231,6 +231,16 @@ export const getTrainingRecordById = async (db: any, id: string): Promise<Traini
     const trainingRecordSnap = await getDocumentNonBlocking(trainingRecordRef);
     if (trainingRecordSnap.exists()) {
         return { id: trainingRecordSnap.id, ...trainingRecordSnap.data() } as TrainingRecord;
+    }
+    return undefined;
+}
+
+export const getHvacStartupReportById = async (db: any, id: string): Promise<HvacStartupReport | undefined> => {
+    if (!id) return undefined;
+    const reportRef = doc(db, 'hvac_startup_reports', id);
+    const reportSnap = await getDocumentNonBlocking(reportRef);
+    if (reportSnap.exists()) {
+        return { id: reportSnap.id, ...reportSnap.data() } as HvacStartupReport;
     }
     return undefined;
 }
