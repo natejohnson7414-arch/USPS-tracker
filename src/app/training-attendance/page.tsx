@@ -149,7 +149,7 @@ export default function TrainingAttendancePage() {
     setIsSaving(true);
     try {
         const trainingRecordData: Omit<TrainingRecord, 'id'> = {
-            workOrderId: workOrderId || undefined,
+            workOrderId: workOrderId || null,
             trainingCourse,
             trainer,
             description,
@@ -160,10 +160,17 @@ export default function TrainingAttendancePage() {
             attendees: attendees.filter(a => a.name).map(a => ({
                 id: a.id || `attendee-${Date.now()}`,
                 name: a.name || '',
-                signatureUrl: a.signatureUrl || undefined,
+                signatureUrl: a.signatureUrl || null,
             })) as Attendee[],
             checklist,
         };
+
+        // This removes any top-level undefined properties before sending to Firestore.
+        Object.keys(trainingRecordData).forEach(key => {
+            if ((trainingRecordData as any)[key] === undefined) {
+                (trainingRecordData as any)[key] = null;
+            }
+        });
 
         await addDocumentNonBlocking(collection(db, 'training_records'), trainingRecordData);
 
