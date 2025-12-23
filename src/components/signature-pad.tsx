@@ -1,6 +1,8 @@
 
 'use client';
 
+import { useRef } from 'react';
+import SignatureCanvas from 'react-signature-canvas';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 
@@ -9,28 +11,38 @@ interface SignaturePadProps {
   onClear: () => void;
 }
 
-/**
- * NOTE: This component is currently not functional.
- * The underlying canvas functionality could not be fixed.
- */
 export function SignaturePad({ onSave, onClear }: SignaturePadProps) {
+  const sigCanvas = useRef<SignatureCanvas>(null);
+
+  const handleClear = () => {
+    sigCanvas.current?.clear();
+    onClear();
+  };
+
+  const handleSave = () => {
+    if (sigCanvas.current) {
+      const dataUrl = sigCanvas.current.getTrimmedCanvas().toDataURL('image/png');
+      onSave(dataUrl);
+    }
+  };
+
   return (
     <div className="w-full">
-        <Card>
-            <CardContent className="w-full h-48 bg-muted rounded-md flex items-center justify-center p-4">
-                <p className="text-destructive text-center">
-                    The signature pad is currently non-functional. The developer was unable to resolve the issue.
-                </p>
-            </CardContent>
-        </Card>
-        <div className="grid grid-cols-2 gap-2 mt-4">
-          <Button variant="outline" onClick={onClear} disabled>
-            Clear
-          </Button>
-          <Button onClick={() => {}} disabled>
-            Save Signature
-          </Button>
-        </div>
+      <Card>
+        <CardContent className="w-full h-48 bg-muted rounded-md p-0">
+          <SignatureCanvas
+            ref={sigCanvas}
+            penColor="black"
+            canvasProps={{ className: 'w-full h-full rounded-md' }}
+          />
+        </CardContent>
+      </Card>
+      <div className="grid grid-cols-2 gap-2 mt-4">
+        <Button variant="outline" onClick={handleClear}>
+          Clear
+        </Button>
+        <Button onClick={handleSave}>Save Signature</Button>
+      </div>
     </div>
   );
 }

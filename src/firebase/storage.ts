@@ -14,7 +14,7 @@ const storage: Storage = services.storage;
  * @param path The path where the file should be stored in Firebase Storage.
  * @returns A promise that resolves with the download URL of the uploaded file.
  */
-export const uploadImage = async (file: File, path: string): Promise<string> => {
+export const uploadImage = async (file: Blob, path: string): Promise<string> => {
   const storageRef = ref(storage, path);
   
   try {
