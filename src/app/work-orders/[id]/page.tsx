@@ -9,11 +9,11 @@ import { MainLayout } from '@/components/main-layout';
 import { WorkOrderDetails } from '@/components/work-order-details';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Ban, Pencil, Save } from 'lucide-react';
-import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client } from '@/lib/types';
 import { doc, collection, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { uploadImage } from '@/firebase/storage';
+import { uploadImage, deleteImage } from '@/firebase/storage';
 import { MapProviderSelection } from '@/components/map-provider-selection';
 
 export default function WorkOrderDetailPage() {
@@ -150,7 +150,7 @@ export default function WorkOrderDetailPage() {
 
     try {
         const photoUrls = await Promise.all(
-            newNote.photoFiles.map(file => uploadImage(file, `work-orders/${id}/${file.name}`))
+            newNote.photoFiles.map(file => uploadImage(file, `work-orders/${id}/${Date.now()}-${file.name}`))
         );
 
         const newNoteData = {
@@ -244,10 +244,13 @@ export default function WorkOrderDetailPage() {
     setIsEditing(false);
   };
   
-   const handleNotePhotoDelete = (noteId: string, photoUrl: string) => {
+   const handleNotePhotoDelete = async (noteId: string, photoUrl: string) => {
     if (!db || !workOrder) return;
-
+    
+    const noteRef = doc(db, 'work_orders', workOrder.id, 'updates', noteId);
+    
     // Optimistically update UI
+    const originalNotes = workOrder.notes;
     const updatedNotes = workOrder.notes.map(note => {
       if (note.id === noteId) {
         return { ...note, photoUrls: note.photoUrls?.filter(url => url !== photoUrl) };
@@ -256,14 +259,51 @@ export default function WorkOrderDetailPage() {
     });
     setWorkOrder(prev => prev ? ({ ...prev, notes: updatedNotes }) : null);
 
-    // Update Firestore
-    const noteRef = doc(db, 'work_orders', workOrder.id, 'updates', noteId);
-    const updatedNote = updatedNotes.find(n => n.id === noteId);
-    if(updatedNote) {
-      updateDocumentNonBlocking(noteRef, { photoUrls: updatedNote.photoUrls || [] });
-      // Note: This doesn't delete the photo from Storage. A more complete solution would.
+    try {
+        await deleteImage(photoUrl); // Delete from Storage
+        const updatedNote = updatedNotes.find(n => n.id === noteId);
+        if(updatedNote) {
+            await updateDocumentNonBlocking(noteRef, { photoUrls: updatedNote.photoUrls || [] }); // Update Firestore
+        }
+        toast({ title: 'Photo Deleted', description: 'The photo has been removed.' });
+    } catch (error) {
+        console.error("Error deleting photo:", error);
+        toast({ variant: 'destructive', title: 'Deletion Failed', description: 'Could not delete the photo.' });
+        // Revert UI if error occurs
+        setWorkOrder(prev => prev ? ({...prev, notes: originalNotes}) : null);
     }
   };
+
+  const handleNoteDelete = (noteId: string) => {
+    if (!db || !workOrder) return;
+
+    const noteToDelete = workOrder.notes.find(note => note.id === noteId);
+    if (!noteToDelete) return;
+
+    // Optimistically remove from UI
+    const originalNotes = workOrder.notes;
+    setWorkOrder(prev => prev ? ({ ...prev, notes: prev.notes.filter(n => n.id !== noteId) }) : null);
+
+    const noteRef = doc(db, 'work_orders', workOrder.id, 'updates', noteId);
+    
+    // Delete Firestore document
+    deleteDocumentNonBlocking(noteRef)
+        .then(() => {
+            // After successful Firestore deletion, delete associated photos from Storage
+            const photoDeletePromises = (noteToDelete.photoUrls || []).map(url => deleteImage(url));
+            return Promise.all(photoDeletePromises);
+        })
+        .then(() => {
+            toast({ title: 'Note Deleted', description: 'The note and its photos have been removed.' });
+        })
+        .catch(error => {
+            console.error("Error deleting note:", error);
+            toast({ variant: 'destructive', title: 'Deletion Failed', description: 'Could not delete the note.' });
+             // Revert UI if error occurs
+            setWorkOrder(prev => prev ? ({...prev, notes: originalNotes}) : null);
+        });
+  };
+
 
 
   if (isLoading || !isDataChecked) {
@@ -306,6 +346,7 @@ export default function WorkOrderDetailPage() {
             isEditing={isEditing}
             onNoteAdded={handleNoteAdded}
             onNotePhotoDelete={handleNotePhotoDelete}
+            onNoteDelete={handleNoteDelete}
             isAddingNote={isAddingNote}
             onDirectionsClick={(address) => setSelectedAddress(address)}
             editableFields={{

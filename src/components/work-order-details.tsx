@@ -27,6 +27,7 @@ import { NoteActivityItem } from './note-activity-item';
 import { useFirestore, useUser } from '@/firebase';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from './ui/checkbox';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
 
 interface EditableFields {
   description: string;
@@ -86,6 +87,7 @@ interface WorkOrderDetailsProps {
   onWorkOrderUpdate: (e: FormEvent) => void;
   onNoteAdded: (note: Omit<WorkOrderNote, 'id' | 'authorId'> & { photoFiles: File[] }) => void;
   onNotePhotoDelete: (noteId: string, photoUrl: string) => void;
+  onNoteDelete: (noteId: string) => void;
   isAddingNote: boolean;
   onDirectionsClick: (address: string) => void;
 }
@@ -100,6 +102,7 @@ export function WorkOrderDetails({
   onWorkOrderUpdate,
   onNoteAdded,
   onNotePhotoDelete,
+  onNoteDelete,
   isAddingNote,
   onDirectionsClick,
 }: WorkOrderDetailsProps) {
@@ -113,6 +116,7 @@ export function WorkOrderDetails({
   const [newNotePhotos, setNewNotePhotos] = useState<{ url: string, file: File }[]>([]);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
 
   const { 
     // Destructure all the new editable fields
@@ -191,6 +195,13 @@ export function WorkOrderDetails({
     setNewNotePhotos([]);
   };
 
+  const confirmDeleteNote = () => {
+    if (noteToDelete) {
+        onNoteDelete(noteToDelete);
+        setNoteToDelete(null);
+    }
+  };
+
   const DetailItem = ({ label, value, icon, isDate, children }: { label: string, value?: string | number | null, icon?: React.ReactNode, isDate?: boolean, children?: React.ReactNode }) => {
     if (!children && !value && value !== 0) return null;
     return (
@@ -202,6 +213,7 @@ export function WorkOrderDetails({
   }
 
   return (
+    <>
     <form id="work-order-form" onSubmit={onWorkOrderUpdate}>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
@@ -331,7 +343,7 @@ export function WorkOrderDetails({
               <Separator />
               <div className="space-y-6">
                 {isClient ? workOrder.notes.map(note => (
-                  <NoteActivityItem key={note.id} note={note} technicians={technicians} isEditing={isEditing} onPhotoDelete={onNotePhotoDelete} />
+                  <NoteActivityItem key={note.id} note={note} technicians={technicians} isEditing={isEditing} onPhotoDelete={onNotePhotoDelete} onNoteDelete={setNoteToDelete} />
                 )) : <p className="text-center text-sm text-muted-foreground py-4">Loading notes...</p>}
                 {isClient && workOrder.notes.length === 0 && (
                   <p className="text-center text-sm text-muted-foreground py-4">No notes or activity yet.</p>
@@ -480,5 +492,21 @@ export function WorkOrderDetails({
         </div>
       </div>
     </form>
+
+    <AlertDialog open={!!noteToDelete} onOpenChange={(open) => !open && setNoteToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this note.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteNote}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

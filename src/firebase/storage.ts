@@ -1,7 +1,7 @@
 
 'use client';
 
-import { getStorage, ref, uploadBytes, getDownloadURL, Storage } from 'firebase/storage';
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, Storage } from 'firebase/storage';
 import { initializeFirebase } from './index';
 
 // Initialize Firebase once and get all services
@@ -31,4 +31,26 @@ export const uploadImage = async (file: File, path: string): Promise<string> => 
     // or return a specific error message.
     throw new Error('Image upload failed');
   }
+};
+
+
+/**
+ * Deletes an image file from Firebase Storage using its download URL.
+ * @param imageUrl The public download URL of the image to delete.
+ * @returns A promise that resolves when the file is deleted.
+ */
+export const deleteImage = async (imageUrl: string): Promise<void> => {
+    try {
+        const imageRef = ref(storage, imageUrl);
+        await deleteObject(imageRef);
+        console.log('File deleted successfully');
+    } catch (error: any) {
+         // It's okay if the file doesn't exist, we can ignore that error.
+        if (error.code === 'storage/object-not-found') {
+            console.warn(`File not found, could not delete from Storage: ${imageUrl}`);
+            return;
+        }
+        console.error("Error deleting image from storage: ", error);
+        throw new Error('Image deletion failed');
+    }
 };

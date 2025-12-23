@@ -7,7 +7,7 @@ import { formatDistanceToNow } from 'date-fns';
 import type { WorkOrderNote, Technician } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from './ui/button';
-import { User, X } from 'lucide-react';
+import { User, X, Trash2 } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { getTechnicianById } from '@/lib/data';
 
@@ -17,9 +17,10 @@ interface NoteActivityItemProps {
   technicians: Technician[];
   isEditing: boolean;
   onPhotoDelete: (noteId: string, photoUrl: string) => void;
+  onNoteDelete: (noteId: string) => void;
 }
 
-export function NoteActivityItem({ note, technicians, isEditing, onPhotoDelete }: NoteActivityItemProps) {
+export function NoteActivityItem({ note, technicians, isEditing, onPhotoDelete, onNoteDelete }: NoteActivityItemProps) {
   const db = useFirestore();
   const [isClient, setIsClient] = useState(false);
   const [author, setAuthor] = useState<Technician | undefined>();
@@ -51,7 +52,20 @@ export function NoteActivityItem({ note, technicians, isEditing, onPhotoDelete }
       </Avatar>
       <div className="flex-1">
         <div className="flex items-center justify-between">
-          <p className="font-semibold">{isLoadingAuthor ? "Loading..." : (author?.name || 'Unknown User')}</p>
+            <div className="flex items-center gap-2">
+                <p className="font-semibold">{isLoadingAuthor ? "Loading..." : (author?.name || 'Unknown User')}</p>
+                {isEditing && (
+                     <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => onNoteDelete(note.id)}
+                    >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Delete Note</span>
+                    </Button>
+                )}
+            </div>
           <p className="text-xs text-muted-foreground">
             {isClient ? formatDistanceToNow(new Date(note.createdAt), { addSuffix: true }) : '...'}
           </p>
