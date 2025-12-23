@@ -4,37 +4,24 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * Core Philosophy: This ruleset enforces a strict Database-based Access Control (DBAC)
-     * model combined with user ownership. Access is determined by a user's role, which is
-     * stored in the `/users/{userId}` document and links to a definition in the `/roles`
-     * collection. There are two primary roles: 'Administrator' with broad permissions,
-     * and 'Technician' with access restricted to their assigned work orders.
+     * Core Philosophy: This ruleset enforces a lenient access model for active work orders
+     * and a stricter model for completed ones. Any authenticated user can create, view, and
+     * edit any work order that is not marked as 'Completed'. Once a work order is completed,
+     * it becomes read-only for non-administrators to preserve historical data integrity.
+     * Administrators retain full access to all data at all times.
      *
      * Data Structure: The data is organized into top-level collections for `users`, `roles`,
-     * `technicians`, and `work_orders`. This structure includes denormalized collections like
-     * `/technicians/{technicianId}/work_orders` to facilitate secure and performant queries
-     * for technicians listing their assigned tasks.
+     * `technicians`, and `work_orders`.
      *
      * Key Security Decisions:
      * - Default Deny: All operations are denied by default. Access must be explicitly granted.
-     * - Role-Based Access: The `isAdmin()` and `isTechnician()` helper functions perform
-     *   `get()` calls to user and role documents to determine permissions dynamically.
+     * - Open Editing for Active Orders: Non-admin users can edit any work order as long
+     *   as its status is not 'Completed'.
+     * - Admin Override: Administrators have full CRUD access to all resources, including
+     *   editing completed work orders.
      * - No User Enumeration: Listing users is restricted to administrators
      *   to protect user privacy. Listing technicians is allowed for any signed-in user.
      *
-     * Prototyping Flexibility: Data shapes are not strictly validated, but authorization
-     * fields (like `assignedTechnicianId`) are rigorously enforced to maintain security
-     * while allowing for rapid application development.
-     *
-     * Denormalization for Authorization: The rules heavily leverage denormalized fields to
-     * avoid costly or impossible security checks. For instance, `work_orders` and their
-     * `updates` subcollection contain an `assignedTechnicianId` or `technicianId`. This allows
-     * rules to directly check for ownership (`resource.data.technicianId == request.auth.uid`)
-     * without needing extra `get()` calls to parent documents for most operations.
-     *
-     * Structural Segregation: The `/technicians/{technicianId}/work_orders` collection provides
-     * a segregated data view. This allows a technician to safely perform list queries on their
-     * own work orders, as the rules can secure the entire collection path based on their user ID.
      */
 
     // --------------------------------------------------------------------------
@@ -110,6 +97,13 @@ service cloud.firestore {
                data.status != null &&
                data.createdDate != null;
     }
+    
+    /**
+     * Checks if the parent work order is in a completed state.
+     */
+     function isParentWorkOrderCompleted(workOrderId) {
+        return get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.status == 'Completed';
+     }
 
     // --------------------------------------------------------------------------
     // Collection Rules
@@ -186,32 +180,27 @@ service cloud.firestore {
     /**
      * @description Manages access to the primary collection of work order documents.
      * @path /work_orders/{workOrderId}
-     * @allow (get) Technician 'tech123' reading a work order where `assignedTechnicianId` is 'tech123'.
-     * @deny (get) Technician 'tech456' reading a work order assigned to 'tech123'.
-     * @principle Enforces shared access based on the denormalized `assignedTechnicianId` field, with full access for Admins.
+     * @allow (get) Any signed-in user.
+     * @deny (update) Any user if the work order status is 'Completed' (unless they are an admin).
+     * @principle Enforces open access for active work orders, and read-only for completed ones (non-admin).
      */
     match /work_orders/{workOrderId} {
-      allow get: if isAdmin() || (isTechnician() && request.auth.uid == resource.data.assignedTechnicianId);
-      allow list: if isSignedIn();
-      allow create: if isAdmin() && hasRequiredWorkOrderFields();
-      allow update: if (isAdmin() || (isTechnician() && request.auth.uid == resource.data.assignedTechnicianId)) && resource != null;
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && hasRequiredWorkOrderFields();
+      allow update: if (isAdmin() || (isSignedIn() && resource.data.status != 'Completed')) && resource != null;
       allow delete: if isAdmin() && resource != null;
 
       /**
        * @description Manages access to updates on a specific work order.
        * @path /work_orders/{workOrderId}/updates/{updateId}
-       * @allow (create) The technician assigned to the parent work order.
-       * @deny (create) A technician not assigned to the parent work order.
-       * @principle Access is granted to Admins or the technician assigned to the parent work order.
+       * @allow (create) Any signed-in user, as long as the parent work order is not completed.
+       * @deny (create) Any non-admin user if the parent work order is 'Completed'.
+       * @principle Access for notes mirrors the parent work order's editability.
        */
       match /updates/{updateId} {
-        function isAssignedToParentWorkOrder() {
-          return get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.assignedTechnicianId == request.auth.uid;
-        }
-
-        allow read, list: if isAdmin() || (isTechnician() && isAssignedToParentWorkOrder());
-        allow create: if isAdmin() || (isTechnician() && isAssignedToParentWorkOrder());
-        allow update, delete: if isAdmin() || (isTechnician() && isAssignedToParentWorkOrder() && resource != null);
+        allow read, list: if isSignedIn();
+        allow create, update: if isAdmin() || (isSignedIn() && !isParentWorkOrderCompleted(workOrderId));
+        allow delete: if (isAdmin() || (isSignedIn() && !isParentWorkOrderCompleted(workOrderId))) && resource != null;
       }
     }
 
