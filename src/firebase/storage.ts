@@ -4,14 +4,25 @@
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, Storage } from 'firebase/storage';
 import { initializeFirebase } from './index';
 
-let storage: Storage;
+// DO NOT INITIALIZE AT THE TOP LEVEL.
+// let storage: Storage;
 
-try {
-    const services = initializeFirebase();
-    storage = services.storage;
-} catch (e) {
-    console.error("Firebase initialization failed in storage.ts:", e);
-    // You might want to have a fallback or a way to handle this case
+/**
+ * Lazily gets the storage instance. This ensures Firebase is initialized
+ * and we have the correct instance.
+ */
+const getStorageInstance = (): Storage => {
+  try {
+    // initializeFirebase() is idempotent and returns the initialized services.
+    const { storage } = initializeFirebase();
+    if (!storage) {
+        throw new Error("Firebase Storage service is not available.");
+    }
+    return storage;
+  } catch (e) {
+    console.error("Firebase initialization failed when getting storage instance:", e);
+    throw new Error("Firebase Storage could not be initialized.");
+  }
 }
 
 
@@ -22,9 +33,7 @@ try {
  * @returns A promise that resolves with the download URL of the uploaded file.
  */
 export const uploadImage = async (file: Blob, path: string): Promise<string> => {
-  if (!storage) {
-    throw new Error("Firebase Storage is not initialized.");
-  }
+  const storage = getStorageInstance();
   const storageRef = ref(storage, path);
   
   try {
@@ -50,9 +59,7 @@ export const uploadImage = async (file: Blob, path: string): Promise<string> => 
  * @returns A promise that resolves when the file is deleted.
  */
 export const deleteImage = async (imageUrl: string): Promise<void> => {
-    if (!storage) {
-        throw new Error("Firebase Storage is not initialized.");
-    }
+    const storage = getStorageInstance();
     try {
         const imageRef = ref(storage, imageUrl);
         await deleteObject(imageRef);
