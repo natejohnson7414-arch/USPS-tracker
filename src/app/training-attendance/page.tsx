@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Separator } from '@/components/ui/separator';
 import { SignaturePad } from '@/components/signature-pad';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -25,6 +26,39 @@ import { collection } from 'firebase/firestore';
 import type { TrainingRecord, Attendee } from '@/lib/types';
 import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 
+const checklistItems = {
+  item1: 'Have trainees sign the owners training sign-in sheet.',
+  item2: 'Review basic operations of each new piece of equipment. A simple explanation of the piece of equipment we replaced works and ties into the rest of the system.',
+  item3: 'Explain Basic Controls',
+  item3i: 'What areas are tied to each controller or remote space temp sensors.',
+  item3ii: 'How to open thermostats lockable cover or turn on BAS device.',
+  item3iii: 'If password protected, provided password, record this on owner training sign in sheet.',
+  item3iv: 'How to change from heating to cooling.',
+  item3v: 'How to adjust temperatures.',
+  item4: 'Train staff on basics of equipment. "Only on equipment we installed"',
+  item4a: 'Show where and how to shut down the unit.',
+  item4ai: 'Disconnects.',
+  item4aii: 'Emergency shut down buttons',
+  item4b: 'Show where filters are located.',
+  item4bi: 'Give them filter count and sizes.',
+  item4bii: 'Explain how often they need changing.',
+  item4c: 'Show where belts are located.',
+  item4ci: 'Give them belt count and sizes.',
+  item4cii: 'Explain how often they need changing.',
+  item4d: 'Show where condenser is located.',
+  item4di: 'Explain to them the importance of a clean coil.',
+  item4dii: 'Tell them how to identify a dirty coil.',
+  item4e: 'Show them where the unit drains.',
+  item4ei: 'Explain the importance of why it need to stay clean.',
+  item4f: 'Show them where the chemical treatment is added',
+  item4g: 'Show them where the cooling tower is located',
+  item4gi: 'Explain the importance of why it needs to stay clean.',
+  item4h: 'Explain what clearance equipment needs to operate, epically base board heaters.',
+  item4i: 'Recommend a simple daily inspection. Consisting of simply taking a minute or two to walk through a mechanical room or facility and listening to the equipment and look for anything such as water on floor or anything out of normal.',
+  item5: 'Ask who does there Maintenance? Recommend we give them a price, if they agree call office we may have you stay on-site and get a list of equipment/with belts and filter counts and sizes.',
+};
+
+
 export default function TrainingAttendancePage() {
   const db = useFirestore();
   const { toast } = useToast();
@@ -38,6 +72,9 @@ export default function TrainingAttendancePage() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [trainerSignatureUrl, setTrainerSignatureUrl] = useState<string | null>(null);
   const [attendees, setAttendees] = useState<Partial<Attendee>[]>([{ id: `attendee-${Date.now()}`, name: '' }]);
+  const [checklist, setChecklist] = useState<{[key: string]: boolean}>(
+    Object.keys(checklistItems).reduce((acc, key) => ({ ...acc, [key]: false }), {})
+  );
   
   const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
   const [signatureTarget, setSignatureTarget] = useState<{ type: 'trainer' | 'attendee'; index?: number } | null>(null);
@@ -55,6 +92,10 @@ export default function TrainingAttendancePage() {
     newAttendees[index].name = name;
     setAttendees(newAttendees);
   };
+  
+  const handleChecklistChange = (key: string, checked: boolean) => {
+    setChecklist(prev => ({...prev, [key]: checked}));
+  }
 
   const openSignatureDialog = (type: 'trainer' | 'attendee', index?: number) => {
     setSignatureTarget({ type, index });
@@ -104,7 +145,8 @@ export default function TrainingAttendancePage() {
             basPassword,
             date: date.toISOString(),
             trainerSignatureUrl,
-            attendees: attendees.filter(a => a.name) // Only save attendees with a name
+            attendees: attendees.filter(a => a.name), // Only save attendees with a name
+            checklist,
         };
 
         await addDocumentNonBlocking(collection(db, 'training_records'), trainingRecordData);
@@ -119,6 +161,7 @@ export default function TrainingAttendancePage() {
         setDate(new Date());
         setTrainerSignatureUrl(null);
         setAttendees([{ id: `attendee-${Date.now()}`, name: '' }]);
+        setChecklist(Object.keys(checklistItems).reduce((acc, key) => ({ ...acc, [key]: false }), {}));
 
     } catch (error) {
         console.error("Error saving training record:", error);
@@ -127,6 +170,13 @@ export default function TrainingAttendancePage() {
         setIsSaving(false);
     }
   };
+
+  const ChecklistItem = ({ id, label, level = 0, subItem = false }: {id: string, label: string, level?: number, subItem?: boolean}) => (
+     <div className="flex items-start gap-3" style={{ marginLeft: `${level * 1.5}rem` }}>
+        {!subItem && <Checkbox id={id} checked={checklist[id]} onCheckedChange={(checked) => handleChecklistChange(id, Boolean(checked))} className="mt-1" />}
+        <label htmlFor={id} className="text-sm font-medium leading-normal flex-1">{label}</label>
+     </div>
+  );
 
 
   return (
@@ -228,6 +278,53 @@ export default function TrainingAttendancePage() {
                       Add Attendee
                     </Button>
                 </div>
+
+                <Separator className="my-8" />
+                
+                <div className="space-y-4">
+                    <h2 className="text-xl font-bold text-center">Owners Training Check List</h2>
+                    <ChecklistItem id="item1" label={checklistItems.item1} />
+                    <ChecklistItem id="item2" label={checklistItems.item2} />
+                    
+                    <ChecklistItem id="item3" label={checklistItems.item3} />
+                    <ChecklistItem id="item3i" label={`i. ${checklistItems.item3i}`} level={1} subItem={true} />
+                    <ChecklistItem id="item3ii" label={`ii. ${checklistItems.item3ii}`} level={1} subItem={true} />
+                    <ChecklistItem id="item3iii" label={`iii. ${checklistItems.item3iii}`} level={1} subItem={true} />
+                    <ChecklistItem id="item3iv" label={`iv. ${checklistItems.item3iv}`} level={1} subItem={true} />
+                    <ChecklistItem id="item3v" label={`v. ${checklistItems.item3v}`} level={1} subItem={true} />
+
+                    <ChecklistItem id="item4" label={checklistItems.item4} />
+                    <div style={{ marginLeft: `1.5rem` }} className="space-y-4">
+                        <ChecklistItem id="item4a" label={`a. ${checklistItems.item4a}`} />
+                         <ChecklistItem id="item4ai" label={`i. ${checklistItems.item4ai}`} level={1} subItem={true} />
+                         <ChecklistItem id="item4aii" label={`ii. ${checklistItems.item4aii}`} level={1} subItem={true} />
+
+                        <ChecklistItem id="item4b" label={`b. ${checklistItems.item4b}`} />
+                        <ChecklistItem id="item4bi" label={`i. ${checklistItems.item4bi}`} level={1} subItem={true} />
+                        <ChecklistItem id="item4bii" label={`ii. ${checklistItems.item4bii}`} level={1} subItem={true} />
+                        
+                        <ChecklistItem id="item4c" label={`c. ${checklistItems.item4c}`} />
+                        <ChecklistItem id="item4ci" label={`i. ${checklistItems.item4ci}`} level={1} subItem={true} />
+                        <ChecklistItem id="item4cii" label={`ii. ${checklistItems.item4cii}`} level={1} subItem={true} />
+
+                        <ChecklistItem id="item4d" label={`d. ${checklistItems.item4d}`} />
+                        <ChecklistItem id="item4di" label={`i. ${checklistItems.item4di}`} level={1} subItem={true} />
+                        <ChecklistItem id="item4dii" label={`ii. ${checklistItems.item4dii}`} level={1} subItem={true} />
+                        
+                        <ChecklistItem id="item4e" label={`e. ${checklistItems.item4e}`} />
+                        <ChecklistItem id="item4ei" label={`i. ${checklistItems.item4ei}`} level={1} subItem={true} />
+
+                        <ChecklistItem id="item4f" label={`f. ${checklistItems.item4f}`} />
+                        <ChecklistItem id="item4g" label={`g. ${checklistItems.item4g}`} />
+                         <ChecklistItem id="item4gi" label={`i. ${checklistItems.item4gi}`} level={1} subItem={true} />
+
+                        <ChecklistItem id="item4h" label={`h. ${checklistItems.item4h}`} />
+                        <ChecklistItem id="item4i" label={`i. ${checklistItems.item4i}`} />
+                    </div>
+                     <ChecklistItem id="item5" label={checklistItems.item5} />
+                </div>
+
+
                  <div className="flex justify-end mt-8">
                     <Button onClick={handleSaveForm} disabled={isSaving}>
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -255,3 +352,5 @@ export default function TrainingAttendancePage() {
     </MainLayout>
   );
 }
+
+    

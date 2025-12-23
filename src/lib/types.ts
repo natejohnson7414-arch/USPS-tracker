@@ -112,6 +112,7 @@ export type TrainingRecord = {
     date?: string;
     trainerSignatureUrl?: string;
     attendees: Attendee[];
+    checklist?: { [key: string]: boolean };
 };
 
 export type Attendee = {
@@ -119,3 +120,5 @@ export type Attendee = {
     name: string;
     signatureUrl?: string;
 };
+
+    
