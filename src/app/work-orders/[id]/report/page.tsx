@@ -117,7 +117,7 @@ export default function WorkOrderReportPage() {
                     <div>
                         <h2 className="font-bold text-lg">Facilities Office</h2>
                         <div className="relative h-16 w-48">
-                            <Image src="https://firebasestudio.app/assets/images/usps-logo.png" alt="USPS Logo" fill={true} style={{objectFit:"contain"}} />
+                            <Image src="https://storage.googleapis.com/sourcegraph-assets/cody-play/usps-logo-250125B6-512A-4354-946A-89F15A335293.png" alt="USPS Logo" fill={true} style={{objectFit:"contain"}} />
                         </div>
                         <p className="mt-4">Date: <span className="font-medium underline decoration-dotted">{signatureDate}</span></p>
                         <p className="mt-2">Facilities HUB Project Manager:</p>

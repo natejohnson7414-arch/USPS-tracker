@@ -51,6 +51,12 @@ const nextConfig: NextConfig = {
         hostname: 'www.crawford-company.com',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'storage.googleapis.com',
+        port: '',
+        pathname: '/**',
       }
     ],
   },
