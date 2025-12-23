@@ -83,7 +83,7 @@ export default function WorkOrderReportPage() {
     }
     
     const signatureDate = workOrder.signatureDate ? format(new Date(workOrder.signatureDate), 'MM/dd/yyyy') : ' ';
-    const allPhotoUrls = workOrder.notes.flatMap(note => note.photoUrls || []);
+    const allPhotoUrls = workOrder.notes.flatMap(note => note.photoUrls || []).filter(Boolean);
 
 
     return (
@@ -118,14 +118,14 @@ export default function WorkOrderReportPage() {
                     <div>
                         <h2 className="font-bold text-lg">Facilities Office</h2>
                         <div className="relative h-16 w-48">
-                            <Image src="https://firebasestudio.app/assets/images/usps-logo.png" alt="USPS Logo" layout="fill" objectFit="contain" />
+                            <Image src="https://firebasestudio.app/assets/images/usps-logo.png" alt="USPS Logo" fill={true} objectFit="contain" />
                         </div>
                         <p className="mt-4">Date: <span className="font-medium underline decoration-dotted">{signatureDate}</span></p>
                         <p className="mt-2">Facilities HUB Project Manager:</p>
                     </div>
                     <div>
                         <div className="relative h-16 w-48">
-                            <Image src="https://firebasestudio.app/assets/images/crawford-logo.png" alt="Crawford Company Logo" layout="fill" objectFit="contain" />
+                            <Image src="https://firebasestudio.app/assets/images/crawford-logo.png" alt="Crawford Company Logo" fill={true} objectFit="contain" />
                         </div>
                         <p className="mt-4 text-right">Crawford Job #</p>
                         <div className="bg-gray-200 p-2 rounded text-center font-medium">{workOrder.id}</div>
@@ -202,7 +202,7 @@ export default function WorkOrderReportPage() {
                             {allPhotoUrls.map((url, index) => (
                                 <div key={index} className="space-y-2">
                                     <div className="relative aspect-video w-full border rounded-lg overflow-hidden">
-                                        <Image src={url} alt={`Work photo ${index + 1}`} layout="fill" objectFit="contain" />
+                                        <Image src={url} alt={`Work photo ${index + 1}`} fill={true} objectFit="contain" />
                                     </div>
                                     <p className="text-center text-sm text-gray-500">Photo {index + 1}</p>
                                 </div>
