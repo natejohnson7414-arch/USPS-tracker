@@ -35,7 +35,6 @@ export default function WorkOrderReportPage() {
                 }
                 setWorkOrder(wo);
                 
-                // Consolidate description and notes
                 const notesToSummarize = [wo.description, ...wo.notes.map(n => n.text)].filter(Boolean);
 
                 if (notesToSummarize.length > 0) {
@@ -125,7 +124,7 @@ export default function WorkOrderReportPage() {
                     </div>
                     <div>
                         <div className="relative h-16 w-48">
-                            <Image src="https://firebasestudio.app/assets/images/crawford-logo.png" alt="Crawford Company Logo" fill={true} style={{objectFit:"contain"}} />
+                           <Image src="https://firebasestudio.app/assets/images/crawford-logo.png" alt="Crawford Company Logo" fill={true} style={{objectFit:"contain"}} />
                         </div>
                         <p className="mt-4 text-right">Crawford Job #</p>
                         <div className="bg-gray-200 p-2 rounded text-center font-medium">{workOrder.id}</div>
@@ -175,7 +174,7 @@ export default function WorkOrderReportPage() {
                         <div className="w-2/3 border-2 border-black text-sm">
                             <div className="p-2 border-b-2 border-black font-medium min-h-[2rem]">{workOrder.contactInfo || ''}</div>
                             <div className="p-2 border-b-2 border-black min-h-[3rem] flex items-center">
-                                {workOrder.customerSignatureUrl && (
+                                {!!workOrder.customerSignatureUrl && (
                                     <Image src={workOrder.customerSignatureUrl} alt="Customer Signature" width={200} height={50} style={{objectFit:"contain"}} />
                                 )}
                             </div>
