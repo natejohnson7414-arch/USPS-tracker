@@ -104,14 +104,14 @@ export type Client = {
 
 export type TrainingRecord = {
     id: string;
-    workOrderId?: string;
+    workOrderId?: string | null;
     trainingCourse: string;
     trainer: string;
     description: string;
     basUserName: string;
-    basPassword?: string;
+    basPassword?: string | null;
     date?: string;
-    trainerSignatureUrl?: string;
+    trainerSignatureUrl?: string | null;
     attendees: Attendee[];
     checklist?: { [key: string]: boolean };
 };
@@ -119,7 +119,7 @@ export type TrainingRecord = {
 export type Attendee = {
     id: string;
     name: string;
-    signatureUrl?: string;
+    signatureUrl?: string | null;
 };
 
 export type HvacStartupReport = {
@@ -128,6 +128,7 @@ export type HvacStartupReport = {
     technicianId?: string;
     date: string;
     site?: string;
+    technician?: string;
     equipmentBeingRemoved?: string;
     unitTag?: string;
     manufacturer?: string;
@@ -149,23 +150,48 @@ export type HvacStartupReport = {
     controlVoltageACDC?: string;
     motorHp?: string;
     motorAmps?: string;
-    suctionPressure: (string | undefined)[];
-    dischargePressure: (string | undefined)[];
-    crankcaseHeaterAmp: (string | undefined)[];
-    compressorAmp: (string | undefined)[];
-    compressorVoltage: (string | undefined)[];
+    suctionPressure_S1?: string;
+    suctionPressure_S2?: string;
+    suctionPressure_S3?: string;
+    suctionPressure_S4?: string;
+    dischargePressure_S1?: string;
+    dischargePressure_S2?: string;
+    dischargePressure_S3?: string;
+    dischargePressure_S4?: string;
+    crankcaseHeaterAmp_S1?: string;
+    crankcaseHeaterAmp_S2?: string;
+    crankcaseHeaterAmp_S3?: string;
+    crankcaseHeaterAmp_S4?: string;
+    compressorAmp_T1?: string;
+    compressorAmp_T2?: string;
+    compressorAmp_T3?: string;
+    compressorVoltage_T1_T2?: string;
+    compressorVoltage_T2_T3?: string;
+    compressorVoltage_T3_T1?: string;
     condenserFanVoltage?: string;
     condenserFanAmp?: string;
     cooling_evaporatorEAT?: string;
     cooling_evaporatorLAT?: string;
     cooling_condenserEAT?: string;
     cooling_condenserLAT?: string;
-    motorRatedAmps: (string | undefined)[];
-    gasHeating_RAT_SAT: (string | undefined)[];
+    motorRatedAmps_T1?: string;
+    motorRatedAmps_T2?: string;
+    motorRatedAmps_T3?: string;
+    gasHeating_RAT_SAT_S1?: string;
+    gasHeating_RAT_SAT_S2?: string;
+    gasHeating_RAT_SAT_S3?: string;
+    gasHeating_RAT_SAT_S4?: string;
     gasPressureInWC?: string;
-    electricHeating_RAT_SAT: (string | undefined)[];
-    voltage: (string | undefined)[];
-    amps: (string | undefined)[];
+    electricHeating_RAT_SAT_S1?: string;
+    electricHeating_RAT_SAT_S2?: string;
+    electricHeating_RAT_SAT_S3?: string;
+    electricHeating_RAT_SAT_S4?: string;
+    voltage_T1_T2?: string;
+    voltage_T2_T3?: string;
+    voltage_T3_T1?: string;
+    amps_T1?: string;
+    amps_T2?: string;
+    amps_T3?: string;
     checkedRotation?: string;
 };
     

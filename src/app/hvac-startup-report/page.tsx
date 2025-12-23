@@ -54,16 +54,6 @@ export default function HvacStartupReportPage() {
 
   const [formState, setFormState] = useState<Partial<HvacStartupReport>>({
     date: new Date().toISOString(),
-    suctionPressure: [],
-    dischargePressure: [],
-    crankcaseHeaterAmp: [],
-    compressorAmp: [],
-    compressorVoltage: [],
-    motorRatedAmps: [],
-    gasHeating_RAT_SAT: [],
-    electricHeating_RAT_SAT: [],
-    voltage: [],
-    amps: [],
   });
 
   const workOrdersQuery = useMemoFirebase(() => db ? query(collection(db, 'work_orders'), where("status", "==", "In Progress")) : null, [db]);
@@ -76,28 +66,23 @@ export default function HvacStartupReportPage() {
     setFormState(prev => ({ ...prev, [field]: value }));
   };
   
-  const handleArrayInputChange = (field: keyof HvacStartupReport, index: number, value: string) => {
-      setFormState(prev => {
-          const arr = (prev[field] as string[] | undefined) || [];
-          const newArr = [...arr];
-          newArr[index] = value;
-          return {...prev, [field]: newArr};
-      })
+  const handleGroupedInputChange = (baseField: string, index: number, value: string) => {
+    const fieldName = `${baseField}_S${index + 1}` as keyof HvacStartupReport;
+    handleInputChange(fieldName, value);
+  };
+  
+  const handleAmpVoltInputChange = (baseField: string, index: number, value: string) => {
+    const fieldName = `${baseField}_T${index + 1}` as keyof HvacStartupReport;
+    handleInputChange(fieldName, value);
+  }
+  
+  const handleCompressorVoltInputChange = (field: keyof HvacStartupReport, value: string) => {
+    handleInputChange(field, value);
   }
 
   const resetForm = () => {
     setFormState({
         date: new Date().toISOString(),
-        suctionPressure: [],
-        dischargePressure: [],
-        crankcaseHeaterAmp: [],
-        compressorAmp: [],
-        compressorVoltage: [],
-        motorRatedAmps: [],
-        gasHeating_RAT_SAT: [],
-        electricHeating_RAT_SAT: [],
-        voltage: [],
-        amps: [],
     })
   }
 
@@ -226,23 +211,23 @@ export default function HvacStartupReportPage() {
                 </div>
 
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 pt-4">
-                    <GroupedLabeledInput label="Condenser: Suction Pressure" values={formState.suctionPressure || []} onChange={(i, v) => handleArrayInputChange('suctionPressure', i, v)} labels={['S-1', 'S-2', 'S-3', 'S-4']} />
-                    <GroupedLabeledInput label="Condenser: Discharge Pressure" values={formState.dischargePressure || []} onChange={(i, v) => handleArrayInputChange('dischargePressure', i, v)} labels={['S-1', 'S-2', 'S-3', 'S-4']} />
-                    <GroupedLabeledInput label="Condenser: Crankcase Heater AMP" values={formState.crankcaseHeaterAmp || []} onChange={(i, v) => handleArrayInputChange('crankcaseHeaterAmp', i, v)} labels={['S-1', 'S-2', 'S-3', 'S-4']} />
+                    <GroupedLabeledInput label="Condenser: Suction Pressure" values={[formState.suctionPressure_S1 || '', formState.suctionPressure_S2 || '', formState.suctionPressure_S3 || '', formState.suctionPressure_S4 || '']} onChange={(i, v) => handleGroupedInputChange('suctionPressure', i, v)} labels={['S-1', 'S-2', 'S-3', 'S-4']} />
+                    <GroupedLabeledInput label="Condenser: Discharge Pressure" values={[formState.dischargePressure_S1 || '', formState.dischargePressure_S2 || '', formState.dischargePressure_S3 || '', formState.dischargePressure_S4 || '']} onChange={(i, v) => handleGroupedInputChange('dischargePressure', i, v)} labels={['S-1', 'S-2', 'S-3', 'S-4']} />
+                    <GroupedLabeledInput label="Condenser: Crankcase Heater AMP" values={[formState.crankcaseHeaterAmp_S1 || '', formState.crankcaseHeaterAmp_S2 || '', formState.crankcaseHeaterAmp_S3 || '', formState.crankcaseHeaterAmp_S4 || '']} onChange={(i, v) => handleGroupedInputChange('crankcaseHeaterAmp', i, v)} labels={['S-1', 'S-2', 'S-3', 'S-4']} />
                     <div>
                          <p className="text-sm text-muted-foreground sm:text-xs">Compressor AMP</p>
-                         <LabeledInput label="T1" value={formState.compressorAmp?.[0] || ''} onChange={v => handleArrayInputChange('compressorAmp', 0, v)} />
-                         <LabeledInput label="T2" value={formState.compressorAmp?.[1] || ''} onChange={v => handleArrayInputChange('compressorAmp', 1, v)} />
-                         <LabeledInput label="T3" value={formState.compressorAmp?.[2] || ''} onChange={v => handleArrayInputChange('compressorAmp', 2, v)} />
+                         <LabeledInput label="T1" value={formState.compressorAmp_T1 || ''} onChange={v => handleAmpVoltInputChange('compressorAmp', 0, v)} />
+                         <LabeledInput label="T2" value={formState.compressorAmp_T2 || ''} onChange={v => handleAmpVoltInputChange('compressorAmp', 1, v)} />
+                         <LabeledInput label="T3" value={formState.compressorAmp_T3 || ''} onChange={v => handleAmpVoltInputChange('compressorAmp', 2, v)} />
                     </div>
                  </div>
                  
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 pt-4">
                     <div>
                         <p className="text-sm text-muted-foreground sm:text-xs">Compressor Voltage</p>
-                        <LabeledInput label="T1-T2" value={formState.compressorVoltage?.[0] || ''} onChange={v => handleArrayInputChange('compressorVoltage', 0, v)} />
-                        <LabeledInput label="T2-T3" value={formState.compressorVoltage?.[1] || ''} onChange={v => handleArrayInputChange('compressorVoltage', 1, v)} />
-                        <LabeledInput label="T3-T1" value={formState.compressorVoltage?.[2] || ''} onChange={v => handleArrayInputChange('compressorVoltage', 2, v)} />
+                        <LabeledInput label="T1-T2" value={formState.compressorVoltage_T1_T2 || ''} onChange={v => handleCompressorVoltInputChange('compressorVoltage_T1_T2', v)} />
+                        <LabeledInput label="T2-T3" value={formState.compressorVoltage_T2_T3 || ''} onChange={v => handleCompressorVoltInputChange('compressorVoltage_T2_T3', v)} />
+                        <LabeledInput label="T3-T1" value={formState.compressorVoltage_T3_T1 || ''} onChange={v => handleCompressorVoltInputChange('compressorVoltage_T3_T1', v)} />
                         <LabeledInput label="Condenser Fan Voltage" value={formState.condenserFanVoltage || ''} onChange={val => handleInputChange('condenserFanVoltage', val)} />
                         <LabeledInput label="Condenser Fan Amp" value={formState.condenserFanAmp || ''} onChange={val => handleInputChange('condenserFanAmp', val)} />
                     </div>
@@ -259,15 +244,15 @@ export default function HvacStartupReportPage() {
                     <div>
                         <SectionTitle>Motor Rated Amps</SectionTitle>
                         <div className="p-4 border border-t-0 space-y-2">
-                             <LabeledInput label="T1" value={formState.motorRatedAmps?.[0] || ''} onChange={v => handleArrayInputChange('motorRatedAmps', 0, v)} />
-                             <LabeledInput label="T2" value={formState.motorRatedAmps?.[1] || ''} onChange={v => handleArrayInputChange('motorRatedAmps', 1, v)} />
-                             <LabeledInput label="T3" value={formState.motorRatedAmps?.[2] || ''} onChange={v => handleArrayInputChange('motorRatedAmps', 2, v)} />
+                             <LabeledInput label="T1" value={formState.motorRatedAmps_T1 || ''} onChange={v => handleAmpVoltInputChange('motorRatedAmps', 0, v)} />
+                             <LabeledInput label="T2" value={formState.motorRatedAmps_T2 || ''} onChange={v => handleAmpVoltInputChange('motorRatedAmps', 1, v)} />
+                             <LabeledInput label="T3" value={formState.motorRatedAmps_T3 || ''} onChange={v => handleAmpVoltInputChange('motorRatedAmps', 2, v)} />
                         </div>
                      </div>
                      <div>
                         <SectionTitle>Gas Heating</SectionTitle>
                         <div className="p-4 border border-t-0 space-y-2">
-                            <GroupedLabeledInput label="RAT | SAT Temp °F" values={formState.gasHeating_RAT_SAT || []} onChange={(i, v) => handleArrayInputChange('gasHeating_RAT_SAT', i, v)} labels={['S-1', 'S-2', 'S-3', 'S-4']} />
+                            <GroupedLabeledInput label="RAT | SAT Temp °F" values={[formState.gasHeating_RAT_SAT_S1 || '', formState.gasHeating_RAT_SAT_S2 || '', formState.gasHeating_RAT_SAT_S3 || '', formState.gasHeating_RAT_SAT_S4 || '']} onChange={(i, v) => handleGroupedInputChange('gasHeating_RAT_SAT', i, v)} labels={['S-1', 'S-2', 'S-3', 'S-4']} />
                             <LabeledInput label="Gas Pressure IN WC" value={formState.gasPressureInWC || ''} onChange={val => handleInputChange('gasPressureInWC', val)} />
                         </div>
                      </div>
@@ -277,15 +262,15 @@ export default function HvacStartupReportPage() {
                     <div>
                         <SectionTitle>Electric Heating</SectionTitle>
                         <div className="p-4 border border-t-0 space-y-2">
-                            <GroupedLabeledInput label="RAT | SAT Temp °F" values={formState.electricHeating_RAT_SAT || []} onChange={(i, v) => handleArrayInputChange('electricHeating_RAT_SAT', i, v)} labels={['S-1', 'S-2', 'S-3', 'S-4']} />
+                            <GroupedLabeledInput label="RAT | SAT Temp °F" values={[formState.electricHeating_RAT_SAT_S1 || '', formState.electricHeating_RAT_SAT_S2 || '', formState.electricHeating_RAT_SAT_S3 || '', formState.electricHeating_RAT_SAT_S4 || '']} onChange={(i, v) => handleGroupedInputChange('electricHeating_RAT_SAT', i, v)} labels={['S-1', 'S-2', 'S-3', 'S-4']} />
                         </div>
                     </div>
                     <div>
                         <SectionTitle>Voltage</SectionTitle>
                         <div className="p-4 border border-t-0 space-y-2">
-                            <LabeledInput label="T1-T2" value={formState.voltage?.[0] || ''} onChange={v => handleArrayInputChange('voltage', 0, v)} />
-                            <LabeledInput label="T2-T3" value={formState.voltage?.[1] || ''} onChange={v => handleArrayInputChange('voltage', 1, v)} />
-                            <LabeledInput label="T3-T1" value={formState.voltage?.[2] || ''} onChange={v => handleArrayInputChange('voltage', 2, v)} />
+                            <LabeledInput label="T1-T2" value={formState.voltage_T1_T2 || ''} onChange={v => handleAmpVoltInputChange('voltage', 0, v)} />
+                            <LabeledInput label="T2-T3" value={formState.voltage_T2_T3 || ''} onChange={v => handleAmpVoltInputChange('voltage', 1, v)} />
+                            <LabeledInput label="T3-T1" value={formState.voltage_T3_T1 || ''} onChange={v => handleAmpVoltInputChange('voltage', 2, v)} />
                         </div>
                     </div>
                 </div>
@@ -294,9 +279,9 @@ export default function HvacStartupReportPage() {
                     <div>
                         <SectionTitle>Amps</SectionTitle>
                         <div className="p-4 border border-t-0 space-y-2">
-                            <LabeledInput label="T1" value={formState.amps?.[0] || ''} onChange={v => handleArrayInputChange('amps', 0, v)} />
-                            <LabeledInput label="T2" value={formState.amps?.[1] || ''} onChange={v => handleArrayInputChange('amps', 1, v)} />
-                            <LabeledInput label="T3" value={formState.amps?.[2] || ''} onChange={v => handleArrayInputChange('amps', 2, v)} />
+                            <LabeledInput label="T1" value={formState.amps_T1 || ''} onChange={v => handleAmpVoltInputChange('amps', 0, v)} />
+                            <LabeledInput label="T2" value={formState.amps_T2 || ''} onChange={v => handleAmpVoltInputChange('amps', 1, v)} />
+                            <LabeledInput label="T3" value={formState.amps_T3 || ''} onChange={v => handleAmpVoltInputChange('amps', 2, v)} />
                         </div>
                     </div>
                     <div>
