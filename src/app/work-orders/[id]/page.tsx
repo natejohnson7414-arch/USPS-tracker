@@ -266,7 +266,7 @@ export default function WorkOrderDetailPage() {
   };
 
 
-  if (isLoading || !workOrder) {
+  if (isLoading || !isDataChecked) {
     return (
       <MainLayout>
         <div className="flex items-center justify-center h-full">
@@ -275,6 +275,11 @@ export default function WorkOrderDetailPage() {
       </MainLayout>
     );
   }
+
+  if (!workOrder) {
+      notFound();
+  }
+
 
   return (
     <MainLayout>
@@ -286,7 +291,7 @@ export default function WorkOrderDetailPage() {
                 Back to Dashboard
               </Link>
             </Button>
-            {!isEditing && (
+            {!isEditing && workOrder.status !== 'Completed' && (
               <Button variant="outline" onClick={() => setIsEditing(true)}>
                 <Pencil className="mr-2 h-4 w-4" /> Edit
               </Button>

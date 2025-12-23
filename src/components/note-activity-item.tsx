@@ -8,6 +8,9 @@ import type { WorkOrderNote, Technician } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from './ui/button';
 import { User, X } from 'lucide-react';
+import { useFirestore } from '@/firebase';
+import { getTechnicianById } from '@/lib/data';
+
 
 interface NoteActivityItemProps {
   note: WorkOrderNote;
@@ -17,14 +20,26 @@ interface NoteActivityItemProps {
 }
 
 export function NoteActivityItem({ note, technicians, isEditing, onPhotoDelete }: NoteActivityItemProps) {
+  const db = useFirestore();
   const [isClient, setIsClient] = useState(false);
   const [author, setAuthor] = useState<Technician | undefined>();
+  const [isLoadingAuthor, setIsLoadingAuthor] = useState(true);
 
   useEffect(() => {
     setIsClient(true);
-    const tech = technicians.find(t => t.id === note.authorId);
-    setAuthor(tech);
-  }, [note.authorId, technicians]);
+    const findAuthor = async () => {
+      setIsLoadingAuthor(true);
+      let foundAuthor = technicians.find(t => t.id === note.authorId);
+      if (!foundAuthor && db && note.authorId) {
+        // If author not in the passed list (e.g., a newly added user or self), fetch them directly
+        foundAuthor = await getTechnicianById(db, note.authorId);
+      }
+      setAuthor(foundAuthor);
+      setIsLoadingAuthor(false);
+    };
+
+    findAuthor();
+  }, [note.authorId, technicians, db]);
 
   return (
     <div className="flex gap-4">
@@ -36,13 +51,13 @@ export function NoteActivityItem({ note, technicians, isEditing, onPhotoDelete }
       </Avatar>
       <div className="flex-1">
         <div className="flex items-center justify-between">
-          <p className="font-semibold">{author?.name || "Loading..."}</p>
+          <p className="font-semibold">{isLoadingAuthor ? "Loading..." : (author?.name || 'Unknown User')}</p>
           <p className="text-xs text-muted-foreground">
             {isClient ? formatDistanceToNow(new Date(note.createdAt), { addSuffix: true }) : '...'}
           </p>
         </div>
         <p className="text-sm text-muted-foreground mt-1">{note.text}</p>
-        {note.photoUrls && (
+        {note.photoUrls && note.photoUrls.length > 0 && (
           <div className="mt-4 grid grid-cols-2 gap-4">
             {note.photoUrls.map((url, index) => (
               <div key={index} className="relative group aspect-video rounded-lg overflow-hidden border">
@@ -68,5 +83,3 @@ export function NoteActivityItem({ note, technicians, isEditing, onPhotoDelete }
     </div>
   );
 }
-
-    
