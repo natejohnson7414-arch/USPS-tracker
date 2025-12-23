@@ -33,13 +33,13 @@ service firebase.storage {
      *            field in the corresponding Firestore `/work_orders/{workOrderId}` document.
      */
     match /work-orders/{workOrderId}/{allPaths=**} {
-      allow read: if request.auth != null && (
-                    get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.assignedTechnicianId == request.auth.uid || 
-                    isAdmin()
-                  );
+      function isAssignedTechnician(workOrderId) {
+        return get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.assignedTechnicianId == request.auth.uid;
+      }
+    
+      allow read: if request.auth != null && (isAssignedTechnician(workOrderId) || isAdmin());
                   
-      allow write: if request.auth != null && 
-                     get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.assignedTechnicianId == request.auth.uid;
+      allow write: if request.auth != null && isAssignedTechnician(workOrderId);
     }
   }
 }

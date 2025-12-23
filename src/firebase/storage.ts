@@ -1,11 +1,12 @@
 
 'use client';
 
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getStorage, ref, uploadBytes, getDownloadURL, Storage } from 'firebase/storage';
 import { initializeFirebase } from './index';
 
-// Initialize Firebase and get the app instance
-const { storage } = initializeFirebase();
+// Initialize Firebase once and get all services
+const services = initializeFirebase();
+const storage: Storage = services.storage;
 
 /**
  * Uploads an image file to Firebase Storage.
