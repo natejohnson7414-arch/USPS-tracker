@@ -4,8 +4,9 @@
 
 import { useState, useRef, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { format } from 'date-fns';
-import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client } from '@/lib/types';
+import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,7 +22,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { DatePicker } from './ui/date-picker';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, User, Calendar, Info, FileText, X, Video, Library, Loader2, MapPin, Hash, DollarSign, Building, Map, Thermometer } from 'lucide-react';
+import { Camera, User, Calendar, Info, FileText, X, Video, Library, Loader2, MapPin, Hash, DollarSign, Building, Map, Thermometer, ClipboardCheck } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { useFirestore, useUser } from '@/firebase';
 import { Label } from '@/components/ui/label';
@@ -89,6 +90,7 @@ interface WorkOrderDetailsProps {
   technicians: Technician[];
   workSites: WorkSite[];
   clients: Client[];
+  trainingRecords: TrainingRecord[];
   isEditing: boolean;
   editableFields: EditableFields;
   onWorkOrderUpdate: (e: FormEvent) => void;
@@ -105,6 +107,7 @@ export function WorkOrderDetails({
   technicians,
   workSites,
   clients,
+  trainingRecords,
   isEditing,
   editableFields,
   onWorkOrderUpdate,
@@ -527,6 +530,38 @@ export function WorkOrderDetails({
                 )}
             </CardContent>
           </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardCheck className="h-5 w-5" />
+                Training Records
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {trainingRecords.length > 0 ? (
+                <ul className="space-y-2">
+                  {trainingRecords.map(record => (
+                    <li key={record.id} className="flex items-center justify-between p-2 rounded-md border">
+                        <div>
+                            <p className="font-medium">{record.trainingCourse}</p>
+                            <p className="text-sm text-muted-foreground">
+                                {record.date ? format(new Date(record.date), 'MMM d, yyyy') : 'No date'}
+                            </p>
+                        </div>
+                        <Button asChild variant="outline" size="sm">
+                            {/* This link will need a dedicated page for viewing a training record */}
+                            <Link href={`/training-attendance/${record.id}`} target="_blank">View</Link>
+                        </Button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No training records attached to this work order.</p>
+              )}
+            </CardContent>
+          </Card>
+
         </div>
       </div>
     </form>
@@ -548,3 +583,5 @@ export function WorkOrderDetails({
     </>
   );
 }
+
+    

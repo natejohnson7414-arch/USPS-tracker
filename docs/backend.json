@@ -399,6 +399,10 @@
           "type": "string",
           "description": "Unique identifier for the TrainingRecord entity."
         },
+        "workOrderId": {
+          "type": "string",
+          "description": "Reference to the associated WorkOrder."
+        },
         "trainingCourse": {
           "type": "string",
           "description": "The name of the training course."

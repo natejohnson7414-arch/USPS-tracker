@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,17 +13,24 @@ import { Separator } from '@/components/ui/separator';
 import { SignaturePad } from '@/components/signature-pad';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useFirestore, addDocumentNonBlocking } from '@/firebase';
+import { useFirestore, addDocumentNonBlocking, useCollection, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImage } from '@/firebase/storage';
-import { collection } from 'firebase/firestore';
-import type { TrainingRecord, Attendee } from '@/lib/types';
+import { collection, query } from 'firebase/firestore';
+import type { TrainingRecord, Attendee, WorkOrder } from '@/lib/types';
 import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 
 const checklistItems = {
@@ -78,6 +85,10 @@ export default function TrainingAttendancePage() {
   
   const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
   const [signatureTarget, setSignatureTarget] = useState<{ type: 'trainer' | 'attendee'; index?: number } | null>(null);
+
+  const [workOrderId, setWorkOrderId] = useState<string | undefined>();
+  const workOrdersQuery = useMemoFirebase(() => db ? query(collection(db, 'work_orders')) : null, [db]);
+  const { data: workOrders } = useCollection<WorkOrder>(workOrdersQuery);
 
   const handleAddAttendee = () => {
     setAttendees([...attendees, { id: `attendee-${Date.now()}`, name: '' }]);
@@ -137,15 +148,16 @@ export default function TrainingAttendancePage() {
     }
     setIsSaving(true);
     try {
-        const trainingRecordData = {
+        const trainingRecordData: Omit<TrainingRecord, 'id'> = {
+            workOrderId,
             trainingCourse,
             trainer,
             description,
             basUserName,
             basPassword,
             date: date.toISOString(),
-            trainerSignatureUrl,
-            attendees: attendees.filter(a => a.name), // Only save attendees with a name
+            trainerSignatureUrl: trainerSignatureUrl || undefined,
+            attendees: attendees.filter(a => a.name) as Attendee[], // Only save attendees with a name
             checklist,
         };
 
@@ -153,6 +165,7 @@ export default function TrainingAttendancePage() {
 
         toast({ title: 'Training Record Saved' });
         // Reset form
+        setWorkOrderId(undefined);
         setTrainingCourse('');
         setTrainer('');
         setDescription('');
@@ -203,6 +216,21 @@ export default function TrainingAttendancePage() {
                 </h1>
 
                 <div className="space-y-4">
+                   <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
+                    <label className="font-semibold">Work Order:</label>
+                     <Select onValueChange={setWorkOrderId} value={workOrderId} disabled={isSaving}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select a work order (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {workOrders?.map(wo => (
+                            <SelectItem key={wo.id} value={wo.id}>
+                                {wo.id} - {wo.jobName}
+                            </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                  </div>
                   <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
                     <label className="font-semibold">Training Course:</label>
                     <Input value={trainingCourse} onChange={e => setTrainingCourse(e.target.value)} />

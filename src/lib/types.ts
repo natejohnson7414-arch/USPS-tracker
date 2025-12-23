@@ -104,6 +104,7 @@ export type Client = {
 
 export type TrainingRecord = {
     id: string;
+    workOrderId?: string;
     trainingCourse: string;
     trainer: string;
     description: string;

@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, FormEvent } from 'react';
-import { getTechnicians, getWorkOrderById, getWorkSites, getClients } from '@/lib/data';
+import { getTechnicians, getWorkOrderById, getWorkSites, getClients, getTrainingRecordsByWorkOrderId } from '@/lib/data';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
@@ -11,7 +11,7 @@ import { WorkOrderDetails } from '@/components/work-order-details';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Ban, Pencil, Save, Printer } from 'lucide-react';
 import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client } from '@/lib/types';
+import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord } from '@/lib/types';
 import { doc, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImage, deleteImage } from '@/firebase/storage';
@@ -38,6 +38,7 @@ export default function WorkOrderDetailPage() {
   const [workSites, setWorkSites] = useState<WorkSite[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
+  const [trainingRecords, setTrainingRecords] = useState<TrainingRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDataChecked, setIsDataChecked] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -123,16 +124,24 @@ export default function WorkOrderDetailPage() {
       if (!db || !user) return;
       setIsLoading(true);
       try {
-        const [fetchedTechnicians, fetchedWorkOrder, fetchedWorkSites, fetchedClients] = await Promise.all([
+        const [
+            fetchedTechnicians, 
+            fetchedWorkOrder, 
+            fetchedWorkSites, 
+            fetchedClients,
+            fetchedTrainingRecords
+        ] = await Promise.all([
           getTechnicians(db),
           getWorkOrderById(db, id),
           getWorkSites(db),
           getClients(db),
+          getTrainingRecordsByWorkOrderId(db, id)
         ]);
 
         setTechnicians(fetchedTechnicians);
         setWorkSites(fetchedWorkSites);
         setClients(fetchedClients);
+        setTrainingRecords(fetchedTrainingRecords);
         
         if (fetchedWorkOrder) {
             setWorkOrder(fetchedWorkOrder);
@@ -408,6 +417,7 @@ export default function WorkOrderDetailPage() {
             technicians={technicians}
             workSites={workSites}
             clients={clients}
+            trainingRecords={trainingRecords}
             isEditing={isEditing}
             onNoteAdded={handleNoteAdded}
             onNotePhotoDelete={handleNotePhotoDelete}
@@ -479,3 +489,5 @@ export default function WorkOrderDetailPage() {
     </MainLayout>
   );
 }
+
+    

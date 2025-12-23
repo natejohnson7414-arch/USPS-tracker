@@ -1,7 +1,7 @@
 
 'use client';
-import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client } from '@/lib/types';
-import { collection, getDoc, doc } from 'firebase/firestore';
+import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client, TrainingRecord } from '@/lib/types';
+import { collection, getDoc, doc, query, where } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 import { sampleRoles, sampleTechnicians, sampleWorkOrders, sampleWorkSites, sampleClients } from './sample-data';
 import { setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
@@ -215,3 +215,14 @@ export const getClientById = async (db: any, id: string): Promise<Client | undef
     }
     return undefined;
 };
+
+
+export const getTrainingRecordsByWorkOrderId = async (db: any, workOrderId: string): Promise<TrainingRecord[]> => {
+    if (!db) return [];
+    const trainingRecordsCol = collection(db, 'training_records');
+    const q = query(trainingRecordsCol, where("workOrderId", "==", workOrderId));
+    const snapshot = await getCollectionNonBlocking(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TrainingRecord));
+};
+
+    
