@@ -3,31 +3,18 @@
 
 import { useRef } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from '@/components/ui/dialog';
 import { Button } from './ui/button';
-import { Eraser } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Eraser } from 'lucide-react';
 
 interface SignaturePadProps {
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
   onSave: (signatureDataUrl: string) => void;
+  onClear: () => void;
 }
 
-export function SignaturePad({ isOpen, setIsOpen, onSave }: SignaturePadProps) {
+export function SignaturePad({ onSave, onClear }: SignaturePadProps) {
   const sigRef = useRef<SignatureCanvas>(null);
   const { toast } = useToast();
-
-  const clear = () => {
-    sigRef.current?.clear();
-  };
 
   const handleSave = () => {
     if (!sigRef.current || sigRef.current.isEmpty()) {
@@ -38,47 +25,44 @@ export function SignaturePad({ isOpen, setIsOpen, onSave }: SignaturePadProps) {
       });
       return;
     }
-
     const dataUrl = sigRef.current.getTrimmedCanvas().toDataURL('image/png');
     onSave(dataUrl);
-    setIsOpen(false);
   };
   
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-        clear();
-    }
-    setIsOpen(open);
+  const handleClear = () => {
+    sigRef.current?.clear();
+    onClear();
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Customer Signature</DialogTitle>
-          <DialogDescription>Please sign in the box below.</DialogDescription>
-        </DialogHeader>
-        
-        <div className="w-full border-2 border-dashed bg-muted rounded-md touch-none">
-          <SignatureCanvas
-            ref={sigRef}
-            penColor="black"
-            canvasProps={{
-              className: 'w-full h-auto aspect-[2/1]',
-            }}
-          />
+    <div className="w-full">
+        <style jsx>{`
+            .signature-canvas {
+                border: 2px dashed hsl(var(--border));
+                border-radius: var(--radius);
+                width: 100%;
+                height: 100%;
+                touch-action: none;
+            }
+        `}</style>
+        <div className="w-full h-48 bg-muted rounded-md touch-none">
+            <SignatureCanvas
+                ref={sigRef}
+                penColor="black"
+                canvasProps={{
+                    className: 'signature-canvas'
+                }}
+            />
         </div>
-
-        <DialogFooter className="grid grid-cols-2 gap-2">
-          <Button variant="outline" onClick={clear}>
+        <div className="grid grid-cols-2 gap-2 mt-4">
+          <Button variant="outline" onClick={handleClear}>
             <Eraser className="mr-2" />
             Clear
           </Button>
           <Button onClick={handleSave}>
             Save Signature
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+    </div>
   );
 }

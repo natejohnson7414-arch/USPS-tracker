@@ -17,6 +17,14 @@ import { useToast } from '@/hooks/use-toast';
 import { uploadImage, deleteImage } from '@/firebase/storage';
 import { MapProviderSelection } from '@/components/map-provider-selection';
 import { addDoc } from 'firebase/firestore';
+import { SignaturePad } from '@/components/signature-pad';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 export default function WorkOrderDetailPage() {
   const params = useParams();
@@ -35,6 +43,7 @@ export default function WorkOrderDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
+  const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
   
   // Editable fields state - initialized when workOrder is loaded
   const [description, setDescription] = useState('');
@@ -203,7 +212,7 @@ export default function WorkOrderDetailPage() {
   
   const handleSave = (e: FormEvent) => {
     e.preventDefault();
-    if (!workOrderDocRef) return;
+    if (!workOrderDocRef || !workOrder) return;
     
     const selectedClient = clients.find(c => c.id === clientId);
     const selectedWorkSite = workSites.find(ws => ws.id === workSiteId);
@@ -260,7 +269,7 @@ export default function WorkOrderDetailPage() {
   };
 
   const handleSignatureSave = async (signatureDataUrl: string) => {
-      if(!workOrderDocRef) return;
+      if(!workOrderDocRef || !workOrder) return;
       const signaturePath = `signatures/${workOrder.id}/${Date.now()}.png`;
       
       try {
@@ -285,7 +294,7 @@ export default function WorkOrderDetailPage() {
         setWorkOrder(prev => prev ? ({ ...prev, customerSignatureUrl: signatureUrl, signatureDate: sigDate }) : null);
 
         toast({ title: "Signature Saved", description: "The customer signature has been saved." });
-
+        setIsSignatureDialogOpen(false);
       } catch (error) {
         console.error("Error saving signature:", error);
         toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save the signature.' });
@@ -405,7 +414,7 @@ export default function WorkOrderDetailPage() {
             onNoteDelete={handleNoteDelete}
             isAddingNote={isAddingNote}
             onDirectionsClick={(address) => setSelectedAddress(address)}
-            onSignatureSave={handleSignatureSave}
+            onSignatureSave={() => setIsSignatureDialogOpen(true)}
             editableFields={{
                 description, setDescription,
                 status, setStatus,
@@ -455,6 +464,18 @@ export default function WorkOrderDetailPage() {
             isOpen={!!selectedAddress} 
             onOpenChange={() => setSelectedAddress(null)} 
         />
+        <Dialog open={isSignatureDialogOpen} onOpenChange={setIsSignatureDialogOpen}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Customer Signature</DialogTitle>
+                    <DialogDescription>Please sign in the box below.</DialogDescription>
+                </DialogHeader>
+                <SignaturePad 
+                    onSave={handleSignatureSave}
+                    onClear={() => {}}
+                />
+            </DialogContent>
+        </Dialog>
     </MainLayout>
   );
 }

@@ -27,7 +27,6 @@ import { useFirestore, useUser } from '@/firebase';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from './ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { SignaturePad } from './signature-pad';
 import { getTechnicianById } from '@/lib/data';
 
 interface EditableFields {
@@ -98,7 +97,7 @@ interface WorkOrderDetailsProps {
   onNoteDelete: (noteId: string) => void;
   isAddingNote: boolean;
   onDirectionsClick: (address: string) => void;
-  onSignatureSave: (signatureDataUrl: string) => void;
+  onSignatureSave: () => void;
 }
 
 export function WorkOrderDetails({
@@ -127,7 +126,6 @@ export function WorkOrderDetails({
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
-  const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
 
   const { 
     description, setDescription,
@@ -521,7 +519,7 @@ export function WorkOrderDetails({
                     <div className="text-center text-muted-foreground space-y-4 p-4 border-2 border-dashed rounded-md">
                         <p>No signature has been captured yet.</p>
                         {!isEditing && workOrder.status !== 'Completed' && (
-                             <Button type="button" onClick={() => setIsSignatureDialogOpen(true)}>
+                             <Button type="button" onClick={onSignatureSave}>
                                 Capture Signature
                             </Button>
                         )}
@@ -547,12 +545,6 @@ export function WorkOrderDetails({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <SignaturePad 
-        isOpen={isSignatureDialogOpen}
-        setIsOpen={setIsSignatureDialogOpen}
-        onSave={onSignatureSave}
-      />
     </>
   );
 }
