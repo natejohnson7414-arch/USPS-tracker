@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef } from 'react';
+import SignatureCanvas from 'react-signature-canvas';
 import {
   Dialog,
   DialogContent,
@@ -12,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from './ui/button';
 import { Eraser } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface SignaturePadProps {
   isOpen: boolean;
@@ -19,156 +21,60 @@ interface SignaturePadProps {
   onSave: (signatureDataUrl: string) => void;
 }
 
-// Helper function to get touch position relative to the canvas
-const getTouchPos = (canvas: HTMLCanvasElement, touch: Touch) => {
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: touch.clientX - rect.left,
-      y: touch.clientY - rect.top,
-    };
-};
-
 export function SignaturePad({ isOpen, setIsOpen, onSave }: SignaturePadProps) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const isDrawing = useRef(false); // Use ref to track drawing state
-  const [hasSigned, setHasSigned] = useState(false);
+  const sigRef = useRef<SignatureCanvas>(null);
+  const { toast } = useToast();
 
-  const getCanvasContext = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
-    return canvas.getContext('2d');
+  const clear = () => {
+    sigRef.current?.clear();
   };
 
-  const clearCanvas = useCallback(() => {
-    const context = getCanvasContext();
-    if (context && canvasRef.current) {
-      context.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-      setHasSigned(false);
-      isDrawing.current = false;
-    }
-  }, []);
-
-  const startDrawing = useCallback((event: MouseEvent | TouchEvent) => {
-    event.preventDefault();
-    const context = getCanvasContext();
-    const canvas = canvasRef.current;
-    if (!context || !canvas) return;
-
-    isDrawing.current = true;
-    setHasSigned(true);
-    
-    let x, y;
-    if (event instanceof MouseEvent) {
-      x = event.offsetX;
-      y = event.offsetY;
-    } else {
-      const touchPos = getTouchPos(canvas, event.touches[0]);
-      x = touchPos.x;
-      y = touchPos.y;
-    }
-    context.beginPath();
-    context.moveTo(x, y);
-  }, []);
-
-  const draw = useCallback((event: MouseEvent | TouchEvent) => {
-    event.preventDefault();
-    if (!isDrawing.current) return;
-    
-    const context = getCanvasContext();
-    const canvas = canvasRef.current;
-    if (!context || !canvas) return;
-
-    let x, y;
-    if (event instanceof MouseEvent) {
-      x = event.offsetX;
-      y = event.offsetY;
-    } else {
-      const touchPos = getTouchPos(canvas, event.touches[0]);
-      x = touchPos.x;
-      y = touchPos.y;
-    }
-
-    context.lineTo(x, y);
-    context.stroke();
-  }, []);
-
-  const stopDrawing = useCallback((event: MouseEvent | TouchEvent) => {
-    event.preventDefault();
-    const context = getCanvasContext();
-    if (!context) return;
-    context.closePath();
-    isDrawing.current = false;
-  }, []);
-
-  useEffect(() => {
-    if (!isOpen) {
-      clearCanvas();
+  const handleSave = () => {
+    if (!sigRef.current || sigRef.current.isEmpty()) {
+      toast({
+        title: 'Signature is empty',
+        description: 'Please provide a signature before saving.',
+        variant: 'destructive',
+      });
       return;
     }
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    // Set canvas dimensions based on container
-    const rect = canvas.parentElement!.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = 200; // Fixed height
-
-    const context = getCanvasContext();
-    if (!context) return;
-    context.strokeStyle = '#000000';
-    context.lineWidth = 2;
-    context.lineCap = 'round';
-    context.lineJoin = 'round';
-
-    // Mouse events
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', stopDrawing);
-    canvas.addEventListener('mouseleave', stopDrawing);
-
-    // Touch events
-    canvas.addEventListener('touchstart', startDrawing);
-    canvas.addEventListener('touchmove', draw);
-    canvas.addEventListener('touchend', stopDrawing);
-
-    return () => {
-      canvas.removeEventListener('mousedown', startDrawing);
-      canvas.removeEventListener('mousemove', draw);
-      canvas.removeEventListener('mouseup', stopDrawing);
-      canvas.removeEventListener('mouseleave', stopDrawing);
-      canvas.removeEventListener('touchstart', startDrawing);
-      canvas.removeEventListener('touchmove', draw);
-      canvas.removeEventListener('touchend', stopDrawing);
-    };
-    // Dependencies are stable, so this effect runs only when `isOpen` changes.
-  }, [isOpen, startDrawing, draw, stopDrawing, clearCanvas]);
-
-  const handleSave = () => {
-    const canvas = canvasRef.current;
-    if (canvas && hasSigned) {
-      const dataUrl = canvas.toDataURL('image/png');
-      onSave(dataUrl);
-      setIsOpen(false);
-    }
+    const dataUrl = sigRef.current.getTrimmedCanvas().toDataURL('image/png');
+    onSave(dataUrl);
+    setIsOpen(false);
   };
+  
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+        clear();
+    }
+    setIsOpen(open);
+  }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Customer Signature</DialogTitle>
           <DialogDescription>Please sign in the box below.</DialogDescription>
         </DialogHeader>
-        <div className="w-full h-[200px] border bg-muted rounded-md touch-none">
-            <canvas ref={canvasRef} />
+        
+        <div className="w-full border-2 border-dashed bg-muted rounded-md touch-none">
+          <SignatureCanvas
+            ref={sigRef}
+            penColor="black"
+            canvasProps={{
+              className: 'w-full h-auto aspect-[2/1]',
+            }}
+          />
         </div>
+
         <DialogFooter className="grid grid-cols-2 gap-2">
-          <Button variant="outline" onClick={clearCanvas}>
+          <Button variant="outline" onClick={clear}>
             <Eraser className="mr-2" />
             Clear
           </Button>
-          <Button onClick={handleSave} disabled={!hasSigned}>
+          <Button onClick={handleSave}>
             Save Signature
           </Button>
         </DialogFooter>
