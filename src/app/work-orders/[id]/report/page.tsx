@@ -202,7 +202,7 @@ export default function WorkOrderReportPage() {
                             {allPhotoUrls.map((url, index) => (
                                 <div key={index} className="space-y-2">
                                     <div className="relative aspect-video w-full border rounded-lg overflow-hidden">
-                                        <Image src={url} alt={`Work photo ${index + 1}`} fill={true} style={{objectFit:"contain"}} />
+                                        {!!url && <Image src={url} alt={`Work photo ${index + 1}`} fill={true} style={{objectFit:"contain"}} />}
                                     </div>
                                     <p className="text-center text-sm text-gray-500">Photo {index + 1}</p>
                                 </div>
@@ -214,5 +214,3 @@ export default function WorkOrderReportPage() {
         </div>
     );
 }
-
-    
