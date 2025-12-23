@@ -225,4 +225,13 @@ export const getTrainingRecordsByWorkOrderId = async (db: any, workOrderId: stri
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TrainingRecord));
 };
 
+export const getTrainingRecordById = async (db: any, id: string): Promise<TrainingRecord | undefined> => {
+    if (!id) return undefined;
+    const trainingRecordRef = doc(db, 'training_records', id);
+    const trainingRecordSnap = await getDocumentNonBlocking(trainingRecordRef);
+    if (trainingRecordSnap.exists()) {
+        return { id: trainingRecordSnap.id, ...trainingRecordSnap.data() } as TrainingRecord;
+    }
+    return undefined;
+}
     
