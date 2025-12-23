@@ -116,7 +116,6 @@ export default function TrainingAttendancePage() {
   const handleSignatureSave = async (signatureDataUrl: string) => {
     if (!signatureTarget) return;
 
-    // Show a saving toast
     const savingToast = toast({
       title: 'Saving Signature...',
       description: 'Uploading signature to storage.',
@@ -124,11 +123,8 @@ export default function TrainingAttendancePage() {
 
     try {
       const path = `signatures/training/${Date.now()}_${signatureTarget.type}.png`;
-      // The data URL from the canvas is already in the correct format with a Base64 string.
-      // We need to convert it to a blob to upload it.
       const response = await fetch(signatureDataUrl);
       const blob = await response.blob();
-
       const url = await uploadImage(blob, path);
 
       if (signatureTarget.type === 'trainer') {
@@ -165,7 +161,7 @@ export default function TrainingAttendancePage() {
   }
 
   const handleSaveForm = async () => {
-     if (!db) {
+    if (!db) {
         toast({ title: "Database not connected", variant: "destructive" });
         return;
     }
@@ -200,9 +196,7 @@ export default function TrainingAttendancePage() {
         resetForm();
 
     } catch (error) {
-        // The non-blocking function will emit a global error, which is handled by the listener.
-        // We only need to show a generic toast if it's not a permission error.
-        if (error instanceof Error && !error.name.includes('Firebase')) {
+        if (error instanceof Error && !error.message.includes('permission-error')) {
             console.error("Error saving training record:", error);
             toast({ title: 'Save Failed', description: 'Could not save the training record.', variant: 'destructive' });
         }
@@ -407,3 +401,5 @@ export default function TrainingAttendancePage() {
     </MainLayout>
   );
 }
+
+    
