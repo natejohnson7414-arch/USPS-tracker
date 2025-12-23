@@ -136,8 +136,21 @@ export default function TrainingAttendancePage() {
       toast({ title: 'Error', description: 'Could not save signature.', variant: 'destructive' });
     }
   };
+  
+  const resetForm = () => {
+      setWorkOrderId(undefined);
+      setTrainingCourse('');
+      setTrainer('');
+      setDescription('');
+      setBasUserName('');
+      setBasPassword('');
+      setDate(new Date());
+      setTrainerSignatureUrl(null);
+      setAttendees([{ id: `attendee-${Date.now()}`, name: '' }]);
+      setChecklist(Object.keys(checklistItems).reduce((acc, key) => ({ ...acc, [key]: false }), {}));
+  }
 
-  const handleSaveForm = () => {
+  const handleSaveForm = async () => {
      if (!db) {
         toast({ title: "Database not connected", variant: "destructive" });
         return;
@@ -146,49 +159,42 @@ export default function TrainingAttendancePage() {
       toast({ title: "Missing Required Fields", description: "Training Course, Trainer, and Date are required.", variant: 'destructive' });
       return;
     }
+    
     setIsSaving(true);
     
-    const trainingRecordData: Omit<TrainingRecord, 'id'> = {
-        workOrderId: workOrderId || null,
-        trainingCourse,
-        trainer,
-        description,
-        basUserName,
-        basPassword: basPassword || '',
-        date: date.toISOString(),
-        trainerSignatureUrl: trainerSignatureUrl || null,
-        attendees: attendees.filter(a => a.name).map(a => ({
-            id: a.id || `attendee-${Date.now()}`,
-            name: a.name || '',
-            signatureUrl: a.signatureUrl || null,
-        })) as Attendee[],
-        checklist,
-    };
+    try {
+        const trainingRecordData: Omit<TrainingRecord, 'id'> = {
+            workOrderId: workOrderId || null,
+            trainingCourse,
+            trainer,
+            description,
+            basUserName,
+            basPassword: basPassword || '',
+            date: date.toISOString(),
+            trainerSignatureUrl: trainerSignatureUrl || null,
+            attendees: attendees.filter(a => a.name).map(a => ({
+                id: a.id || `attendee-${Date.now()}`,
+                name: a.name || '',
+                signatureUrl: a.signatureUrl || null,
+            })),
+            checklist,
+        };
 
-    addDocumentNonBlocking(collection(db, 'training_records'), trainingRecordData)
-    .then(() => {
+        await addDocumentNonBlocking(collection(db, 'training_records'), trainingRecordData);
+
         toast({ title: 'Training Record Saved' });
-        // Reset form
-        setWorkOrderId(undefined);
-        setTrainingCourse('');
-        setTrainer('');
-        setDescription('');
-        setBasUserName('');
-        setBasPassword('');
-        setDate(new Date());
-        setTrainerSignatureUrl(null);
-        setAttendees([{ id: `attendee-${Date.now()}`, name: '' }]);
-        setChecklist(Object.keys(checklistItems).reduce((acc, key) => ({ ...acc, [key]: false }), {}));
-    }).catch(error => {
+        resetForm();
+
+    } catch (error) {
         // The non-blocking function will emit a global error, which is handled by the listener.
         // We only need to show a generic toast if it's not a permission error.
-        if (!error.name.includes('Firebase')) {
+        if (error instanceof Error && !error.name.includes('Firebase')) {
             console.error("Error saving training record:", error);
             toast({ title: 'Save Failed', description: 'Could not save the training record.', variant: 'destructive' });
         }
-    }).finally(() => {
+    } finally {
         setIsSaving(false);
-    });
+    }
   };
 
   const ChecklistItem = ({ id, label, level = 0, subItem = false }: {id: string, label: string, level?: number, subItem?: boolean}) => (
