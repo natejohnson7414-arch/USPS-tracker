@@ -83,10 +83,11 @@ export default function WorkOrderReportPage() {
     }
     
     const signatureDate = workOrder.signatureDate ? format(new Date(workOrder.signatureDate), 'MM/dd/yyyy') : ' ';
+    const allPhotoUrls = workOrder.notes.flatMap(note => note.photoUrls || []);
 
 
     return (
-        <div className="bg-white text-black p-8 font-sans printable-area" style={{ width: '8.5in', minHeight: '11in', margin: 'auto' }}>
+        <div className="bg-white text-black p-8 font-sans printable-area" style={{ width: '8.5in', margin: 'auto' }}>
             <style jsx global>{`
                 @media print {
                     body * {
@@ -101,6 +102,9 @@ export default function WorkOrderReportPage() {
                         top: 0;
                         width: 100%;
                     }
+                    .page-break {
+                        break-before: page;
+                    }
                     @page {
                         size: auto;
                         margin: 0mm;
@@ -108,82 +112,105 @@ export default function WorkOrderReportPage() {
                 }
             `}</style>
             
-            <header className="flex justify-between items-start mb-8">
-                <div>
-                    <h2 className="font-bold text-lg">Facilities Office</h2>
-                    <div className="relative h-16 w-48">
-                        <Image src="https://firebasestudio.app/assets/images/usps-logo.png" alt="USPS Logo" layout="fill" objectFit="contain" />
+            {/* Page 1: Main Report */}
+            <div style={{ minHeight: '11in' }}>
+                <header className="flex justify-between items-start mb-8">
+                    <div>
+                        <h2 className="font-bold text-lg">Facilities Office</h2>
+                        <div className="relative h-16 w-48">
+                            <Image src="https://firebasestudio.app/assets/images/usps-logo.png" alt="USPS Logo" layout="fill" objectFit="contain" />
+                        </div>
+                        <p className="mt-4">Date: <span className="font-medium underline decoration-dotted">{signatureDate}</span></p>
+                        <p className="mt-2">Facilities HUB Project Manager:</p>
                     </div>
-                    <p className="mt-4">Date: <span className="font-medium underline decoration-dotted">{signatureDate}</span></p>
-                     <p className="mt-2">Facilities HUB Project Manager:</p>
+                    <div>
+                        <div className="relative h-16 w-48">
+                            <Image src="https://firebasestudio.app/assets/images/crawford-logo.png" alt="Crawford Company Logo" layout="fill" objectFit="contain" />
+                        </div>
+                        <p className="mt-4 text-right">Crawford Job #</p>
+                        <div className="bg-gray-200 p-2 rounded text-center font-medium">{workOrder.id}</div>
+                    </div>
+                </header>
+
+                <main>
+                    <h1 className="text-center font-bold text-lg tracking-wider mb-4">WORK ACKNOWLEDGEMENT LETTER</h1>
+                    
+                    <div className="flex items-start gap-4">
+                        {/* Left details column */}
+                        <div className="w-1/3 space-y-2 text-sm">
+                            <p>Facility Name:</p>
+                            <p>Work Description:</p>
+                            <div className="h-24"></div> {/* Spacer */}
+                            <p>Contractor:</p>
+                            <p>Call #/Problem #:</p>
+                            <p>Temp upon Arrival:</p>
+                            <p>Temp upon Leaving:</p>
+                            <p>Before and After Pictures:</p>
+                        </div>
+
+                        {/* Right table-like column */}
+                        <div className="w-2/3 border-2 border-black text-sm">
+                            <div className="p-2 border-b-2 border-black font-medium">{workOrder.workSite?.name || ''}</div>
+                            <div className="p-2 border-b-2 border-black min-h-[9.5rem] break-words">{summarizedDescription}</div>
+                            <div className="p-2 border-b-2 border-black font-medium">Crawford Co</div>
+                            <div className="p-2 border-b-2 border-black min-h-[1.8rem]">{workOrder.customerPO || ''}</div>
+                            <div className="p-2 border-b-2 border-black min-h-[1.8rem]">{workOrder.tempOnArrival || ''}</div>
+                            <div className="p-2 border-b-2 border-black min-h-[1.8rem]">{workOrder.tempOnLeaving || ''}</div>
+                            <div className="p-2 font-medium">See below</div>
+                        </div>
+                    </div>
+
+                    <div className="mt-8">
+                        <h2 className="font-bold">USPS STAFF MEMBER:</h2>
+                        <p className="text-sm">Please review this sheet and verify that the above listed contractor has been on site to address the item(s) described in "Work Description". Please print, sign, and date below on the day that work was completed.</p>
+                    </div>
+                    
+                    <div className="flex items-start gap-4 mt-2">
+                        <div className="w-1/3 space-y-2 text-sm">
+                            <p>Name:</p>
+                            <p>Signature:</p>
+                            <p>Date:</p>
+                            <p>Comments:</p>
+                        </div>
+                        <div className="w-2/3 border-2 border-black text-sm">
+                            <div className="p-2 border-b-2 border-black font-medium min-h-[2rem]">{workOrder.contactInfo || ''}</div>
+                            <div className="p-2 border-b-2 border-black min-h-[3rem] flex items-center">
+                                {workOrder.customerSignatureUrl && (
+                                    <Image src={workOrder.customerSignatureUrl} alt="Customer Signature" width={200} height={50} objectFit="contain" />
+                                )}
+                            </div>
+                            <div className="p-2 border-b-2 border-black font-medium min-h-[2rem]">{signatureDate}</div>
+                            <div className="p-2 min-h-[4rem]"></div>
+                        </div>
+                    </div>
+
+                    <p className="mt-8 text-sm">
+                        Contractor, please have a USPS staff member fill in the bottom half of this sheet after finishing work. Submit this completed form along with your request for payment. Thank you!
+                    </p>
+                </main>
+            </div>
+
+            {/* Page 2+: Photo Appendix */}
+            {allPhotoUrls.length > 0 && (
+                <div className="page-break" style={{ minHeight: '11in' }}>
+                    <header className="flex justify-between items-center mb-8">
+                         <h1 className="font-bold text-xl">Photo Appendix</h1>
+                         <p className="text-sm text-gray-600">Work Order # {workOrder.id}</p>
+                    </header>
+                    <main>
+                         <div className="grid grid-cols-2 gap-8">
+                            {allPhotoUrls.map((url, index) => (
+                                <div key={index} className="space-y-2">
+                                    <div className="relative aspect-video w-full border rounded-lg overflow-hidden">
+                                        <Image src={url} alt={`Work photo ${index + 1}`} layout="fill" objectFit="contain" />
+                                    </div>
+                                    <p className="text-center text-sm text-gray-500">Photo {index + 1}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </main>
                 </div>
-                <div>
-                     <div className="relative h-16 w-48">
-                        <Image src="https://firebasestudio.app/assets/images/crawford-logo.png" alt="Crawford Company Logo" layout="fill" objectFit="contain" />
-                    </div>
-                    <p className="mt-4 text-right">Crawford Job #</p>
-                    <div className="bg-gray-200 p-2 rounded text-center font-medium">{workOrder.id}</div>
-                </div>
-            </header>
-
-            <main>
-                <h1 className="text-center font-bold text-lg tracking-wider mb-4">WORK ACKNOWLEDGEMENT LETTER</h1>
-                
-                <div className="flex items-start gap-4">
-                    {/* Left details column */}
-                    <div className="w-1/3 space-y-2 text-sm">
-                        <p>Facility Name:</p>
-                        <p>Work Description:</p>
-                        <div className="h-24"></div> {/* Spacer */}
-                        <p>Contractor:</p>
-                        <p>Call #/Problem #:</p>
-                        <p>Temp upon Arrival:</p>
-                        <p>Temp upon Leaving:</p>
-                        <p>Before and After Pictures:</p>
-                    </div>
-
-                    {/* Right table-like column */}
-                    <div className="w-2/3 border-2 border-black text-sm">
-                        <div className="p-2 border-b-2 border-black font-medium">{workOrder.workSite?.name || ''}</div>
-                        <div className="p-2 border-b-2 border-black min-h-[9.5rem] break-words">{summarizedDescription}</div>
-                        <div className="p-2 border-b-2 border-black font-medium">Crawford Co</div>
-                        <div className="p-2 border-b-2 border-black min-h-[1.8rem]">{workOrder.customerPO || ''}</div>
-                        <div className="p-2 border-b-2 border-black min-h-[1.8rem]">{workOrder.tempOnArrival || ''}</div>
-                        <div className="p-2 border-b-2 border-black min-h-[1.8rem]">{workOrder.tempOnLeaving || ''}</div>
-                        <div className="p-2 font-medium">See below</div>
-                    </div>
-                </div>
-
-                <div className="mt-8">
-                    <h2 className="font-bold">USPS STAFF MEMBER:</h2>
-                    <p className="text-sm">Please review this sheet and verify that the above listed contractor has been on site to address the item(s) described in "Work Description". Please print, sign, and date below on the day that work was completed.</p>
-                </div>
-                
-                 <div className="flex items-start gap-4 mt-2">
-                    <div className="w-1/3 space-y-2 text-sm">
-                        <p>Name:</p>
-                        <p>Signature:</p>
-                        <p>Date:</p>
-                        <p>Comments:</p>
-                    </div>
-                    <div className="w-2/3 border-2 border-black text-sm">
-                         <div className="p-2 border-b-2 border-black font-medium min-h-[2rem]">{workOrder.contactInfo || ''}</div>
-                         <div className="p-2 border-b-2 border-black min-h-[3rem] flex items-center">
-                             {workOrder.customerSignatureUrl && (
-                                <Image src={workOrder.customerSignatureUrl} alt="Customer Signature" width={200} height={50} objectFit="contain" />
-                             )}
-                         </div>
-                         <div className="p-2 border-b-2 border-black font-medium min-h-[2rem]">{signatureDate}</div>
-                         <div className="p-2 min-h-[4rem]"></div>
-                    </div>
-                </div>
-
-                <p className="mt-8 text-sm">
-                    Contractor, please have a USPS staff member fill in the bottom half of this sheet after finishing work. Submit this completed form along with your request for payment. Thank you!
-                </p>
-
-            </main>
-
+            )}
         </div>
     );
 }
