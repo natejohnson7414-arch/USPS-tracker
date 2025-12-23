@@ -11,10 +11,8 @@ export type Technician = {
 
 export type WorkOrderNote = {
   id: string;
-  authorId?: string;
   text: string;
   photoUrls?: string[];
-  createdAt?: string;
 };
 
 export type WorkOrder = {
@@ -53,6 +51,11 @@ export type WorkOrder = {
   status: 'Open' | 'In Progress' | 'On Hold' | 'Completed';
   assignedTechnicianId?: string;
   notes: WorkOrderNote[];
+  // New fields for report
+  tempOnArrival?: string;
+  tempOnLeaving?: string;
+  customerSignatureUrl?: string;
+  signatureDate?: string;
 };
 
 

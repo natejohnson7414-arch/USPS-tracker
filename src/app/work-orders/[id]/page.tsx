@@ -1,23 +1,26 @@
 
+
 'use client';
 
 import React, { useEffect, useState, useMemo, FormEvent } from 'react';
 import { getTechnicians, getWorkOrderById, getWorkSites, getClients } from '@/lib/data';
-import { notFound, useParams } from 'next/navigation';
+import { notFound, useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
 import { WorkOrderDetails } from '@/components/work-order-details';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Ban, Pencil, Save } from 'lucide-react';
+import { ArrowLeft, Ban, Pencil, Save, Printer } from 'lucide-react';
 import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client } from '@/lib/types';
-import { doc, collection, addDoc } from 'firebase/firestore';
+import { doc, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImage, deleteImage } from '@/firebase/storage';
 import { MapProviderSelection } from '@/components/map-provider-selection';
+import { addDoc } from 'firebase/firestore';
 
 export default function WorkOrderDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
   const db = useFirestore();
   const { user } = useUser();
@@ -57,6 +60,12 @@ export default function WorkOrderDetailPage() {
   const [intercoPO, setIntercoPO] = useState<string>('');
   const [customerPO, setCustomerPO] = useState<string>('');
   const [estimator, setEstimator] = useState<string>('');
+  
+  // New temperature and signature fields
+  const [tempOnArrival, setTempOnArrival] = useState('');
+  const [tempOnLeaving, setTempOnLeaving] = useState('');
+  const [customerSignatureUrl, setCustomerSignatureUrl] = useState<string | undefined>('');
+  const [signatureDate, setSignatureDate] = useState<string | undefined>('');
 
 
   const workOrderDocRef = useMemoFirebase(() => {
@@ -92,6 +101,12 @@ export default function WorkOrderDetailPage() {
     setIntercoPO(wo.intercoPO || '');
     setCustomerPO(wo.customerPO || '');
     setEstimator(wo.estimator || '');
+
+    // Initialize new fields
+    setTempOnArrival(wo.tempOnArrival || '');
+    setTempOnLeaving(wo.tempOnLeaving || '');
+    setCustomerSignatureUrl(wo.customerSignatureUrl);
+    setSignatureDate(wo.signatureDate);
   }
 
   useEffect(() => {
@@ -193,30 +208,34 @@ export default function WorkOrderDetailPage() {
     const selectedClient = clients.find(c => c.id === clientId);
     const selectedWorkSite = workSites.find(ws => ws.id === workSiteId);
 
-    const updatedData = {
+    const updatedData: Partial<WorkOrder> = {
         jobName: selectedWorkSite?.name,
         description,
         status,
         assignedTechnicianId,
         workSiteId,
         clientId,
-        billTo: selectedClient?.name || null,
-        createdDate: createdDate?.toISOString() || null,
+        billTo: selectedClient?.name,
+        createdDate: createdDate?.toISOString(),
         poNumber,
         contactInfo,
-        serviceScheduleDate: serviceScheduleDate?.toISOString() || null,
+        serviceScheduleDate: serviceScheduleDate?.toISOString(),
         quotedAmount,
         timeAndMaterial,
         permit,
         permitCost,
-        permitFiled: permitFiled?.toISOString() || null,
+        permitFiled: permitFiled?.toISOString(),
         coi,
-        coiRequested: coiRequested?.toISOString() || null,
+        coiRequested: coiRequested?.toISOString(),
         certifiedPayroll,
-        certifiedPayrollRequested: certifiedPayrollRequested?.toISOString() || null,
+        certifiedPayrollRequested: certifiedPayrollRequested?.toISOString(),
         intercoPO,
         customerPO,
-        estimator
+        estimator,
+        tempOnArrival,
+        tempOnLeaving,
+        customerSignatureUrl,
+        signatureDate
     };
 
     // Firestore does not allow `undefined` values. We clean them here.
@@ -238,6 +257,39 @@ export default function WorkOrderDetailPage() {
     
     toast({ title: "Work Order Saved", description: "Changes have been saved successfully." });
     setIsEditing(false);
+  };
+
+  const handleSignatureSave = async (signatureDataUrl: string) => {
+      if(!workOrderDocRef) return;
+      const signaturePath = `signatures/${workOrder.id}/${Date.now()}.png`;
+      
+      try {
+        const signatureUrl = await uploadImage(
+            await (await fetch(signatureDataUrl)).blob(), 
+            signaturePath
+        );
+
+        const sigDate = new Date().toISOString();
+        
+        // Update state locally
+        setCustomerSignatureUrl(signatureUrl);
+        setSignatureDate(sigDate);
+
+        // Update firestore
+        await updateDocumentNonBlocking(workOrderDocRef, {
+            customerSignatureUrl: signatureUrl,
+            signatureDate: sigDate
+        });
+        
+        // Also update local workOrder object
+        setWorkOrder(prev => prev ? ({ ...prev, customerSignatureUrl: signatureUrl, signatureDate: sigDate }) : null);
+
+        toast({ title: "Signature Saved", description: "The customer signature has been saved." });
+
+      } catch (error) {
+        console.error("Error saving signature:", error);
+        toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save the signature.' });
+      }
   };
   
    const handleNotePhotoDelete = async (noteId: string, photoUrl: string) => {
@@ -320,18 +372,26 @@ export default function WorkOrderDetailPage() {
   return (
     <MainLayout>
       <div className="container mx-auto py-8">
-        <div className="mb-6 flex justify-between items-center">
+        <div className="mb-6 flex justify-between items-center gap-4">
             <Button variant="outline" asChild>
               <Link href="/" className="flex items-center gap-2">
                 <ArrowLeft className="h-4 w-4" />
                 Back to Dashboard
               </Link>
             </Button>
-            {!isEditing && workOrder.status !== 'Completed' && (
-              <Button variant="outline" onClick={() => setIsEditing(true)}>
-                <Pencil className="mr-2 h-4 w-4" /> Edit
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+                <Button variant="outline" asChild>
+                    <Link href={`/work-orders/${id}/report`} target="_blank" className="flex items-center gap-2">
+                        <Printer className="h-4 w-4" />
+                        Report
+                    </Link>
+                </Button>
+                {!isEditing && workOrder.status !== 'Completed' && (
+                  <Button variant="outline" onClick={() => setIsEditing(true)}>
+                    <Pencil className="mr-2 h-4 w-4" /> Edit
+                  </Button>
+                )}
+            </div>
         </div>
         <div className="pb-24">
             <WorkOrderDetails
@@ -345,6 +405,7 @@ export default function WorkOrderDetailPage() {
             onNoteDelete={handleNoteDelete}
             isAddingNote={isAddingNote}
             onDirectionsClick={(address) => setSelectedAddress(address)}
+            onSignatureSave={handleSignatureSave}
             editableFields={{
                 description, setDescription,
                 status, setStatus,
@@ -367,7 +428,11 @@ export default function WorkOrderDetailPage() {
                 certifiedPayrollRequested, setCertifiedPayrollRequested,
                 intercoPO, setIntercoPO,
                 customerPO, setCustomerPO,
-                estimator, setEstimator
+                estimator, setEstimator,
+                tempOnArrival, setTempOnArrival,
+                tempOnLeaving, setTempOnLeaving,
+                customerSignatureUrl, setCustomerSignatureUrl,
+                signatureDate, setSignatureDate,
             }}
             onWorkOrderUpdate={handleSave}
             />

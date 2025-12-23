@@ -141,12 +141,29 @@
         "assignedTechnicianId": {
           "type": "string",
           "description": "Reference to Technician. (Relationship: Technician 1:N WorkOrder)"
+        },
+        "tempOnArrival": {
+            "type": "string",
+            "description": "Temperature recorded upon arrival at the job site."
+        },
+        "tempOnLeaving": {
+            "type": "string",
+            "description": "Temperature recorded upon leaving the job site."
+        },
+        "customerSignatureUrl": {
+            "type": "string",
+            "description": "URL of the captured customer signature image."
+        },
+        "signatureDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date the signature was captured."
         }
       },
       "required": [
         "id",
         "createdDate",
-        "workSiteId",
+        "jobName",
         "description",
         "status"
       ]
@@ -207,15 +224,6 @@
         "workOrderId": {
           "type": "string",
           "description": "Reference to WorkOrder. (Relationship: WorkOrder 1:N WorkOrderUpdate)"
-        },
-        "technicianId": {
-          "type": "string",
-          "description": "Reference to Technician. No longer actively tracked but kept for schema history."
-        },
-        "updateDate": {
-          "type": "string",
-          "description": "Date and time when the update was made. No longer actively tracked but kept for schema history.",
-          "format": "date-time"
         },
         "notes": {
           "type": "string",

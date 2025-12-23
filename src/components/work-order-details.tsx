@@ -1,13 +1,12 @@
 
+
 'use client';
 
 import { useState, useRef, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import { format } from 'date-fns';
-import { getTechnicianById } from '@/lib/data';
 import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
@@ -22,12 +21,14 @@ import {
 import { Input } from '@/components/ui/input';
 import { DatePicker } from './ui/date-picker';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, User, Calendar, Info, FileText, X, Video, Library, Loader2, MapPin, Hash, DollarSign, Building, Map } from 'lucide-react';
+import { Camera, User, Calendar, Info, FileText, X, Video, Library, Loader2, MapPin, Hash, DollarSign, Building, Map, Thermometer } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { useFirestore, useUser } from '@/firebase';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from './ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
+import { SignaturePad } from './signature-pad';
+import { getTechnicianById } from '@/lib/data';
 
 interface EditableFields {
   description: string;
@@ -40,7 +41,6 @@ interface EditableFields {
   setWorkSiteId: (value?: string) => void;
   clientId?: string;
   setClientId: (value?: string) => void;
-  // All new fields from the form
   createdDate?: Date;
   setCreatedDate: (value?: Date) => void;
   billTo?: string;
@@ -75,6 +75,14 @@ interface EditableFields {
   setCustomerPO: (value: string) => void;
   estimator?: string;
   setEstimator: (value: string) => void;
+  tempOnArrival?: string;
+  setTempOnArrival: (value: string) => void;
+  tempOnLeaving?: string;
+  setTempOnLeaving: (value: string) => void;
+  customerSignatureUrl?: string;
+  setCustomerSignatureUrl: (value?: string) => void;
+  signatureDate?: string;
+  setSignatureDate: (value?: string) => void;
 }
 
 interface WorkOrderDetailsProps {
@@ -90,6 +98,7 @@ interface WorkOrderDetailsProps {
   onNoteDelete: (noteId: string) => void;
   isAddingNote: boolean;
   onDirectionsClick: (address: string) => void;
+  onSignatureSave: (signatureDataUrl: string) => void;
 }
 
 export function WorkOrderDetails({
@@ -105,6 +114,7 @@ export function WorkOrderDetails({
   onNoteDelete,
   isAddingNote,
   onDirectionsClick,
+  onSignatureSave,
 }: WorkOrderDetailsProps) {
   const db = useFirestore();
   const { user } = useUser();
@@ -117,9 +127,9 @@ export function WorkOrderDetails({
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
+  const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
 
   const { 
-    // Destructure all the new editable fields
     description, setDescription,
     status, setStatus,
     assignedTechnicianId, setAssignedTechnicianId,
@@ -141,7 +151,9 @@ export function WorkOrderDetails({
     certifiedPayrollRequested, setCertifiedPayrollRequested,
     intercoPO, setIntercoPO,
     customerPO, setCustomerPO,
-    estimator, setEstimator
+    estimator, setEstimator,
+    tempOnArrival, setTempOnArrival,
+    tempOnLeaving, setTempOnLeaving,
   } = editableFields;
 
   useEffect(() => {
@@ -202,7 +214,7 @@ export function WorkOrderDetails({
   };
 
   const DetailItem = ({ label, value, icon, isDate, children }: { label: string, value?: string | number | null, icon?: React.ReactNode, isDate?: boolean, children?: React.ReactNode }) => {
-    if (!children && !value && value !== 0) return null;
+    if (!children && (value === null || value === undefined || value === '')) return null;
     return (
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4">
             <span className="text-muted-foreground flex items-center gap-2">{icon}{label}</span>
@@ -385,7 +397,7 @@ export function WorkOrderDetails({
                     ) : (
                        <div className="sm:text-right">
                          <p className="font-medium">{workOrder.client?.name || workOrder.billTo || 'N/A'}</p>
-                         <p className="text-muted-foreground">{workOrder.client?.address}</p>
+                         {workOrder.client?.address && <p className="text-muted-foreground">{workOrder.client.address}</p>}
                        </div>
                     )}
                 </DetailItem>
@@ -411,7 +423,7 @@ export function WorkOrderDetails({
                     ) : (
                        <div className="sm:text-right">
                          <p className="font-medium">{workOrder.workSite?.name || 'N/A'}</p>
-                         <p className="text-muted-foreground">{workOrder.workSite?.address}</p>
+                         {workOrder.workSite?.address && <p className="text-muted-foreground">{workOrder.workSite.address}</p>}
                        </div>
                     )}
                 </DetailItem>
@@ -431,10 +443,6 @@ export function WorkOrderDetails({
                     ) : (
                         assignedTechnician ? (
                           <div className="flex items-center justify-start sm:justify-end gap-2 font-medium">
-                            <Avatar className="h-6 w-6">
-                              <AvatarImage src={assignedTechnician.avatarUrl} />
-                              <AvatarFallback>{assignedTechnician.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
                             <span>{assignedTechnician.name}</span>
                           </div>
                         ) : (
@@ -486,6 +494,39 @@ export function WorkOrderDetails({
                  <DetailItem label="Estimator/Requested By">
                     {isEditing ? <Input className="h-8 sm:text-right" value={estimator} onChange={(e) => setEstimator(e.target.value)} /> : <span className="font-medium">{workOrder.estimator || 'N/A'}</span>}
                 </DetailItem>
+                <Separator />
+                <DetailItem label="Temp on Arrival" icon={<Thermometer className="h-4 w-4" />}>
+                     {isEditing ? <Input className="h-8 sm:text-right" value={tempOnArrival} onChange={(e) => setTempOnArrival(e.target.value)} /> : <span className="font-medium">{workOrder.tempOnArrival || 'N/A'}</span>}
+                </DetailItem>
+                <DetailItem label="Temp on Leaving" icon={<Thermometer className="h-4 w-4" />}>
+                     {isEditing ? <Input className="h-8 sm:text-right" value={tempOnLeaving} onChange={(e) => setTempOnLeaving(e.target.value)} /> : <span className="font-medium">{workOrder.tempOnLeaving || 'N/A'}</span>}
+                </DetailItem>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Customer Sign-off</CardTitle>
+            </CardHeader>
+            <CardContent>
+                {workOrder.customerSignatureUrl ? (
+                    <div className="space-y-4">
+                        <div className="border bg-muted rounded-md p-4 flex justify-center">
+                             <Image src={workOrder.customerSignatureUrl} alt="Customer Signature" width={300} height={150} style={{ objectFit: 'contain' }} />
+                        </div>
+                        <p className="text-sm text-muted-foreground text-center">
+                            Signed on {workOrder.signatureDate ? format(new Date(workOrder.signatureDate), 'MMM d, yyyy') : 'N/A'}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="text-center text-muted-foreground space-y-4 p-4 border-2 border-dashed rounded-md">
+                        <p>No signature has been captured yet.</p>
+                        {!isEditing && workOrder.status !== 'Completed' && (
+                             <Button type="button" onClick={() => setIsSignatureDialogOpen(true)}>
+                                Capture Signature
+                            </Button>
+                        )}
+                    </div>
+                )}
             </CardContent>
           </Card>
         </div>
@@ -506,6 +547,12 @@ export function WorkOrderDetails({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <SignaturePad 
+        isOpen={isSignatureDialogOpen}
+        setIsOpen={setIsSignatureDialogOpen}
+        onSave={onSignatureSave}
+      />
     </>
   );
 }
