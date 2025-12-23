@@ -49,5 +49,15 @@ service firebase.storage {
       allow read: if request.auth != null;
       allow write: if request.auth != null && (isAdmin() || !isWorkOrderCompleted(workOrderId));
     }
+    
+    /**
+     * @description Secures signature files.
+     * @path /signatures/{allPaths=**}
+     * @allow (read, write) Any authenticated user can upload and read signatures.
+     * @principle Allows users to save signatures for training forms and work order sign-offs.
+     */
+    match /signatures/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
   }
 }
