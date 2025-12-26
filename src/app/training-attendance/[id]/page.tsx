@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import type { TrainingRecord, Attendee, WorkOrder } from '@/lib/types';
 import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { notFound, useParams } from 'next/navigation';
@@ -59,6 +59,7 @@ const checklistItems = {
 
 export default function ViewTrainingRecordPage() {
     const db = useFirestore();
+    const { user } = useUser();
     const params = useParams();
     const id = params.id as string;
 
@@ -67,7 +68,7 @@ export default function ViewTrainingRecordPage() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (!db || !id) return;
+        if (!db || !id || !user) return;
         
         const fetchRecord = async () => {
             setIsLoading(true);
@@ -85,7 +86,7 @@ export default function ViewTrainingRecordPage() {
         }
         fetchRecord();
 
-    }, [db, id])
+    }, [db, id, user])
 
 
     const ChecklistItem = ({ id, label, level = 0, subItem = false }: {id: string, label: string, level?: number, subItem?: boolean}) => (
