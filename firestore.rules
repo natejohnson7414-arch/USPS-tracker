@@ -195,7 +195,7 @@ service cloud.firestore {
     match /work_orders/{workOrderId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn() && hasRequiredWorkOrderFields();
-      allow update: if isAdmin() || (isOwner(resource.data.assignedTechnicianId) || isOwner(request.resource.data.assignedTechnicianId));
+      allow update: if isAdmin() || (isOwner(request.resource.data.assignedTechnicianId) && request.resource.data.assignedTechnicianId != null) || (isOwner(resource.data.assignedTechnicianId) && resource.data.assignedTechnicianId != null);
       allow delete: if isAdmin() && resource != null;
 
       /**
@@ -206,8 +206,8 @@ service cloud.firestore {
        */
       match /updates/{updateId} {
         allow read, list: if isSignedIn();
-        allow create, update: if isAdmin() || (isOwner(get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.assignedTechnicianId) && !isParentWorkOrderCompleted(workOrderId));
-        allow delete: if (isAdmin() || isOwner(get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.assignedTechnicianId)) && resource != null;
+        allow create: if isSignedIn() && !isParentWorkOrderCompleted(workOrderId);
+        allow update, delete: if isAdmin() || (isOwner(get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.assignedTechnicianId) && !isParentWorkOrderCompleted(workOrderId));
       }
     }
 
@@ -261,5 +261,3 @@ service cloud.firestore {
      }
   }
 }
-
-    
