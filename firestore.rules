@@ -104,6 +104,14 @@ service cloud.firestore {
      function isParentWorkOrderCompleted(workOrderId) {
         return get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.status == 'Completed';
      }
+     
+    /**
+     * Checks if a user is creating their own time entry.
+     */
+    function isCreatingOwnTimeEntry() {
+      return isSignedIn() && request.resource.data.technicianId == request.auth.uid;
+    }
+
 
     // --------------------------------------------------------------------------
     // Collection Rules
@@ -237,5 +245,18 @@ service cloud.firestore {
     match /hvac_startup_reports/{reportId} {
       allow read, write: if isSignedIn();
     }
+    
+    /**
+     * @description Manages access to time entries.
+     * @path /time_entries/{timeEntryId}
+     * @allow (read, delete) A user can read or delete their own time entries.
+     * @allow (create) A user can create a time entry for themselves.
+     * @principle Enforces that users can only manage their own time entries.
+     */
+     match /time_entries/{timeEntryId} {
+        allow read, delete: if isOwner(resource.data.technicianId);
+        allow list: if isSignedIn();
+        allow create: if isCreatingOwnTimeEntry();
+     }
   }
 }

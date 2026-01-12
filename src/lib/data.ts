@@ -1,6 +1,7 @@
 
+
 'use client';
-import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client, TrainingRecord, HvacStartupReport } from '@/lib/types';
+import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client, TrainingRecord, HvacStartupReport, TimeEntry } from '@/lib/types';
 import { collection, getDoc, doc, query, where } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 import { sampleRoles, sampleTechnicians, sampleWorkOrders, sampleWorkSites, sampleClients } from './sample-data';
@@ -245,6 +246,28 @@ export const getHvacStartupReportById = async (db: any, id: string): Promise<Hva
     }
     return undefined;
 }
+
+export const getTimeEntriesByTechnician = async (db: any, technicianId: string): Promise<TimeEntry[]> => {
+    if (!db || !technicianId) return [];
+    const timeEntriesCol = collection(db, 'time_entries');
+    const q = query(timeEntriesCol, where("technicianId", "==", technicianId));
+    const snapshot = await getCollectionNonBlocking(q);
+    
+    const entries = await Promise.all(snapshot.docs.map(async (doc) => {
+        const data = doc.data();
+        let workOrder;
+        if (data.workOrderId) {
+            workOrder = await getWorkOrderById(db, data.workOrderId);
+        }
+        return {
+            id: doc.id,
+            ...data,
+            workOrder: workOrder || undefined,
+        } as TimeEntry;
+    }));
+
+    return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+};
     
 
     

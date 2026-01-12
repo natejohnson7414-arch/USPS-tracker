@@ -194,4 +194,15 @@ export type HvacStartupReport = {
     amps_T3?: string;
     checkedRotation?: string;
 };
+
+export type TimeEntry = {
+    id: string;
+    technicianId: string;
+    workOrderId: string | null;
+    date: string;
+    hours: number;
+    timeType: 'Regular' | 'Overtime' | 'Double Time';
+    notes?: string;
+    workOrder?: WorkOrder; // For display purposes on the timesheet
+};
     

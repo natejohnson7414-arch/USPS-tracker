@@ -22,13 +22,14 @@ import {
 import { Input } from '@/components/ui/input';
 import { DatePicker } from './ui/date-picker';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, User, Calendar, Info, FileText, X, Video, Library, Loader2, MapPin, Hash, DollarSign, Building, Map, Thermometer, ClipboardCheck } from 'lucide-react';
+import { Camera, User, Calendar, Info, FileText, X, Video, Library, Loader2, MapPin, Hash, DollarSign, Building, Map, Thermometer, ClipboardCheck, Clock } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { useFirestore, useUser } from '@/firebase';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from './ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
 import { getTechnicianById } from '@/lib/data';
+import { AddTimeDialog } from './add-time-dialog';
 
 interface EditableFields {
   description: string;
@@ -129,6 +130,8 @@ export function WorkOrderDetails({
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
+  const [isAddTimeOpen, setIsAddTimeOpen] = useState(false);
+
 
   const { 
     description, setDescription,
@@ -303,10 +306,10 @@ export function WorkOrderDetails({
                   </div>
                 )}
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                  <div>
+                    <div className="flex gap-2">
                       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                         <SheetTrigger asChild>
-                          <Button type="button" variant="outline" disabled={isAddingNote} className="w-full sm:w-auto">
+                          <Button type="button" variant="outline" disabled={isAddingNote}>
                             <Camera className="mr-2 h-4 w-4" />
                             Attach Photo
                           </Button>
@@ -345,6 +348,10 @@ export function WorkOrderDetails({
                         accept="image/*"
                         multiple
                       />
+                      <Button type="button" variant="outline" onClick={() => setIsAddTimeOpen(true)} disabled={isAddingNote}>
+                          <Clock className="mr-2 h-4 w-4" />
+                          Add Time
+                      </Button>
                   </div>
                   <Button type="button" onClick={handleAddNote} disabled={!user || isAddingNote || (newNote.trim() === '' && newNotePhotos.length === 0)} className="w-full sm:w-auto">
                     {isAddingNote && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -580,6 +587,14 @@ export function WorkOrderDetails({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <AddTimeDialog 
+        isOpen={isAddTimeOpen}
+        setIsOpen={setIsAddTimeOpen}
+        workOrderId={workOrder.id}
+        onTimeAdded={() => {
+            // We can optionally refresh data here, but for now we just close the dialog
+        }}
+      />
     </>
   );
 }
