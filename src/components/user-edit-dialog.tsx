@@ -59,6 +59,7 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
   }, [user, isOpen, roles]);
 
   const handleSave = () => {
+    if (!db) return;
     const [firstName, ...lastNameParts] = name.split(' ');
     const lastName = lastNameParts.join(' ');
 
@@ -67,19 +68,23 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
       lastName,
       email,
       roleId,
-      // In a real app, you'd upload the avatar to a storage service and save the URL.
-      // For this demo, we're saving the potentially long data URI directly.
       avatarUrl: avatarUrl,
     };
-
+    
+    let userRef;
+    let isNewUser = false;
+    
     if (user) {
-      const userRef = doc(db, 'technicians', user.id);
-      setDocumentNonBlocking(userRef, userData, { merge: true });
+      userRef = doc(db, 'technicians', user.id);
     } else {
+      isNewUser = true;
       const newId = `tech-${Date.now()}`;
-      const newUserRef = doc(db, 'technicians', newId);
-      setDocumentNonBlocking(newUserRef, { ...userData, id: newId }, { merge: false });
+      userRef = doc(db, 'technicians', newId);
+      // For new users, we add the ID to the data itself
+      (userData as any).id = newId;
     }
+
+    setDocumentNonBlocking(userRef, userData, { merge: !isNewUser });
 
     onUserSaved();
     setIsOpen(false);
