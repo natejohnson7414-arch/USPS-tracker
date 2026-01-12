@@ -21,7 +21,7 @@ import { useTechnician } from '@/hooks/use-technician';
 
 export function Header() {
   const { user } = useUser();
-  const { technician } = useTechnician();
+  const { technician, isLoading } = useTechnician();
   const auth = useAuth();
 
   const handleLogout = async () => {
@@ -31,6 +31,11 @@ export function Header() {
       window.location.href = '/login';
     }
   };
+
+  const getInitials = (name?: string) => {
+    if (!name) return '';
+    return name.split(' ').map(n => n[0]).join('');
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card shadow-sm">
@@ -42,9 +47,9 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={technician?.avatarUrl} alt={technician?.name} />
+                    <AvatarImage src={technician?.avatarUrl} alt={technician?.name || ''} />
                     <AvatarFallback>
-                      {technician?.name?.charAt(0) || <User />}
+                      {isLoading ? <User /> : getInitials(technician?.name)}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -53,7 +58,9 @@ export function Header() {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{technician?.name || user.email}</p>
-                    <p className="text-xs leading-none text-muted-foreground">Technician</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {technician?.roleId ? 'Technician' : 'User'}
+                    </p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />

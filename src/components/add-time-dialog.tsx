@@ -35,7 +35,7 @@ interface AddTimeDialogProps {
 export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, onTimeAdded }: AddTimeDialogProps) {
   const db = useFirestore();
   const { user } = useUser();
-  const { technician } = useTechnician();
+  const { technician, isLoading: isTechnicianLoading } = useTechnician();
   const { toast } = useToast();
   
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -55,6 +55,16 @@ export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, onTimeAdded }: A
     if (!db || !user) {
       toast({ title: 'Authentication Error', description: 'You must be logged in to add time.', variant: 'destructive' });
       return;
+    }
+    
+    if (isTechnicianLoading) {
+      toast({ title: 'Please wait', description: 'Technician details are still loading.', variant: 'default' });
+      return;
+    }
+
+    if (!technician) {
+       toast({ title: 'Technician Not Found', description: 'Could not find your technician profile.', variant: 'destructive' });
+       return;
     }
     
     const totalHours = selectedHours + selectedMinutes / 60;
@@ -80,7 +90,7 @@ export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, onTimeAdded }: A
       onTimeAdded({ 
           id: docRef.id, 
           ...timeEntryData,
-          technicianName: technician?.name,
+          technicianName: technician.name,
       });
       toast({ title: 'Time Entry Added', description: `Successfully logged ${totalHours.toFixed(2)} hours.` });
       resetForm();
@@ -156,7 +166,7 @@ export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, onTimeAdded }: A
           <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isSubmitting}>
+          <Button onClick={handleSave} disabled={isSubmitting || isTechnicianLoading}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Time
           </Button>

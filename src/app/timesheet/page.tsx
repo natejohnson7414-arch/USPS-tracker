@@ -23,6 +23,7 @@ import type { TimeEntry, WorkOrder } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
 import { getTimeEntriesByTechnician } from '@/lib/data';
+import { useTechnician } from '@/hooks/use-technician';
 
 const hourOptions = Array.from({ length: 25 }, (_, i) => i);
 const minuteOptions = [0, 15, 30, 45];
@@ -31,6 +32,7 @@ export default function TimesheetPage() {
     const db = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
+    const { technician, isLoading: isTechnicianLoading } = useTechnician();
     
     const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -50,13 +52,16 @@ export default function TimesheetPage() {
         if (!db || !user) return;
         setIsLoading(true);
         const entries = await getTimeEntriesByTechnician(db, user.uid);
-        setTimeEntries(entries);
+        const entriesWithTechName = entries.map(entry => ({...entry, technicianName: technician?.name}))
+        setTimeEntries(entriesWithTechName);
         setIsLoading(false);
     };
 
     useEffect(() => {
-        fetchTimeEntries();
-    }, [db, user]);
+        if (db && user && technician) {
+            fetchTimeEntries();
+        }
+    }, [db, user, technician]);
 
     const resetForm = () => {
         setDate(new Date());
