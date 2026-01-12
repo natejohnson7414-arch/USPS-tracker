@@ -13,10 +13,10 @@ import { z } from 'zod';
 import * as admin from 'firebase-admin';
 import { firebaseConfig } from '@/firebase/config';
 
-// Initialize Firebase Admin SDK if it hasn't been already.
-// This is the correct pattern for server environments where modules can be cached.
+// This pattern ensures the Admin SDK is initialized only once in a server environment.
 if (!admin.apps.length) {
   try {
+    // We must provide credentials explicitly in this environment.
     admin.initializeApp();
   } catch (e) {
     console.error('Firebase Admin SDK initialization error on module load', e);
@@ -50,16 +50,19 @@ const createUserFlow = ai.defineFlow(
     outputSchema: CreateUserOutputSchema,
   },
   async (input) => {
-    // Check if the admin app is available.
-    if (!admin.apps.length) {
+    // Check if the admin app is available. If not, it means initialization failed earlier.
+    if (!admin.apps.length || !admin.app()) {
+      const errorMessage = 'Failed to initialize Firebase Admin SDK.';
+      console.error(errorMessage);
       return {
         uid: '',
         success: false,
-        error: 'Failed to initialize Firebase Admin SDK.',
+        error: errorMessage,
       };
     }
     
     const firestore = admin.firestore();
+    let uid = '';
 
     try {
       // 1. Create the user in Firebase Authentication
@@ -67,9 +70,10 @@ const createUserFlow = ai.defineFlow(
         email: input.email,
         password: input.password,
         displayName: input.name,
+        emailVerified: true, // Let's assume verification for simplicity
       });
 
-      const { uid } = userRecord;
+      uid = userRecord.uid;
 
       // 2. Create the user profile in Firestore using the UID as the document ID
       const [firstName, ...lastNameParts] = input.name.split(' ');
@@ -92,22 +96,32 @@ const createUserFlow = ai.defineFlow(
       };
     } catch (error: any) {
       console.error('Error creating user:', error);
-      // If the auth user was created but firestore failed, we should delete the auth user
-      if (error.code?.startsWith('firestore/')) {
+      
+      // If we created an auth user but failed to create the firestore doc,
+      // we must delete the auth user to prevent orphaned accounts.
+      if (uid) {
         try {
-          // Extract UID if possible from the error context or input
-          const uidToDelete = error.uid || (await admin.auth().getUserByEmail(input.email)).uid;
-          if (uidToDelete) {
-            await admin.auth().deleteUser(uidToDelete);
-          }
+          await admin.auth().deleteUser(uid);
+          console.log(`Successfully deleted orphaned auth user with uid: ${uid}`);
         } catch (cleanupError) {
-           console.error('Failed to clean up orphaned auth user:', cleanupError);
+           console.error(`Failed to clean up orphaned auth user with uid ${uid}:`, cleanupError);
         }
       }
+      
+      // Provide a more specific error message if available
+      let errorMessage = 'An unexpected error occurred during user creation.';
+      if (error.code === 'auth/email-already-exists') {
+        errorMessage = 'This email address is already in use by another account.';
+      } else if (error.code) {
+        errorMessage = `Error from Firebase: ${error.message}`;
+      } else {
+        errorMessage = error.message || errorMessage;
+      }
+      
       return {
         uid: '',
         success: false,
-        error: error.message || 'An unexpected error occurred during user creation.',
+        error: errorMessage,
       };
     }
   }
