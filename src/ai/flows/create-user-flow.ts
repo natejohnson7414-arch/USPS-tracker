@@ -43,12 +43,9 @@ const createUserFlow = ai.defineFlow(
     // Initialize Firebase Admin SDK if it hasn't been already.
     if (!admin.apps.length) {
       try {
-        // Explicitly initialize with service account credentials from environment variables
-        // and the project ID from the client-side config.
-        admin.initializeApp({
-          credential: admin.credential.applicationDefault(),
-          projectId: firebaseConfig.projectId,
-        });
+        // In this managed environment, initializeApp() is often sufficient
+        // as credentials can be inferred.
+        admin.initializeApp();
       } catch (e) {
         console.error('Firebase Admin SDK initialization error', e);
         return {
