@@ -253,7 +253,7 @@ service cloud.firestore {
      * @principle Enforces that users can only manage their own time entries, with an admin override.
      */
      match /time_entries/{timeEntryId} {
-        allow list: if isAdmin();
+        allow list: if isSignedIn();
         allow get: if isAdmin() || (isSignedIn() && isOwner(resource.data.technicianId));
         allow create: if isCreatingOwnTimeEntry();
         allow update: if isAdmin() || (isSignedIn() && isOwner(resource.data.technicianId));
