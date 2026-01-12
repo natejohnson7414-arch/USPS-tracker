@@ -98,3 +98,4 @@ export function deleteDocumentNonBlocking(docRef: DocumentReference) {
     });
     return promise;
 }
+
