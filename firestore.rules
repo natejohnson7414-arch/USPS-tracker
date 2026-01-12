@@ -154,10 +154,9 @@ service cloud.firestore {
      * @principle Enforces document ownership for writes and self-creation, with an Admin override. List is allowed for any authenticated user.
      */
     match /technicians/{technicianId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      allow get, list: if isSignedIn();
       allow create: if isCreatingOwnProfile(technicianId) || isAdmin();
-      allow update: if isUpdatingOwnProfile(technicianId) || isAdmin();
+      allow update: if isOwner(technicianId) || isAdmin();
       allow delete: if isAdmin() && resource != null;
     }
 
@@ -255,12 +254,15 @@ service cloud.firestore {
      * @principle Enforces that users can only manage their own time entries, with an admin override.
      */
      match /time_entries/{timeEntryId} {
-        allow get, list: if isSignedIn();
-        allow read, delete: if isAdmin() || (isSignedIn() && isOwner(resource.data.technicianId));
+        allow list: if isAdmin();
+        allow get: if isAdmin() || (isSignedIn() && isOwner(resource.data.technicianId));
         allow create: if isCreatingOwnTimeEntry();
         allow update: if isAdmin() || (isSignedIn() && isOwner(resource.data.technicianId));
+        allow delete: if isAdmin() || (isSignedIn() && isOwner(resource.data.technicianId));
      }
   }
 }
+
+    
 
     
