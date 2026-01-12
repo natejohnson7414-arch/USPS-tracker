@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, User, Users, Clock } from 'lucide-react';
+import { LogOut, User, Users, Clock, Loader2 } from 'lucide-react';
 import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { Sidebar } from './sidebar';
@@ -49,7 +49,7 @@ export function Header() {
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={technician?.avatarUrl} alt={technician?.name || ''} />
                     <AvatarFallback>
-                      {isLoading ? <User /> : getInitials(technician?.name)}
+                      {isLoading ? <Loader2 className="animate-spin" /> : getInitials(technician?.name) || <User />}
                     </AvatarFallback>
                   </Avatar>
                 </Button>

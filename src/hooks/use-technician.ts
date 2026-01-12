@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,6 +12,7 @@ export function useTechnician() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Only proceed if we have a user and a database connection.
     if (user && db) {
       setIsLoading(true);
       getTechnicianById(db, user.uid)
@@ -20,7 +20,8 @@ export function useTechnician() {
           if (techProfile) {
             setTechnician(techProfile);
           } else {
-            // This might happen if a user exists in Auth but not in the 'technicians' collection
+            // This case handles when a user is authenticated but doesn't have a profile
+            // in the 'technicians' collection yet.
             setTechnician(null);
           }
         })
@@ -31,8 +32,8 @@ export function useTechnician() {
         .finally(() => {
           setIsLoading(false);
         });
-    } else {
-      // No user or db, so not loading and no technician
+    } else if (!user) {
+      // If there's no authenticated user, we're not loading and there's no technician.
       setIsLoading(false);
       setTechnician(null);
     }

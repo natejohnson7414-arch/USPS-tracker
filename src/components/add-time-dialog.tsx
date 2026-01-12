@@ -1,5 +1,3 @@
-
-
 'use client';
 import {
   Dialog,
@@ -167,7 +165,7 @@ export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, onTimeAdded }: A
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={isSubmitting || isTechnicianLoading}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isSubmitting || isTechnicianLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Save Time
           </Button>
         </DialogFooter>
