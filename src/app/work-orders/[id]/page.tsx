@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, FormEvent } from 'react';
-import { getTechnicians, getWorkOrderById, getWorkSites, getClients, getTrainingRecordsByWorkOrderId } from '@/lib/data';
+import { getTechnicians, getWorkOrderById, getWorkSites, getClients, getTrainingRecordsByWorkOrderId, getTimeEntriesByWorkOrder } from '@/lib/data';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
@@ -11,7 +11,7 @@ import { WorkOrderDetails } from '@/components/work-order-details';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Ban, Pencil, Save, Printer } from 'lucide-react';
 import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord } from '@/lib/types';
+import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry } from '@/lib/types';
 import { doc, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImage, deleteImage } from '@/firebase/storage';
@@ -39,6 +39,7 @@ export default function WorkOrderDetailPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
   const [trainingRecords, setTrainingRecords] = useState<TrainingRecord[]>([]);
+  const [timeEntries, setTimeEntries] = useState<(TimeEntry & { technicianName?: string })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDataChecked, setIsDataChecked] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -129,19 +130,22 @@ export default function WorkOrderDetailPage() {
             fetchedWorkOrder, 
             fetchedWorkSites, 
             fetchedClients,
-            fetchedTrainingRecords
+            fetchedTrainingRecords,
+            fetchedTimeEntries
         ] = await Promise.all([
           getTechnicians(db),
           getWorkOrderById(db, id),
           getWorkSites(db),
           getClients(db),
-          getTrainingRecordsByWorkOrderId(db, id)
+          getTrainingRecordsByWorkOrderId(db, id),
+          getTimeEntriesByWorkOrder(db, id)
         ]);
 
         setTechnicians(fetchedTechnicians);
         setWorkSites(fetchedWorkSites);
         setClients(fetchedClients);
         setTrainingRecords(fetchedTrainingRecords);
+        setTimeEntries(fetchedTimeEntries);
         
         if (fetchedWorkOrder) {
             setWorkOrder(fetchedWorkOrder);
@@ -189,6 +193,7 @@ export default function WorkOrderDetailPage() {
         const newNoteData = {
             workOrderId: workOrder.id,
             notes: newNote.text,
+            createdAt: newNote.createdAt,
             photoUrls: photoUrls,
         };
 
@@ -197,6 +202,7 @@ export default function WorkOrderDetailPage() {
         const optimisticNote: WorkOrderNote = {
             id: docRef.id,
             text: newNote.text,
+            createdAt: newNote.createdAt,
             photoUrls: photoUrls,
         };
         
@@ -217,6 +223,10 @@ export default function WorkOrderDetailPage() {
     } finally {
         setIsAddingNote(false);
     }
+  };
+
+  const handleTimeAdded = (newTimeEntry: TimeEntry & { technicianName?: string }) => {
+    setTimeEntries(prev => [newTimeEntry, ...prev]);
   };
   
   const handleSave = (e: FormEvent) => {
@@ -370,6 +380,26 @@ export default function WorkOrderDetailPage() {
         });
   };
 
+  const handleTimeEntryDelete = (timeEntryId: string) => {
+    if (!db) return;
+
+    // Optimistically remove from UI
+    const originalTimeEntries = timeEntries;
+    setTimeEntries(prev => prev.filter(t => t.id !== timeEntryId));
+
+    const timeEntryRef = doc(db, 'time_entries', timeEntryId);
+    deleteDocumentNonBlocking(timeEntryRef)
+      .then(() => {
+        toast({ title: 'Time Entry Deleted' });
+      })
+      .catch(error => {
+        console.error("Error deleting time entry:", error);
+        toast({ variant: 'destructive', title: 'Deletion Failed' });
+        // Revert on error
+        setTimeEntries(originalTimeEntries);
+      });
+  };
+
 
 
   if (isLoading || !isDataChecked) {
@@ -418,10 +448,13 @@ export default function WorkOrderDetailPage() {
             workSites={workSites}
             clients={clients}
             trainingRecords={trainingRecords}
+            timeEntries={timeEntries}
             isEditing={isEditing}
             onNoteAdded={handleNoteAdded}
+            onTimeAdded={handleTimeAdded}
             onNotePhotoDelete={handleNotePhotoDelete}
             onNoteDelete={handleNoteDelete}
+            onTimeEntryDelete={handleTimeEntryDelete}
             isAddingNote={isAddingNote}
             onDirectionsClick={(address) => setSelectedAddress(address)}
             onSignatureSave={() => setIsSignatureDialogOpen(true)}
@@ -489,4 +522,3 @@ export default function WorkOrderDetailPage() {
     </MainLayout>
   );
 }
-

@@ -12,6 +12,7 @@ export type Technician = {
 export type WorkOrderNote = {
   id: string;
   text: string;
+  createdAt: string;
   photoUrls?: string[];
 };
 

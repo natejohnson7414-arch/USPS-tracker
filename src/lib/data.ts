@@ -107,7 +107,8 @@ export const getWorkOrderById = async (db: any, id: string): Promise<WorkOrder |
         return {
             id: noteDoc.id,
             text: noteData.notes,
-            photoUrls: noteData.photoUrls || []
+            photoUrls: noteData.photoUrls || [],
+            createdAt: noteData.createdAt,
         } as WorkOrderNote
     });
 
@@ -269,5 +270,25 @@ export const getTimeEntriesByTechnician = async (db: any, technicianId: string):
     return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 };
     
+export const getTimeEntriesByWorkOrder = async (db: any, workOrderId: string): Promise<(TimeEntry & { technicianName?: string })[]> => {
+    if (!db || !workOrderId) return [];
+    const timeEntriesCol = collection(db, 'time_entries');
+    const q = query(timeEntriesCol, where("workOrderId", "==", workOrderId));
+    const snapshot = await getCollectionNonBlocking(q);
+    
+    const entries = await Promise.all(snapshot.docs.map(async (doc) => {
+        const data = doc.data();
+        let technician;
+        if (data.technicianId) {
+            technician = await getTechnicianById(db, data.technicianId);
+        }
+        return {
+            id: doc.id,
+            ...data,
+            technicianName: technician?.name,
+        } as TimeEntry & { technicianName?: string };
+    }));
 
+    return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+};
     

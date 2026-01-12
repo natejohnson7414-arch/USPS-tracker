@@ -6,7 +6,7 @@ import { useState, useRef, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord } from '@/lib/types';
+import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,6 +24,7 @@ import { DatePicker } from './ui/date-picker';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Camera, User, Calendar, Info, FileText, X, Video, Library, Loader2, MapPin, Hash, DollarSign, Building, Map, Thermometer, ClipboardCheck, Clock } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
+import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser } from '@/firebase';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from './ui/checkbox';
@@ -92,12 +93,15 @@ interface WorkOrderDetailsProps {
   workSites: WorkSite[];
   clients: Client[];
   trainingRecords: TrainingRecord[];
+  timeEntries: (TimeEntry & { technicianName?: string })[];
   isEditing: boolean;
   editableFields: EditableFields;
   onWorkOrderUpdate: (e: FormEvent) => void;
   onNoteAdded: (note: Omit<WorkOrderNote, 'id'> & { photoFiles: File[] }) => void;
+  onTimeAdded: (timeEntry: TimeEntry & { technicianName?: string }) => void;
   onNotePhotoDelete: (noteId: string, photoUrl: string) => void;
   onNoteDelete: (noteId: string) => void;
+  onTimeEntryDelete: (timeEntryId: string) => void;
   isAddingNote: boolean;
   onDirectionsClick: (address: string) => void;
   onSignatureSave: () => void;
@@ -109,12 +113,15 @@ export function WorkOrderDetails({
   workSites,
   clients,
   trainingRecords,
+  timeEntries,
   isEditing,
   editableFields,
   onWorkOrderUpdate,
   onNoteAdded,
+  onTimeAdded,
   onNotePhotoDelete,
   onNoteDelete,
+  onTimeEntryDelete,
   isAddingNote,
   onDirectionsClick,
   onSignatureSave,
@@ -130,7 +137,14 @@ export function WorkOrderDetails({
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
+  const [timeEntryToDelete, setTimeEntryToDelete] = useState<string | null>(null);
   const [isAddTimeOpen, setIsAddTimeOpen] = useState(false);
+
+  // Combine and sort notes and time entries
+  const combinedActivity = [
+    ...workOrder.notes.map(note => ({ ...note, type: 'note', date: note.createdAt || workOrder.createdDate })),
+    ...timeEntries.map(entry => ({ ...entry, type: 'time', date: entry.date }))
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
 
   const { 
@@ -202,6 +216,7 @@ export function WorkOrderDetails({
 
     onNoteAdded({
       text: newNote,
+      createdAt: new Date().toISOString(),
       photoFiles: newNotePhotos.map(p => p.file),
       photoUrls: [], // This will be populated after upload
     });
@@ -215,6 +230,13 @@ export function WorkOrderDetails({
         onNoteDelete(noteToDelete);
         setNoteToDelete(null);
     }
+  };
+
+  const confirmDeleteTimeEntry = () => {
+      if (timeEntryToDelete) {
+          onTimeEntryDelete(timeEntryToDelete);
+          setTimeEntryToDelete(null);
+      }
   };
 
   const DetailItem = ({ label, value, icon, isDate, children }: { label: string, value?: string | number | null, icon?: React.ReactNode, isDate?: boolean, children?: React.ReactNode }) => {
@@ -306,8 +328,7 @@ export function WorkOrderDetails({
                   </div>
                 )}
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <div className="flex gap-2">
-                      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                    <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                         <SheetTrigger asChild>
                           <Button type="button" variant="outline" disabled={isAddingNote}>
                             <Camera className="mr-2 h-4 w-4" />
@@ -329,9 +350,9 @@ export function WorkOrderDetails({
                             </Button>
                           </div>
                         </SheetContent>
-                      </Sheet>
+                    </Sheet>
 
-                      <input
+                    <input
                         type="file"
                         ref={takePhotoInputRef}
                         onChange={handleFileChange}
@@ -339,32 +360,37 @@ export function WorkOrderDetails({
                         accept="image/*"
                         capture="environment"
                         multiple
-                      />
-                      <input
+                    />
+                    <input
                         type="file"
                         ref={chooseFromLibraryInputRef}
                         onChange={handleFileChange}
                         className="hidden"
                         accept="image/*"
                         multiple
-                      />
-                      <Button type="button" variant="outline" onClick={() => setIsAddTimeOpen(true)} disabled={isAddingNote}>
-                          <Clock className="mr-2 h-4 w-4" />
-                          Add Time
-                      </Button>
+                    />
+                  <div className="flex-1 flex justify-end gap-2">
+                    <Button type="button" variant="secondary" onClick={() => setIsAddTimeOpen(true)} disabled={isAddingNote}>
+                        <Clock className="mr-2 h-4 w-4" />
+                        Add Time
+                    </Button>
+                    <Button type="button" onClick={handleAddNote} disabled={!user || isAddingNote || (newNote.trim() === '' && newNotePhotos.length === 0)} className="w-full sm:w-auto">
+                        {isAddingNote && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isAddingNote ? "Adding..." : "Add Note"}
+                    </Button>
                   </div>
-                  <Button type="button" onClick={handleAddNote} disabled={!user || isAddingNote || (newNote.trim() === '' && newNotePhotos.length === 0)} className="w-full sm:w-auto">
-                    {isAddingNote && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isAddingNote ? "Adding..." : "Add Note"}
-                  </Button>
                 </div>
               </div>
               <Separator />
               <div className="space-y-6">
-                {isClient ? workOrder.notes.map(note => (
-                  <NoteActivityItem key={note.id} note={note} isEditing={isEditing} onPhotoDelete={onNotePhotoDelete} onNoteDelete={setNoteToDelete} />
-                )) : <p className="text-center text-sm text-muted-foreground py-4">Loading notes...</p>}
-                {isClient && workOrder.notes.length === 0 && (
+                {isClient ? combinedActivity.map(activity => {
+                    if (activity.type === 'note') {
+                        return <NoteActivityItem key={`note-${activity.id}`} note={activity} isEditing={isEditing} onPhotoDelete={onNotePhotoDelete} onNoteDelete={setNoteToDelete} />
+                    } else {
+                        return <TimeActivityItem key={`time-${activity.id}`} timeEntry={activity} isEditing={isEditing} onTimeEntryDelete={setTimeEntryToDelete} />
+                    }
+                }) : <p className="text-center text-sm text-muted-foreground py-4">Loading activity...</p>}
+                {isClient && combinedActivity.length === 0 && (
                   <p className="text-center text-sm text-muted-foreground py-4">No notes or activity yet.</p>
                 )}
               </div>
@@ -587,16 +613,28 @@ export function WorkOrderDetails({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+    <AlertDialog open={!!timeEntryToDelete} onOpenChange={(open) => !open && setTimeEntryToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this time entry.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteTimeEntry}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AddTimeDialog 
         isOpen={isAddTimeOpen}
         setIsOpen={setIsAddTimeOpen}
         workOrderId={workOrder.id}
-        onTimeAdded={() => {
-            // We can optionally refresh data here, but for now we just close the dialog
-        }}
+        onTimeAdded={onTimeAdded}
       />
     </>
   );
 }
-
-    
