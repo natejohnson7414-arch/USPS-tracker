@@ -11,12 +11,10 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import * as admin from 'firebase-admin';
-import { firebaseConfig } from '@/firebase/config';
 
 // This pattern ensures the Admin SDK is initialized only once in a server environment.
 if (!admin.apps.length) {
   try {
-    // We must provide credentials explicitly in this environment.
     admin.initializeApp();
   } catch (e) {
     console.error('Firebase Admin SDK initialization error on module load', e);
