@@ -8,9 +8,9 @@ import { sampleRoles, sampleTechnicians, sampleWorkOrders, sampleWorkSites, samp
 import { setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 
 export const seedDatabase = async (db: any) => {
-    // Check if technicians exist, which is a better indicator of a seeded DB
-    const techniciansSnapshot = await getCollectionNonBlocking(collection(db, 'technicians'));
-    if (techniciansSnapshot.empty) {
+    // Check if roles exist, which is a good indicator of a seeded DB
+    const rolesSnapshot = await getCollectionNonBlocking(collection(db, 'roles'));
+    if (rolesSnapshot.empty) {
         console.log("Seeding database with sample data...");
         
         // Seed Roles first
@@ -22,26 +22,6 @@ export const seedDatabase = async (db: any) => {
         );
 
         const technicianRole = roles.find(r => r.name === 'Technician');
-        const adminRole = roles.find(r => r.name === 'Administrator');
-
-        // Create the admin user profile if it doesn't exist
-        const adminEmail = 'admin@crawford-company.com';
-        const adminUserQuery = query(collection(db, 'technicians'), where('email', '==', adminEmail));
-        const adminUserSnapshot = await getCollectionNonBlocking(adminUserQuery);
-        
-        if (adminUserSnapshot.empty) {
-            console.log("Creating admin user profile...");
-            const [firstName, ...lastName] = 'Admin User'.split(' ');
-            const adminData = {
-                id: 'admin_user_placeholder_id', // This ID should be replaced by the actual Auth UID after login
-                firstName,
-                lastName: lastName.join(' '),
-                email: adminEmail,
-                roleId: adminRole?.id,
-                disabled: false,
-            };
-             await addDocumentNonBlocking(collection(db, 'technicians'), adminData);
-        }
 
         // Seed Technicians from sample data
         await Promise.all(
@@ -314,5 +294,6 @@ export const getTimeEntriesByWorkOrder = async (db: any, workOrderId: string): P
     return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 };
     
+
 
 

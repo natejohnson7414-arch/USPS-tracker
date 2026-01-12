@@ -1,12 +1,12 @@
 
 'use client';
 import React, { useEffect, useState, useRef } from 'react';
-import { getTechnicians, seedDatabase, getWorkSites, getClients } from '@/lib/data';
+import { getTechnicians, seedDatabase, getWorkSites, getClients, getRoles, getTechnicianById } from '@/lib/data';
 import { DashboardClient } from './dashboard-client';
 import { MainLayout } from '@/components/main-layout';
-import type { WorkOrder, Technician, WorkSite, Client } from '@/lib/types';
-import { useFirestore, useCollection, useUser, useMemoFirebase } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
+import type { WorkOrder, Technician, WorkSite, Client, Role } from '@/lib/types';
+import { useFirestore, useUser, useMemoFirebase, setDocumentNonBlocking, useCollection } from '@/firebase';
+import { collection, query, doc } from 'firebase/firestore';
 
 export default function DashboardPage() {
   const db = useFirestore();
@@ -27,11 +27,9 @@ export default function DashboardPage() {
   const { data: workOrders, isLoading: isWorkOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
 
   useEffect(() => {
-    const fetchData = async () => {
-      // Only fetch if we have a user
-      if (!db || !user) return;
-      setIsLoading(true);
-      try {
+    const fetchCoreData = async () => {
+      if (!db) return;
+       try {
         const [fetchedTechnicians, fetchedWorkSites, fetchedClients] = await Promise.all([
           getTechnicians(db),
           getWorkSites(db),
@@ -42,32 +40,57 @@ export default function DashboardPage() {
         setClients(fetchedClients);
       } catch (error) {
         console.error("Failed to fetch initial dashboard data:", error);
+      }
+    };
+    
+    const initializeApp = async () => {
+      if (!db || !user || hasSeeded.current) return;
+      
+      setIsLoading(true);
+      hasSeeded.current = true; // Prevents this from running multiple times
+
+      try {
+        // Step 1: Ensure admin user exists if logged in as admin
+        if (user.email === 'admin@crawford-company.com') {
+          const adminProfile = await getTechnicianById(db, user.uid);
+          if (!adminProfile) {
+            console.log("Admin profile not found, creating one...");
+            const roles = await getRoles(db);
+            const adminRole = roles.find(r => r.name === 'Administrator');
+            if (adminRole) {
+              const adminData = {
+                id: user.uid,
+                firstName: 'Admin',
+                lastName: 'User',
+                email: user.email,
+                roleId: adminRole.id,
+                disabled: false,
+              };
+              await setDocumentNonBlocking(doc(db, 'technicians', user.uid), adminData);
+            }
+          }
+        }
+        
+        // Step 2: Seed database if necessary
+        await seedDatabase(db);
+        
+        // Step 3: Fetch all necessary data for the dashboard
+        await fetchCoreData();
+
+      } catch (error) {
+        console.error("Error during app initialization:", error);
       } finally {
         setIsLoading(false);
       }
     };
-    
-    // Seed the database if necessary, then fetch data
-    const seedAndFetch = async () => {
-       if (
-        db &&
-        user &&
-        user.email === 'admin@crawford-company.com' &&
-        !hasSeeded.current
-      ) {
-        hasSeeded.current = true; // Prevent re-seeding
-        console.log("Checking if seeding is needed...");
-        await seedDatabase(db);
-      }
-      await fetchData();
-    }
 
     if(db && user) {
-        seedAndFetch();
+        initializeApp();
+    } else if (!isAuthLoading) {
+        // If auth is done and there's no user, we're not loading data.
+        setIsLoading(false);
     }
-    // This effect should only depend on the data it needs to decide *whether* to seed,
-    // not the data that changes *as a result* of other operations.
-  }, [db, user]);
+  }, [db, user, isAuthLoading]);
 
 
   const isDataLoading = isAuthLoading || isLoading || isWorkOrdersLoading;
