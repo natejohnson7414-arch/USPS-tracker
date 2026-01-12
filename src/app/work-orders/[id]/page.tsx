@@ -420,7 +420,7 @@ export default function WorkOrderDetailPage() {
   }
 
   const canEdit = currentUserRole?.name === 'Administrator' || (workOrder.status !== 'Completed' && workOrder.assignedTechnicianId && workOrder.assignedTechnicianId === user?.uid);
-
+  const isTechnician = currentUserRole?.name === 'Technician';
 
   return (
     <MainLayout>
@@ -433,12 +433,20 @@ export default function WorkOrderDetailPage() {
               </Link>
             </Button>
             <div className="flex items-center gap-2">
-                <Button variant="outline" asChild disabled={currentUserRole?.name === 'Technician'}>
-                    <Link href={`/work-orders/${id}/report`} target="_blank" className="flex items-center gap-2">
-                        <Printer className="h-4 w-4" />
+                {isTechnician ? (
+                    <Button variant="outline" disabled>
+                        <Printer className="mr-2 h-4 w-4" />
                         Report
-                    </Link>
-                </Button>
+                    </Button>
+                ) : (
+                    <Button variant="outline" asChild>
+                        <Link href={`/work-orders/${id}/report`} target="_blank" className="flex items-center gap-2">
+                            <Printer className="mr-2 h-4 w-4" />
+                            Report
+                        </Link>
+                    </Button>
+                )}
+
                 {!isEditing && (
                   <Button variant="outline" onClick={() => setIsEditing(true)} disabled={!canEdit}>
                     <Pencil className="mr-2 h-4 w-4" /> Edit
