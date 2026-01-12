@@ -188,27 +188,26 @@ service cloud.firestore {
     /**
      * @description Manages access to the primary collection of work order documents.
      * @path /work_orders/{workOrderId}
-     * @allow (get) Any signed-in user.
-     * @deny (update) Any user if the work order status is 'Completed' (unless they are an admin).
-     * @principle Enforces open access for active work orders, and read-only for completed ones (non-admin).
+     * @allow (get, list) Any signed-in user.
+     * @allow (update) An admin, or the assigned technician if the order isn't completed.
+     * @principle Enforces open viewing, but restricted editing based on assignment and status.
      */
     match /work_orders/{workOrderId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn() && hasRequiredWorkOrderFields();
-      allow update: if (isAdmin() || (isSignedIn() && resource.data.status != 'Completed')) && resource != null;
+      allow update: if resource != null && (isAdmin() || (isOwner(resource.data.assignedTechnicianId) && resource.data.status != 'Completed'));
       allow delete: if isAdmin() && resource != null;
 
       /**
        * @description Manages access to updates on a specific work order.
        * @path /work_orders/{workOrderId}/updates/{updateId}
-       * @allow (create) Any signed-in user, as long as the parent work order is not completed.
-       * @deny (create) Any non-admin user if the parent work order is 'Completed'.
-       * @principle Access for notes mirrors the parent work order's editability.
+       * @allow (create) The assigned technician or an admin, if the parent work order is not completed.
+       * @principle Access for notes mirrors the parent work order's editability, but is restricted to the assigned tech/admin.
        */
       match /updates/{updateId} {
         allow read, list: if isSignedIn();
-        allow create, update: if isAdmin() || (isSignedIn() && !isParentWorkOrderCompleted(workOrderId));
-        allow delete: if (isAdmin() || (isSignedIn() && !isParentWorkOrderCompleted(workOrderId))) && resource != null;
+        allow create, update: if isAdmin() || (isOwner(get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.assignedTechnicianId) && !isParentWorkOrderCompleted(workOrderId));
+        allow delete: if (isAdmin() || isOwner(get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.assignedTechnicianId)) && resource != null;
       }
     }
 
@@ -262,7 +261,3 @@ service cloud.firestore {
      }
   }
 }
-
-    
-
-    
