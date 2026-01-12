@@ -11,7 +11,7 @@ export const sampleTechnicians: Omit<Technician, 'roleId'>[] = [
   {
     id: 'tech_1',
     name: 'Sarah Chen',
-    email: 'admin@crawford-company.com',
+    email: 'sarah.chen@example.com',
     avatarUrl: PlaceHolderImages.find(img => img.id === 'tech-1')?.imageUrl || '',
   },
   {
@@ -32,6 +32,12 @@ export const sampleTechnicians: Omit<Technician, 'roleId'>[] = [
     email: 'ben.carter@example.com',
     avatarUrl: PlaceHolderImages.find(img => img.id === 'tech-4')?.imageUrl || '',
   },
+  {
+    id: 'tech_5',
+    name: 'N. Johnson Sr.',
+    email: 'njohnsonsr@crawford-company.com',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxtYW4lMjBwb3J0cmFpdCUyMHNpbXBsZXxlbnwwfHx8fDE3NjQ4NjA0MDZ8MA&ixlib=rb-4.1.0&q=80&w=1080',
+  }
 ];
 
 export const sampleWorkSites: WorkSite[] = [

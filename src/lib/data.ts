@@ -12,7 +12,8 @@ export const seedDatabase = async (db: any) => {
     const techniciansSnapshot = await getCollectionNonBlocking(collection(db, 'technicians'));
     if (techniciansSnapshot.empty) {
         console.log("Seeding database with sample data...");
-        // Seed Roles
+        
+        // Seed Roles first
         const roleRefs = await Promise.all(
             sampleRoles.map(role => addDocumentNonBlocking(collection(db, 'roles'), role))
         );
@@ -21,9 +22,29 @@ export const seedDatabase = async (db: any) => {
         );
 
         const technicianRole = roles.find(r => r.name === 'Technician');
+        const adminRole = roles.find(r => r.name === 'Administrator');
 
-        // Seed Technicians
-        const technicianRefs = await Promise.all(
+        // Create the admin user profile if it doesn't exist
+        const adminEmail = 'admin@crawford-company.com';
+        const adminUserQuery = query(collection(db, 'technicians'), where('email', '==', adminEmail));
+        const adminUserSnapshot = await getCollectionNonBlocking(adminUserQuery);
+        
+        if (adminUserSnapshot.empty) {
+            console.log("Creating admin user profile...");
+            const [firstName, ...lastName] = 'Admin User'.split(' ');
+            const adminData = {
+                id: 'admin_user_placeholder_id', // This ID should be replaced by the actual Auth UID after login
+                firstName,
+                lastName: lastName.join(' '),
+                email: adminEmail,
+                roleId: adminRole?.id,
+                disabled: false,
+            };
+             await addDocumentNonBlocking(collection(db, 'technicians'), adminData);
+        }
+
+        // Seed Technicians from sample data
+        await Promise.all(
             sampleTechnicians.map(tech => {
                 const [firstName, ...lastName] = tech.name.split(' ');
                 const techData = {
@@ -35,6 +56,7 @@ export const seedDatabase = async (db: any) => {
                     roleId: technicianRole?.id,
                     disabled: false,
                 };
+                // Use set with merge:false to ensure we are creating new, clean documents
                 return setDocumentNonBlocking(doc(db, 'technicians', tech.id), techData, { merge: false });
             })
         );
@@ -285,11 +307,12 @@ export const getTimeEntriesByWorkOrder = async (db: any, workOrderId: string): P
         return {
             id: doc.id,
             ...data,
-            technicianName: technician?.name,
+            technicianName: technician?.name || 'Unknown User',
         } as TimeEntry & { technicianName?: string };
     }));
 
     return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 };
     
+
 
