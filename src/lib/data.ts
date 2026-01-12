@@ -7,9 +7,9 @@ import { sampleRoles, sampleTechnicians, sampleWorkOrders, sampleWorkSites, samp
 import { setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 
 export const seedDatabase = async (db: any) => {
-    // Check if roles exist
-    const rolesSnapshot = await getCollectionNonBlocking(collection(db, 'roles'));
-    if (rolesSnapshot.empty) {
+    // Check if technicians exist, which is a better indicator of a seeded DB
+    const techniciansSnapshot = await getCollectionNonBlocking(collection(db, 'technicians'));
+    if (techniciansSnapshot.empty) {
         console.log("Seeding database with sample data...");
         // Seed Roles
         const roleRefs = await Promise.all(
@@ -161,6 +161,7 @@ export const getTechnicianById = async (db: any, id: string): Promise<Technician
 
 
 export const getRoles = async (db: any): Promise<Role[]> => {
+    if (!db) return [];
     const rolesCol = collection(db, 'roles');
     const roleSnapshot = await getCollectionNonBlocking(rolesCol);
     return roleSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Role));
@@ -244,4 +245,6 @@ export const getHvacStartupReportById = async (db: any, id: string): Promise<Hva
     }
     return undefined;
 }
+    
+
     
