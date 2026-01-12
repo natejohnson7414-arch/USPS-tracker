@@ -24,6 +24,9 @@ import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
 import { getTimeEntriesByTechnician } from '@/lib/data';
 
+const hourOptions = Array.from({ length: 25 }, (_, i) => i);
+const minuteOptions = [0, 15, 30, 45];
+
 export default function TimesheetPage() {
     const db = useFirestore();
     const { user } = useUser();
@@ -34,7 +37,8 @@ export default function TimesheetPage() {
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [date, setDate] = useState<Date | undefined>(new Date());
-    const [hours, setHours] = useState<number | ''>('');
+    const [selectedHours, setSelectedHours] = useState(0);
+    const [selectedMinutes, setSelectedMinutes] = useState(0);
     const [timeType, setTimeType] = useState<'Regular' | 'Overtime' | 'Double Time'>('Regular');
     const [workOrderId, setWorkOrderId] = useState<string | null>('non-productive');
     const [notes, setNotes] = useState('');
@@ -56,7 +60,8 @@ export default function TimesheetPage() {
 
     const resetForm = () => {
         setDate(new Date());
-        setHours('');
+        setSelectedHours(0);
+        setSelectedMinutes(0);
         setTimeType('Regular');
         setWorkOrderId('non-productive');
         setNotes('');
@@ -68,8 +73,11 @@ export default function TimesheetPage() {
             toast({ title: 'Authentication Error', description: 'You must be logged in.', variant: 'destructive' });
             return;
         }
-        if (!date || !hours || !timeType || (workOrderId === null) ) {
-            toast({ title: 'Missing Fields', description: 'Please fill out all fields.', variant: 'destructive' });
+
+        const totalHours = selectedHours + selectedMinutes / 60;
+
+        if (!date || totalHours <= 0 || !timeType || (workOrderId === null) ) {
+            toast({ title: 'Missing Fields', description: 'Please fill out all fields and ensure time is greater than 0.', variant: 'destructive' });
             return;
         }
         if (workOrderId === 'non-productive' && !notes) {
@@ -84,7 +92,7 @@ export default function TimesheetPage() {
                 technicianId: user.uid,
                 workOrderId: workOrderId === 'non-productive' ? null : workOrderId,
                 date: date.toISOString(),
-                hours: Number(hours),
+                hours: totalHours,
                 timeType: timeType,
                 notes: workOrderId === 'non-productive' ? notes : undefined,
             };
@@ -220,21 +228,43 @@ export default function TimesheetPage() {
                                      <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label htmlFor="hours">Hours</Label>
-                                            <Input id="hours" type="number" value={hours} onChange={e => setHours(e.target.value === '' ? '' : parseFloat(e.target.value))} step="0.25" min="0" required />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="timeType">Time Type</Label>
-                                             <Select value={timeType} onValueChange={(v) => setTimeType(v as any)}>
+                                            <Select value={selectedHours.toString()} onValueChange={(val) => setSelectedHours(parseInt(val, 10))}>
                                                 <SelectTrigger>
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="Regular">Regular</SelectItem>
-                                                    <SelectItem value="Overtime">Overtime</SelectItem>
-                                                    <SelectItem value="Double Time">Double Time</SelectItem>
+                                                    {hourOptions.map(hour => (
+                                                        <SelectItem key={hour} value={hour.toString()}>{hour} hr</SelectItem>
+                                                    ))}
                                                 </SelectContent>
                                             </Select>
                                         </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="minutes">Minutes</Label>
+                                            <Select value={selectedMinutes.toString()} onValueChange={(val) => setSelectedMinutes(parseInt(val, 10))}>
+                                                <SelectTrigger>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {minuteOptions.map(min => (
+                                                        <SelectItem key={min} value={min.toString()}>{min} min</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="timeType">Time Type</Label>
+                                         <Select value={timeType} onValueChange={(v) => setTimeType(v as any)}>
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Regular">Regular</SelectItem>
+                                                <SelectItem value="Overtime">Overtime</SelectItem>
+                                                <SelectItem value="Double Time">Double Time</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                     {workOrderId === 'non-productive' && (
                                          <div className="space-y-2">
