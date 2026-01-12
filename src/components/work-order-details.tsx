@@ -212,7 +212,7 @@ export function WorkOrderDetails({
   };
 
   const handleAddNote = () => {
-    if (!user || (newNote.trim() === '' && newNotePhotos.length === 0)) return;
+    if (!user) return;
 
     onNoteAdded({
       text: newNote,
@@ -287,9 +287,33 @@ export function WorkOrderDetails({
                           <Label htmlFor="edit-description">Job Description</Label>
                           <Textarea id="edit-description" value={description} onChange={(e) => setDescription(e.target.value)} rows={4}/>
                       </div>
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="temp-arrival">Temp on Arrival</Label>
+                                <Input id="temp-arrival" value={tempOnArrival} onChange={e => setTempOnArrival(e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="temp-leaving">Temp on Leaving</Label>
+                                <Input id="temp-leaving" value={tempOnLeaving} onChange={e => setTempOnLeaving(e.target.value)} />
+                            </div>
+                        </div>
                   </div>
               ) : (
-                <p className="text-muted-foreground mt-1">{workOrder.description}</p>
+                <>
+                    <p className="text-muted-foreground mt-1">{workOrder.description}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 text-sm">
+                        <div className="flex items-center gap-2">
+                            <Thermometer className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">Temp on Arrival:</span>
+                            <span className="font-medium">{workOrder.tempOnArrival || 'N/A'}</span>
+                        </div>
+                         <div className="flex items-center gap-2">
+                            <Thermometer className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">Temp on Leaving:</span>
+                            <span className="font-medium">{workOrder.tempOnLeaving || 'N/A'}</span>
+                        </div>
+                    </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -374,7 +398,7 @@ export function WorkOrderDetails({
                         <Clock className="mr-2 h-4 w-4" />
                         Add Time
                     </Button>
-                    <Button type="button" onClick={handleAddNote} disabled={isAddingNote} className="w-full sm:w-auto">
+                    <Button type="button" onClick={handleAddNote} disabled={isAddingNote}>
                         {isAddingNote && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {isAddingNote ? "Adding..." : "Add Note"}
                     </Button>
@@ -527,13 +551,6 @@ export function WorkOrderDetails({
                 </DetailItem>
                  <DetailItem label="Estimator/Requested By">
                     {isEditing ? <Input className="h-8 sm:text-right" value={estimator} onChange={(e) => setEstimator(e.target.value)} /> : <span className="font-medium">{workOrder.estimator || 'N/A'}</span>}
-                </DetailItem>
-                <Separator />
-                <DetailItem label="Temp on Arrival" icon={<Thermometer className="h-4 w-4" />}>
-                     {isEditing ? <Input className="h-8 sm:text-right" value={tempOnArrival} onChange={(e) => setTempOnArrival(e.target.value)} /> : <span className="font-medium">{workOrder.tempOnArrival || 'N/A'}</span>}
-                </DetailItem>
-                <DetailItem label="Temp on Leaving" icon={<Thermometer className="h-4 w-4" />}>
-                     {isEditing ? <Input className="h-8 sm:text-right" value={tempOnLeaving} onChange={(e) => setTempOnLeaving(e.target.value)} /> : <span className="font-medium">{workOrder.tempOnLeaving || 'N/A'}</span>}
                 </DetailItem>
             </CardContent>
           </Card>
