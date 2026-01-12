@@ -105,6 +105,7 @@ interface WorkOrderDetailsProps {
   isAddingNote: boolean;
   onDirectionsClick: (address: string) => void;
   onSignatureSave: () => void;
+  onTempUpdate: () => void;
 }
 
 export function WorkOrderDetails({
@@ -125,6 +126,7 @@ export function WorkOrderDetails({
   isAddingNote,
   onDirectionsClick,
   onSignatureSave,
+  onTempUpdate
 }: WorkOrderDetailsProps) {
   const db = useFirestore();
   const { user } = useUser();
@@ -282,39 +284,35 @@ export function WorkOrderDetails({
             </CardHeader>
             <CardContent>
               {isEditing ? (
-                  <div className="space-y-4">
-                      <div>
-                          <Label htmlFor="edit-description">Job Description</Label>
-                          <Textarea id="edit-description" value={description} onChange={(e) => setDescription(e.target.value)} rows={4}/>
-                      </div>
-                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="temp-arrival">Temp on Arrival</Label>
-                                <Input id="temp-arrival" value={tempOnArrival} onChange={e => setTempOnArrival(e.target.value)} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="temp-leaving">Temp on Leaving</Label>
-                                <Input id="temp-leaving" value={tempOnLeaving} onChange={e => setTempOnLeaving(e.target.value)} />
-                            </div>
-                        </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="edit-description">Job Description</Label>
+                      <Textarea id="edit-description" value={description} onChange={(e) => setDescription(e.target.value)} rows={4}/>
                   </div>
               ) : (
-                <>
-                    <p className="text-muted-foreground mt-1">{workOrder.description}</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 text-sm">
-                        <div className="flex items-center gap-2">
-                            <Thermometer className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-muted-foreground">Temp on Arrival:</span>
-                            <span className="font-medium">{workOrder.tempOnArrival || 'N/A'}</span>
-                        </div>
-                         <div className="flex items-center gap-2">
-                            <Thermometer className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-muted-foreground">Temp on Leaving:</span>
-                            <span className="font-medium">{workOrder.tempOnLeaving || 'N/A'}</span>
-                        </div>
-                    </div>
-                </>
+                <p className="text-muted-foreground mt-1">{workOrder.description}</p>
               )}
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 text-sm">
+                    <div className="space-y-2">
+                        <Label htmlFor="temp-arrival">Temp on Arrival</Label>
+                        <Input 
+                            id="temp-arrival" 
+                            value={tempOnArrival} 
+                            onChange={e => setTempOnArrival(e.target.value)}
+                            onBlur={onTempUpdate}
+                            disabled={isEditing}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="temp-leaving">Temp on Leaving</Label>
+                        <Input 
+                            id="temp-leaving" 
+                            value={tempOnLeaving} 
+                            onChange={e => setTempOnLeaving(e.target.value)}
+                            onBlur={onTempUpdate}
+                            disabled={isEditing}
+                        />
+                    </div>
+                </div>
             </CardContent>
           </Card>
 

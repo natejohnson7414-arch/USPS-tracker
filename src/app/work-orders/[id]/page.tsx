@@ -232,6 +232,27 @@ export default function WorkOrderDetailPage() {
     setTimeEntries(prev => [newTimeEntry, ...prev]);
   };
   
+  const handleTempUpdate = () => {
+    if (!workOrderDocRef) return;
+  
+    // Only update if the values have actually changed from the source data
+    if (tempOnArrival !== workOrder?.tempOnArrival || tempOnLeaving !== workOrder?.tempOnLeaving) {
+      const tempData = {
+        tempOnArrival,
+        tempOnLeaving,
+      };
+  
+      updateDocumentNonBlocking(workOrderDocRef, tempData).then(() => {
+        toast({ title: "Temperatures Updated", description: "The arrival and leaving temperatures have been saved." });
+        // Optimistically update the main workOrder object as well
+        setWorkOrder(prev => prev ? ({ ...prev, ...tempData }) : null);
+      }).catch(error => {
+        // Error is handled by the global handler, but you could add a toast here if you want
+        console.error("Failed to update temperatures", error);
+      });
+    }
+  };
+
   const handleSave = (e: FormEvent) => {
     e.preventDefault();
     if (!workOrderDocRef || !workOrder) return;
@@ -471,6 +492,7 @@ export default function WorkOrderDetailPage() {
             isAddingNote={isAddingNote}
             onDirectionsClick={(address) => setSelectedAddress(address)}
             onSignatureSave={() => setIsSignatureDialogOpen(true)}
+            onTempUpdate={handleTempUpdate}
             editableFields={{
                 description, setDescription,
                 status, setStatus,
