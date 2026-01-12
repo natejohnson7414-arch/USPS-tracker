@@ -9,7 +9,8 @@ service firebase.storage {
      * This performs a `get()` call to Firestore to check the user's role document.
      */
     function userHasRole(roleName) {
-      let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      // This rule path is incorrect for technicians. It should point to the 'technicians' collection.
+      let userDocPath = /databases/$(database)/documents/technicians/$(request.auth.uid);
       let userDoc = get(userDocPath);
       return request.auth != null && userDoc.data.roleId != null &&
         get(/databases/$(database)/documents/roles/$(userDoc.data.roleId)).data.name == roleName;
@@ -42,12 +43,12 @@ service firebase.storage {
      * @description Secures all files related to work orders.
      * @path /work-orders/{workOrderId}/{allPaths=**}
      * @allow (read) Any authenticated user.
-     * @allow (write) Any authenticated user if the parent work order is not completed, or if the user is an admin.
-     * @principle Enforces that photos for completed work orders are immutable for non-admins.
+     * @allow (write) Any authenticated user.
+     * @principle Aligns with Firestore rules allowing any user to add notes (and thus photos).
      */
     match /work-orders/{workOrderId}/{allPaths=**} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && (isAdmin() || !isWorkOrderCompleted(workOrderId));
+      allow write: if request.auth != null;
     }
     
     /**
