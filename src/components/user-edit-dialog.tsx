@@ -18,11 +18,11 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { useFirestore, setDocumentNonBlocking, useAuth } from '@/firebase';
+import { useFirestore, setDocumentNonBlocking } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { Upload, X, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUser } from '@/ai/flows/create-user-flow';
 
 interface UserEditDialogProps {
   isOpen: boolean;
@@ -36,7 +36,6 @@ const avatarOptions = PlaceHolderImages.filter(img => img.id.startsWith('tech-')
 
 export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: UserEditDialogProps) {
   const db = useFirestore();
-  const auth = useAuth();
   const { toast } = useToast();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -67,7 +66,7 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
   }, [user, isOpen, roles]);
 
   const handleSave = async () => {
-    if (!db || !auth) return;
+    if (!db) return;
     setIsSaving(true);
 
     try {
@@ -93,27 +92,20 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
                 setIsSaving(false);
                 return;
             }
-
-            // Step 1: Create user in Firebase Auth
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            const newAuthUser = userCredential.user;
-
-            // Step 2: Create user profile in Firestore with the new UID
-            const [firstName, ...lastNameParts] = name.split(' ');
-            const lastName = lastNameParts.join(' ');
-
-            const technicianRef = doc(db, 'technicians', newAuthUser.uid);
-            await setDocumentNonBlocking(technicianRef, {
-              id: newAuthUser.uid,
-              firstName,
-              lastName,
-              email: email,
-              roleId: roleId,
-              avatarUrl: avatarUrl || null,
-              disabled: false,
-            });
             
-            toast({ title: "User Created", description: "The new user has been created successfully."});
+            const result = await createUser({
+              name,
+              email,
+              password,
+              roleId,
+              avatarUrl,
+            });
+
+            if (result.uid) {
+                toast({ title: "User Created", description: "The new user has been created successfully."});
+            } else {
+                throw new Error(result.error || 'An unknown error occurred.');
+            }
         }
         
         onUserSaved();
@@ -121,17 +113,7 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
 
     } catch (error: any) {
         console.error("Error saving user:", error);
-        let errorMessage = "Could not save user.";
-        if (error.code === 'auth/email-already-in-use') {
-            errorMessage = "This email address is already in use by another account.";
-        } else if (error.code === 'auth/weak-password') {
-            errorMessage = "The password is too weak. Please use at least 6 characters.";
-        } else if (error.code === 'auth/invalid-email') {
-            errorMessage = "Please enter a valid email address.";
-        } else if (error.message) {
-            errorMessage = error.message;
-        }
-        toast({ title: "Error", description: errorMessage, variant: 'destructive' });
+        toast({ title: "Error", description: error.message || 'Could not save user.', variant: 'destructive' });
     } finally {
         setIsSaving(false);
     }
