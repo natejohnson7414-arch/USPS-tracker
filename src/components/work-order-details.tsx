@@ -98,7 +98,7 @@ interface WorkOrderDetailsProps {
   editableFields: EditableFields;
   onWorkOrderUpdate: (e: FormEvent) => void;
   onNoteAdded: (note: Omit<WorkOrderNote, 'id'> & { photoFiles: File[] }) => void;
-  onTimeAdded: (timeEntry: TimeEntry & { technicianName?: string }) => void;
+  onTimeAdded: (timeEntry: TimeEntry) => void;
   onNotePhotoDelete: (noteId: string, photoUrl: string) => void;
   onNoteDelete: (noteId: string) => void;
   onTimeEntryDelete: (timeEntryId: string) => void;
