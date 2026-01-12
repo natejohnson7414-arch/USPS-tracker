@@ -153,7 +153,7 @@ service cloud.firestore {
      * @principle Enforces document ownership for writes and self-creation, with an Admin override. List is allowed for any authenticated user.
      */
     match /technicians/{technicianId} {
-      allow get: if isOwner(technicianId) || isAdmin();
+      allow get: if isSignedIn();
       allow list: if isSignedIn();
       allow create: if isCreatingOwnProfile(technicianId) || isAdmin();
       allow update: if isUpdatingOwnProfile(technicianId) || isAdmin();
@@ -260,3 +260,5 @@ service cloud.firestore {
      }
   }
 }
+
+    
