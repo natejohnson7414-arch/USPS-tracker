@@ -93,12 +93,12 @@ interface WorkOrderDetailsProps {
   workSites: WorkSite[];
   clients: Client[];
   trainingRecords: TrainingRecord[];
-  timeEntries: (TimeEntry & { technicianName?: string })[];
+  timeEntries: TimeEntry[];
   isEditing: boolean;
   editableFields: EditableFields;
   onWorkOrderUpdate: (e: FormEvent) => void;
   onNoteAdded: (note: Omit<WorkOrderNote, 'id'> & { photoFiles: File[] }) => void;
-  onTimeAdded: (timeEntry: TimeEntry & { technicianName?: string }) => void;
+  onTimeAdded: (timeEntry: TimeEntry) => void;
   onNotePhotoDelete: (noteId: string, photoUrl: string) => void;
   onNoteDelete: (noteId: string) => void;
   onTimeEntryDelete: (timeEntryId: string) => void;

@@ -42,7 +42,7 @@ export default function WorkOrderDetailPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
   const [trainingRecords, setTrainingRecords] = useState<TrainingRecord[]>([]);
-  const [timeEntries, setTimeEntries] = useState<(TimeEntry & { technicianName?: string })[]>([]);
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDataChecked, setIsDataChecked] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -228,7 +228,7 @@ export default function WorkOrderDetailPage() {
     }
   };
 
-  const handleTimeAdded = (newTimeEntry: TimeEntry & { technicianName?: string }) => {
+  const handleTimeAdded = (newTimeEntry: TimeEntry) => {
     setTimeEntries(prev => [newTimeEntry, ...prev]);
   };
   
@@ -432,7 +432,7 @@ export default function WorkOrderDetailPage() {
                 Back to Dashboard
               </Link>
             </Button>
-            <div className="flex items-center gap-2">
+             <div className="flex items-center gap-2">
                 {isTechnician ? (
                     <Button variant="outline" disabled>
                         <Printer className="mr-2 h-4 w-4" />
@@ -440,7 +440,7 @@ export default function WorkOrderDetailPage() {
                     </Button>
                 ) : (
                     <Button variant="outline" asChild>
-                        <Link href={`/work-orders/${id}/report`} target="_blank" className="flex items-center gap-2">
+                        <Link href={`/work-orders/${id}/report`} target="_blank">
                             <Printer className="mr-2 h-4 w-4" />
                             Report
                         </Link>
