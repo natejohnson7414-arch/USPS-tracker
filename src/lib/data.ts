@@ -292,3 +292,4 @@ export const getTimeEntriesByWorkOrder = async (db: any, workOrderId: string): P
     return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 };
     
+
