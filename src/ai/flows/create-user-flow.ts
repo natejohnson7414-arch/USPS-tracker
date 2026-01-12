@@ -12,20 +12,6 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import * as admin from 'firebase-admin';
 
-// Initialize Firebase Admin SDK
-// This should only run once.
-if (!admin.apps.length) {
-  try {
-    admin.initializeApp({
-      credential: admin.credential.applicationDefault(),
-    });
-  } catch (e) {
-    console.error('Firebase Admin SDK initialization error', e);
-  }
-}
-
-const firestore = admin.firestore();
-
 const CreateUserInputSchema = z.object({
   name: z.string().describe('The full name of the user.'),
   email: z.string().email().describe('The email address for the new user.'),
@@ -53,6 +39,24 @@ const createUserFlow = ai.defineFlow(
     outputSchema: CreateUserOutputSchema,
   },
   async (input) => {
+    // Initialize Firebase Admin SDK if it hasn't been already.
+    if (!admin.apps.length) {
+      try {
+        admin.initializeApp({
+          credential: admin.credential.applicationDefault(),
+        });
+      } catch (e) {
+        console.error('Firebase Admin SDK initialization error', e);
+        return {
+          uid: '',
+          success: false,
+          error: 'Failed to initialize Firebase Admin SDK.',
+        };
+      }
+    }
+    
+    const firestore = admin.firestore();
+
     try {
       // 1. Create the user in Firebase Authentication
       const userRecord = await admin.auth().createUser({
