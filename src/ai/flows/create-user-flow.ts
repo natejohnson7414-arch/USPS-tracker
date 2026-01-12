@@ -11,6 +11,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import * as admin from 'firebase-admin';
+import { firebaseConfig } from '@/firebase/config';
 
 const CreateUserInputSchema = z.object({
   name: z.string().describe('The full name of the user.'),
@@ -42,8 +43,11 @@ const createUserFlow = ai.defineFlow(
     // Initialize Firebase Admin SDK if it hasn't been already.
     if (!admin.apps.length) {
       try {
+        // Explicitly initialize with service account credentials from environment variables
+        // and the project ID from the client-side config.
         admin.initializeApp({
           credential: admin.credential.applicationDefault(),
+          projectId: firebaseConfig.projectId,
         });
       } catch (e) {
         console.error('Firebase Admin SDK initialization error', e);
@@ -88,6 +92,18 @@ const createUserFlow = ai.defineFlow(
       };
     } catch (error: any) {
       console.error('Error creating user:', error);
+      // If the auth user was created but firestore failed, we should delete the auth user
+      if (error.code?.startsWith('firestore/')) {
+        try {
+          // Extract UID if possible from the error context or input
+          const uidToDelete = error.uid || (await admin.auth().getUserByEmail(input.email)).uid;
+          if (uidToDelete) {
+            await admin.auth().deleteUser(uidToDelete);
+          }
+        } catch (cleanupError) {
+           console.error('Failed to clean up orphaned auth user:', cleanupError);
+        }
+      }
       return {
         uid: '',
         success: false,
