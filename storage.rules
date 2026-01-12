@@ -9,7 +9,7 @@ service firebase.storage {
      * This performs a `get()` call to Firestore to check the user's role document.
      */
     function userHasRole(roleName) {
-      // This rule path is incorrect for technicians. It should point to the 'technicians' collection.
+      // CORRECTED: The path now correctly points to the 'technicians' collection.
       let userDocPath = /databases/$(database)/documents/technicians/$(request.auth.uid);
       let userDoc = get(userDocPath);
       return request.auth != null && userDoc.data.roleId != null &&
@@ -42,13 +42,11 @@ service firebase.storage {
     /**
      * @description Secures all files related to work orders.
      * @path /work-orders/{workOrderId}/{allPaths=**}
-     * @allow (read) Any authenticated user.
-     * @allow (write) Any authenticated user.
+     * @allow (read, write) Any authenticated user.
      * @principle Aligns with Firestore rules allowing any user to add notes (and thus photos).
      */
     match /work-orders/{workOrderId}/{allPaths=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if request.auth != null;
     }
     
     /**
