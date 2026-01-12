@@ -20,7 +20,9 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { useFirestore, setDocumentNonBlocking } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import { Upload, X } from 'lucide-react';
+import { Upload, X, Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { createUser } from '@/ai/flows/create-user-flow';
 
 interface UserEditDialogProps {
   isOpen: boolean;
@@ -34,11 +36,14 @@ const avatarOptions = PlaceHolderImages.filter(img => img.id.startsWith('tech-')
 
 export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: UserEditDialogProps) {
   const db = useFirestore();
+  const { toast } = useToast();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [roleId, setRoleId] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -48,46 +53,63 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
         setEmail(user.email);
         setRoleId(userRole?.id || '');
         setAvatarUrl(user.avatarUrl || null);
+        setPassword('');
       } else {
         // Reset for new user
         setName('');
         setEmail('');
         setRoleId('');
+        setPassword('');
         setAvatarUrl(avatarOptions[0]?.imageUrl || null);
       }
     }
   }, [user, isOpen, roles]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!db) return;
-    const [firstName, ...lastNameParts] = name.split(' ');
-    const lastName = lastNameParts.join(' ');
+    setIsSaving(true);
 
-    const userData = {
-      firstName,
-      lastName,
-      email,
-      roleId,
-      avatarUrl: avatarUrl,
-    };
-    
-    let userRef;
-    let isNewUser = false;
-    
-    if (user) {
-      userRef = doc(db, 'technicians', user.id);
-    } else {
-      isNewUser = true;
-      const newId = `tech-${Date.now()}`;
-      userRef = doc(db, 'technicians', newId);
-      // For new users, we add the ID to the data itself
-      (userData as any).id = newId;
+    try {
+        if (user) { // Editing existing user
+            const [firstName, ...lastNameParts] = name.split(' ');
+            const lastName = lastNameParts.join(' ');
+
+            const userData = {
+                firstName,
+                lastName,
+                email,
+                roleId,
+                avatarUrl: avatarUrl,
+            };
+            
+            const userRef = doc(db, 'technicians', user.id);
+            await setDocumentNonBlocking(userRef, userData, { merge: true });
+            toast({ title: "User Updated", description: "The user's profile has been updated."});
+
+        } else { // Creating new user
+            if (!name || !email || !password || !roleId) {
+                toast({ title: "Missing Fields", description: "Name, email, password, and role are required.", variant: 'destructive' });
+                return;
+            }
+
+            const result = await createUser({ name, email, password, roleId, avatarUrl: avatarUrl || '' });
+
+            if (result.success) {
+                toast({ title: "User Created", description: "The new user has been created successfully."});
+            } else {
+                throw new Error(result.error || 'An unknown error occurred.');
+            }
+        }
+        
+        onUserSaved();
+        setIsOpen(false);
+
+    } catch (error: any) {
+        console.error("Error saving user:", error);
+        toast({ title: "Error", description: error.message || "Could not save user.", variant: 'destructive' });
+    } finally {
+        setIsSaving(false);
     }
-
-    setDocumentNonBlocking(userRef, userData, { merge: !isNewUser });
-
-    onUserSaved();
-    setIsOpen(false);
   };
   
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -161,6 +183,14 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
             </Label>
             <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="col-span-3" />
           </div>
+           {!user && (
+            <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="password" className="text-right">
+                Password
+                </Label>
+                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="col-span-3" />
+            </div>
+          )}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="role" className="text-right">
               Role
@@ -178,10 +208,13 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setIsOpen(false)}>
+          <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isSaving}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>Save</Button>
+          <Button onClick={handleSave} disabled={isSaving}>
+             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
