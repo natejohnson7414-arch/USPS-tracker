@@ -205,5 +205,6 @@ export type TimeEntry = {
     timeType: 'Regular' | 'Overtime' | 'Double Time';
     notes?: string;
     workOrder?: WorkOrder; // For display purposes on the timesheet
+    technicianName?: string;
 };
     

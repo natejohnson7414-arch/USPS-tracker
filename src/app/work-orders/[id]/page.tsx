@@ -225,9 +225,8 @@ export default function WorkOrderDetailPage() {
     }
   };
 
-  const handleTimeAdded = (newTimeEntry: TimeEntry) => {
-    const tech = technicians.find(t => t.id === newTimeEntry.technicianId);
-    setTimeEntries(prev => [{ ...newTimeEntry, technicianName: tech?.name }, ...prev]);
+  const handleTimeAdded = (newTimeEntry: TimeEntry & { technicianName?: string }) => {
+    setTimeEntries(prev => [newTimeEntry, ...prev]);
   };
   
   const handleSave = (e: FormEvent) => {

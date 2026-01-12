@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, addDocumentNonBlocking } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
+import { useTechnician } from '@/hooks/use-technician';
 
 const hourOptions = Array.from({ length: 25 }, (_, i) => i);
 const minuteOptions = [0, 15, 30, 45];
@@ -28,12 +29,13 @@ interface AddTimeDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   workOrderId: string;
-  onTimeAdded: (newTimeEntry: TimeEntry) => void;
+  onTimeAdded: (newTimeEntry: TimeEntry & { technicianName?: string }) => void;
 }
 
 export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, onTimeAdded }: AddTimeDialogProps) {
   const db = useFirestore();
   const { user } = useUser();
+  const { technician } = useTechnician();
   const { toast } = useToast();
   
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -75,7 +77,11 @@ export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, onTimeAdded }: A
       
       const docRef = await addDocumentNonBlocking(collection(db, 'time_entries'), timeEntryData);
       
-      onTimeAdded({ id: docRef.id, ...timeEntryData });
+      onTimeAdded({ 
+          id: docRef.id, 
+          ...timeEntryData,
+          technicianName: technician?.name,
+      });
       toast({ title: 'Time Entry Added', description: `Successfully logged ${totalHours.toFixed(2)} hours.` });
       resetForm();
       setIsOpen(false);

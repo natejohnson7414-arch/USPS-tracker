@@ -13,16 +13,16 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LogOut, User, Users, Clock } from 'lucide-react';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { Sidebar } from './sidebar';
+import { useTechnician } from '@/hooks/use-technician';
 
 
 export function Header() {
   const { user } = useUser();
+  const { technician } = useTechnician();
   const auth = useAuth();
-  const userAvatar = PlaceHolderImages.find(img => img.id === 'tech-1');
 
   const handleLogout = async () => {
     if (auth) {
@@ -42,9 +42,9 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={userAvatar?.imageUrl} alt="User Avatar" />
+                    <AvatarImage src={technician?.avatarUrl} alt={technician?.name} />
                     <AvatarFallback>
-                      <User />
+                      {technician?.name?.charAt(0) || <User />}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -52,7 +52,7 @@ export function Header() {
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user.email}</p>
+                    <p className="text-sm font-medium leading-none">{technician?.name || user.email}</p>
                     <p className="text-xs leading-none text-muted-foreground">Technician</p>
                   </div>
                 </DropdownMenuLabel>
