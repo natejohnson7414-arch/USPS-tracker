@@ -370,7 +370,7 @@ export function WorkOrderDetails({
                         multiple
                     />
                   <div className="flex-1 flex justify-end gap-2">
-                    <Button type="button" variant="secondary" onClick={() => setIsAddTimeOpen(true)} disabled={isAddingNote}>
+                    <Button type="button" variant="outline" onClick={() => setIsAddTimeOpen(true)} disabled={isAddingNote}>
                         <Clock className="mr-2 h-4 w-4" />
                         Add Time
                     </Button>
@@ -500,7 +500,7 @@ export function WorkOrderDetails({
                 </DetailItem>
                  <DetailItem label="Permit Cost">
                     {isEditing ? <Input className="h-8 sm:text-right" type="number" value={permitCost} onChange={(e) => setPermitCost(Number(e.target.value))} /> : <span className="font-medium">{workOrder.permitCost ? `$${workOrder.permitCost}` : 'N/A'}</span>}
-                </DetailItem>
+                 </DetailItem>
                  <DetailItem label="Permit Filed">
                     {isEditing ? <DatePicker className="w-full" date={permitFiled} setDate={setPermitFiled} /> : <span className="font-medium">{workOrder.permitFiled ? format(new Date(workOrder.permitFiled), 'MMM d, yyyy') : 'N/A'}</span>}
                  </DetailItem>
