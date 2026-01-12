@@ -195,7 +195,7 @@ service cloud.firestore {
     match /work_orders/{workOrderId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn() && hasRequiredWorkOrderFields();
-      allow update: if isAdmin() || (isOwner(resource.data.assignedTechnicianId) && resource.data.status != 'Completed');
+      allow update: if isAdmin() || (resource.data.assignedTechnicianId != null && isOwner(resource.data.assignedTechnicianId) && resource.data.status != 'Completed');
       allow delete: if isAdmin() && resource != null;
 
       /**
