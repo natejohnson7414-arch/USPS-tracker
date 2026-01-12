@@ -419,7 +419,7 @@ export default function WorkOrderDetailPage() {
       notFound();
   }
 
-  const canEdit = currentUserRole?.name === 'Administrator' || (workOrder.assignedTechnicianId && workOrder.assignedTechnicianId === user?.uid);
+  const canEdit = currentUserRole?.name === 'Administrator' || (workOrder.status !== 'Completed' && workOrder.assignedTechnicianId && workOrder.assignedTechnicianId === user?.uid);
 
 
   return (
@@ -439,7 +439,7 @@ export default function WorkOrderDetailPage() {
                         Report
                     </Link>
                 </Button>
-                {!isEditing && workOrder.status !== 'Completed' && (
+                {!isEditing && (
                   <Button variant="outline" onClick={() => setIsEditing(true)} disabled={!canEdit}>
                     <Pencil className="mr-2 h-4 w-4" /> Edit
                   </Button>
