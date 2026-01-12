@@ -374,7 +374,7 @@ export function WorkOrderDetails({
                         <Clock className="mr-2 h-4 w-4" />
                         Add Time
                     </Button>
-                    <Button type="button" onClick={handleAddNote} disabled={!user || isAddingNote || (newNote.trim() === '' && newNotePhotos.length === 0)} className="w-full sm:w-auto">
+                    <Button type="button" onClick={handleAddNote} disabled={isAddingNote} className="w-full sm:w-auto">
                         {isAddingNote && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {isAddingNote ? "Adding..." : "Add Note"}
                     </Button>
