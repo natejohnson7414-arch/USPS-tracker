@@ -25,6 +25,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { useTechnician } from '@/hooks/use-technician';
 
 export default function WorkOrderDetailPage() {
   const params = useParams();
@@ -33,6 +34,8 @@ export default function WorkOrderDetailPage() {
   const db = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
+  const { role: currentUserRole } = useTechnician();
+
 
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [workSites, setWorkSites] = useState<WorkSite[]>([]);
@@ -416,6 +419,8 @@ export default function WorkOrderDetailPage() {
       notFound();
   }
 
+  const canEdit = currentUserRole?.name === 'Administrator' || (workOrder.assignedTechnicianId && workOrder.assignedTechnicianId === user?.uid);
+
 
   return (
     <MainLayout>
@@ -428,14 +433,14 @@ export default function WorkOrderDetailPage() {
               </Link>
             </Button>
             <div className="flex items-center gap-2">
-                <Button variant="outline" asChild>
+                <Button variant="outline" asChild disabled={currentUserRole?.name === 'Technician'}>
                     <Link href={`/work-orders/${id}/report`} target="_blank" className="flex items-center gap-2">
                         <Printer className="h-4 w-4" />
                         Report
                     </Link>
                 </Button>
                 {!isEditing && workOrder.status !== 'Completed' && (
-                  <Button variant="outline" onClick={() => setIsEditing(true)}>
+                  <Button variant="outline" onClick={() => setIsEditing(true)} disabled={!canEdit}>
                     <Pencil className="mr-2 h-4 w-4" /> Edit
                   </Button>
                 )}
