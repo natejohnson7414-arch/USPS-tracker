@@ -13,6 +13,16 @@ import { z } from 'zod';
 import * as admin from 'firebase-admin';
 import { firebaseConfig } from '@/firebase/config';
 
+// Initialize Firebase Admin SDK if it hasn't been already.
+// This is the correct pattern for server environments where modules can be cached.
+if (!admin.apps.length) {
+  try {
+    admin.initializeApp();
+  } catch (e) {
+    console.error('Firebase Admin SDK initialization error on module load', e);
+  }
+}
+
 const CreateUserInputSchema = z.object({
   name: z.string().describe('The full name of the user.'),
   email: z.string().email().describe('The email address for the new user.'),
@@ -40,20 +50,13 @@ const createUserFlow = ai.defineFlow(
     outputSchema: CreateUserOutputSchema,
   },
   async (input) => {
-    // Initialize Firebase Admin SDK if it hasn't been already.
+    // Check if the admin app is available.
     if (!admin.apps.length) {
-      try {
-        // In this managed environment, initializeApp() is often sufficient
-        // as credentials can be inferred.
-        admin.initializeApp();
-      } catch (e) {
-        console.error('Firebase Admin SDK initialization error', e);
-        return {
-          uid: '',
-          success: false,
-          error: 'Failed to initialize Firebase Admin SDK.',
-        };
-      }
+      return {
+        uid: '',
+        success: false,
+        error: 'Failed to initialize Firebase Admin SDK.',
+      };
     }
     
     const firestore = admin.firestore();
