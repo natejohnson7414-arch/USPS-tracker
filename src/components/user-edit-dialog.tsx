@@ -126,6 +126,8 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
             errorMessage = "This email address is already in use by another account.";
         } else if (error.code === 'auth/weak-password') {
             errorMessage = "The password is too weak. Please use at least 6 characters.";
+        } else if (error.code === 'auth/invalid-email') {
+            errorMessage = "Please enter a valid email address.";
         } else if (error.message) {
             errorMessage = error.message;
         }
