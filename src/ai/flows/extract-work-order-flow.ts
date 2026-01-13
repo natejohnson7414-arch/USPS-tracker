@@ -59,7 +59,9 @@ const prompt = ai.definePrompt({
   output: { schema: WorkOrderExtractionOutputSchema },
   prompt: `You are an expert data entry assistant. Your task is to extract information from the provided PDF, which is a 'Small Job Form', and return it as a structured JSON object.
 
-  Pay close attention to the 'Job Site / Name' field. From this field, extract the street address into 'jobSiteAddress', the city into 'jobSiteCity', and the state into 'jobSiteState'.
+  Pay close attention to the 'Job Site / Name' field.
+  - The 'jobName' should be ONLY the first line of the 'Job Site / Name' field. Ignore the second line of the address for this field.
+  - Extract the street address into 'jobSiteAddress', the city into 'jobSiteCity', and the state into 'jobSiteState'.
 
   Carefully analyze the document and extract the following fields. If a field is not present, omit it from the output. For dates, provide them in YYYY-MM-DD format. For checkboxes, return true if checked and false if not.
 
