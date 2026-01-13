@@ -5,7 +5,7 @@ import { UsersTable } from '@/components/users-table';
 import { getUsers, getRoles } from '@/lib/data';
 import type { AppUser, Role } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Ban } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { UserEditDialog } from '@/components/user-edit-dialog';
 import { useFirestore, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
@@ -20,10 +20,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { doc } from 'firebase/firestore';
+import { useTechnician } from '@/hooks/use-technician';
 
 
 export default function UsersPage() {
   const db = useFirestore();
+  const { role, isLoading: isRoleLoading } = useTechnician();
   const [users, setUsers] = useState<AppUser[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,10 +52,12 @@ export default function UsersPage() {
   };
 
   useEffect(() => {
-    if (db) {
+    if (db && role?.name !== 'Technician') {
         fetchAndSetData();
+    } else if (role?.name === 'Technician') {
+        setIsLoading(false);
     }
-  }, [db]);
+  }, [db, role]);
 
   const handleUserSaved = () => {
     // Refetch all data to ensure the UI is consistent with the database
@@ -96,11 +100,28 @@ export default function UsersPage() {
   };
 
 
-  if (isLoading) {
+  if (isLoading || isRoleLoading) {
     return (
         <MainLayout>
             <div className="flex items-center justify-center h-full">
                 <p>Loading users...</p>
+            </div>
+        </MainLayout>
+    )
+  }
+  
+  if (role?.name === 'Technician') {
+    return (
+        <MainLayout>
+            <div className="container mx-auto py-8 text-center">
+                <div className="flex flex-col items-center gap-4">
+                    <Ban className="h-16 w-16 text-destructive" />
+                    <h1 className="text-2xl font-bold">Unauthorized Access</h1>
+                    <p className="text-muted-foreground">You do not have permission to view this page.</p>
+                     <Button asChild>
+                        <a href="/">Go to Dashboard</a>
+                    </Button>
+                </div>
             </div>
         </MainLayout>
     )

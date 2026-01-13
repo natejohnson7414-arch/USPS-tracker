@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { PanelLeft, Wrench, Package2, Home, Users, MapPin, Building, ClipboardSignature, FileCog } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import { useTechnician } from '@/hooks/use-technician';
 
 const navLinks = [
   { href: '/', label: 'Work Orders', icon: Home },
@@ -26,7 +27,12 @@ const navLinks = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { role } = useTechnician();
   const [isOpen, setIsOpen] = useState(false);
+
+  const filteredNavLinks = role?.name === 'Technician'
+    ? navLinks.filter(link => !['/users', '/clients', '/work-sites'].includes(link.href))
+    : navLinks;
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -58,7 +64,7 @@ export function Sidebar() {
             </SheetTitle>
         </SheetHeader>
         <nav className="grid gap-2 p-4 text-lg font-medium">
-          {navLinks.map(({ href, label, icon: Icon }) => (
+          {filteredNavLinks.map(({ href, label, icon: Icon }) => (
             <Link
               key={label}
               href={href}

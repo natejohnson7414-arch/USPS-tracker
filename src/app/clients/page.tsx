@@ -10,6 +10,8 @@ import { ClientForm } from '@/components/client-form';
 import type { Client } from '@/lib/types';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
+import { useTechnician } from '@/hooks/use-technician';
+import { Ban } from 'lucide-react';
 
 function ClientItem({ site }: { site: Client }) {
     return (
@@ -26,6 +28,7 @@ function ClientItem({ site }: { site: Client }) {
 
 export default function ClientsPage() {
     const db = useFirestore();
+    const { role, isLoading: isRoleLoading } = useTechnician();
     const [isFormOpen, setIsFormOpen] = useState(false);
     
     const clientsQuery = useMemoFirebase(() => {
@@ -33,11 +36,38 @@ export default function ClientsPage() {
         return query(collection(db, 'clients'));
     }, [db]);
 
-    const { data: clients, isLoading } = useCollection<Client>(clientsQuery);
+    const { data: clients, isLoading: areClientsLoading } = useCollection<Client>(clientsQuery);
 
     const handleClientAdded = (newSite: Client) => {
         // The useCollection hook will update the list automatically
         setIsFormOpen(false);
+    }
+
+    if (isRoleLoading) {
+        return (
+            <MainLayout>
+                <div className="flex items-center justify-center h-full">
+                    <p>Loading...</p>
+                </div>
+            </MainLayout>
+        )
+    }
+
+    if (role?.name === 'Technician') {
+        return (
+             <MainLayout>
+                <div className="container mx-auto py-8 text-center">
+                    <div className="flex flex-col items-center gap-4">
+                        <Ban className="h-16 w-16 text-destructive" />
+                        <h1 className="text-2xl font-bold">Unauthorized Access</h1>
+                        <p className="text-muted-foreground">You do not have permission to view this page.</p>
+                         <Button asChild>
+                            <a href="/">Go to Dashboard</a>
+                        </Button>
+                    </div>
+                </div>
+            </MainLayout>
+        )
     }
 
   return (
@@ -69,7 +99,7 @@ export default function ClientsPage() {
                     <CardTitle>All Clients</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                    {isLoading ? (
+                    {areClientsLoading ? (
                          <div className="p-6 text-center text-muted-foreground">Loading clients...</div>
                     ) : clients && clients.length > 0 ? (
                         <div>

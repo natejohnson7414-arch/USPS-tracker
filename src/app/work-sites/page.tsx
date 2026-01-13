@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { List, PlusCircle, MoreHorizontal } from 'lucide-react';
+import { List, PlusCircle, MoreHorizontal, Ban } from 'lucide-react';
 import { WorkSiteForm } from '@/components/work-site-form';
 import type { WorkSite } from '@/lib/types';
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
@@ -25,7 +25,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import { useTechnician } from '@/hooks/use-technician';
 
 function WorkSiteItem({ site, onEdit, onDelete }: { site: WorkSite, onEdit: () => void, onDelete: () => void }) {
     return (
@@ -60,6 +61,7 @@ function WorkSiteItem({ site, onEdit, onDelete }: { site: WorkSite, onEdit: () =
 
 export default function WorkSitesPage() {
     const db = useFirestore();
+    const { role, isLoading: isRoleLoading } = useTechnician();
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingSite, setEditingSite] = useState<WorkSite | null>(null);
     const [deletingSite, setDeletingSite] = useState<WorkSite | null>(null);
@@ -69,7 +71,7 @@ export default function WorkSitesPage() {
         return query(collection(db, 'work_sites'));
     }, [db]);
 
-    const { data: workSites, isLoading } = useCollection<WorkSite>(workSitesQuery);
+    const { data: workSites, isLoading: areSitesLoading } = useCollection<WorkSite>(workSitesQuery);
 
     const handleFormSaved = () => {
         // The useCollection hook will update the list automatically
@@ -105,6 +107,33 @@ export default function WorkSitesPage() {
         }
     }
 
+    if (isRoleLoading) {
+        return (
+            <MainLayout>
+                <div className="flex items-center justify-center h-full">
+                    <p>Loading...</p>
+                </div>
+            </MainLayout>
+        )
+    }
+
+    if (role?.name === 'Technician') {
+        return (
+             <MainLayout>
+                <div className="container mx-auto py-8 text-center">
+                    <div className="flex flex-col items-center gap-4">
+                        <Ban className="h-16 w-16 text-destructive" />
+                        <h1 className="text-2xl font-bold">Unauthorized Access</h1>
+                        <p className="text-muted-foreground">You do not have permission to view this page.</p>
+                         <Button asChild>
+                            <a href="/">Go to Dashboard</a>
+                        </Button>
+                    </div>
+                </div>
+            </MainLayout>
+        )
+    }
+
 
   return (
     <MainLayout>
@@ -136,7 +165,7 @@ export default function WorkSitesPage() {
                     <CardTitle>All Work Sites</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                    {isLoading ? (
+                    {areSitesLoading ? (
                          <div className="p-6 text-center text-muted-foreground">Loading sites...</div>
                     ) : workSites && workSites.length > 0 ? (
                         <div>
