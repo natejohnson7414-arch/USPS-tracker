@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -321,7 +322,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
           Create Work Order
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-4xl bg-blue-50">
         <DialogHeader>
           <DialogTitle>Small Job Form</DialogTitle>
            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
