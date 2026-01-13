@@ -41,7 +41,7 @@ interface WorkOrderDetailsProps {
   timeEntries: TimeEntry[];
   isEditing: boolean;
   isTechnician: boolean;
-  onWorkOrderUpdate: (data: Partial<WorkOrder>) => void;
+  onWorkOrderUpdate: (data: FormEvent) => void;
   onCancelEdit: () => void;
   onNoteAdded: (note: Omit<WorkOrderNote, 'id'> & { photoFiles: File[] }) => void;
   onTimeAdded: (timeEntry: TimeEntry) => void;
@@ -51,7 +51,56 @@ interface WorkOrderDetailsProps {
   isAddingNote: boolean;
   onDirectionsClick: (workSite: WorkSite) => void;
   onSignatureSave: () => void;
-  onTempUpdate: (data: { tempOnArrival?: string, tempOnLeaving?: string }) => void;
+  onTempUpdate: () => void;
+  // Editable Fields
+  description: string;
+  setDescription: (value: string) => void;
+  status: WorkOrder['status'];
+  setStatus: (value: WorkOrder['status']) => void;
+  assignedTechnicianId?: string;
+  setAssignedTechnicianId: (value: string | undefined) => void;
+  workSiteId?: string;
+  setWorkSiteId: (value: string | undefined) => void;
+  clientId?: string;
+  setClientId: (value: string | undefined) => void;
+  createdDate?: Date;
+  setCreatedDate: (value: Date | undefined) => void;
+  poNumber: string;
+  setPoNumber: (value: string) => void;
+  contactInfo: string;
+  setContactInfo: (value: string) => void;
+  serviceScheduleDate?: Date;
+  setServiceScheduleDate: (value: Date | undefined) => void;
+  quotedAmount: string;
+  setQuotedAmount: (value: string) => void;
+  timeAndMaterial: boolean;
+  setTimeAndMaterial: (value: boolean) => void;
+  permit: boolean;
+  setPermit: (value: boolean) => void;
+  permitCost: string;
+  setPermitCost: (value: string) => void;
+  permitFiled?: Date;
+  setPermitFiled: (value: Date | undefined) => void;
+  coi: boolean;
+  setCoi: (value: boolean) => void;
+  coiRequested?: Date;
+  setCoiRequested: (value: Date | undefined) => void;
+  certifiedPayroll: boolean;
+  setCertifiedPayroll: (value: boolean) => void;
+  certifiedPayrollRequested?: Date;
+  setCertifiedPayrollRequested: (value: Date | undefined) => void;
+  intercoPO: string;
+  setIntercoPO: (value: string) => void;
+  customerPO: string;
+  setCustomerPO: (value: string) => void;
+  estimator: string;
+  setEstimator: (value: string) => void;
+  checkInOutURL: string;
+  setCheckInOutURL: (value: string) => void;
+  tempOnArrival: string;
+  setTempOnArrival: (value: string) => void;
+  tempOnLeaving: string;
+  setTempOnLeaving: (value: string) => void;
 }
 
 export function WorkOrderDetails({
@@ -73,7 +122,32 @@ export function WorkOrderDetails({
   isAddingNote,
   onDirectionsClick,
   onSignatureSave,
-  onTempUpdate
+  onTempUpdate,
+  // Editable fields
+  description, setDescription,
+  status, setStatus,
+  assignedTechnicianId, setAssignedTechnicianId,
+  workSiteId, setWorkSiteId,
+  clientId, setClientId,
+  createdDate, setCreatedDate,
+  poNumber, setPoNumber,
+  contactInfo, setContactInfo,
+  serviceScheduleDate, setServiceScheduleDate,
+  quotedAmount, setQuotedAmount,
+  timeAndMaterial, setTimeAndMaterial,
+  permit, setPermit,
+  permitCost, setPermitCost,
+  permitFiled, setPermitFiled,
+  coi, setCoi,
+  coiRequested, setCoiRequested,
+  certifiedPayroll, setCertifiedPayroll,
+  certifiedPayrollRequested, setCertifiedPayrollRequested,
+  intercoPO, setIntercoPO,
+  customerPO, setCustomerPO,
+  estimator, setEstimator,
+  checkInOutURL, setCheckInOutURL,
+  tempOnArrival, setTempOnArrival,
+  tempOnLeaving, setTempOnLeaving,
 }: WorkOrderDetailsProps) {
   const db = useFirestore();
   const { user } = useUser();
@@ -87,113 +161,6 @@ export function WorkOrderDetails({
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
   const [timeEntryToDelete, setTimeEntryToDelete] = useState<string | null>(null);
   const [isAddTimeOpen, setIsAddTimeOpen] = useState(false);
-
-  // Form State
-  const [description, setDescription] = useState('');
-  const [status, setStatus] = useState<WorkOrder['status']>('Open');
-  const [assignedTechnicianId, setAssignedTechnicianId] = useState<string | undefined>(undefined);
-  const [workSiteId, setWorkSiteId] = useState<string | undefined>(undefined);
-  const [clientId, setClientId] = useState<string | undefined>(undefined);
-  const [createdDate, setCreatedDate] = useState<Date | undefined>();
-  const [poNumber, setPoNumber] = useState('');
-  const [contactInfo, setContactInfo] = useState('');
-  const [serviceScheduleDate, setServiceScheduleDate] = useState<Date | undefined>();
-  const [quotedAmount, setQuotedAmount] = useState('');
-  const [timeAndMaterial, setTimeAndMaterial] = useState<boolean>(false);
-  const [permit, setPermit] = useState<boolean>(false);
-  const [permitCost, setPermitCost] = useState('');
-  const [permitFiled, setPermitFiled] = useState<Date | undefined>();
-  const [coi, setCoi] = useState<boolean>(false);
-  const [coiRequested, setCoiRequested] = useState<Date | undefined>();
-  const [certifiedPayroll, setCertifiedPayroll] = useState<boolean>(false);
-  const [certifiedPayrollRequested, setCertifiedPayrollRequested] = useState<Date | undefined>();
-  const [intercoPO, setIntercoPO] = useState('');
-  const [customerPO, setCustomerPO] = useState('');
-  const [estimator, setEstimator] = useState('');
-  const [checkInOutURL, setCheckInOutURL] = useState('');
-  const [tempOnArrival, setTempOnArrival] = useState('');
-  const [tempOnLeaving, setTempOnLeaving] = useState('');
-  const [customerSignatureUrl, setCustomerSignatureUrl] = useState<string | undefined>('');
-  const [signatureDate, setSignatureDate] = useState<string | undefined>('');
-
-  const initializeFormState = (wo: WorkOrder) => {
-    setDescription(wo.description || '');
-    setStatus(wo.status || 'Open');
-    setAssignedTechnicianId(wo.assignedTechnicianId);
-    setWorkSiteId(wo.workSiteId);
-    setClientId(wo.clientId);
-    setCreatedDate(wo.createdDate ? new Date(wo.createdDate) : undefined);
-    setPoNumber(wo.poNumber || '');
-    setContactInfo(wo.contactInfo || '');
-    setServiceScheduleDate(wo.serviceScheduleDate ? new Date(wo.serviceScheduleDate) : undefined);
-    setQuotedAmount(wo.quotedAmount?.toString() || '');
-    setTimeAndMaterial(wo.timeAndMaterial || false);
-    setPermit(wo.permit || false);
-    setPermitCost(wo.permitCost?.toString() || '');
-    setPermitFiled(wo.permitFiled ? new Date(wo.permitFiled) : undefined);
-    setCoi(wo.coi || false);
-    setCoiRequested(wo.coiRequested ? new Date(wo.coiRequested) : undefined);
-    setCertifiedPayroll(wo.certifiedPayroll || false);
-    setCertifiedPayrollRequested(wo.certifiedPayrollRequested ? new Date(wo.certifiedPayrollRequested) : undefined);
-    setIntercoPO(wo.intercoPO || '');
-    setCustomerPO(wo.customerPO || '');
-    setEstimator(wo.estimator || '');
-    setCheckInOutURL(wo.checkInOutURL || '');
-    setTempOnArrival(wo.tempOnArrival || '');
-    setTempOnLeaving(wo.tempOnLeaving || '');
-    setCustomerSignatureUrl(wo.customerSignatureUrl);
-    setSignatureDate(wo.signatureDate);
-  }
-
-  // Initialize form state when component mounts or workOrder prop changes
-  useEffect(() => {
-    if (workOrder) {
-      initializeFormState(workOrder);
-    }
-  }, [workOrder]);
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    const selectedWorkSite = workSites.find(ws => ws.id === workSiteId);
-    const selectedClient = clients.find(c => c.id === clientId);
-
-    onWorkOrderUpdate({
-      jobName: selectedWorkSite?.name,
-      description,
-      status,
-      assignedTechnicianId,
-      workSiteId,
-      clientId,
-      billTo: selectedClient?.name,
-      createdDate: createdDate?.toISOString(),
-      poNumber,
-      contactInfo,
-      serviceScheduleDate: serviceScheduleDate?.toISOString(),
-      quotedAmount: quotedAmount ? parseFloat(quotedAmount) : undefined,
-      timeAndMaterial,
-      permit,
-      permitCost: permitCost ? parseFloat(permitCost) : undefined,
-      permitFiled: permitFiled?.toISOString(),
-      coi,
-      coiRequested: coiRequested?.toISOString(),
-      certifiedPayroll,
-      certifiedPayrollRequested: certifiedPayrollRequested?.toISOString(),
-      intercoPO,
-      customerPO,
-      estimator,
-      checkInOutURL,
-      tempOnArrival,
-      tempOnLeaving,
-      customerSignatureUrl,
-      signatureDate,
-    });
-  }
-
-  const handleCancel = () => {
-    initializeFormState(workOrder); // Reset to original values
-    onCancelEdit();
-  }
-
 
   // Combine and sort notes and time entries
   const combinedActivity = [
@@ -298,7 +265,7 @@ export function WorkOrderDetails({
 
   return (
     <>
-    <form id="work-order-form" onSubmit={handleSubmit}>
+    <form id="work-order-form" onSubmit={onWorkOrderUpdate}>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           <Card>
@@ -313,7 +280,7 @@ export function WorkOrderDetails({
                     </CardDescription>
                 </div>
                 {isEditing ? 
-                    <Select value={status} onValueChange={(val) => setStatus(val as WorkOrder['status'])}>
+                    <Select value={status} onValueChange={setStatus}>
                         <SelectTrigger className="w-[180px] h-8">
                             <SelectValue />
                         </SelectTrigger>
@@ -343,7 +310,7 @@ export function WorkOrderDetails({
                             id="temp-arrival" 
                             value={tempOnArrival} 
                             onChange={e => setTempOnArrival(e.target.value)}
-                            onBlur={() => onTempUpdate({ tempOnArrival })}
+                            onBlur={onTempUpdate}
                         />
                     </div>
                     <div className="space-y-2">
@@ -352,7 +319,7 @@ export function WorkOrderDetails({
                             id="temp-leaving" 
                             value={tempOnLeaving} 
                             onChange={e => setTempOnLeaving(e.target.value)}
-                            onBlur={() => onTempUpdate({ tempOnLeaving })}
+                            onBlur={onTempUpdate}
                         />
                     </div>
                 </div>
@@ -563,11 +530,11 @@ export function WorkOrderDetails({
                         {isEditing ? <Input className="h-8 sm:text-right" type="text" value={quotedAmount} onChange={(e) => setQuotedAmount(e.target.value)} /> : <span className="font-medium">{workOrder.quotedAmount ? `$${workOrder.quotedAmount}` : 'N/A'}</span>}
                     </DetailItem>
                     <DetailItem label="Time & Material">
-                        {isEditing ? <Checkbox checked={timeAndMaterial} onCheckedChange={(c) => setTimeAndMaterial(Boolean(c))} /> : <span className="font-medium">{workOrder.timeAndMaterial ? 'Yes' : 'No'}</span>}
+                        {isEditing ? <Checkbox checked={timeAndMaterial} onCheckedChange={setTimeAndMaterial} /> : <span className="font-medium">{workOrder.timeAndMaterial ? 'Yes' : 'No'}</span>}
                     </DetailItem>
                     <Separator />
                     <DetailItem label="Permit">
-                        {isEditing ? <Checkbox checked={permit} onCheckedChange={(c) => setPermit(Boolean(c))} /> : <span className="font-medium">{workOrder.permit ? 'Yes' : 'No'}</span>}
+                        {isEditing ? <Checkbox checked={permit} onCheckedChange={setPermit} /> : <span className="font-medium">{workOrder.permit ? 'Yes' : 'No'}</span>}
                     </DetailItem>
                     <DetailItem label="Permit Cost">
                         {isEditing ? <Input className="h-8 sm:text-right" type="text" value={permitCost} onChange={(e) => setPermitCost(e.target.value)} /> : <span className="font-medium">{workOrder.permitCost ? `$${workOrder.permitCost}` : 'N/A'}</span>}
@@ -577,14 +544,14 @@ export function WorkOrderDetails({
                     </DetailItem>
                     <Separator />
                     <DetailItem label="COI">
-                        {isEditing ? <Checkbox checked={coi} onCheckedChange={(c) => setCoi(Boolean(c))} /> : <span className="font-medium">{workOrder.coi ? 'Yes' : 'No'}</span>}
+                        {isEditing ? <Checkbox checked={coi} onCheckedChange={setCoi} /> : <span className="font-medium">{workOrder.coi ? 'Yes' : 'No'}</span>}
                     </DetailItem>
                     <DetailItem label="COI Requested">
                         {isEditing ? <DatePicker className="w-full" date={coiRequested} setDate={setCoiRequested} /> : <span className="font-medium">{workOrder.coiRequested ? format(new Date(workOrder.coiRequested), 'MMM d, yyyy') : 'N/A'}</span>}
                     </DetailItem>
                     <Separator />
                     <DetailItem label="Certified Payroll">
-                        {isEditing ? <Checkbox checked={certifiedPayroll} onCheckedChange={(c) => setCertifiedPayroll(Boolean(c))} /> : <span className="font-medium">{workOrder.certifiedPayroll ? 'Yes' : 'No'}</span>}
+                        {isEditing ? <Checkbox checked={certifiedPayroll} onCheckedChange={setCertifiedPayroll} /> : <span className="font-medium">{workOrder.certifiedPayroll ? 'Yes' : 'No'}</span>}
                     </DetailItem>
                     <DetailItem label="Certified Payroll Requested">
                         {isEditing ? <DatePicker className="w-full" date={certifiedPayrollRequested} setDate={setCertifiedPayrollRequested} /> : <span className="font-medium">{workOrder.certifiedPayrollRequested ? format(new Date(workOrder.certifiedPayrollRequested), 'MMM d, yyyy') : 'N/A'}</span>}
