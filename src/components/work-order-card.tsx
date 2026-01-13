@@ -21,6 +21,7 @@ export function WorkOrderCard({ order, technician, workSite, onDirectionsClick }
     const isValidDate = order.createdDate && !isNaN(new Date(order.createdDate).getTime());
     
     const getLinkUrl = (url: string) => {
+        if (!url) return '#';
         if (url.startsWith('http')) {
             return url;
         }

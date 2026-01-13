@@ -143,6 +143,7 @@ export function WorkOrderDetails({
   };
     
   const getLinkUrl = (url: string) => {
+    if (!url) return '#';
     if (url.startsWith('http')) {
         return url;
     }
@@ -332,7 +333,7 @@ export function WorkOrderDetails({
                   </div>
                   <div className="flex justify-between">
                       <span className="text-muted-foreground">Check-in Link</span>
-                      {workOrder.checkInOutURL ? <a href={getLinkUrl(workOrder.checkInOutURL)} target="_blank" rel="noopener noreferrer" className="font-medium text-accent hover:underline">{workOrder.checkInOutURL}</a> : <span className="font-medium">N/A</span>}
+                      {workOrder.checkInOutURL ? <a href={getLinkUrl(workOrder.checkInOutURL)} target="_blank" rel="noopener noreferrer" className="font-medium text-accent hover:underline">Link</a> : <span className="font-medium">N/A</span>}
                   </div>
                    <div className="flex justify-between items-start">
                       <span className="text-muted-foreground">Contact</span>
@@ -482,5 +483,3 @@ export function WorkOrderDetails({
     </>
   );
 }
-
-    

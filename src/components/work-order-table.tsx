@@ -16,7 +16,7 @@ import type { WorkOrder, Technician, WorkSite } from '@/lib/types';
 import { StatusBadge } from './status-badge';
 import { format } from 'date-fns';
 import { Button } from './ui/button';
-import { Map } from 'lucide-react';
+import { Map, Link as LinkIcon } from 'lucide-react';
 import { useState } from 'react';
 import { MapProviderSelection } from './map-provider-selection';
 import { WorkOrderCard } from './work-order-card';
@@ -38,6 +38,18 @@ export function WorkOrderTable({ workOrders, technicians, workSites }: WorkOrder
     const fullAddress = [workSite.address, workSite.city, workSite.state].filter(Boolean).join(', ');
     setSelectedAddress(fullAddress);
   };
+  
+  const getLinkUrl = (url?: string) => {
+    if (!url) return '#';
+    if (url.startsWith('http')) {
+        return url;
+    }
+    // Basic check for a phone number
+    if (/^\+?[0-9\s-()]+$/.test(url)) {
+        return `tel:${url.replace(/\s/g, '')}`;
+    }
+    return url;
+  }
 
   if (workOrders.length === 0) {
     return (
@@ -79,7 +91,7 @@ export function WorkOrderTable({ workOrders, technicians, workSites }: WorkOrder
                   <TableHead className="w-[120px]">Status</TableHead>
                   <TableHead className="w-[180px]">Assigned To</TableHead>
                   <TableHead className="w-[180px]">Date</TableHead>
-                  <TableHead className="w-[80px] text-right">Actions</TableHead>
+                  <TableHead className="w-[120px] text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -131,12 +143,22 @@ export function WorkOrderTable({ workOrders, technicians, workSites }: WorkOrder
                         </Link>
                       </TableCell>
                       <TableCell className="text-right">
-                          {workSite?.address && (
-                              <Button variant="outline" size="icon" onClick={() => handleDirectionsClick(workSite)}>
-                                  <Map className="h-4 w-4" />
-                                  <span className="sr-only">Get Directions</span>
-                              </Button>
-                          )}
+                          <div className="flex justify-end gap-2">
+                              {order.checkInOutURL && (
+                                <Button asChild variant="outline" size="icon">
+                                    <a href={getLinkUrl(order.checkInOutURL)} target="_blank" rel="noopener noreferrer">
+                                        <LinkIcon className="h-4 w-4" />
+                                        <span className="sr-only">Check-in</span>
+                                    </a>
+                                </Button>
+                              )}
+                              {workSite?.address && (
+                                  <Button variant="outline" size="icon" onClick={() => handleDirectionsClick(workSite)}>
+                                      <Map className="h-4 w-4" />
+                                      <span className="sr-only">Get Directions</span>
+                                  </Button>
+                              )}
+                          </div>
                       </TableCell>
                     </TableRow>
                   );
