@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search } from 'lucide-react';
 import { CreateWorkOrderDialog } from './create-work-order-dialog';
-import type { Technician, WorkOrder, WorkSite, Client } from '@/lib/types';
+import type { Technician, WorkOrder, WorkSite, Client, Role } from '@/lib/types';
 import { ScrollArea } from './ui/scroll-area';
 
 interface WorkOrderTableToolbarProps {
@@ -15,6 +15,7 @@ interface WorkOrderTableToolbarProps {
   clients: Client[];
   onWorkOrderAdded: (newOrder: WorkOrder) => void;
   onWorkSiteAdded: (newSite: WorkSite) => void;
+  currentUserRole: Role | null;
 }
 
 const statuses = ['All', 'Open', 'In Progress', 'On Hold', 'Completed'];
@@ -27,7 +28,8 @@ export function WorkOrderTableToolbar({
   workSites,
   clients,
   onWorkOrderAdded,
-  onWorkSiteAdded
+  onWorkSiteAdded,
+  currentUserRole
 }: WorkOrderTableToolbarProps) {
   return (
     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -51,13 +53,15 @@ export function WorkOrderTableToolbar({
             </TabsList>
           </ScrollArea>
         </Tabs>
-        <CreateWorkOrderDialog 
-            technicians={technicians} 
-            workSites={workSites} 
-            clients={clients} 
-            onWorkOrderAdded={onWorkOrderAdded} 
-            onWorkSiteAdded={onWorkSiteAdded}
-        />
+        {currentUserRole?.name !== 'Technician' && (
+          <CreateWorkOrderDialog 
+              technicians={technicians} 
+              workSites={workSites} 
+              clients={clients} 
+              onWorkOrderAdded={onWorkOrderAdded} 
+              onWorkSiteAdded={onWorkSiteAdded}
+          />
+        )}
       </div>
     </div>
   );

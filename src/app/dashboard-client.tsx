@@ -2,12 +2,13 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import type { WorkOrder, Technician, WorkSite, Client } from '@/lib/types';
+import type { WorkOrder, Technician, WorkSite, Client, Role } from '@/lib/types';
 import { WorkOrderTable } from '@/components/work-order-table';
 import { WorkOrderTableToolbar } from '@/components/work-order-table-toolbar';
 import { useFirestore, useCollection, useUser, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { getTechnicians, getWorkSites as fetchWorkSites, getClients as fetchClients } from '@/lib/data';
+import { useTechnician } from '@/hooks/use-technician';
 
 interface DashboardClientProps {
   initialWorkOrders: WorkOrder[];
@@ -22,6 +23,8 @@ export function DashboardClient({ initialWorkOrders, technicians, initialWorkSit
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const { role: currentUserRole } = useTechnician();
+
 
   const filteredWorkOrders = useMemo(() => {
     return workOrders.filter(order => {
@@ -56,6 +59,7 @@ export function DashboardClient({ initialWorkOrders, technicians, initialWorkSit
           clients={clients}
           onWorkOrderAdded={handleAddWorkOrder}
           onWorkSiteAdded={handleAddWorkSite}
+          currentUserRole={currentUserRole}
         />
         <WorkOrderTable workOrders={filteredWorkOrders} technicians={technicians} workSites={workSites} />
       </div>
