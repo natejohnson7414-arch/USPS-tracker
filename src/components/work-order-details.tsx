@@ -278,7 +278,7 @@ export function WorkOrderDetails({
     <>
     <form id="work-order-form" onSubmit={onWorkOrderUpdate}>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className={`${isTechnician ? 'lg:col-span-3' : 'lg:col-span-2'} space-y-8`}>
+        <div className="lg:col-span-2 space-y-8">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-start">

@@ -49,7 +49,7 @@ export default function WorkOrderDetailPage() {
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
   
-  // Editable fields state - initialized when workOrder is loaded
+  // Editable fields state
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<WorkOrder['status']>('Open');
   const [assignedTechnicianId, setAssignedTechnicianId] = useState<string | undefined>(undefined);
@@ -124,6 +124,7 @@ export default function WorkOrderDetailPage() {
     setSignatureDate(wo.signatureDate);
   }
 
+  // Effect to fetch initial component data
   useEffect(() => {
     const fetchData = async () => {
       if (!db || !user) return;
@@ -153,7 +154,6 @@ export default function WorkOrderDetailPage() {
         
         if (fetchedWorkOrder) {
             setWorkOrder(fetchedWorkOrder);
-            initializeEditState(fetchedWorkOrder);
         } else {
             setWorkOrder(null);
             notFound();
@@ -169,6 +169,13 @@ export default function WorkOrderDetailPage() {
     };
     fetchData();
   }, [db, id, user]);
+
+  // Effect to initialize the form state once, when the workOrder is first loaded.
+  useEffect(() => {
+    if (workOrder) {
+      initializeEditState(workOrder);
+    }
+  }, [workOrder]);
   
   
   const resetEditState = () => {
