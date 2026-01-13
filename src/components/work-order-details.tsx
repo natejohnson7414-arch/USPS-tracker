@@ -307,12 +307,22 @@ export function WorkOrderDetails({
               <CardHeader>
                   <div className="flex justify-between items-center">
                       <CardTitle>Details</CardTitle>
-                       {workOrder.workSite && (
+                       <div className="flex items-center gap-2">
+                        {workOrder.checkInOutURL && (
+                            <Button asChild variant="outline" size="icon">
+                                <a href={getLinkUrl(workOrder.checkInOutURL)} target="_blank" rel="noopener noreferrer">
+                                    <LinkIcon className="h-4 w-4" />
+                                    <span className="sr-only">Check-in</span>
+                                </a>
+                            </Button>
+                        )}
+                        {workOrder.workSite && (
                           <Button variant="outline" size="icon" onClick={() => onDirectionsClick(workOrder.workSite!)}>
                               <Map className="h-4 w-4" />
                               <span className="sr-only">Get Directions</span>
                           </Button>
-                      )}
+                        )}
+                       </div>
                   </div>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
@@ -330,10 +340,6 @@ export function WorkOrderDetails({
                   <div className="flex justify-between">
                       <span className="text-muted-foreground">PO #</span>
                       <span className="font-medium">{workOrder.poNumber || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                      <span className="text-muted-foreground">Check-in Link</span>
-                      {workOrder.checkInOutURL ? <a href={getLinkUrl(workOrder.checkInOutURL)} target="_blank" rel="noopener noreferrer" className="font-medium text-accent hover:underline">Link</a> : <span className="font-medium">N/A</span>}
                   </div>
                    <div className="flex justify-between items-start">
                       <span className="text-muted-foreground">Contact</span>
