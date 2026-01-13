@@ -6,11 +6,14 @@ import { DashboardClient } from './dashboard-client';
 import { MainLayout } from '@/components/main-layout';
 import type { WorkOrder, Technician, WorkSite, Client, Role } from '@/lib/types';
 import { useFirestore, useUser, useMemoFirebase, setDocumentNonBlocking, useCollection } from '@/firebase';
-import { collection, query, doc } from 'firebase/firestore';
+import { collection, query, doc, where } from 'firebase/firestore';
+import { useTechnician } from '@/hooks/use-technician';
 
 export default function DashboardPage() {
   const db = useFirestore();
   const { user, isUserLoading: isAuthLoading } = useUser();
+  const { role: currentUserRole, isLoading: isRoleLoading } = useTechnician();
+
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [workSites, setWorkSites] = useState<WorkSite[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -18,11 +21,18 @@ export default function DashboardPage() {
   const hasSeeded = useRef(false);
 
   // Memoize the query to prevent re-creating it on every render
-  // Only create the query if we have a user.
   const workOrdersQuery = useMemoFirebase(() => {
-    if (!db || !user) return null;
-    return query(collection(db, 'work_orders'));
-  }, [db, user]);
+    if (!db || !user || isRoleLoading) return null;
+
+    const baseQuery = collection(db, 'work_orders');
+
+    if (currentUserRole?.name === 'Technician') {
+      return query(baseQuery, where('assignedTechnicianId', '==', user.uid));
+    }
+    
+    // For admins or other roles, return all work orders
+    return query(baseQuery);
+  }, [db, user, isRoleLoading, currentUserRole]);
 
   const { data: workOrders, isLoading: isWorkOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
 
@@ -93,7 +103,7 @@ export default function DashboardPage() {
   }, [db, user, isAuthLoading]);
 
 
-  const isDataLoading = isAuthLoading || isLoading || isWorkOrdersLoading;
+  const isDataLoading = isAuthLoading || isLoading || isWorkOrdersLoading || isRoleLoading;
 
   if (isDataLoading) {
     return (
@@ -112,6 +122,7 @@ export default function DashboardPage() {
         technicians={technicians} 
         initialWorkSites={workSites}
         initialClients={clients}
+        currentUserRole={currentUserRole}
       />
     </MainLayout>
   );

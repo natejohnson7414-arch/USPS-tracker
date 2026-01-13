@@ -15,15 +15,20 @@ interface DashboardClientProps {
   technicians: Technician[];
   initialWorkSites: WorkSite[];
   initialClients: Client[];
+  currentUserRole: Role | null;
 }
 
-export function DashboardClient({ initialWorkOrders, technicians, initialWorkSites, initialClients }: DashboardClientProps) {
+export function DashboardClient({ initialWorkOrders, technicians, initialWorkSites, initialClients, currentUserRole }: DashboardClientProps) {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
   const [workSites, setWorkSites] = useState<WorkSite[]>(initialWorkSites);
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
-  const { role: currentUserRole } = useTechnician();
+
+
+  useEffect(() => {
+    setWorkOrders(initialWorkOrders);
+  }, [initialWorkOrders]);
 
 
   const filteredWorkOrders = useMemo(() => {
