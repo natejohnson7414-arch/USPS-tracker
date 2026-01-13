@@ -95,6 +95,7 @@ interface WorkOrderDetailsProps {
   trainingRecords: TrainingRecord[];
   timeEntries: TimeEntry[];
   isEditing: boolean;
+  isTechnician: boolean;
   editableFields: EditableFields;
   onWorkOrderUpdate: (e: FormEvent) => void;
   onNoteAdded: (note: Omit<WorkOrderNote, 'id'> & { photoFiles: File[] }) => void;
@@ -116,6 +117,7 @@ export function WorkOrderDetails({
   trainingRecords,
   timeEntries,
   isEditing,
+  isTechnician,
   editableFields,
   onWorkOrderUpdate,
   onNoteAdded,
@@ -255,7 +257,7 @@ export function WorkOrderDetails({
     <>
     <form id="work-order-form" onSubmit={onWorkOrderUpdate}>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
+        <div className={isTechnician ? 'col-span-3' : 'lg:col-span-2 space-y-8'}>
           <Card>
             <CardHeader>
               <div className="flex justify-between items-start">
@@ -418,6 +420,7 @@ export function WorkOrderDetails({
           </Card>
         </div>
 
+        {!isTechnician && (
         <div className="space-y-8">
           <Card>
             <CardHeader>
@@ -609,6 +612,7 @@ export function WorkOrderDetails({
           </Card>
 
         </div>
+        )}
       </div>
     </form>
 

@@ -460,12 +460,7 @@ export default function WorkOrderDetailPage() {
               </Link>
             </Button>
              <div className="flex items-center gap-2">
-                {isTechnician ? (
-                    <Button variant="outline" disabled>
-                        <Printer className="mr-2 h-4 w-4" />
-                        Report
-                    </Button>
-                ) : (
+                {!isTechnician && (
                     <Button variant="outline" asChild>
                         <Link href={`/work-orders/${id}/report`} target="_blank">
                             <Printer className="mr-2 h-4 w-4" />
@@ -474,7 +469,7 @@ export default function WorkOrderDetailPage() {
                     </Button>
                 )}
 
-                {!isEditing && (
+                {!isEditing && !isTechnician && (
                   <Button variant="outline" onClick={() => setIsEditing(true)} disabled={!canEdit}>
                     <Pencil className="mr-2 h-4 w-4" /> Edit
                   </Button>
@@ -490,6 +485,7 @@ export default function WorkOrderDetailPage() {
             trainingRecords={trainingRecords}
             timeEntries={timeEntries}
             isEditing={isEditing}
+            isTechnician={isTechnician}
             onNoteAdded={handleNoteAdded}
             onTimeAdded={handleTimeAdded}
             onNotePhotoDelete={handleNotePhotoDelete}
