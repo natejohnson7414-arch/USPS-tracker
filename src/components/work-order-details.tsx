@@ -433,38 +433,36 @@ export function WorkOrderDetails({
             <CardTitle>Customer Sign-off</CardTitle>
             </CardHeader>
             <CardContent>
-                {workOrder.customerSignatureUrl ? (
-                    <div className="space-y-4">
-                         <div className="space-y-2">
-                             <Label htmlFor="customer-name-display">Customer Name</Label>
-                             <Input id="customer-name-display" readOnly value={workOrder.contactInfo || ''} />
-                         </div>
-                        <div className="border bg-muted rounded-md p-4 flex justify-center">
-                            <Image src={workOrder.customerSignatureUrl} alt="Customer Signature" width={300} height={150} style={{ objectFit: 'contain' }} />
-                        </div>
-                        <p className="text-sm text-muted-foreground text-center">
-                            Signed on {workOrder.signatureDate ? format(new Date(workOrder.signatureDate), 'MMM d, yyyy') : 'N/A'}
-                        </p>
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="customer-name">Customer Name</Label>
+                        <Input
+                            id="customer-name"
+                            placeholder="Enter printed name"
+                            value={contactInfo}
+                            onChange={(e) => setContactInfo(e.target.value)}
+                            onBlur={onContactInfoUpdate}
+                        />
                     </div>
-                ) : (
-                    <div className="space-y-4 p-4 border-2 border-dashed rounded-md">
-                        <div className="space-y-2">
-                            <Label htmlFor="customer-name">Customer Name</Label>
-                            <Input 
-                                id="customer-name" 
-                                placeholder="Enter printed name" 
-                                value={contactInfo}
-                                onChange={(e) => setContactInfo(e.target.value)}
-                                onBlur={onContactInfoUpdate}
-                            />
+                    {workOrder.customerSignatureUrl ? (
+                        <>
+                            <div className="border bg-muted rounded-md p-4 flex justify-center">
+                                <Image src={workOrder.customerSignatureUrl} alt="Customer Signature" width={300} height={150} style={{ objectFit: 'contain' }} />
+                            </div>
+                            <p className="text-sm text-muted-foreground text-center">
+                                Signed on {workOrder.signatureDate ? format(new Date(workOrder.signatureDate), 'MMM d, yyyy') : 'N/A'}
+                            </p>
+                        </>
+                    ) : (
+                        <div className="border-2 border-dashed rounded-md p-4">
+                            {workOrder.status !== 'Completed' && (
+                                <Button type="button" onClick={onSignatureSave} className="w-full">
+                                    Capture Signature
+                                </Button>
+                            )}
                         </div>
-                        {workOrder.status !== 'Completed' && (
-                            <Button type="button" onClick={onSignatureSave} className="w-full">
-                                Capture Signature
-                            </Button>
-                        )}
-                    </div>
-                )}
+                    )}
+                </div>
             </CardContent>
         </Card>
       
