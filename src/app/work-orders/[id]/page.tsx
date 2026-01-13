@@ -44,7 +44,7 @@ export default function WorkOrderDetailPage() {
   const [trainingRecords, setTrainingRecords] = useState<TrainingRecord[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDataChecked, setIsDataChecked] = useState(false);
+  const [isDataInitialized, setIsDataInitialized] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
@@ -128,7 +128,7 @@ export default function WorkOrderDetailPage() {
   useEffect(() => {
     const fetchData = async () => {
       if (!db || !user) return;
-      setIsLoading(true);
+      // No need to set loading to true here unless it's the very first load
       try {
         const [
             fetchedTechnicians, 
@@ -154,7 +154,10 @@ export default function WorkOrderDetailPage() {
         
         if (fetchedWorkOrder) {
             setWorkOrder(fetchedWorkOrder);
-            initializeEditState(fetchedWorkOrder);
+            if (!isDataInitialized) {
+                initializeEditState(fetchedWorkOrder);
+                setIsDataInitialized(true);
+            }
         } else {
             setWorkOrder(null);
         }
@@ -164,17 +167,16 @@ export default function WorkOrderDetailPage() {
         setWorkOrder(null);
       } finally {
         setIsLoading(false);
-        setIsDataChecked(true);
       }
     };
     fetchData();
-  }, [db, id, user]);
+  }, [db, id, user, isDataInitialized]);
   
   useEffect(() => {
-    if (!isLoading && isDataChecked && !workOrder) {
+    if (!isLoading && isDataInitialized && !workOrder) {
       notFound();
     }
-  }, [isLoading, isDataChecked, workOrder]);
+  }, [isLoading, isDataInitialized, workOrder]);
   
   const resetEditState = () => {
     if (!workOrder) return;
@@ -435,7 +437,7 @@ export default function WorkOrderDetailPage() {
 
 
 
-  if (isLoading || !isDataChecked) {
+  if (isLoading || !isDataInitialized) {
     return (
       <MainLayout>
         <div className="flex items-center justify-center h-full">
@@ -480,7 +482,7 @@ export default function WorkOrderDetailPage() {
             </div>
         </div>
         <div className="pb-24">
-            <WorkOrderDetails
+            {workOrder && <WorkOrderDetails
             initialWorkOrder={workOrder}
             technicians={technicians}
             workSites={workSites}
@@ -528,7 +530,7 @@ export default function WorkOrderDetailPage() {
                 signatureDate, setSignatureDate,
             }}
             onWorkOrderUpdate={handleSave}
-            />
+            />}
         </div>
       </div>
       {isEditing && (
@@ -563,5 +565,3 @@ export default function WorkOrderDetailPage() {
     </MainLayout>
   );
 }
-
-    

@@ -685,12 +685,3 @@ export function WorkOrderDetails({
     </>
   );
 }
-
-    
-
-    
-
-
-
-
-    
