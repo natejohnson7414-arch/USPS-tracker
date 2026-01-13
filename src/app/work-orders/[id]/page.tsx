@@ -183,6 +183,12 @@ export default function WorkOrderDetailPage() {
     setIsEditing(false);
     resetEditState();
   };
+  
+  const handleDirectionsClick = (workSite: WorkSite) => {
+    if (!workSite.address) return;
+    const fullAddress = [workSite.address, workSite.city, workSite.state].filter(Boolean).join(', ');
+    setSelectedAddress(fullAddress);
+  };
 
   const handleNoteAdded = async (newNote: Omit<WorkOrderNote, 'id'> & { photoFiles: File[] }) => {
     if (!db || !user || !notesColRef || !workOrder) return;
@@ -440,7 +446,7 @@ export default function WorkOrderDetailPage() {
       notFound();
   }
 
-  const canEdit = currentUserRole?.name === 'Administrator' || (workOrder.status !== 'Completed' && workOrder.assignedTechnicianId && workOrder.assignedTechnicianId === user?.uid);
+  const canEdit = currentUserRole?.name === 'Administrator' || (workOrder.status !== 'Completed' && !!workOrder.assignedTechnicianId && workOrder.assignedTechnicianId === user?.uid);
   const isTechnician = currentUserRole?.name === 'Technician';
 
   return (
@@ -490,7 +496,7 @@ export default function WorkOrderDetailPage() {
             onNoteDelete={handleNoteDelete}
             onTimeEntryDelete={handleTimeEntryDelete}
             isAddingNote={isAddingNote}
-            onDirectionsClick={(address) => setSelectedAddress(address)}
+            onDirectionsClick={handleDirectionsClick}
             onSignatureSave={() => setIsSignatureDialogOpen(true)}
             onTempUpdate={handleTempUpdate}
             editableFields={{

@@ -103,7 +103,7 @@ interface WorkOrderDetailsProps {
   onNoteDelete: (noteId: string) => void;
   onTimeEntryDelete: (timeEntryId: string) => void;
   isAddingNote: boolean;
-  onDirectionsClick: (address: string) => void;
+  onDirectionsClick: (workSite: WorkSite) => void;
   onSignatureSave: () => void;
   onTempUpdate: () => void;
 }
@@ -299,7 +299,6 @@ export function WorkOrderDetails({
                             value={tempOnArrival} 
                             onChange={e => setTempOnArrival(e.target.value)}
                             onBlur={onTempUpdate}
-                            disabled={isEditing}
                         />
                     </div>
                     <div className="space-y-2">
@@ -309,7 +308,6 @@ export function WorkOrderDetails({
                             value={tempOnLeaving} 
                             onChange={e => setTempOnLeaving(e.target.value)}
                             onBlur={onTempUpdate}
-                            disabled={isEditing}
                         />
                     </div>
                 </div>
@@ -396,7 +394,7 @@ export function WorkOrderDetails({
                         <Clock className="mr-2 h-4 w-4" />
                         Add Time
                     </Button>
-                    <Button type="button" onClick={handleAddNote} disabled={isAddingNote}>
+                    <Button type="button" onClick={handleAddNote} disabled={isAddingNote || (!newNote && newNotePhotos.length === 0)}>
                         {isAddingNote && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {isAddingNote ? "Adding..." : "Add Note"}
                     </Button>
@@ -428,8 +426,8 @@ export function WorkOrderDetails({
                         <Info className="h-5 w-5" />
                         Details
                     </CardTitle>
-                     {workOrder.workSite?.address && !isEditing && (
-                        <Button variant="outline" size="icon" onClick={() => onDirectionsClick(workOrder.workSite!.address)}>
+                     {workOrder.workSite && !isEditing && (
+                        <Button variant="outline" size="icon" onClick={() => onDirectionsClick(workOrder.workSite!)}>
                             <Map className="h-4 w-4" />
                             <span className="sr-only">Get Directions</span>
                         </Button>

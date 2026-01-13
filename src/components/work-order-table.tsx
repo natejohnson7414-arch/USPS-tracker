@@ -1,4 +1,5 @@
 
+
 'use client';
 import Link from 'next/link';
 import {
@@ -32,8 +33,10 @@ export function WorkOrderTable({ workOrders, technicians, workSites }: WorkOrder
   const getTechnician = (id?: string) => technicians.find(t => t.id === id);
   const getWorkSite = (id?: string) => workSites.find(ws => ws.id === id);
   
-  const handleDirectionsClick = (address: string) => {
-    setSelectedAddress(address);
+  const handleDirectionsClick = (workSite: WorkSite) => {
+    if (!workSite.address) return;
+    const fullAddress = [workSite.address, workSite.city, workSite.state].filter(Boolean).join(', ');
+    setSelectedAddress(fullAddress);
   };
 
   if (workOrders.length === 0) {
@@ -59,7 +62,7 @@ export function WorkOrderTable({ workOrders, technicians, workSites }: WorkOrder
           const technician = getTechnician(order.assignedTechnicianId);
           const workSite = getWorkSite(order.workSiteId);
           return (
-            <WorkOrderCard key={order.id} order={order} technician={technician} workSite={workSite} onDirectionsClick={handleDirectionsClick} />
+            <WorkOrderCard key={order.id} order={order} technician={technician} workSite={workSite} onDirectionsClick={() => workSite && handleDirectionsClick(workSite)} />
           );
         })}
       </div>
@@ -129,7 +132,7 @@ export function WorkOrderTable({ workOrders, technicians, workSites }: WorkOrder
                       </TableCell>
                       <TableCell className="text-right">
                           {workSite?.address && (
-                              <Button variant="outline" size="icon" onClick={() => handleDirectionsClick(workSite.address)}>
+                              <Button variant="outline" size="icon" onClick={() => handleDirectionsClick(workSite)}>
                                   <Map className="h-4 w-4" />
                                   <span className="sr-only">Get Directions</span>
                               </Button>
