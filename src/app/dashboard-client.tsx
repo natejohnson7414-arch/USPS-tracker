@@ -16,14 +16,23 @@ interface DashboardClientProps {
   initialWorkSites: WorkSite[];
   initialClients: Client[];
   currentUserRole: Role | null;
+  statusFilter: string;
+  onStatusChange: (status: string) => void;
 }
 
-export function DashboardClient({ initialWorkOrders, technicians, initialWorkSites, initialClients, currentUserRole }: DashboardClientProps) {
+export function DashboardClient({ 
+    initialWorkOrders, 
+    technicians, 
+    initialWorkSites, 
+    initialClients, 
+    currentUserRole,
+    statusFilter,
+    onStatusChange
+}: DashboardClientProps) {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
   const [workSites, setWorkSites] = useState<WorkSite[]>(initialWorkSites);
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
 
 
   useEffect(() => {
@@ -33,15 +42,16 @@ export function DashboardClient({ initialWorkOrders, technicians, initialWorkSit
 
   const filteredWorkOrders = useMemo(() => {
     return workOrders.filter(order => {
-      const matchesStatus = statusFilter === 'All' || order.status === statusFilter;
       const lowerSearchTerm = searchTerm.toLowerCase();
+      // Status filter is now handled by the Firestore query in page.tsx
+      // We only need to apply the client-side search term filter
       const matchesSearch =
         order.jobName?.toLowerCase().includes(lowerSearchTerm) ||
         order.id?.toLowerCase().includes(lowerSearchTerm) ||
         order.description?.toLowerCase().includes(lowerSearchTerm);
-      return matchesStatus && matchesSearch;
+      return matchesSearch;
     });
-  }, [workOrders, searchTerm, statusFilter]);
+  }, [workOrders, searchTerm]);
 
   const handleAddWorkSite = (newSite: WorkSite) => {
     setWorkSites(prev => [newSite, ...prev]);
@@ -53,7 +63,7 @@ export function DashboardClient({ initialWorkOrders, technicians, initialWorkSit
         <h1 className="text-3xl font-bold tracking-tight">Work Order Dashboard</h1>
         <WorkOrderTableToolbar
           onSearchChange={setSearchTerm}
-          onStatusChange={setStatusFilter}
+          onStatusChange={onStatusChange}
           currentFilter={statusFilter}
           technicians={technicians}
           workSites={workSites}

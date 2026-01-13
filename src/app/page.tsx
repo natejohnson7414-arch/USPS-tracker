@@ -18,6 +18,7 @@ export default function DashboardPage() {
   const [workSites, setWorkSites] = useState<WorkSite[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('All');
   const hasSeeded = useRef(false);
 
   // Memoize the query to prevent re-creating it on every render
@@ -25,14 +26,26 @@ export default function DashboardPage() {
     if (!db || !user || isRoleLoading) return null;
 
     const baseQuery = collection(db, 'work_orders');
+    const isTech = currentUserRole?.name === 'Technician';
 
-    if (currentUserRole?.name === 'Technician') {
-      return query(baseQuery, where('assignedTechnicianId', '==', user.uid));
+    // Technician View
+    if (isTech) {
+        // If 'All' is selected, show all work orders
+        if (statusFilter === 'All') {
+            return query(baseQuery, where('assignedTechnicianId', '==', user.uid));
+        }
+        // Otherwise, filter by their ID and the selected status
+        return query(baseQuery, where('assignedTechnicianId', '==', user.uid), where('status', '==', statusFilter));
     }
     
-    // For admins or other roles, return all work orders
+    // Admin/Other roles View
+    if (statusFilter !== 'All') {
+        return query(baseQuery, where('status', '==', statusFilter));
+    }
+    
+    // Default for Admin: return all work orders
     return query(baseQuery);
-  }, [db, user, isRoleLoading, currentUserRole]);
+  }, [db, user, isRoleLoading, currentUserRole, statusFilter]);
 
   const { data: workOrders, isLoading: isWorkOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
 
@@ -123,6 +136,8 @@ export default function DashboardPage() {
         initialWorkSites={workSites}
         initialClients={clients}
         currentUserRole={currentUserRole}
+        statusFilter={statusFilter}
+        onStatusChange={setStatusFilter}
       />
     </MainLayout>
   );
