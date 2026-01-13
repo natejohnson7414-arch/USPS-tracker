@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, FormEvent } from 'react';
-import { getTechnicians, getWorkOrderById, getWorkSites, getClients, getTrainingRecordsByWorkOrderId, getTimeEntriesByWorkOrder } from '@/lib/data';
+import { getTechnicians, getWorkOrderById, getWorkSites, getClients, getTrainingRecordsByWorkOrderId, getTimeEntriesByWorkOrder, getTechnicianById } from '@/lib/data';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
@@ -23,7 +23,8 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { SignaturePad } from '@/components/signature-pad';
-import { useTechnician } from '@/hooks/use-technician';
+import { useTechnician as useRoleData } from '@/hooks/use-technician';
+import { WorkOrderEditForm } from '@/components/work-order-edit-form';
 
 export default function WorkOrderDetailPage() {
   const params = useParams();
@@ -32,7 +33,7 @@ export default function WorkOrderDetailPage() {
   const db = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
-  const { role: currentUserRole } = useTechnician();
+  const { role: currentUserRole } = useRoleData();
 
 
   const [technicians, setTechnicians] = useState<Technician[]>([]);
@@ -47,29 +48,6 @@ export default function WorkOrderDetailPage() {
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
   
-  // Form State
-  const [description, setDescription] = useState('');
-  const [status, setStatus] = useState<WorkOrder['status']>('Open');
-  const [assignedTechnicianId, setAssignedTechnicianId] = useState<string | undefined>(undefined);
-  const [workSiteId, setWorkSiteId] = useState<string | undefined>(undefined);
-  const [clientId, setClientId] = useState<string | undefined>(undefined);
-  const [createdDate, setCreatedDate] = useState<Date | undefined>();
-  const [poNumber, setPoNumber] = useState('');
-  const [contactInfo, setContactInfo] = useState('');
-  const [serviceScheduleDate, setServiceScheduleDate] = useState<Date | undefined>();
-  const [quotedAmount, setQuotedAmount] = useState('');
-  const [timeAndMaterial, setTimeAndMaterial] = useState<boolean>(false);
-  const [permit, setPermit] = useState<boolean>(false);
-  const [permitCost, setPermitCost] = useState('');
-  const [permitFiled, setPermitFiled] = useState<Date | undefined>();
-  const [coi, setCoi] = useState<boolean>(false);
-  const [coiRequested, setCoiRequested] = useState<Date | undefined>();
-  const [certifiedPayroll, setCertifiedPayroll] = useState<boolean>(false);
-  const [certifiedPayrollRequested, setCertifiedPayrollRequested] = useState<Date | undefined>();
-  const [intercoPO, setIntercoPO] = useState('');
-  const [customerPO, setCustomerPO] = useState('');
-  const [estimator, setEstimator] = useState('');
-  const [checkInOutURL, setCheckInOutURL] = useState('');
   const [tempOnArrival, setTempOnArrival] = useState('');
   const [tempOnLeaving, setTempOnLeaving] = useState('');
   
@@ -78,35 +56,7 @@ export default function WorkOrderDetailPage() {
     return doc(db, 'work_orders', id);
   }, [db, id]);
 
-  const initializeEditState = (wo: WorkOrder) => {
-    setDescription(wo.description || '');
-    setStatus(wo.status || 'Open');
-    setAssignedTechnicianId(wo.assignedTechnicianId);
-    setWorkSiteId(wo.workSiteId);
-    setClientId(wo.clientId);
-    setCreatedDate(wo.createdDate ? new Date(wo.createdDate) : undefined);
-    setPoNumber(wo.poNumber || '');
-    setContactInfo(wo.contactInfo || '');
-    setServiceScheduleDate(wo.serviceScheduleDate ? new Date(wo.serviceScheduleDate) : undefined);
-    setQuotedAmount(wo.quotedAmount?.toString() || '');
-    setTimeAndMaterial(wo.timeAndMaterial || false);
-    setPermit(wo.permit || false);
-    setPermitCost(wo.permitCost?.toString() || '');
-    setPermitFiled(wo.permitFiled ? new Date(wo.permitFiled) : undefined);
-    setCoi(wo.coi || false);
-    setCoiRequested(wo.coiRequested ? new Date(wo.coiRequested) : undefined);
-    setCertifiedPayroll(wo.certifiedPayroll || false);
-    setCertifiedPayrollRequested(wo.certifiedPayrollRequested ? new Date(wo.certifiedPayrollRequested) : undefined);
-    setIntercoPO(wo.intercoPO || '');
-    setCustomerPO(wo.customerPO || '');
-    setEstimator(wo.estimator || '');
-    setCheckInOutURL(wo.checkInOutURL || '');
-    setTempOnArrival(wo.tempOnArrival || '');
-    setTempOnLeaving(wo.tempOnLeaving || '');
-  };
-
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchData = async () => {
       if (!db || !user) return;
       setIsLoading(true);
       try {
@@ -134,7 +84,8 @@ export default function WorkOrderDetailPage() {
         
         if (fetchedWorkOrder) {
             setWorkOrder(fetchedWorkOrder);
-            initializeEditState(fetchedWorkOrder);
+            setTempOnArrival(fetchedWorkOrder.tempOnArrival || '');
+            setTempOnLeaving(fetchedWorkOrder.tempOnLeaving || '');
         } else {
             setWorkOrder(null);
             notFound();
@@ -148,6 +99,8 @@ export default function WorkOrderDetailPage() {
         setIsLoading(false);
       }
     };
+
+  useEffect(() => {
     fetchData();
   }, [db, id, user]);
 
@@ -218,71 +171,9 @@ export default function WorkOrderDetailPage() {
     }
   };
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!workOrderDocRef || !workOrder) return;
-    
-    const selectedWorkSite = workSites.find(ws => ws.id === workSiteId);
-    const selectedClient = clients.find(c => c.id === clientId);
-
-    const cleanedData: Partial<WorkOrder> = {
-        jobName: selectedWorkSite?.name,
-        description,
-        status,
-        assignedTechnicianId,
-        workSiteId,
-        clientId,
-        billTo: selectedClient?.name,
-        createdDate: createdDate?.toISOString(),
-        poNumber,
-        contactInfo,
-        serviceScheduleDate: serviceScheduleDate?.toISOString(),
-        quotedAmount: quotedAmount ? parseFloat(quotedAmount) : undefined,
-        timeAndMaterial,
-        permit,
-        permitCost: permitCost ? parseFloat(permitCost) : undefined,
-        permitFiled: permitFiled?.toISOString(),
-        coi,
-        coiRequested: coiRequested?.toISOString(),
-        certifiedPayroll,
-        certifiedPayrollRequested: certifiedPayrollRequested?.toISOString(),
-        intercoPO,
-        customerPO,
-        estimator,
-        checkInOutURL,
-        tempOnArrival,
-        tempOnLeaving,
-    };
-
-    Object.keys(cleanedData).forEach(key => {
-        const k = key as keyof typeof cleanedData;
-        if ((cleanedData as any)[k] === undefined) {
-          (cleanedData as any)[k] = null;
-        }
-    });
-
-    try {
-        await updateDocumentNonBlocking(workOrderDocRef, cleanedData);
-
-        // Optimistically update the local state
-        setWorkOrder(prev => {
-            if (!prev) return null;
-            return { ...prev, ...cleanedData, workSite: selectedWorkSite, client: selectedClient } as WorkOrder;
-        });
-        
-        toast({ title: "Work Order Saved", description: "Changes have been saved successfully." });
-        setIsEditing(false);
-
-    } catch (error) {
-        console.error("Error saving work order", error);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    if (workOrder) {
-      initializeEditState(workOrder);
-    }
-    setIsEditing(false);
+  const handleFormSaved = () => {
+      fetchData(); // Refetch all data to get the latest state
+      setIsEditing(false);
   }
 
   const handleSignatureSave = async (signatureDataUrl: string) => {
@@ -432,91 +323,39 @@ export default function WorkOrderDetailPage() {
             </div>
         </div>
         <div className="pb-24">
-            <WorkOrderDetails
-                key={workOrder.id}
-                workOrder={workOrder}
-                technicians={technicians}
-                workSites={workSites}
-                clients={clients}
-                trainingRecords={trainingRecords}
-                timeEntries={timeEntries}
-                isEditing={isEditing}
-                isTechnician={isTechnician}
-                onNoteAdded={handleNoteAdded}
-                onTimeAdded={handleTimeAdded}
-                onNotePhotoDelete={handleNotePhotoDelete}
-                onNoteDelete={handleNoteDelete}
-                onTimeEntryDelete={handleTimeEntryDelete}
-                isAddingNote={isAddingNote}
-                onDirectionsClick={handleDirectionsClick}
-                onSignatureSave={() => setIsSignatureDialogOpen(true)}
-                onTempUpdate={handleTempUpdate}
-                onWorkOrderUpdate={handleSubmit}
-                onCancelEdit={handleCancelEdit}
-                // Editable fields state and setters
-                description={description}
-                setDescription={setDescription}
-                status={status}
-                setStatus={setStatus}
-                assignedTechnicianId={assignedTechnicianId}
-                setAssignedTechnicianId={setAssignedTechnicianId}
-                workSiteId={workSiteId}
-                setWorkSiteId={setWorkSiteId}
-                clientId={clientId}
-                setClientId={setClientId}
-                createdDate={createdDate}
-                setCreatedDate={setCreatedDate}
-                poNumber={poNumber}
-                setPoNumber={setPoNumber}
-                contactInfo={contactInfo}
-                setContactInfo={setContactInfo}
-                serviceScheduleDate={serviceScheduleDate}
-                setServiceScheduleDate={setServiceScheduleDate}
-                quotedAmount={quotedAmount}
-                setQuotedAmount={setQuotedAmount}
-                timeAndMaterial={timeAndMaterial}
-                setTimeAndMaterial={setTimeAndMaterial}
-                permit={permit}
-                setPermit={setPermit}
-                permitCost={permitCost}
-                setPermitCost={setPermitCost}
-                permitFiled={permitFiled}
-                setPermitFiled={setPermitFiled}
-                coi={coi}
-                setCoi={setCoi}
-                coiRequested={coiRequested}
-                setCoiRequested={setCoiRequested}
-                certifiedPayroll={certifiedPayroll}
-                setCertifiedPayroll={setCertifiedPayroll}
-                certifiedPayrollRequested={certifiedPayrollRequested}
-                setCertifiedPayrollRequested={setCertifiedPayrollRequested}
-                intercoPO={intercoPO}
-                setIntercoPO={setIntercoPO}
-                customerPO={customerPO}
-                setCustomerPO={setCustomerPO}
-                estimator={estimator}
-                setEstimator={setEstimator}
-                checkInOutURL={checkInOutURL}
-                setCheckInOutURL={setCheckInOutURL}
-                tempOnArrival={tempOnArrival}
-                setTempOnArrival={setTempOnArrival}
-                tempOnLeaving={tempOnLeaving}
-                setTempOnLeaving={setTempOnLeaving}
-            />
+            {isEditing ? (
+                 <WorkOrderEditForm 
+                    workOrder={workOrder}
+                    technicians={technicians}
+                    workSites={workSites}
+                    clients={clients}
+                    onFormSaved={handleFormSaved}
+                    onCancel={() => setIsEditing(false)}
+                 />
+            ) : (
+                <WorkOrderDetails
+                    workOrder={workOrder}
+                    isTechnician={isTechnician}
+                    trainingRecords={trainingRecords}
+                    timeEntries={timeEntries}
+                    onNoteAdded={handleNoteAdded}
+                    onTimeAdded={handleTimeAdded}
+                    onNotePhotoDelete={handleNotePhotoDelete}
+                    onNoteDelete={handleNoteDelete}
+                    onTimeEntryDelete={handleTimeEntryDelete}
+                    isAddingNote={isAddingNote}
+                    onDirectionsClick={handleDirectionsClick}
+                    onSignatureSave={() => setIsSignatureDialogOpen(true)}
+                    onTempUpdate={handleTempUpdate}
+                    tempOnArrival={tempOnArrival}
+                    setTempOnArrival={setTempOnArrival}
+                    tempOnLeaving={tempOnLeaving}
+                    setTempOnLeaving={setTempOnLeaving}
+                />
+            )}
         </div>
       </div>
-      {isEditing && (
-         <div className="fixed bottom-0 left-0 w-full bg-background border-t shadow-lg">
-            <div className="container mx-auto py-3 px-4 flex justify-end gap-2">
-                <Button variant="outline" onClick={handleCancelEdit}>
-                  <Ban className="mr-2 h-4 w-4" /> Cancel
-                </Button>
-                <Button form="work-order-form" type="submit">
-                  <Save className="mr-2 h-4 w-4" /> Save Changes
-                </Button>
-            </div>
-         </div>
-      )}
+
        <MapProviderSelection 
             address={selectedAddress} 
             isOpen={!!selectedAddress} 
@@ -537,3 +376,5 @@ export default function WorkOrderDetailPage() {
     </MainLayout>
   );
 }
+
+    

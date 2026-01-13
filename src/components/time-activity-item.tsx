@@ -10,11 +10,10 @@ import { Badge } from './ui/badge';
 
 interface TimeActivityItemProps {
   timeEntry: TimeEntry & { technicianName?: string };
-  isEditing: boolean;
   onTimeEntryDelete: (timeEntryId: string) => void;
 }
 
-export function TimeActivityItem({ timeEntry, isEditing, onTimeEntryDelete }: TimeActivityItemProps) {
+export function TimeActivityItem({ timeEntry, onTimeEntryDelete }: TimeActivityItemProps) {
 
   return (
     <div className="flex items-start justify-between gap-4">
@@ -26,17 +25,17 @@ export function TimeActivityItem({ timeEntry, isEditing, onTimeEntryDelete }: Ti
             <p className="text-sm text-muted-foreground">Logged <span className="font-semibold">{timeEntry.hours.toFixed(2)} hours</span> of {timeEntry.timeType} time.</p>
         </div>
         
-        {isEditing && (
-            <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                onClick={() => onTimeEntryDelete(timeEntry.id)}
-            >
-                <Trash2 className="h-4 w-4" />
-                <span className="sr-only">Delete Time Entry</span>
-            </Button>
-        )}
+        <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+            onClick={() => onTimeEntryDelete(timeEntry.id)}
+        >
+            <Trash2 className="h-4 w-4" />
+            <span className="sr-only">Delete Time Entry</span>
+        </Button>
     </div>
   );
 }
+
+    
