@@ -59,21 +59,21 @@ export default function WorkOrderDetailPage() {
   
   const [createdDate, setCreatedDate] = useState<Date | undefined>();
   const [billTo, setBillTo] = useState<string>('');
-  const [poNumber, setPoNumber] = useState<string>('');
-  const [contactInfo, setContactInfo] = useState<string>('');
+  const [poNumber, setPoNumber] = useState('');
+  const [contactInfo, setContactInfo] = useState('');
   const [serviceScheduleDate, setServiceScheduleDate] = useState<Date | undefined>();
-  const [quotedAmount, setQuotedAmount] = useState<number | undefined>();
+  const [quotedAmount, setQuotedAmount] = useState('');
   const [timeAndMaterial, setTimeAndMaterial] = useState<boolean>(false);
   const [permit, setPermit] = useState<boolean>(false);
-  const [permitCost, setPermitCost] = useState<number | undefined>();
+  const [permitCost, setPermitCost] = useState('');
   const [permitFiled, setPermitFiled] = useState<Date | undefined>();
   const [coi, setCoi] = useState<boolean>(false);
   const [coiRequested, setCoiRequested] = useState<Date | undefined>();
   const [certifiedPayroll, setCertifiedPayroll] = useState<boolean>(false);
   const [certifiedPayrollRequested, setCertifiedPayrollRequested] = useState<Date | undefined>();
-  const [intercoPO, setIntercoPO] = useState<string>('');
-  const [customerPO, setCustomerPO] = useState<string>('');
-  const [estimator, setEstimator] = useState<string>('');
+  const [intercoPO, setIntercoPO] = useState('');
+  const [customerPO, setCustomerPO] = useState('');
+  const [estimator, setEstimator] = useState('');
   const [checkInOutURL, setCheckInOutURL] = useState('');
   
   // New temperature and signature fields
@@ -104,10 +104,10 @@ export default function WorkOrderDetailPage() {
     setPoNumber(wo.poNumber || '');
     setContactInfo(wo.contactInfo || '');
     setServiceScheduleDate(wo.serviceScheduleDate ? new Date(wo.serviceScheduleDate) : undefined);
-    setQuotedAmount(wo.quotedAmount);
+    setQuotedAmount(wo.quotedAmount?.toString() || '');
     setTimeAndMaterial(wo.timeAndMaterial || false);
     setPermit(wo.permit || false);
-    setPermitCost(wo.permitCost);
+    setPermitCost(wo.permitCost?.toString() || '');
     setPermitFiled(wo.permitFiled ? new Date(wo.permitFiled) : undefined);
     setCoi(wo.coi || false);
     setCoiRequested(wo.coiRequested ? new Date(wo.coiRequested) : undefined);
@@ -282,10 +282,10 @@ export default function WorkOrderDetailPage() {
         poNumber,
         contactInfo,
         serviceScheduleDate: serviceScheduleDate?.toISOString(),
-        quotedAmount,
+        quotedAmount: quotedAmount ? parseFloat(quotedAmount) : undefined,
         timeAndMaterial,
         permit,
-        permitCost,
+        permitCost: permitCost ? parseFloat(permitCost) : undefined,
         permitFiled: permitFiled?.toISOString(),
         coi,
         coiRequested: coiRequested?.toISOString(),
