@@ -257,7 +257,7 @@ export function WorkOrderDetails({
     <>
     <form id="work-order-form" onSubmit={onWorkOrderUpdate}>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className={isTechnician ? 'col-span-3' : 'lg:col-span-2 space-y-8'}>
+        <div className="lg:col-span-2 space-y-8">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-start">
@@ -420,165 +420,168 @@ export function WorkOrderDetails({
           </Card>
         </div>
 
-        {!isTechnician && (
         <div className="space-y-8">
-          <Card>
-            <CardHeader>
-                <div className="flex justify-between items-center">
-                    <CardTitle className="flex items-center gap-2">
-                        <Info className="h-5 w-5" />
-                        Details
-                    </CardTitle>
-                     {workOrder.workSite && !isEditing && (
-                        <Button variant="outline" size="icon" onClick={() => onDirectionsClick(workOrder.workSite!)}>
-                            <Map className="h-4 w-4" />
-                            <span className="sr-only">Get Directions</span>
-                        </Button>
-                    )}
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-                <DetailItem label="Date" value={workOrder.createdDate} isDate/>
-                <DetailItem label="Bill To">
-                    {isEditing ? (
-                       <Select value={clientId} onValueChange={setClientId}>
-                            <SelectTrigger className="w-full sm:w-[180px] h-8">
-                                <SelectValue placeholder="Select a client" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {clients.map(client => (
-                                    <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    ) : (
-                       <div className="sm:text-right">
-                         <p className="font-medium">{workOrder.client?.name || workOrder.billTo || 'N/A'}</p>
-                         {workOrder.client?.address && <p className="text-muted-foreground">{workOrder.client.address}</p>}
-                       </div>
-                    )}
-                </DetailItem>
-                <DetailItem label="PO #">
-                    {isEditing ? <Input className="h-8 sm:text-right" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} /> : <span className="font-medium">{workOrder.poNumber || 'N/A'}</span>}
-                </DetailItem>
-                <DetailItem label="Contact Info">
-                     {isEditing ? <Textarea className="sm:text-right" value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} /> : <span className="font-medium whitespace-pre-wrap sm:text-right">{workOrder.contactInfo || 'N/A'}</span>}
-                </DetailItem>
-                <Separator/>
-                <DetailItem label="Job Site">
-                    {isEditing ? (
-                        <Select value={workSiteId} onValueChange={setWorkSiteId}>
-                            <SelectTrigger className="w-full sm:w-[180px] h-8">
-                                <SelectValue placeholder="Select a work site" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {workSites.map(site => (
-                                    <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    ) : (
-                       <div className="sm:text-right">
-                         <p className="font-medium">{workOrder.workSite?.name || 'N/A'}</p>
-                         {workOrder.workSite?.address && <p className="text-muted-foreground">{workOrder.workSite.address}</p>}
-                       </div>
-                    )}
-                </DetailItem>
-                 <DetailItem label="Assigned To">
-                    {isEditing ? (
-                      <Select value={assignedTechnicianId || 'unassigned'} onValueChange={(val) => setAssignedTechnicianId(val === 'unassigned' ? undefined : val)}>
-                          <SelectTrigger className="w-full sm:w-[180px] h-8">
-                              <SelectValue placeholder="Select technician" />
-                          </SelectTrigger>
-                          <SelectContent>
-                              <SelectItem value="unassigned">Unassigned</SelectItem>
-                              {technicians.map(tech => (
-                                  <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>
-                              ))}
-                          </SelectContent>
-                      </Select>
-                    ) : (
-                        assignedTechnician ? (
-                          <div className="flex items-center justify-start sm:justify-end gap-2 font-medium">
-                            <span>{assignedTechnician.name}</span>
-                          </div>
-                        ) : (
-                          <span className="font-medium">Unassigned</span>
-                        )
-                    )}
-                </DetailItem>
-                 <Separator/>
-                 <DetailItem label="Service Schedule Date">
-                     {isEditing ? <DatePicker className="w-full" date={serviceScheduleDate} setDate={setServiceScheduleDate} /> : <span className="font-medium">{workOrder.serviceScheduleDate ? format(new Date(workOrder.serviceScheduleDate), 'MMM d, yyyy') : 'N/A'}</span>}
-                 </DetailItem>
-                <DetailItem label="Quoted Amount">
-                    {isEditing ? <Input className="h-8 sm:text-right" type="number" value={quotedAmount} onChange={(e) => setQuotedAmount(Number(e.target.value))} /> : <span className="font-medium">{workOrder.quotedAmount ? `$${workOrder.quotedAmount}` : 'N/A'}</span>}
-                </DetailItem>
-                <DetailItem label="Time & Material">
-                    {isEditing ? <Checkbox checked={timeAndMaterial} onCheckedChange={(c) => setTimeAndMaterial(Boolean(c))} /> : <span className="font-medium">{workOrder.timeAndMaterial ? 'Yes' : 'No'}</span>}
-                </DetailItem>
-                <Separator />
-                <DetailItem label="Permit">
-                    {isEditing ? <Checkbox checked={permit} onCheckedChange={(c) => setPermit(Boolean(c))} /> : <span className="font-medium">{workOrder.permit ? 'Yes' : 'No'}</span>}
-                </DetailItem>
-                 <DetailItem label="Permit Cost">
-                    {isEditing ? <Input className="h-8 sm:text-right" type="number" value={permitCost} onChange={(e) => setPermitCost(Number(e.target.value))} /> : <span className="font-medium">{workOrder.permitCost ? `$${workOrder.permitCost}` : 'N/A'}</span>}
-                 </DetailItem>
-                 <DetailItem label="Permit Filed">
-                    {isEditing ? <DatePicker className="w-full" date={permitFiled} setDate={setPermitFiled} /> : <span className="font-medium">{workOrder.permitFiled ? format(new Date(workOrder.permitFiled), 'MMM d, yyyy') : 'N/A'}</span>}
-                 </DetailItem>
-                 <Separator />
-                 <DetailItem label="COI">
-                    {isEditing ? <Checkbox checked={coi} onCheckedChange={(c) => setCoi(Boolean(c))} /> : <span className="font-medium">{workOrder.coi ? 'Yes' : 'No'}</span>}
-                </DetailItem>
-                 <DetailItem label="COI Requested">
-                    {isEditing ? <DatePicker className="w-full" date={coiRequested} setDate={setCoiRequested} /> : <span className="font-medium">{workOrder.coiRequested ? format(new Date(workOrder.coiRequested), 'MMM d, yyyy') : 'N/A'}</span>}
-                 </DetailItem>
-                 <Separator />
-                  <DetailItem label="Certified Payroll">
-                    {isEditing ? <Checkbox checked={certifiedPayroll} onCheckedChange={(c) => setCertifiedPayroll(Boolean(c))} /> : <span className="font-medium">{workOrder.certifiedPayroll ? 'Yes' : 'No'}</span>}
-                </DetailItem>
-                 <DetailItem label="Certified Payroll Requested">
-                    {isEditing ? <DatePicker className="w-full" date={certifiedPayrollRequested} setDate={setCertifiedPayrollRequested} /> : <span className="font-medium">{workOrder.certifiedPayrollRequested ? format(new Date(workOrder.certifiedPayrollRequested), 'MMM d, yyyy') : 'N/A'}</span>}
-                 </DetailItem>
-                 <Separator />
-                 <DetailItem label="Interco PO#">
-                    {isEditing ? <Input className="h-8 sm:text-right" value={intercoPO} onChange={(e) => setIntercoPO(e.target.value)} /> : <span className="font-medium">{workOrder.intercoPO || 'N/A'}</span>}
-                </DetailItem>
-                 <DetailItem label="Customer PO#">
-                    {isEditing ? <Input className="h-8 sm:text-right" value={customerPO} onChange={(e) => setCustomerPO(e.target.value)} /> : <span className="font-medium">{workOrder.customerPO || 'N/A'}</span>}
-                </DetailItem>
-                 <DetailItem label="Estimator/Requested By">
-                    {isEditing ? <Input className="h-8 sm:text-right" value={estimator} onChange={(e) => setEstimator(e.target.value)} /> : <span className="font-medium">{workOrder.estimator || 'N/A'}</span>}
-                </DetailItem>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Customer Sign-off</CardTitle>
-            </CardHeader>
-            <CardContent>
-                {workOrder.customerSignatureUrl ? (
-                    <div className="space-y-4">
-                        <div className="border bg-muted rounded-md p-4 flex justify-center">
-                             <Image src={workOrder.customerSignatureUrl} alt="Customer Signature" width={300} height={150} style={{ objectFit: 'contain' }} />
+            {!isTechnician && (
+            <>
+                <Card>
+                    <CardHeader>
+                        <div className="flex justify-between items-center">
+                            <CardTitle className="flex items-center gap-2">
+                                <Info className="h-5 w-5" />
+                                Details
+                            </CardTitle>
+                            {workOrder.workSite && !isEditing && (
+                                <Button variant="outline" size="icon" onClick={() => onDirectionsClick(workOrder.workSite!)}>
+                                    <Map className="h-4 w-4" />
+                                    <span className="sr-only">Get Directions</span>
+                                </Button>
+                            )}
                         </div>
-                        <p className="text-sm text-muted-foreground text-center">
-                            Signed on {workOrder.signatureDate ? format(new Date(workOrder.signatureDate), 'MMM d, yyyy') : 'N/A'}
-                        </p>
-                    </div>
-                ) : (
-                    <div className="text-center text-muted-foreground space-y-4 p-4 border-2 border-dashed rounded-md">
-                        <p>No signature has been captured yet.</p>
-                        {!isEditing && workOrder.status !== 'Completed' && (
-                             <Button type="button" onClick={onSignatureSave}>
-                                Capture Signature
-                            </Button>
+                    </CardHeader>
+                    <CardContent className="space-y-4 text-sm">
+                        <DetailItem label="Date" value={workOrder.createdDate} isDate/>
+                        <DetailItem label="Bill To">
+                            {isEditing ? (
+                            <Select value={clientId} onValueChange={setClientId}>
+                                    <SelectTrigger className="w-full sm:w-[180px] h-8">
+                                        <SelectValue placeholder="Select a client" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {clients.map(client => (
+                                            <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            ) : (
+                            <div className="sm:text-right">
+                                <p className="font-medium">{workOrder.client?.name || workOrder.billTo || 'N/A'}</p>
+                                {workOrder.client?.address && <p className="text-muted-foreground">{workOrder.client.address}</p>}
+                            </div>
+                            )}
+                        </DetailItem>
+                        <DetailItem label="PO #">
+                            {isEditing ? <Input className="h-8 sm:text-right" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} /> : <span className="font-medium">{workOrder.poNumber || 'N/A'}</span>}
+                        </DetailItem>
+                        <DetailItem label="Contact Info">
+                            {isEditing ? <Textarea className="sm:text-right" value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} /> : <span className="font-medium whitespace-pre-wrap sm:text-right">{workOrder.contactInfo || 'N/A'}</span>}
+                        </DetailItem>
+                        <Separator/>
+                        <DetailItem label="Job Site">
+                            {isEditing ? (
+                                <Select value={workSiteId} onValueChange={setWorkSiteId}>
+                                    <SelectTrigger className="w-full sm:w-[180px] h-8">
+                                        <SelectValue placeholder="Select a work site" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {workSites.map(site => (
+                                            <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            ) : (
+                            <div className="sm:text-right">
+                                <p className="font-medium">{workOrder.workSite?.name || 'N/A'}</p>
+                                {workOrder.workSite?.address && <p className="text-muted-foreground">{workOrder.workSite.address}</p>}
+                            </div>
+                            )}
+                        </DetailItem>
+                        <DetailItem label="Assigned To">
+                            {isEditing ? (
+                            <Select value={assignedTechnicianId || 'unassigned'} onValueChange={(val) => setAssignedTechnicianId(val === 'unassigned' ? undefined : val)}>
+                                <SelectTrigger className="w-full sm:w-[180px] h-8">
+                                    <SelectValue placeholder="Select technician" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                                    {technicians.map(tech => (
+                                        <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            ) : (
+                                assignedTechnician ? (
+                                <div className="flex items-center justify-start sm:justify-end gap-2 font-medium">
+                                    <span>{assignedTechnician.name}</span>
+                                </div>
+                                ) : (
+                                <span className="font-medium">Unassigned</span>
+                                )
+                            )}
+                        </DetailItem>
+                        <Separator/>
+                        <DetailItem label="Service Schedule Date">
+                            {isEditing ? <DatePicker className="w-full" date={serviceScheduleDate} setDate={setServiceScheduleDate} /> : <span className="font-medium">{workOrder.serviceScheduleDate ? format(new Date(workOrder.serviceScheduleDate), 'MMM d, yyyy') : 'N/A'}</span>}
+                        </DetailItem>
+                        <DetailItem label="Quoted Amount">
+                            {isEditing ? <Input className="h-8 sm:text-right" type="number" value={quotedAmount} onChange={(e) => setQuotedAmount(Number(e.target.value))} /> : <span className="font-medium">{workOrder.quotedAmount ? `$${workOrder.quotedAmount}` : 'N/A'}</span>}
+                        </DetailItem>
+                        <DetailItem label="Time & Material">
+                            {isEditing ? <Checkbox checked={timeAndMaterial} onCheckedChange={(c) => setTimeAndMaterial(Boolean(c))} /> : <span className="font-medium">{workOrder.timeAndMaterial ? 'Yes' : 'No'}</span>}
+                        </DetailItem>
+                        <Separator />
+                        <DetailItem label="Permit">
+                            {isEditing ? <Checkbox checked={permit} onCheckedChange={(c) => setPermit(Boolean(c))} /> : <span className="font-medium">{workOrder.permit ? 'Yes' : 'No'}</span>}
+                        </DetailItem>
+                        <DetailItem label="Permit Cost">
+                            {isEditing ? <Input className="h-8 sm:text-right" type="number" value={permitCost} onChange={(e) => setPermitCost(Number(e.target.value))} /> : <span className="font-medium">{workOrder.permitCost ? `$${workOrder.permitCost}` : 'N/A'}</span>}
+                        </DetailItem>
+                        <DetailItem label="Permit Filed">
+                            {isEditing ? <DatePicker className="w-full" date={permitFiled} setDate={setPermitFiled} /> : <span className="font-medium">{workOrder.permitFiled ? format(new Date(workOrder.permitFiled), 'MMM d, yyyy') : 'N/A'}</span>}
+                        </DetailItem>
+                        <Separator />
+                        <DetailItem label="COI">
+                            {isEditing ? <Checkbox checked={coi} onCheckedChange={(c) => setCoi(Boolean(c))} /> : <span className="font-medium">{workOrder.coi ? 'Yes' : 'No'}</span>}
+                        </DetailItem>
+                        <DetailItem label="COI Requested">
+                            {isEditing ? <DatePicker className="w-full" date={coiRequested} setDate={setCoiRequested} /> : <span className="font-medium">{workOrder.coiRequested ? format(new Date(workOrder.coiRequested), 'MMM d, yyyy') : 'N/A'}</span>}
+                        </DetailItem>
+                        <Separator />
+                        <DetailItem label="Certified Payroll">
+                            {isEditing ? <Checkbox checked={certifiedPayroll} onCheckedChange={(c) => setCertifiedPayroll(Boolean(c))} /> : <span className="font-medium">{workOrder.certifiedPayroll ? 'Yes' : 'No'}</span>}
+                        </DetailItem>
+                        <DetailItem label="Certified Payroll Requested">
+                            {isEditing ? <DatePicker className="w-full" date={certifiedPayrollRequested} setDate={setCertifiedPayrollRequested} /> : <span className="font-medium">{workOrder.certifiedPayrollRequested ? format(new Date(workOrder.certifiedPayrollRequested), 'MMM d, yyyy') : 'N/A'}</span>}
+                        </DetailItem>
+                        <Separator />
+                        <DetailItem label="Interco PO#">
+                            {isEditing ? <Input className="h-8 sm:text-right" value={intercoPO} onChange={(e) => setIntercoPO(e.target.value)} /> : <span className="font-medium">{workOrder.intercoPO || 'N/A'}</span>}
+                        </DetailItem>
+                        <DetailItem label="Customer PO#">
+                            {isEditing ? <Input className="h-8 sm:text-right" value={customerPO} onChange={(e) => setCustomerPO(e.target.value)} /> : <span className="font-medium">{workOrder.customerPO || 'N/A'}</span>}
+                        </DetailItem>
+                        <DetailItem label="Estimator/Requested By">
+                            {isEditing ? <Input className="h-8 sm:text-right" value={estimator} onChange={(e) => setEstimator(e.target.value)} /> : <span className="font-medium">{workOrder.estimator || 'N/A'}</span>}
+                        </DetailItem>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                    <CardTitle>Customer Sign-off</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {workOrder.customerSignatureUrl ? (
+                            <div className="space-y-4">
+                                <div className="border bg-muted rounded-md p-4 flex justify-center">
+                                    <Image src={workOrder.customerSignatureUrl} alt="Customer Signature" width={300} height={150} style={{ objectFit: 'contain' }} />
+                                </div>
+                                <p className="text-sm text-muted-foreground text-center">
+                                    Signed on {workOrder.signatureDate ? format(new Date(workOrder.signatureDate), 'MMM d, yyyy') : 'N/A'}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="text-center text-muted-foreground space-y-4 p-4 border-2 border-dashed rounded-md">
+                                <p>No signature has been captured yet.</p>
+                                {!isEditing && workOrder.status !== 'Completed' && (
+                                    <Button type="button" onClick={onSignatureSave}>
+                                        Capture Signature
+                                    </Button>
+                                )}
+                            </div>
                         )}
-                    </div>
-                )}
-            </CardContent>
-          </Card>
+                    </CardContent>
+                </Card>
+            </>
+            )}
           
           <Card>
             <CardHeader>
@@ -610,9 +613,7 @@ export function WorkOrderDetails({
               )}
             </CardContent>
           </Card>
-
         </div>
-        )}
       </div>
     </form>
 
@@ -655,3 +656,5 @@ export function WorkOrderDetails({
     </>
   );
 }
+
+    
