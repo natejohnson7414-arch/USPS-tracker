@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, FormEvent } from 'react';
-import { getTechnicians, getWorkOrderById, getWorkSites, getClients, getTrainingRecordsByWorkOrderId, getTimeEntriesByWorkOrder, getTechnicianById } from '@/lib/data';
+import { getTechnicians, getWorkOrderById, getWorkSites, getClients, getTrainingRecordsByWorkOrderId, getTimeEntriesByWorkOrder, getTechnicianById, deleteTrainingRecord } from '@/lib/data';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
@@ -282,6 +282,22 @@ export default function WorkOrderDetailPage() {
         setTimeEntries(originalTimeEntries);
       });
   };
+  
+  const handleTrainingRecordDelete = (recordId: string) => {
+    if (!db) return;
+    // Optimistic UI update
+    setTrainingRecords(prev => prev.filter(r => r.id !== recordId));
+    
+    deleteTrainingRecord(db, recordId)
+        .then(() => {
+            toast({ title: 'Training Record Deleted' });
+        })
+        .catch(error => {
+            console.error("Error deleting training record:", error);
+            toast({ title: "Deletion Failed", variant: 'destructive' });
+            fetchData(); // Re-fetch to revert optimistic update
+        });
+  }
 
   if (isLoading || !workOrder) {
     return (
@@ -337,6 +353,7 @@ export default function WorkOrderDetailPage() {
                     workOrder={workOrder}
                     isTechnician={isTechnician}
                     trainingRecords={trainingRecords}
+                    onTrainingRecordDelete={handleTrainingRecordDelete}
                     timeEntries={timeEntries}
                     onNoteAdded={handleNoteAdded}
                     onTimeAdded={handleTimeAdded}

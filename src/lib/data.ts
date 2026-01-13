@@ -2,10 +2,10 @@
 
 'use client';
 import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client, TrainingRecord, HvacStartupReport, TimeEntry } from '@/lib/types';
-import { collection, getDoc, doc, query, where } from 'firebase/firestore';
+import { collection, getDoc, doc, query, where, deleteDoc } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 import { sampleRoles, sampleTechnicians, sampleWorkOrders, sampleWorkSites, sampleClients } from './sample-data';
-import { setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
+import { setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 
 export const seedDatabase = async (db: any) => {
     // Check if roles exist, which is a good indicator of a seeded DB
@@ -240,6 +240,13 @@ export const getTrainingRecordById = async (db: any, id: string): Promise<Traini
     return undefined;
 }
 
+export const deleteTrainingRecord = async (db: any, id: string): Promise<void> => {
+    if (!id) return;
+    const trainingRecordRef = doc(db, 'training_records', id);
+    await deleteDoc(trainingRecordRef);
+};
+
+
 export const getHvacStartupReportById = async (db: any, id: string): Promise<HvacStartupReport | undefined> => {
     if (!id) return undefined;
     const reportRef = doc(db, 'hvac_startup_reports', id);
@@ -294,6 +301,7 @@ export const getTimeEntriesByWorkOrder = async (db: any, workOrderId: string): P
     return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 };
     
+
 
 
 

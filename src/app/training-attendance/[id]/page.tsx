@@ -8,22 +8,28 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { DatePicker } from '@/components/ui/date-picker';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import type { TrainingRecord, Attendee, WorkOrder } from '@/lib/types';
-import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
-import { notFound, useParams } from 'next/navigation';
+import { useFirestore, useUser, deleteDocumentNonBlocking } from '@/firebase';
+import type { TrainingRecord, WorkOrder } from '@/lib/types';
+import { Loader2, Trash2, Pencil, ArrowLeft } from 'lucide-react';
+import { notFound, useParams, useRouter } from 'next/navigation';
 import { getTrainingRecordById, getWorkOrderById } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
+import { TrainingRecordForm } from '@/components/training-record-form';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from '@/hooks/use-toast';
+import { doc } from 'firebase/firestore';
+
 
 const checklistItems = {
   item1: 'Have trainees sign the owners training sign-in sheet.',
@@ -61,17 +67,20 @@ export default function ViewTrainingRecordPage() {
     const db = useFirestore();
     const { user } = useUser();
     const params = useParams();
+    const router = useRouter();
+    const { toast } = useToast();
     const id = params.id as string;
 
     const [record, setRecord] = useState<TrainingRecord | null>(null);
     const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-    useEffect(() => {
+    const fetchRecord = async () => {
         if (!db || !id || !user) return;
-        
-        const fetchRecord = async () => {
-            setIsLoading(true);
+        setIsLoading(true);
+        try {
             const fetchedRecord = await getTrainingRecordById(db, id);
             if (fetchedRecord) {
                 setRecord(fetchedRecord);
@@ -82,11 +91,38 @@ export default function ViewTrainingRecordPage() {
             } else {
                 notFound();
             }
+        } catch (error) {
+            console.error("Failed to fetch record:", error);
+            notFound();
+        } finally {
             setIsLoading(false);
         }
-        fetchRecord();
+    }
 
+    useEffect(() => {
+        fetchRecord();
     }, [db, id, user])
+    
+    const handleFormSaved = () => {
+        fetchRecord();
+        setIsEditing(false);
+    }
+    
+    const handleDelete = async () => {
+        if (!db || !record) return;
+
+        try {
+            const recordRef = doc(db, 'training_records', record.id);
+            await deleteDocumentNonBlocking(recordRef);
+            toast({ title: "Training Record Deleted" });
+            router.push('/training-attendance');
+        } catch (error) {
+            console.error("Error deleting record:", error);
+            toast({ title: "Delete failed", variant: "destructive" });
+        } finally {
+            setIsDeleteDialogOpen(false);
+        }
+    };
 
 
     const ChecklistItem = ({ id, label, level = 0, subItem = false }: {id: string, label: string, level?: number, subItem?: boolean}) => (
@@ -123,152 +159,193 @@ export default function ViewTrainingRecordPage() {
     <MainLayout>
       <div className="bg-white text-black min-h-screen">
         <div className="container mx-auto p-4 sm:p-8" style={{ maxWidth: '8.5in' }}>
-          <Card className="shadow-lg">
-            <CardContent className="p-6 sm:p-8">
-              <header className="flex flex-col sm:flex-row justify-between items-start mb-8 gap-4">
-                <div className="relative h-24 w-64">
-                  <Image src="https://www.crawford-company.com/hubfs/new-art-o-lite-logo-1.png" alt="Crawford Art-O-Lite Company Logo" fill style={{objectFit:"contain"}} />
-                </div>
-                <div className="text-right text-xs sm:text-sm">
-                  <p className="font-bold">Heating / Air Conditioning / Plumbing / Piping / Electrical</p>
-                  <p>1306 Mill Street Rock Island, Illinois 61265</p>
-                  <p>Phone: (309) 788-4573 Fax: (309) 788-4691</p>
-                  <p>www.Crawford-Company.Com</p>
-                </div>
-              </header>
-
-              <main>
-                <h1 className="text-xl sm:text-2xl font-bold text-center border-b-2 border-black pb-2 mb-6">
-                  Training Attendance Record
-                </h1>
-
-                <div className="space-y-4">
-                   <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
-                    <label className="font-semibold">Work Order:</label>
-                     <Input readOnly value={workOrder ? `${workOrder.id} - ${workOrder.jobName}` : 'N/A'} />
-                  </div>
-                  <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
-                    <label className="font-semibold">Training Course:</label>
-                    <Input readOnly value={record.trainingCourse} />
-                  </div>
-                  <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
-                    <label className="font-semibold">Trainer:</label>
-                    <Input readOnly value={record.trainer} />
-                  </div>
-                  <div className="grid sm:grid-cols-[150px_1fr] items-start gap-2">
-                    <label className="font-semibold">Description of Course (Include A List Of Belts & Filters):</label>
-                    <Textarea rows={4} readOnly value={record.description} />
-                  </div>
-                  
-                  <Separator className="my-6" />
-
-                  <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
-                    <label className="font-semibold">BAS User Name:</label>
-                    <Input readOnly value={record.basUserName} />
-                  </div>
-                   <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
-                    <label className="font-semibold">BAS Password:</label>
-                    <Input readOnly type="password" value={record.basPassword || ''} />
-                  </div>
-                  <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
-                    <label className="font-semibold">Date:</label>
-                     <Input readOnly value={record.date ? new Date(record.date).toLocaleDateString() : ''} />
-                  </div>
-                   <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
-                    <label className="font-semibold">Trainer Signature:</label>
-                     <div className="border rounded-md p-2 h-20 flex items-center justify-center">
-                      {record.trainerSignatureUrl ? (
-                        <Image src={record.trainerSignatureUrl} alt="Trainer Signature" width={150} height={50} style={{ objectFit: 'contain' }} />
-                      ) : (
-                        <span className="text-muted-foreground text-sm">Not Signed</span>
-                      )}
+            <div className="mb-6 flex justify-between items-center gap-4">
+                <Button variant="outline" asChild>
+                    <a href={record.workOrderId ? `/work-orders/${record.workOrderId}` : '/training-attendance'} className="flex items-center gap-2">
+                        <ArrowLeft className="h-4 w-4" />
+                        Back
+                    </a>
+                </Button>
+                {!isEditing && (
+                    <div className="flex items-center gap-2">
+                         <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </Button>
+                        <Button variant="outline" onClick={() => setIsEditing(true)}>
+                            <Pencil className="mr-2 h-4 w-4" /> Edit
+                        </Button>
                     </div>
-                  </div>
-                </div>
+                )}
+            </div>
 
-                <div className="mt-8">
-                  <div className="grid grid-cols-2 border-2 border-black">
-                    <div className="p-2 font-bold text-center border-b-2 border-r-2 border-black">Attendees Name</div>
-                    <div className="p-2 font-bold text-center border-b-2 border-black">Signature</div>
-                    
-                    {record.attendees.map((attendee) => (
-                      <React.Fragment key={attendee.id}>
-                        <div className="border-r-2 border-black flex items-center">
-                          <Input 
-                            className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0" 
-                            readOnly
-                            value={attendee.name}
-                          />
+            {isEditing ? (
+                 <TrainingRecordForm 
+                    record={record}
+                    onFormSaved={handleFormSaved}
+                    onCancel={() => setIsEditing(false)}
+                 />
+            ) : (
+                <Card className="shadow-lg">
+                    <CardContent className="p-6 sm:p-8">
+                    <header className="flex flex-col sm:flex-row justify-between items-start mb-8 gap-4">
+                        <div className="relative h-24 w-64">
+                        <Image src="https://www.crawford-company.com/hubfs/new-art-o-lite-logo-1.png" alt="Crawford Art-O-Lite Company Logo" fill style={{objectFit:"contain"}} />
                         </div>
-                        <div 
-                          className="p-2 h-20 flex items-center justify-center"
-                        >
-                           {attendee.signatureUrl ? (
-                                <Image src={attendee.signatureUrl} alt={`Attendee ${attendee.name} Signature`} width={150} height={50} style={{ objectFit: 'contain' }} />
+                        <div className="text-right text-xs sm:text-sm">
+                        <p className="font-bold">Heating / Air Conditioning / Plumbing / Piping / Electrical</p>
+                        <p>1306 Mill Street Rock Island, Illinois 61265</p>
+                        <p>Phone: (309) 788-4573 Fax: (309) 788-4691</p>
+                        <p>www.Crawford-Company.Com</p>
+                        </div>
+                    </header>
+
+                    <main>
+                        <h1 className="text-xl sm:text-2xl font-bold text-center border-b-2 border-black pb-2 mb-6">
+                        Training Attendance Record
+                        </h1>
+
+                        <div className="space-y-4">
+                        <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
+                            <label className="font-semibold">Work Order:</label>
+                            <Input readOnly value={workOrder ? `${workOrder.id} - ${workOrder.jobName}` : 'N/A'} />
+                        </div>
+                        <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
+                            <label className="font-semibold">Training Course:</label>
+                            <Input readOnly value={record.trainingCourse} />
+                        </div>
+                        <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
+                            <label className="font-semibold">Trainer:</label>
+                            <Input readOnly value={record.trainer} />
+                        </div>
+                        <div className="grid sm:grid-cols-[150px_1fr] items-start gap-2">
+                            <label className="font-semibold">Description of Course (Include A List Of Belts & Filters):</label>
+                            <Textarea rows={4} readOnly value={record.description} />
+                        </div>
+                        
+                        <Separator className="my-6" />
+
+                        <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
+                            <label className="font-semibold">BAS User Name:</label>
+                            <Input readOnly value={record.basUserName} />
+                        </div>
+                        <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
+                            <label className="font-semibold">BAS Password:</label>
+                            <Input readOnly type="password" value={record.basPassword || ''} />
+                        </div>
+                        <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
+                            <label className="font-semibold">Date:</label>
+                            <Input readOnly value={record.date ? new Date(record.date).toLocaleDateString() : ''} />
+                        </div>
+                        <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
+                            <label className="font-semibold">Trainer Signature:</label>
+                            <div className="border rounded-md p-2 h-20 flex items-center justify-center">
+                            {record.trainerSignatureUrl ? (
+                                <Image src={record.trainerSignatureUrl} alt="Trainer Signature" width={150} height={50} style={{ objectFit: 'contain' }} />
                             ) : (
                                 <span className="text-muted-foreground text-sm">Not Signed</span>
                             )}
+                            </div>
                         </div>
-                      </React.Fragment>
-                    ))}
-                     {record.attendees.length === 0 && (
-                        <>
-                         <div className="border-r-2 border-black p-2 text-center text-muted-foreground">No attendees</div>
-                         <div className="p-2"></div>
-                        </>
-                    )}
-                  </div>
-                </div>
+                        </div>
 
-                <Separator className="my-8" />
-                
-                <div className="space-y-4">
-                    <h2 className="text-xl font-bold text-center">Owners Training Check List</h2>
-                    <ChecklistItem id="item1" label={checklistItems.item1} />
-                    <ChecklistItem id="item2" label={checklistItems.item2} />
-                    
-                    <ChecklistItem id="item3" label={checklistItems.item3} />
-                    <ChecklistItem id="item3i" label={`i. ${checklistItems.item3i}`} level={1} subItem={true} />
-                    <ChecklistItem id="item3ii" label={`ii. ${checklistItems.item3ii}`} level={1} subItem={true} />
-                    <ChecklistItem id="item3iii" label={`iii. ${checklistItems.item3iii}`} level={1} subItem={true} />
-                    <ChecklistItem id="item3iv" label={`iv. ${checklistItems.item3iv}`} level={1} subItem={true} />
-                    <ChecklistItem id="item3v" label={`v. ${checklistItems.item3v}`} level={1} subItem={true} />
+                        <div className="mt-8">
+                        <div className="grid grid-cols-2 border-2 border-black">
+                            <div className="p-2 font-bold text-center border-b-2 border-r-2 border-black">Attendees Name</div>
+                            <div className="p-2 font-bold text-center border-b-2 border-black">Signature</div>
+                            
+                            {record.attendees.map((attendee) => (
+                            <React.Fragment key={attendee.id}>
+                                <div className="border-r-2 border-black flex items-center">
+                                <Input 
+                                    className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0" 
+                                    readOnly
+                                    value={attendee.name}
+                                />
+                                </div>
+                                <div 
+                                className="p-2 h-20 flex items-center justify-center"
+                                >
+                                {attendee.signatureUrl ? (
+                                        <Image src={attendee.signatureUrl} alt={`Attendee ${attendee.name} Signature`} width={150} height={50} style={{ objectFit: 'contain' }} />
+                                    ) : (
+                                        <span className="text-muted-foreground text-sm">Not Signed</span>
+                                    )}
+                                </div>
+                            </React.Fragment>
+                            ))}
+                            {record.attendees.length === 0 && (
+                                <>
+                                <div className="border-r-2 border-black p-2 text-center text-muted-foreground">No attendees</div>
+                                <div className="p-2"></div>
+                                </>
+                            )}
+                        </div>
+                        </div>
 
-                    <ChecklistItem id="item4" label={checklistItems.item4} />
-                    <div style={{ marginLeft: `1.5rem` }} className="space-y-4">
-                        <ChecklistItem id="item4a" label={`a. ${checklistItems.item4a}`} />
-                         <ChecklistItem id="item4ai" label={`i. ${checklistItems.item4ai}`} level={1} subItem={true} />
-                         <ChecklistItem id="item4aii" label={`ii. ${checklistItems.item4aii}`} level={1} subItem={true} />
-
-                        <ChecklistItem id="item4b" label={`b. ${checklistItems.item4b}`} />
-                        <ChecklistItem id="item4bi" label={`i. ${checklistItems.item4bi}`} level={1} subItem={true} />
-                        <ChecklistItem id="item4bii" label={`ii. ${checklistItems.item4bii}`} level={1} subItem={true} />
+                        <Separator className="my-8" />
                         
-                        <ChecklistItem id="item4c" label={`c. ${checklistItems.item4c}`} />
-                        <ChecklistItem id="item4ci" label={`i. ${checklistItems.item4ci}`} level={1} subItem={true} />
-                        <ChecklistItem id="item4cii" label={`ii. ${checklistItems.item4cii}`} level={1} subItem={true} />
+                        <div className="space-y-4">
+                            <h2 className="text-xl font-bold text-center">Owners Training Check List</h2>
+                            <ChecklistItem id="item1" label={checklistItems.item1} />
+                            <ChecklistItem id="item2" label={checklistItems.item2} />
+                            
+                            <ChecklistItem id="item3" label={checklistItems.item3} />
+                            <ChecklistItem id="item3i" label={`i. ${checklistItems.item3i}`} level={1} subItem={true} />
+                            <ChecklistItem id="item3ii" label={`ii. ${checklistItems.item3ii}`} level={1} subItem={true} />
+                            <ChecklistItem id="item3iii" label={`iii. ${checklistItems.item3iii}`} level={1} subItem={true} />
+                            <ChecklistItem id="item3iv" label={`iv. ${checklistItems.item3iv}`} level={1} subItem={true} />
+                            <ChecklistItem id="item3v" label={`v. ${checklistItems.item3v}`} level={1} subItem={true} />
 
-                        <ChecklistItem id="item4d" label={`d. ${checklistItems.item4d}`} />
-                        <ChecklistItem id="item4di" label={`i. ${checklistItems.item4di}`} level={1} subItem={true} />
-                        <ChecklistItem id="item4dii" label={`ii. ${checklistItems.item4dii}`} level={1} subItem={true} />
-                        
-                        <ChecklistItem id="item4e" label={`e. ${checklistItems.item4e}`} />
-                        <ChecklistItem id="item4ei" label={`i. ${checklistItems.item4ei}`} level={1} subItem={true} />
+                            <ChecklistItem id="item4" label={checklistItems.item4} />
+                            <div style={{ marginLeft: `1.5rem` }} className="space-y-4">
+                                <ChecklistItem id="item4a" label={`a. ${checklistItems.item4a}`} />
+                                <ChecklistItem id="item4ai" label={`i. ${checklistItems.item4ai}`} level={1} subItem={true} />
+                                <ChecklistItem id="item4aii" label={`ii. ${checklistItems.item4aii}`} level={1} subItem={true} />
 
-                        <ChecklistItem id="item4f" label={`f. ${checklistItems.item4f}`} />
-                        <ChecklistItem id="item4g" label={`g. ${checklistItems.item4g}`} />
-                         <ChecklistItem id="item4gi" label={`i. ${checklistItems.item4gi}`} level={1} subItem={true} />
+                                <ChecklistItem id="item4b" label={`b. ${checklistItems.item4b}`} />
+                                <ChecklistItem id="item4bi" label={`i. ${checklistItems.item4bi}`} level={1} subItem={true} />
+                                <ChecklistItem id="item4bii" label={`ii. ${checklistItems.item4bii}`} level={1} subItem={true} />
+                                
+                                <ChecklistItem id="item4c" label={`c. ${checklistItems.item4c}`} />
+                                <ChecklistItem id="item4ci" label={`i. ${checklistItems.item4ci}`} level={1} subItem={true} />
+                                <ChecklistItem id="item4cii" label={`ii. ${checklistItems.item4cii}`} level={1} subItem={true} />
 
-                        <ChecklistItem id="item4h" label={`h. ${checklistItems.item4h}`} />
-                        <ChecklistItem id="item4i" label={`i. ${checklistItems.item4i}`} />
-                    </div>
-                     <ChecklistItem id="item5" label={checklistItems.item5} />
-                </div>
-              </main>
-            </CardContent>
-          </Card>
+                                <ChecklistItem id="item4d" label={`d. ${checklistItems.item4d}`} />
+                                <ChecklistItem id="item4di" label={`i. ${checklistItems.item4di}`} level={1} subItem={true} />
+                                <ChecklistItem id="item4dii" label={`ii. ${checklistItems.item4dii}`} level={1} subItem={true} />
+                                
+                                <ChecklistItem id="item4e" label={`e. ${checklistItems.item4e}`} />
+                                <ChecklistItem id="item4ei" label={`i. ${checklistItems.item4ei}`} level={1} subItem={true} />
+
+                                <ChecklistItem id="item4f" label={`f. ${checklistItems.item4f}`} />
+                                <ChecklistItem id="item4g" label={`g. ${checklistItems.item4g}`} />
+                                <ChecklistItem id="item4gi" label={`i. ${checklistItems.item4gi}`} level={1} subItem={true} />
+
+                                <ChecklistItem id="item4h" label={`h. ${checklistItems.item4h}`} />
+                                <ChecklistItem id="item4i" label={`i. ${checklistItems.item4i}`} />
+                            </div>
+                            <ChecklistItem id="item5" label={checklistItems.item5} />
+                        </div>
+                    </main>
+                    </CardContent>
+                </Card>
+            )}
         </div>
       </div>
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this training record.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }

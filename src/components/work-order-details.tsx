@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2 } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser } from '@/firebase';
@@ -27,6 +27,7 @@ interface WorkOrderDetailsProps {
   workOrder: WorkOrder;
   isTechnician: boolean;
   trainingRecords: TrainingRecord[];
+  onTrainingRecordDelete: (recordId: string) => void;
   timeEntries: TimeEntry[];
   onNoteAdded: (note: Omit<WorkOrderNote, 'id'> & { photoFiles: File[] }) => void;
   onTimeAdded: (timeEntry: TimeEntry) => void;
@@ -47,6 +48,7 @@ export function WorkOrderDetails({
   workOrder,
   isTechnician,
   trainingRecords,
+  onTrainingRecordDelete,
   timeEntries,
   onNoteAdded,
   onTimeAdded,
@@ -71,6 +73,7 @@ export function WorkOrderDetails({
   const [isClient, setIsClient] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
   const [timeEntryToDelete, setTimeEntryToDelete] = useState<string | null>(null);
+  const [trainingRecordToDelete, setTrainingRecordToDelete] = useState<string | null>(null);
   const [isAddTimeOpen, setIsAddTimeOpen] = useState(false);
 
   // Combine and sort notes and time entries
@@ -139,6 +142,13 @@ export function WorkOrderDetails({
       if (timeEntryToDelete) {
           onTimeEntryDelete(timeEntryToDelete);
           setTimeEntryToDelete(null);
+      }
+  };
+    
+  const confirmDeleteTrainingRecord = () => {
+      if (trainingRecordToDelete) {
+          onTrainingRecordDelete(trainingRecordToDelete);
+          setTrainingRecordToDelete(null);
       }
   };
     
@@ -453,8 +463,8 @@ export function WorkOrderDetails({
             {trainingRecords.length > 0 ? (
               <ul className="space-y-2">
                 {trainingRecords.map(record => (
-                  <li key={record.id} className="flex items-center justify-between p-2 rounded-md border">
-                      <div>
+                  <li key={record.id} className="flex items-center justify-between p-2 rounded-md border gap-2">
+                      <div className='flex-1'>
                           <p className="font-medium">{record.trainingCourse}</p>
                           <p className="text-sm text-muted-foreground">
                               {record.date ? format(new Date(record.date), 'MMM d, yyyy') : 'No date'}
@@ -462,6 +472,9 @@ export function WorkOrderDetails({
                       </div>
                       <Button asChild variant="outline" size="sm">
                           <Link href={`/training-attendance/${record.id}`} target="_blank">View</Link>
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setTrainingRecordToDelete(record.id)}>
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                   </li>
                 ))}
@@ -503,6 +516,22 @@ export function WorkOrderDetails({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      <AlertDialog open={!!trainingRecordToDelete} onOpenChange={(open) => !open && setTrainingRecordToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this training record.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteTrainingRecord}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
 
       <AddTimeDialog 
         isOpen={isAddTimeOpen}
