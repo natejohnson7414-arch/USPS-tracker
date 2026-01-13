@@ -171,6 +171,30 @@ export function WorkOrderDetails({
               </div>
               <StatusBadge status={workOrder.status} />
             </div>
+             {isTechnician && workOrder.workSite && (
+                <div className="flex justify-between items-center pt-4">
+                    <div>
+                        <p className="font-medium">{workOrder.workSite?.name || 'N/A'}</p>
+                        <p className="text-sm text-muted-foreground">{workOrder.workSite.address}</p>
+                    </div>
+                     <div className="flex items-center gap-2">
+                        {workOrder.checkInOutURL && (
+                            <Button asChild variant="outline" size="icon">
+                                <a href={getLinkUrl(workOrder.checkInOutURL)} target="_blank" rel="noopener noreferrer">
+                                    <LinkIcon className="h-4 w-4" />
+                                    <span className="sr-only">Check-in</span>
+                                </a>
+                            </Button>
+                        )}
+                        {workOrder.workSite && (
+                          <Button variant="outline" size="icon" onClick={() => onDirectionsClick(workOrder.workSite!)}>
+                              <Map className="h-4 w-4" />
+                              <span className="sr-only">Get Directions</span>
+                          </Button>
+                        )}
+                       </div>
+                </div>
+            )}
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground mt-1">{workOrder.description}</p>
@@ -309,7 +333,7 @@ export function WorkOrderDetails({
                       <CardTitle>Details</CardTitle>
                        <div className="flex items-center gap-2">
                         {workOrder.checkInOutURL && (
-                            <Button asChild variant="outline" size="icon">
+                             <Button asChild variant="outline" size="icon">
                                 <a href={getLinkUrl(workOrder.checkInOutURL)} target="_blank" rel="noopener noreferrer">
                                     <LinkIcon className="h-4 w-4" />
                                     <span className="sr-only">Check-in</span>
