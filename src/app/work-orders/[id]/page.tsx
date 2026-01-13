@@ -501,7 +501,7 @@ export default function WorkOrderDetailPage() {
                 onNoteDelete={handleNoteDelete}
                 onTimeEntryDelete={handleTimeEntryDelete}
                 isAddingNote={isAddingNote}
-                onDirectionsClick={onDirectionsClick}
+                onDirectionsClick={handleDirectionsClick}
                 onSignatureSave={() => setIsSignatureDialogOpen(true)}
                 onTempUpdate={handleTempUpdate}
                 editableFields={{
