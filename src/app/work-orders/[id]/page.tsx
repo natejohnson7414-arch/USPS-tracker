@@ -433,6 +433,7 @@ export default function WorkOrderDetailPage() {
         </div>
         <div className="pb-24">
             <WorkOrderDetails
+                key={workOrder.id}
                 workOrder={workOrder}
                 technicians={technicians}
                 workSites={workSites}
