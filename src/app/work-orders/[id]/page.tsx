@@ -22,6 +22,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { SignaturePad } from '@/components/signature-pad';
 import { useTechnician } from '@/hooks/use-technician';
 
 export default function WorkOrderDetailPage() {
@@ -45,8 +46,7 @@ export default function WorkOrderDetailPage() {
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
-  const [isDataInitialized, setIsDataInitialized] = useState(false);
-
+  
   // Form State
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<WorkOrder['status']>('Open');
@@ -105,7 +105,6 @@ export default function WorkOrderDetailPage() {
     setTempOnLeaving(wo.tempOnLeaving || '');
   };
 
-  // Effect to fetch initial component data
   useEffect(() => {
     const fetchData = async () => {
       if (!db || !user) return;
@@ -135,10 +134,7 @@ export default function WorkOrderDetailPage() {
         
         if (fetchedWorkOrder) {
             setWorkOrder(fetchedWorkOrder);
-            if (!isDataInitialized) {
-              initializeEditState(fetchedWorkOrder);
-              setIsDataInitialized(true);
-            }
+            initializeEditState(fetchedWorkOrder);
         } else {
             setWorkOrder(null);
             notFound();
@@ -153,7 +149,7 @@ export default function WorkOrderDetailPage() {
       }
     };
     fetchData();
-  }, [db, id, user, isDataInitialized]);
+  }, [db, id, user]);
 
   const handleDirectionsClick = (workSite: WorkSite) => {
     if (!workSite.address) return;
@@ -178,7 +174,7 @@ export default function WorkOrderDetailPage() {
             photoUrls: photoUrls,
         };
 
-        const docRef = await addDoc(notesColRef, newNoteData);
+        const docRef = await addDocumentNonBlocking(notesColRef, newNoteData);
 
         const optimisticNote: WorkOrderNote = {
             id: docRef.id,
@@ -406,7 +402,6 @@ export default function WorkOrderDetailPage() {
     );
   }
 
-  const canEdit = currentUserRole?.name === 'Administrator' || (workOrder.status !== 'Completed' && !!workOrder.assignedTechnicianId && workOrder.assignedTechnicianId === user?.uid);
   const isTechnician = currentUserRole?.name === 'Technician';
 
   return (
@@ -430,7 +425,7 @@ export default function WorkOrderDetailPage() {
                 )}
 
                 {!isEditing && !isTechnician && (
-                  <Button variant="outline" onClick={() => setIsEditing(true)} disabled={!canEdit}>
+                  <Button variant="outline" onClick={() => setIsEditing(true)}>
                     <Pencil className="mr-2 h-4 w-4" /> Edit
                   </Button>
                 )}
