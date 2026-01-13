@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, notFound } from 'next/navigation';
 import Image from 'next/image';
 import { format } from 'date-fns';
@@ -10,15 +10,21 @@ import { getWorkOrderById } from '@/lib/data';
 import type { WorkOrder } from '@/lib/types';
 import { summarizeNotes } from '@/ai/flows/summarize-notes-flow';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { Download, Loader2 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export default function WorkOrderReportPage() {
     const params = useParams();
     const id = params.id as string;
     const db = useFirestore();
+    const printRef = useRef<HTMLDivElement>(null);
 
     const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
     const [summarizedDescription, setSummarizedDescription] = useState<string>('');
     const [isLoading, setIsLoading] = useState(true);
+    const [isDownloading, setIsDownloading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -54,6 +60,64 @@ export default function WorkOrderReportPage() {
 
         fetchAndSummarize();
     }, [id, db]);
+
+    const handleDownload = async () => {
+        if (!printRef.current || !workOrder) return;
+        
+        setIsDownloading(true);
+
+        // Temporarily add a class to hide the download button during capture
+        const downloadButton = document.getElementById('download-button');
+        downloadButton?.classList.add('hidden-for-download');
+
+        try {
+            const canvas = await html2canvas(printRef.current, {
+                scale: 2, // Increase scale for better quality
+                useCORS: true,
+                onclone: (document) => {
+                    // This is a workaround to ensure images are loaded, especially from cross-origin sources
+                    const imagePromises: Promise<void>[] = [];
+                    document.querySelectorAll('img').forEach(img => {
+                        if (img.complete) return;
+                        imagePromises.push(new Promise(resolve => {
+                            img.onload = () => resolve();
+                            img.onerror = () => resolve();
+                        }));
+                    });
+                    return Promise.all(imagePromises);
+                }
+            });
+            const imgData = canvas.toDataURL('image/png');
+            
+            // A4 page dimensions in points (72 points per inch)
+            const pdfWidth = 595.28; 
+            const pdfHeight = 841.89;
+
+            const imgWidth = canvas.width;
+            const imgHeight = canvas.height;
+            const ratio = imgWidth / imgHeight;
+
+            const finalPdfWidth = pdfWidth;
+            const finalPdfHeight = pdfWidth / ratio;
+            
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'pt',
+                format: 'a4'
+            });
+
+            pdf.addImage(imgData, 'PNG', 0, 0, finalPdfWidth, finalPdfHeight);
+            pdf.save(`Work-Order-Report-${workOrder.id}.pdf`);
+
+        } catch (e) {
+            console.error("Error generating PDF:", e);
+            setError("Failed to generate PDF.");
+        } finally {
+            setIsDownloading(false);
+            // Remove the helper class
+            downloadButton?.classList.remove('hidden-for-download');
+        }
+    };
     
     if (isLoading) {
         return (
@@ -86,7 +150,8 @@ export default function WorkOrderReportPage() {
 
 
     return (
-        <div className="bg-white text-black p-8 font-sans printable-area" style={{ width: '8.5in', margin: 'auto' }}>
+        <div className="bg-gray-100 min-h-screen">
+        <div className="bg-white text-black p-8 font-sans mx-auto printable-area" style={{ width: '8.5in' }} ref={printRef}>
             <style jsx global>{`
                 @media print {
                     body * {
@@ -100,6 +165,12 @@ export default function WorkOrderReportPage() {
                         left: 0;
                         top: 0;
                         width: 100%;
+                        margin: 0;
+                        border: none;
+                        box-shadow: none;
+                    }
+                    .hidden-for-download, .hidden-for-download * {
+                        visibility: hidden !important;
                     }
                     .page-break {
                         break-before: page;
@@ -108,6 +179,9 @@ export default function WorkOrderReportPage() {
                         size: auto;
                         margin: 0mm;
                     }
+                }
+                .hidden-for-download {
+                    display: none;
                 }
             `}</style>
             
@@ -189,7 +263,6 @@ export default function WorkOrderReportPage() {
                 </main>
             </div>
 
-            {/* Page 2+: Photo Appendix */}
             {allPhotoUrls.length > 0 && (
                 <div className="page-break" style={{ minHeight: '11in' }}>
                     <header className="flex justify-between items-center mb-8">
@@ -210,6 +283,13 @@ export default function WorkOrderReportPage() {
                     </main>
                 </div>
             )}
+        </div>
+         <div id="download-button" className="fixed bottom-8 right-8">
+            <Button onClick={handleDownload} disabled={isDownloading}>
+                {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                {isDownloading ? 'Downloading...' : 'Download PDF'}
+            </Button>
+        </div>
         </div>
     );
 }
