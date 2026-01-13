@@ -81,6 +81,8 @@ export default function WorkOrderDetailPage() {
   const [customerSignatureUrl, setCustomerSignatureUrl] = useState<string | undefined>('');
   const [signatureDate, setSignatureDate] = useState<string | undefined>('');
 
+  const [isDataInitialized, setIsDataInitialized] = useState(false);
+
 
   const workOrderDocRef = useMemoFirebase(() => {
     if (!db) return null;
@@ -172,10 +174,11 @@ export default function WorkOrderDetailPage() {
 
   // Effect to initialize the form state once, when the workOrder is first loaded.
   useEffect(() => {
-    if (workOrder) {
+    if (workOrder && !isDataInitialized) {
       initializeEditState(workOrder);
+      setIsDataInitialized(true);
     }
-  }, [workOrder]);
+  }, [workOrder, isDataInitialized]);
   
   
   const resetEditState = () => {
@@ -492,7 +495,7 @@ export default function WorkOrderDetailPage() {
                 timeEntries={timeEntries}
                 isEditing={isEditing}
                 isTechnician={isTechnician}
-                onNoteAdded={handleNoteAdded}
+                onNoteAdded={onNoteAdded}
                 onTimeAdded={handleTimeAdded}
                 onNotePhotoDelete={handleNotePhotoDelete}
                 onNoteDelete={handleNoteDelete}
@@ -566,5 +569,3 @@ export default function WorkOrderDetailPage() {
     </MainLayout>
   );
 }
-
-    

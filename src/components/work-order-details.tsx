@@ -681,5 +681,3 @@ export function WorkOrderDetails({
     </>
   );
 }
-
-    
