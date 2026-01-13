@@ -42,6 +42,9 @@ interface WorkOrderDetailsProps {
   setTempOnArrival: (value: string) => void;
   tempOnLeaving: string;
   setTempOnLeaving: (value: string) => void;
+  contactInfo: string;
+  setContactInfo: (value: string) => void;
+  onContactInfoUpdate: () => void;
 }
 
 export function WorkOrderDetails({
@@ -61,6 +64,8 @@ export function WorkOrderDetails({
   onTempUpdate,
   tempOnArrival, setTempOnArrival,
   tempOnLeaving, setTempOnLeaving,
+  contactInfo, setContactInfo,
+  onContactInfoUpdate,
 }: WorkOrderDetailsProps) {
   const db = useFirestore();
   const { user } = useUser();
@@ -430,6 +435,10 @@ export function WorkOrderDetails({
             <CardContent>
                 {workOrder.customerSignatureUrl ? (
                     <div className="space-y-4">
+                         <div className="space-y-2">
+                             <Label htmlFor="customer-name-display">Customer Name</Label>
+                             <Input id="customer-name-display" readOnly value={workOrder.contactInfo || ''} />
+                         </div>
                         <div className="border bg-muted rounded-md p-4 flex justify-center">
                             <Image src={workOrder.customerSignatureUrl} alt="Customer Signature" width={300} height={150} style={{ objectFit: 'contain' }} />
                         </div>
@@ -438,10 +447,19 @@ export function WorkOrderDetails({
                         </p>
                     </div>
                 ) : (
-                    <div className="text-center text-muted-foreground space-y-4 p-4 border-2 border-dashed rounded-md">
-                        <p>No signature has been captured yet.</p>
+                    <div className="space-y-4 p-4 border-2 border-dashed rounded-md">
+                        <div className="space-y-2">
+                            <Label htmlFor="customer-name">Customer Name</Label>
+                            <Input 
+                                id="customer-name" 
+                                placeholder="Enter printed name" 
+                                value={contactInfo}
+                                onChange={(e) => setContactInfo(e.target.value)}
+                                onBlur={onContactInfoUpdate}
+                            />
+                        </div>
                         {workOrder.status !== 'Completed' && (
-                            <Button type="button" onClick={onSignatureSave}>
+                            <Button type="button" onClick={onSignatureSave} className="w-full">
                                 Capture Signature
                             </Button>
                         )}

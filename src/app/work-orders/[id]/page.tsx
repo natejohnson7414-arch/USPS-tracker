@@ -50,6 +50,7 @@ export default function WorkOrderDetailPage() {
   
   const [tempOnArrival, setTempOnArrival] = useState('');
   const [tempOnLeaving, setTempOnLeaving] = useState('');
+  const [contactInfo, setContactInfo] = useState('');
   
   const workOrderDocRef = useMemoFirebase(() => {
     if (!db) return null;
@@ -86,6 +87,7 @@ export default function WorkOrderDetailPage() {
             setWorkOrder(fetchedWorkOrder);
             setTempOnArrival(fetchedWorkOrder.tempOnArrival || '');
             setTempOnLeaving(fetchedWorkOrder.tempOnLeaving || '');
+            setContactInfo(fetchedWorkOrder.contactInfo || '');
         } else {
             setWorkOrder(null);
             notFound();
@@ -170,6 +172,18 @@ export default function WorkOrderDetailPage() {
       console.error("Failed to update temperatures", error);
     }
   };
+  
+  const handleContactInfoUpdate = async () => {
+    if (!workOrderDocRef) return;
+    
+    try {
+      await updateDocumentNonBlocking(workOrderDocRef, { contactInfo });
+      toast({ title: "Customer Name Updated", description: "The customer's name has been saved." });
+      setWorkOrder(prev => prev ? ({ ...prev, contactInfo }) : null);
+    } catch (error) {
+      console.error("Failed to update contact info", error);
+    }
+  };
 
   const handleFormSaved = () => {
       fetchData(); // Refetch all data to get the latest state
@@ -190,10 +204,11 @@ export default function WorkOrderDetailPage() {
         
         await updateDocumentNonBlocking(workOrderDocRef, {
             customerSignatureUrl: signatureUrl,
-            signatureDate: sigDate
+            signatureDate: sigDate,
+            contactInfo: contactInfo // Also save the name
         });
         
-        setWorkOrder(prev => prev ? ({ ...prev, customerSignatureUrl: signatureUrl, signatureDate: sigDate }) : null);
+        setWorkOrder(prev => prev ? ({ ...prev, customerSignatureUrl: signatureUrl, signatureDate: sigDate, contactInfo }) : null);
 
         toast({ title: "Signature Saved", description: "The customer signature has been saved." });
         setIsSignatureDialogOpen(false);
@@ -368,6 +383,9 @@ export default function WorkOrderDetailPage() {
                     setTempOnArrival={setTempOnArrival}
                     tempOnLeaving={tempOnLeaving}
                     setTempOnLeaving={setTempOnLeaving}
+                    contactInfo={contactInfo}
+                    setContactInfo={setContactInfo}
+                    onContactInfoUpdate={handleContactInfoUpdate}
                 />
             )}
         </div>
