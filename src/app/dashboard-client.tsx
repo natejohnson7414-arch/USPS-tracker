@@ -43,10 +43,6 @@ export function DashboardClient({ initialWorkOrders, technicians, initialWorkSit
     });
   }, [workOrders, searchTerm, statusFilter]);
 
-  const handleAddWorkOrder = (newOrder: WorkOrder) => {
-    setWorkOrders(prev => [newOrder, ...prev].sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime()));
-  };
-  
   const handleAddWorkSite = (newSite: WorkSite) => {
     setWorkSites(prev => [newSite, ...prev]);
   }
@@ -62,7 +58,6 @@ export function DashboardClient({ initialWorkOrders, technicians, initialWorkSit
           technicians={technicians}
           workSites={workSites}
           clients={clients}
-          onWorkOrderAdded={handleAddWorkOrder}
           onWorkSiteAdded={handleAddWorkSite}
           currentUserRole={currentUserRole}
         />

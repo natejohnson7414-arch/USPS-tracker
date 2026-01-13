@@ -38,11 +38,10 @@ interface CreateWorkOrderDialogProps {
   technicians: Technician[];
   workSites: WorkSite[];
   clients: Client[];
-  onWorkOrderAdded: (newOrder: WorkOrder) => void;
   onWorkSiteAdded: (newSite: WorkSite) => void;
 }
 
-export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkOrderAdded, onWorkSiteAdded }: CreateWorkOrderDialogProps) {
+export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkSiteAdded }: CreateWorkOrderDialogProps) {
   const db = useFirestore();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -291,17 +290,9 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkO
       
       await setDocumentNonBlocking(workOrderRef, newWorkOrderData, { merge: false });
 
-      const newWorkOrder: WorkOrder = {
-          ...(newWorkOrderData as any),
-          notes: [],
-          workSite: selectedWorkSite,
-          client: selectedClient
-      };
-
-      onWorkOrderAdded(newWorkOrder);
       toast({
           title: 'Work Order Created',
-          description: `Successfully created work order ${newWorkOrder.id}.`,
+          description: `Successfully created work order ${jobId}.`,
       });
       resetForm();
       setOpen(false);

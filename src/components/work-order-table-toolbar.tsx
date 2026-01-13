@@ -13,7 +13,6 @@ interface WorkOrderTableToolbarProps {
   technicians: Technician[];
   workSites: WorkSite[];
   clients: Client[];
-  onWorkOrderAdded: (newOrder: WorkOrder) => void;
   onWorkSiteAdded: (newSite: WorkSite) => void;
   currentUserRole: Role | null;
 }
@@ -27,7 +26,6 @@ export function WorkOrderTableToolbar({
   technicians,
   workSites,
   clients,
-  onWorkOrderAdded,
   onWorkSiteAdded,
   currentUserRole
 }: WorkOrderTableToolbarProps) {
@@ -58,7 +56,6 @@ export function WorkOrderTableToolbar({
               technicians={technicians} 
               workSites={workSites} 
               clients={clients} 
-              onWorkOrderAdded={onWorkOrderAdded} 
               onWorkSiteAdded={onWorkSiteAdded}
           />
         )}
