@@ -90,7 +90,7 @@ interface EditableFields {
 }
 
 interface WorkOrderDetailsProps {
-  initialWorkOrder: WorkOrder;
+  workOrder: WorkOrder;
   technicians: Technician[];
   workSites: WorkSite[];
   clients: Client[];
@@ -112,7 +112,7 @@ interface WorkOrderDetailsProps {
 }
 
 export function WorkOrderDetails({
-  initialWorkOrder,
+  workOrder,
   technicians,
   workSites,
   clients,
@@ -135,7 +135,6 @@ export function WorkOrderDetails({
   const db = useFirestore();
   const { user } = useUser();
 
-  const [workOrder, setWorkOrder] = useState<WorkOrder>(initialWorkOrder);
   const [assignedTechnician, setAssignedTechnician] = useState<Technician | undefined>();
   
   const [newNote, setNewNote] = useState('');
@@ -194,9 +193,6 @@ export function WorkOrderDetails({
     fetchTechnician();
   }, [db, workOrder.assignedTechnicianId]);
   
-  useEffect(() => {
-    setWorkOrder(initialWorkOrder);
-  },[initialWorkOrder])
 
   const takePhotoInputRef = useRef<HTMLInputElement>(null);
   const chooseFromLibraryInputRef = useRef<HTMLInputElement>(null);
@@ -685,3 +681,5 @@ export function WorkOrderDetails({
     </>
   );
 }
+
+    

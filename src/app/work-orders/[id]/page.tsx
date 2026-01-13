@@ -44,7 +44,6 @@ export default function WorkOrderDetailPage() {
   const [trainingRecords, setTrainingRecords] = useState<TrainingRecord[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDataInitialized, setIsDataInitialized] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
@@ -128,7 +127,7 @@ export default function WorkOrderDetailPage() {
   useEffect(() => {
     const fetchData = async () => {
       if (!db || !user) return;
-      // No need to set loading to true here unless it's the very first load
+      setIsLoading(true);
       try {
         const [
             fetchedTechnicians, 
@@ -154,29 +153,23 @@ export default function WorkOrderDetailPage() {
         
         if (fetchedWorkOrder) {
             setWorkOrder(fetchedWorkOrder);
-            if (!isDataInitialized) {
-                initializeEditState(fetchedWorkOrder);
-                setIsDataInitialized(true);
-            }
+            initializeEditState(fetchedWorkOrder);
         } else {
             setWorkOrder(null);
+            notFound();
         }
 
       } catch (error) {
         console.error('Failed to fetch initial data:', error);
         setWorkOrder(null);
+        notFound();
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
-  }, [db, id, user, isDataInitialized]);
+  }, [db, id, user]);
   
-  useEffect(() => {
-    if (!isLoading && isDataInitialized && !workOrder) {
-      notFound();
-    }
-  }, [isLoading, isDataInitialized, workOrder]);
   
   const resetEditState = () => {
     if (!workOrder) return;
@@ -437,7 +430,7 @@ export default function WorkOrderDetailPage() {
 
 
 
-  if (isLoading || !isDataInitialized) {
+  if (isLoading) {
     return (
       <MainLayout>
         <div className="flex items-center justify-center h-full">
@@ -448,7 +441,8 @@ export default function WorkOrderDetailPage() {
   }
 
   if (!workOrder) {
-      notFound();
+      // notFound() is already called in useEffect
+      return null;
   }
 
   const canEdit = currentUserRole?.name === 'Administrator' || (workOrder.status !== 'Completed' && !!workOrder.assignedTechnicianId && workOrder.assignedTechnicianId === user?.uid);
@@ -482,55 +476,55 @@ export default function WorkOrderDetailPage() {
             </div>
         </div>
         <div className="pb-24">
-            {workOrder && <WorkOrderDetails
-            initialWorkOrder={workOrder}
-            technicians={technicians}
-            workSites={workSites}
-            clients={clients}
-            trainingRecords={trainingRecords}
-            timeEntries={timeEntries}
-            isEditing={isEditing}
-            isTechnician={isTechnician}
-            onNoteAdded={handleNoteAdded}
-            onTimeAdded={handleTimeAdded}
-            onNotePhotoDelete={handleNotePhotoDelete}
-            onNoteDelete={handleNoteDelete}
-            onTimeEntryDelete={handleTimeEntryDelete}
-            isAddingNote={isAddingNote}
-            onDirectionsClick={handleDirectionsClick}
-            onSignatureSave={() => setIsSignatureDialogOpen(true)}
-            onTempUpdate={handleTempUpdate}
-            editableFields={{
-                description, setDescription,
-                status, setStatus,
-                assignedTechnicianId, setAssignedTechnicianId,
-                workSiteId, setWorkSiteId,
-                clientId, setClientId,
-                createdDate, setCreatedDate,
-                billTo, setBillTo,
-                poNumber, setPoNumber,
-                contactInfo, setContactInfo,
-                serviceScheduleDate, setServiceScheduleDate,
-                quotedAmount, setQuotedAmount,
-                timeAndMaterial, setTimeAndMaterial,
-                permit, setPermit,
-                permitCost, setPermitCost,
-                permitFiled, setPermitFiled,
-                coi, setCoi,
-                coiRequested, setCoiRequested,
-                certifiedPayroll, setCertifiedPayroll,
-                certifiedPayrollRequested, setCertifiedPayrollRequested,
-                intercoPO, setIntercoPO,
-                customerPO, setCustomerPO,
-                estimator, setEstimator,
-                checkInOutURL, setCheckInOutURL,
-                tempOnArrival, setTempOnArrival,
-                tempOnLeaving, setTempOnLeaving,
-                customerSignatureUrl, setCustomerSignatureUrl,
-                signatureDate, setSignatureDate,
-            }}
-            onWorkOrderUpdate={handleSave}
-            />}
+            <WorkOrderDetails
+                workOrder={workOrder}
+                technicians={technicians}
+                workSites={workSites}
+                clients={clients}
+                trainingRecords={trainingRecords}
+                timeEntries={timeEntries}
+                isEditing={isEditing}
+                isTechnician={isTechnician}
+                onNoteAdded={handleNoteAdded}
+                onTimeAdded={handleTimeAdded}
+                onNotePhotoDelete={handleNotePhotoDelete}
+                onNoteDelete={handleNoteDelete}
+                onTimeEntryDelete={handleTimeEntryDelete}
+                isAddingNote={isAddingNote}
+                onDirectionsClick={handleDirectionsClick}
+                onSignatureSave={() => setIsSignatureDialogOpen(true)}
+                onTempUpdate={handleTempUpdate}
+                editableFields={{
+                    description, setDescription,
+                    status, setStatus,
+                    assignedTechnicianId, setAssignedTechnicianId,
+                    workSiteId, setWorkSiteId,
+                    clientId, setClientId,
+                    createdDate, setCreatedDate,
+                    billTo, setBillTo,
+                    poNumber, setPoNumber,
+                    contactInfo, setContactInfo,
+                    serviceScheduleDate, setServiceScheduleDate,
+                    quotedAmount, setQuotedAmount,
+                    timeAndMaterial, setTimeAndMaterial,
+                    permit, setPermit,
+                    permitCost, setPermitCost,
+                    permitFiled, setPermitFiled,
+                    coi, setCoi,
+                    coiRequested, setCoiRequested,
+                    certifiedPayroll, setCertifiedPayroll,
+                    certifiedPayrollRequested, setCertifiedPayrollRequested,
+                    intercoPO, setIntercoPO,
+                    customerPO, setCustomerPO,
+                    estimator, setEstimator,
+                    checkInOutURL, setCheckInOutURL,
+                    tempOnArrival, setTempOnArrival,
+                    tempOnLeaving, setTempOnLeaving,
+                    customerSignatureUrl, setCustomerSignatureUrl,
+                    signatureDate, setSignatureDate,
+                }}
+                onWorkOrderUpdate={handleSave}
+            />
         </div>
       </div>
       {isEditing && (
@@ -565,3 +559,5 @@ export default function WorkOrderDetailPage() {
     </MainLayout>
   );
 }
+
+    
