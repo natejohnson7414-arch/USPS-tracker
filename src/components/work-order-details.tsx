@@ -578,7 +578,7 @@ export function WorkOrderDetails({
                         {isEditing ? <Input className="h-8 sm:text-right" value={estimator} onChange={(e) => setEstimator(e.target.value)} /> : <span className="font-medium">{workOrder.estimator || 'N/A'}</span>}
                     </DetailItem>
                 </CardContent>
-            </Card>>
+            </Card>
             )}
 
             {!isTechnician && (
