@@ -74,6 +74,7 @@ export default function WorkOrderDetailPage() {
   const [intercoPO, setIntercoPO] = useState<string>('');
   const [customerPO, setCustomerPO] = useState<string>('');
   const [estimator, setEstimator] = useState<string>('');
+  const [checkInOutURL, setCheckInOutURL] = useState('');
   
   // New temperature and signature fields
   const [tempOnArrival, setTempOnArrival] = useState('');
@@ -115,6 +116,7 @@ export default function WorkOrderDetailPage() {
     setIntercoPO(wo.intercoPO || '');
     setCustomerPO(wo.customerPO || '');
     setEstimator(wo.estimator || '');
+    setCheckInOutURL(wo.checkInOutURL || '');
 
     // Initialize new fields
     setTempOnArrival(wo.tempOnArrival || '');
@@ -290,6 +292,7 @@ export default function WorkOrderDetailPage() {
         intercoPO,
         customerPO,
         estimator,
+        checkInOutURL,
         tempOnArrival,
         tempOnLeaving,
         customerSignatureUrl,
@@ -518,6 +521,7 @@ export default function WorkOrderDetailPage() {
                 intercoPO, setIntercoPO,
                 customerPO, setCustomerPO,
                 estimator, setEstimator,
+                checkInOutURL, setCheckInOutURL,
                 tempOnArrival, setTempOnArrival,
                 tempOnLeaving, setTempOnLeaving,
                 customerSignatureUrl, setCustomerSignatureUrl,

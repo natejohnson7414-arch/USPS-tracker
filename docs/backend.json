@@ -142,6 +142,10 @@
           "type": "string",
           "description": "Reference to Technician. (Relationship: Technician 1:N WorkOrder)"
         },
+        "checkInOutURL": {
+            "type": "string",
+            "description": "A URL or phone number for technician check-in and check-out."
+        },
         "tempOnArrival": {
             "type": "string",
             "description": "Temperature recorded upon arrival at the job site."

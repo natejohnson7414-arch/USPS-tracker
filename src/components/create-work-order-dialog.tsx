@@ -79,6 +79,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
   const [customerPO, setCustomerPO] = useState('');
   const [estimator, setEstimator] = useState('');
   const [assignedTechnicianId, setAssignedTechnicianId] = useState<string | undefined>();
+  const [checkInOutURL, setCheckInOutURL] = useState('');
   
 
   const resetForm = () => {
@@ -103,6 +104,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
     setCustomerPO('');
     setEstimator('');
     setAssignedTechnicianId(undefined);
+    setCheckInOutURL('');
     setShowCreateSitePrompt(false);
     setExtractedAddress(null);
     setExtractedCity(null);
@@ -172,6 +174,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
             if (extractedData.intercoPO) setIntercoPO(extractedData.intercoPO);
             if (extractedData.customerPO) setCustomerPO(extractedData.customerPO);
             if (extractedData.estimator) setEstimator(extractedData.estimator);
+            if (extractedData.checkInOutURL) setCheckInOutURL(extractedData.checkInOutURL);
             
             toast({ title: 'Extraction Complete', description: 'Form has been auto-populated. Please review.' });
         };
@@ -277,7 +280,8 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
         certifiedPayrollRequested: certifiedPayrollRequested?.toISOString(),
         intercoPO,
         customerPO,
-        estimator
+        estimator,
+        checkInOutURL
       };
 
       // Firestore does not allow `undefined` values. We clean them here.
@@ -495,6 +499,10 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
           </div>
           {/* Right Column */}
           <div className="space-y-4">
+            <div className="grid gap-2">
+                <Label htmlFor="checkInOutURL">Check-in/Out Link/Phone</Label>
+                <Input id="checkInOutURL" value={checkInOutURL} onChange={e => setCheckInOutURL(e.target.value)} />
+            </div>
             <div className="grid gap-2">
                 <Label htmlFor="poNumber">PO #</Label>
                 <Input id="poNumber" value={poNumber} onChange={e => setPoNumber(e.target.value)} />

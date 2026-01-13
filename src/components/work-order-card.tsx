@@ -7,7 +7,7 @@ import type { WorkOrder, Technician, WorkSite } from '@/lib/types';
 import { StatusBadge } from './status-badge';
 import { format } from 'date-fns';
 import { Button } from './ui/button';
-import { Map } from 'lucide-react';
+import { Map, Link as LinkIcon } from 'lucide-react';
 import { Separator } from './ui/separator';
 
 interface WorkOrderCardProps {
@@ -20,6 +20,17 @@ interface WorkOrderCardProps {
 export function WorkOrderCard({ order, technician, workSite, onDirectionsClick }: WorkOrderCardProps) {
     const isValidDate = order.createdDate && !isNaN(new Date(order.createdDate).getTime());
     
+    const getLinkUrl = (url: string) => {
+        if (url.startsWith('http')) {
+            return url;
+        }
+        // Basic check for a phone number
+        if (/^\+?[0-9\s-()]+$/.test(url)) {
+            return `tel:${url.replace(/\s/g, '')}`;
+        }
+        return url;
+    }
+
     return (
         <Card>
             <CardHeader>
@@ -58,12 +69,22 @@ export function WorkOrderCard({ order, technician, workSite, onDirectionsClick }
                     </p>
                 </div>
             </CardContent>
-            {workSite?.address && (
-                 <CardFooter>
-                    <Button variant="outline" className="w-full" onClick={() => onDirectionsClick(workSite.address)}>
-                        <Map className="mr-2 h-4 w-4" />
-                        Get Directions
-                    </Button>
+            {(workSite?.address || order.checkInOutURL) && (
+                 <CardFooter className="flex gap-2">
+                    {order.checkInOutURL && (
+                         <Button asChild variant="secondary" className="w-full">
+                            <a href={getLinkUrl(order.checkInOutURL)} target="_blank" rel="noopener noreferrer">
+                                <LinkIcon className="mr-2 h-4 w-4" />
+                                Check-in
+                            </a>
+                        </Button>
+                    )}
+                    {workSite?.address && (
+                         <Button variant="outline" className="w-full" onClick={() => onDirectionsClick(workSite.address)}>
+                            <Map className="mr-2 h-4 w-4" />
+                            Directions
+                        </Button>
+                    )}
                 </CardFooter>
             )}
         </Card>

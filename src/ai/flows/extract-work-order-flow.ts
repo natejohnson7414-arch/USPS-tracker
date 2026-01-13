@@ -45,6 +45,7 @@ const WorkOrderExtractionOutputSchema = z.object({
     intercoPO: z.string().optional().describe("The Interco PO#."),
     customerPO: z.string().optional().describe("The Customer PO#."),
     estimator: z.string().optional().describe("The Estimator/Requested By field."),
+    checkInOutURL: z.string().optional().describe("The Check-in/Out Link/Phone."),
 }).describe("The extracted data from the Small Job Form PDF.");
 
 export type WorkOrderExtractionOutput = z.infer<typeof WorkOrderExtractionOutputSchema>;

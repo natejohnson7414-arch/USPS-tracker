@@ -52,6 +52,7 @@ export type WorkOrder = {
   status: 'Open' | 'In Progress' | 'On Hold' | 'Completed';
   assignedTechnicianId?: string;
   notes: WorkOrderNote[];
+  checkInOutURL?: string; // CHECK-IN/OUT
   // New fields for report
   tempOnArrival?: string;
   tempOnLeaving?: string;
