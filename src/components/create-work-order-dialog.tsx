@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -335,13 +334,13 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
                     className="hidden"
                     accept="application/pdf"
                 />
-                <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isExtracting || isSubmitting} className="w-full sm:w-auto">
+                <Button variant="destructive" onClick={() => fileInputRef.current?.click()} disabled={isExtracting || isSubmitting} className="w-full sm:w-auto">
                     {isExtracting ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
                         <FileUp className="mr-2 h-4 w-4" />
                     )}
-                    Upload & Autofill from PDF
+                    Upload &amp; Autofill from PDF
                 </Button>
             </div>
            </div>
@@ -460,7 +459,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
             </div>
             <div className="flex items-center space-x-2">
                 <Checkbox id="timeAndMaterial" checked={timeAndMaterial} onCheckedChange={(checked) => setTimeAndMaterial(Boolean(checked))} />
-                <label htmlFor="timeAndMaterial" className="text-sm font-medium leading-none">Time & Material</label>
+                <label htmlFor="timeAndMaterial" className="text-sm font-medium leading-none">Time &amp; Material</label>
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center space-x-2">
