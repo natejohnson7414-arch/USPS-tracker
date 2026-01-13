@@ -509,10 +509,10 @@ export default function WorkOrderDetailPage() {
                 poNumber, setPoNumber,
                 contactInfo, setContactInfo,
                 serviceScheduleDate, setServiceScheduleDate,
-                quotedAmount: quotedAmount || 0, setQuotedAmount,
+                quotedAmount, setQuotedAmount,
                 timeAndMaterial, setTimeAndMaterial,
                 permit, setPermit,
-                permitCost: permitCost || 0, setPermitCost,
+                permitCost, setPermitCost,
                 permitFiled, setPermitFiled,
                 coi, setCoi,
                 coiRequested, setCoiRequested,
@@ -563,3 +563,5 @@ export default function WorkOrderDetailPage() {
     </MainLayout>
   );
 }
+
+    

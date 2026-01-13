@@ -54,13 +54,13 @@ interface EditableFields {
   serviceScheduleDate?: Date;
   setServiceScheduleDate: (value?: Date) => void;
   quotedAmount?: number;
-  setQuotedAmount: (value: number) => void;
+  setQuotedAmount: (value: number | undefined) => void;
   timeAndMaterial: boolean;
   setTimeAndMaterial: (value: boolean) => void;
   permit: boolean;
   setPermit: (value: boolean) => void;
   permitCost?: number;
-  setPermitCost: (value: number) => void;
+  setPermitCost: (value: number | undefined) => void;
   permitFiled?: Date;
   setPermitFiled: (value?: Date) => void;
   coi: boolean;
@@ -281,8 +281,8 @@ export function WorkOrderDetails({
   return (
     <>
     <form id="work-order-form" onSubmit={onWorkOrderUpdate}>
-      <div className={`grid grid-cols-1 lg:grid-cols-3 gap-8`}>
-        <div className="lg:col-span-2 space-y-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className={`${isTechnician ? 'lg:col-span-3' : 'lg:col-span-2'} space-y-8`}>
           <Card>
             <CardHeader>
               <div className="flex justify-between items-start">
@@ -540,7 +540,7 @@ export function WorkOrderDetails({
                         {isEditing ? <DatePicker className="w-full" date={serviceScheduleDate} setDate={setServiceScheduleDate} /> : <span className="font-medium">{workOrder.serviceScheduleDate ? format(new Date(workOrder.serviceScheduleDate), 'MMM d, yyyy') : 'N/A'}</span>}
                     </DetailItem>
                     <DetailItem label="Quoted Amount">
-                        {isEditing ? <Input className="h-8 sm:text-right" type="number" value={quotedAmount} onChange={(e) => setQuotedAmount(Number(e.target.value))} /> : <span className="font-medium">{workOrder.quotedAmount ? `$${workOrder.quotedAmount}` : 'N/A'}</span>}
+                        {isEditing ? <Input className="h-8 sm:text-right" type="number" value={quotedAmount ?? ''} onChange={(e) => setQuotedAmount(e.target.value ? Number(e.target.value) : undefined)} /> : <span className="font-medium">{workOrder.quotedAmount ? `$${workOrder.quotedAmount}` : 'N/A'}</span>}
                     </DetailItem>
                     <DetailItem label="Time & Material">
                         {isEditing ? <Checkbox checked={timeAndMaterial} onCheckedChange={(c) => setTimeAndMaterial(Boolean(c))} /> : <span className="font-medium">{workOrder.timeAndMaterial ? 'Yes' : 'No'}</span>}
@@ -550,7 +550,7 @@ export function WorkOrderDetails({
                         {isEditing ? <Checkbox checked={permit} onCheckedChange={(c) => setPermit(Boolean(c))} /> : <span className="font-medium">{workOrder.permit ? 'Yes' : 'No'}</span>}
                     </DetailItem>
                     <DetailItem label="Permit Cost">
-                        {isEditing ? <Input className="h-8 sm:text-right" type="number" value={permitCost} onChange={(e) => setPermitCost(Number(e.target.value))} /> : <span className="font-medium">{workOrder.permitCost ? `$${workOrder.permitCost}` : 'N/A'}</span>}
+                        {isEditing ? <Input className="h-8 sm:text-right" type="number" value={permitCost ?? ''} onChange={(e) => setPermitCost(e.target.value ? Number(e.target.value) : undefined)} /> : <span className="font-medium">{workOrder.permitCost ? `$${workOrder.permitCost}` : 'N/A'}</span>}
                     </DetailItem>
                     <DetailItem label="Permit Filed">
                         {isEditing ? <DatePicker className="w-full" date={permitFiled} setDate={setPermitFiled} /> : <span className="font-medium">{workOrder.permitFiled ? format(new Date(workOrder.permitFiled), 'MMM d, yyyy') : 'N/A'}</span>}
@@ -691,3 +691,6 @@ export function WorkOrderDetails({
     
 
 
+
+
+    
