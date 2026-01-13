@@ -29,7 +29,7 @@ import {
 import { useFirestore, addDocumentNonBlocking, useCollection, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImage } from '@/firebase/storage';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query } from 'firebase/firestore';
 import type { TrainingRecord, Attendee, WorkOrder } from '@/lib/types';
 import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 
@@ -87,7 +87,7 @@ export default function TrainingAttendancePage() {
   const [signatureTarget, setSignatureTarget] = useState<{ type: 'trainer' | 'attendee'; index?: number } | null>(null);
 
   const [workOrderId, setWorkOrderId] = useState<string | undefined>();
-  const workOrdersQuery = useMemoFirebase(() => db ? query(collection(db, 'work_orders'), where("status", "==", "In Progress")) : null, [db]);
+  const workOrdersQuery = useMemoFirebase(() => db ? query(collection(db, 'work_orders')) : null, [db]);
   const { data: workOrders } = useCollection<WorkOrder>(workOrdersQuery);
 
   const handleAddAttendee = () => {
@@ -401,4 +401,5 @@ export default function TrainingAttendancePage() {
     </MainLayout>
   );
 }
+
 
