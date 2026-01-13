@@ -423,34 +423,32 @@ export function WorkOrderDetails({
           </Card>
         )}
 
-        {!isTechnician && (
-            <Card>
-                <CardHeader>
-                <CardTitle>Customer Sign-off</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {workOrder.customerSignatureUrl ? (
-                        <div className="space-y-4">
-                            <div className="border bg-muted rounded-md p-4 flex justify-center">
-                                <Image src={workOrder.customerSignatureUrl} alt="Customer Signature" width={300} height={150} style={{ objectFit: 'contain' }} />
-                            </div>
-                            <p className="text-sm text-muted-foreground text-center">
-                                Signed on {workOrder.signatureDate ? format(new Date(workOrder.signatureDate), 'MMM d, yyyy') : 'N/A'}
-                            </p>
+        <Card>
+            <CardHeader>
+            <CardTitle>Customer Sign-off</CardTitle>
+            </CardHeader>
+            <CardContent>
+                {workOrder.customerSignatureUrl ? (
+                    <div className="space-y-4">
+                        <div className="border bg-muted rounded-md p-4 flex justify-center">
+                            <Image src={workOrder.customerSignatureUrl} alt="Customer Signature" width={300} height={150} style={{ objectFit: 'contain' }} />
                         </div>
-                    ) : (
-                        <div className="text-center text-muted-foreground space-y-4 p-4 border-2 border-dashed rounded-md">
-                            <p>No signature has been captured yet.</p>
-                            {workOrder.status !== 'Completed' && (
-                                <Button type="button" onClick={onSignatureSave}>
-                                    Capture Signature
-                                </Button>
-                            )}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-        )}
+                        <p className="text-sm text-muted-foreground text-center">
+                            Signed on {workOrder.signatureDate ? format(new Date(workOrder.signatureDate), 'MMM d, yyyy') : 'N/A'}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="text-center text-muted-foreground space-y-4 p-4 border-2 border-dashed rounded-md">
+                        <p>No signature has been captured yet.</p>
+                        {workOrder.status !== 'Completed' && (
+                            <Button type="button" onClick={onSignatureSave}>
+                                Capture Signature
+                            </Button>
+                        )}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
       
         <Card>
           <CardHeader>
