@@ -32,63 +32,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { getTechnicianById } from '@/lib/data';
 import { AddTimeDialog } from './add-time-dialog';
 
-interface EditableFields {
-  description: string;
-  setDescription: (value: string) => void;
-  status: WorkOrder['status'];
-  setStatus: (value: WorkOrder['status']) => void;
-  assignedTechnicianId?: string;
-  setAssignedTechnicianId: (value?: string) => void;
-  workSiteId?: string;
-  setWorkSiteId: (value?: string) => void;
-  clientId?: string;
-  setClientId: (value?: string) => void;
-  createdDate?: Date;
-  setCreatedDate: (value?: Date) => void;
-  billTo?: string;
-  setBillTo: (value: string) => void;
-  poNumber?: string;
-  setPoNumber: (value: string) => void;
-  contactInfo?: string;
-  setContactInfo: (value: string) => void;
-  serviceScheduleDate?: Date;
-  setServiceScheduleDate: (value?: Date) => void;
-  quotedAmount: string;
-  setQuotedAmount: (value: string) => void;
-  timeAndMaterial: boolean;
-  setTimeAndMaterial: (value: boolean) => void;
-  permit: boolean;
-  setPermit: (value: boolean) => void;
-  permitCost: string;
-  setPermitCost: (value: string) => void;
-  permitFiled?: Date;
-  setPermitFiled: (value?: Date) => void;
-  coi: boolean;
-  setCoi: (value: boolean) => void;
-  coiRequested?: Date;
-  setCoiRequested: (value?: Date) => void;
-  certifiedPayroll: boolean;
-  setCertifiedPayroll: (value: boolean) => void;
-  certifiedPayrollRequested?: Date;
-  setCertifiedPayrollRequested: (value?: Date) => void;
-  intercoPO?: string;
-  setIntercoPO: (value: string) => void;
-  customerPO?: string;
-  setCustomerPO: (value: string) => void;
-  estimator?: string;
-  setEstimator: (value: string) => void;
-  checkInOutURL?: string;
-  setCheckInOutURL: (value: string) => void;
-  tempOnArrival?: string;
-  setTempOnArrival: (value: string) => void;
-  tempOnLeaving?: string;
-  setTempOnLeaving: (value: string) => void;
-  customerSignatureUrl?: string;
-  setCustomerSignatureUrl: (value?: string) => void;
-  signatureDate?: string;
-  setSignatureDate: (value?: string) => void;
-}
-
 interface WorkOrderDetailsProps {
   workOrder: WorkOrder;
   technicians: Technician[];
@@ -98,8 +41,8 @@ interface WorkOrderDetailsProps {
   timeEntries: TimeEntry[];
   isEditing: boolean;
   isTechnician: boolean;
-  editableFields: EditableFields;
-  onWorkOrderUpdate: (e: FormEvent) => void;
+  onWorkOrderUpdate: (data: Partial<WorkOrder>) => void;
+  onCancelEdit: () => void;
   onNoteAdded: (note: Omit<WorkOrderNote, 'id'> & { photoFiles: File[] }) => void;
   onTimeAdded: (timeEntry: TimeEntry) => void;
   onNotePhotoDelete: (noteId: string, photoUrl: string) => void;
@@ -108,7 +51,7 @@ interface WorkOrderDetailsProps {
   isAddingNote: boolean;
   onDirectionsClick: (workSite: WorkSite) => void;
   onSignatureSave: () => void;
-  onTempUpdate: () => void;
+  onTempUpdate: (data: { tempOnArrival?: string, tempOnLeaving?: string }) => void;
 }
 
 export function WorkOrderDetails({
@@ -120,8 +63,8 @@ export function WorkOrderDetails({
   timeEntries,
   isEditing,
   isTechnician,
-  editableFields,
   onWorkOrderUpdate,
+  onCancelEdit,
   onNoteAdded,
   onTimeAdded,
   onNotePhotoDelete,
@@ -145,40 +88,119 @@ export function WorkOrderDetails({
   const [timeEntryToDelete, setTimeEntryToDelete] = useState<string | null>(null);
   const [isAddTimeOpen, setIsAddTimeOpen] = useState(false);
 
+  // Form State
+  const [description, setDescription] = useState('');
+  const [status, setStatus] = useState<WorkOrder['status']>('Open');
+  const [assignedTechnicianId, setAssignedTechnicianId] = useState<string | undefined>(undefined);
+  const [workSiteId, setWorkSiteId] = useState<string | undefined>(undefined);
+  const [clientId, setClientId] = useState<string | undefined>(undefined);
+  const [createdDate, setCreatedDate] = useState<Date | undefined>();
+  const [poNumber, setPoNumber] = useState('');
+  const [contactInfo, setContactInfo] = useState('');
+  const [serviceScheduleDate, setServiceScheduleDate] = useState<Date | undefined>();
+  const [quotedAmount, setQuotedAmount] = useState('');
+  const [timeAndMaterial, setTimeAndMaterial] = useState<boolean>(false);
+  const [permit, setPermit] = useState<boolean>(false);
+  const [permitCost, setPermitCost] = useState('');
+  const [permitFiled, setPermitFiled] = useState<Date | undefined>();
+  const [coi, setCoi] = useState<boolean>(false);
+  const [coiRequested, setCoiRequested] = useState<Date | undefined>();
+  const [certifiedPayroll, setCertifiedPayroll] = useState<boolean>(false);
+  const [certifiedPayrollRequested, setCertifiedPayrollRequested] = useState<Date | undefined>();
+  const [intercoPO, setIntercoPO] = useState('');
+  const [customerPO, setCustomerPO] = useState('');
+  const [estimator, setEstimator] = useState('');
+  const [checkInOutURL, setCheckInOutURL] = useState('');
+  const [tempOnArrival, setTempOnArrival] = useState('');
+  const [tempOnLeaving, setTempOnLeaving] = useState('');
+  const [customerSignatureUrl, setCustomerSignatureUrl] = useState<string | undefined>('');
+  const [signatureDate, setSignatureDate] = useState<string | undefined>('');
+
+  const initializeFormState = (wo: WorkOrder) => {
+    setDescription(wo.description || '');
+    setStatus(wo.status || 'Open');
+    setAssignedTechnicianId(wo.assignedTechnicianId);
+    setWorkSiteId(wo.workSiteId);
+    setClientId(wo.clientId);
+    setCreatedDate(wo.createdDate ? new Date(wo.createdDate) : undefined);
+    setPoNumber(wo.poNumber || '');
+    setContactInfo(wo.contactInfo || '');
+    setServiceScheduleDate(wo.serviceScheduleDate ? new Date(wo.serviceScheduleDate) : undefined);
+    setQuotedAmount(wo.quotedAmount?.toString() || '');
+    setTimeAndMaterial(wo.timeAndMaterial || false);
+    setPermit(wo.permit || false);
+    setPermitCost(wo.permitCost?.toString() || '');
+    setPermitFiled(wo.permitFiled ? new Date(wo.permitFiled) : undefined);
+    setCoi(wo.coi || false);
+    setCoiRequested(wo.coiRequested ? new Date(wo.coiRequested) : undefined);
+    setCertifiedPayroll(wo.certifiedPayroll || false);
+    setCertifiedPayrollRequested(wo.certifiedPayrollRequested ? new Date(wo.certifiedPayrollRequested) : undefined);
+    setIntercoPO(wo.intercoPO || '');
+    setCustomerPO(wo.customerPO || '');
+    setEstimator(wo.estimator || '');
+    setCheckInOutURL(wo.checkInOutURL || '');
+    setTempOnArrival(wo.tempOnArrival || '');
+    setTempOnLeaving(wo.tempOnLeaving || '');
+    setCustomerSignatureUrl(wo.customerSignatureUrl);
+    setSignatureDate(wo.signatureDate);
+  }
+
+  // Initialize form state when component mounts or workOrder prop changes
+  useEffect(() => {
+    if (workOrder) {
+      initializeFormState(workOrder);
+    }
+  }, [workOrder]);
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    const selectedWorkSite = workSites.find(ws => ws.id === workSiteId);
+    const selectedClient = clients.find(c => c.id === clientId);
+
+    onWorkOrderUpdate({
+      jobName: selectedWorkSite?.name,
+      description,
+      status,
+      assignedTechnicianId,
+      workSiteId,
+      clientId,
+      billTo: selectedClient?.name,
+      createdDate: createdDate?.toISOString(),
+      poNumber,
+      contactInfo,
+      serviceScheduleDate: serviceScheduleDate?.toISOString(),
+      quotedAmount: quotedAmount ? parseFloat(quotedAmount) : undefined,
+      timeAndMaterial,
+      permit,
+      permitCost: permitCost ? parseFloat(permitCost) : undefined,
+      permitFiled: permitFiled?.toISOString(),
+      coi,
+      coiRequested: coiRequested?.toISOString(),
+      certifiedPayroll,
+      certifiedPayrollRequested: certifiedPayrollRequested?.toISOString(),
+      intercoPO,
+      customerPO,
+      estimator,
+      checkInOutURL,
+      tempOnArrival,
+      tempOnLeaving,
+      customerSignatureUrl,
+      signatureDate,
+    });
+  }
+
+  const handleCancel = () => {
+    initializeFormState(workOrder); // Reset to original values
+    onCancelEdit();
+  }
+
+
   // Combine and sort notes and time entries
   const combinedActivity = [
     ...workOrder.notes.map(note => ({ ...note, type: 'note', date: note.createdAt || workOrder.createdDate })),
     ...timeEntries.map(entry => ({ ...entry, type: 'time', date: entry.date }))
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-
-  const { 
-    description, setDescription,
-    status, setStatus,
-    assignedTechnicianId, setAssignedTechnicianId,
-    workSiteId, setWorkSiteId,
-    clientId, setClientId,
-    createdDate, setCreatedDate,
-    billTo, setBillTo,
-    poNumber, setPoNumber,
-    contactInfo, setContactInfo,
-    serviceScheduleDate, setServiceScheduleDate,
-    quotedAmount, setQuotedAmount,
-    timeAndMaterial, setTimeAndMaterial,
-    permit, setPermit,
-    permitCost, setPermitCost,
-    permitFiled, setPermitFiled,
-    coi, setCoi,
-    coiRequested, setCoiRequested,
-    certifiedPayroll, setCertifiedPayroll,
-    certifiedPayrollRequested, setCertifiedPayrollRequested,
-    intercoPO, setIntercoPO,
-    customerPO, setCustomerPO,
-    estimator, setEstimator,
-    checkInOutURL, setCheckInOutURL,
-    tempOnArrival, setTempOnArrival,
-    tempOnLeaving, setTempOnLeaving,
-  } = editableFields;
 
   useEffect(() => {
     setIsClient(true);
@@ -276,7 +298,7 @@ export function WorkOrderDetails({
 
   return (
     <>
-    <form id="work-order-form" onSubmit={onWorkOrderUpdate}>
+    <form id="work-order-form" onSubmit={handleSubmit}>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           <Card>
@@ -321,7 +343,7 @@ export function WorkOrderDetails({
                             id="temp-arrival" 
                             value={tempOnArrival} 
                             onChange={e => setTempOnArrival(e.target.value)}
-                            onBlur={onTempUpdate}
+                            onBlur={() => onTempUpdate({ tempOnArrival })}
                         />
                     </div>
                     <div className="space-y-2">
@@ -330,7 +352,7 @@ export function WorkOrderDetails({
                             id="temp-leaving" 
                             value={tempOnLeaving} 
                             onChange={e => setTempOnLeaving(e.target.value)}
-                            onBlur={onTempUpdate}
+                            onBlur={() => onTempUpdate({ tempOnLeaving })}
                         />
                     </div>
                 </div>
@@ -459,7 +481,9 @@ export function WorkOrderDetails({
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4 text-sm">
-                    <DetailItem label="Date" value={workOrder.createdDate} isDate/>
+                    <DetailItem label="Date" value={isEditing ? undefined : workOrder.createdDate} isDate>
+                        {isEditing && <DatePicker className="w-full" date={createdDate} setDate={setCreatedDate} />}
+                    </DetailItem>
                     <DetailItem label="Bill To">
                         {isEditing ? (
                         <Select value={clientId} onValueChange={setClientId}>

@@ -12,11 +12,10 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Ban, Pencil, Save, Printer } from 'lucide-react';
 import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry } from '@/lib/types';
-import { doc, collection } from 'firebase/firestore';
+import { doc, collection, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImage, deleteImage } from '@/firebase/storage';
 import { MapProviderSelection } from '@/components/map-provider-selection';
-import { addDoc } from 'firebase/firestore';
 import { SignaturePad } from '@/components/signature-pad';
 import {
   Dialog,
@@ -48,41 +47,6 @@ export default function WorkOrderDetailPage() {
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
-  
-  // Editable fields state
-  const [description, setDescription] = useState('');
-  const [status, setStatus] = useState<WorkOrder['status']>('Open');
-  const [assignedTechnicianId, setAssignedTechnicianId] = useState<string | undefined>(undefined);
-  const [workSiteId, setWorkSiteId] = useState<string | undefined>(undefined);
-  const [clientId, setClientId] = useState<string | undefined>(undefined);
-  
-  const [createdDate, setCreatedDate] = useState<Date | undefined>();
-  const [billTo, setBillTo] = useState<string>('');
-  const [poNumber, setPoNumber] = useState('');
-  const [contactInfo, setContactInfo] = useState('');
-  const [serviceScheduleDate, setServiceScheduleDate] = useState<Date | undefined>();
-  const [quotedAmount, setQuotedAmount] = useState('');
-  const [timeAndMaterial, setTimeAndMaterial] = useState<boolean>(false);
-  const [permit, setPermit] = useState<boolean>(false);
-  const [permitCost, setPermitCost] = useState('');
-  const [permitFiled, setPermitFiled] = useState<Date | undefined>();
-  const [coi, setCoi] = useState<boolean>(false);
-  const [coiRequested, setCoiRequested] = useState<Date | undefined>();
-  const [certifiedPayroll, setCertifiedPayroll] = useState<boolean>(false);
-  const [certifiedPayrollRequested, setCertifiedPayrollRequested] = useState<Date | undefined>();
-  const [intercoPO, setIntercoPO] = useState('');
-  const [customerPO, setCustomerPO] = useState('');
-  const [estimator, setEstimator] = useState('');
-  const [checkInOutURL, setCheckInOutURL] = useState('');
-  
-  // New temperature and signature fields
-  const [tempOnArrival, setTempOnArrival] = useState('');
-  const [tempOnLeaving, setTempOnLeaving] = useState('');
-  const [customerSignatureUrl, setCustomerSignatureUrl] = useState<string | undefined>('');
-  const [signatureDate, setSignatureDate] = useState<string | undefined>('');
-
-  const [isDataInitialized, setIsDataInitialized] = useState(false);
-
 
   const workOrderDocRef = useMemoFirebase(() => {
     if (!db) return null;
@@ -93,38 +57,6 @@ export default function WorkOrderDetailPage() {
     if (!workOrderDocRef) return null;
     return collection(workOrderDocRef, 'updates');
   }, [workOrderDocRef]);
-
-  const initializeEditState = (wo: WorkOrder) => {
-    setDescription(wo.description);
-    setStatus(wo.status);
-    setAssignedTechnicianId(wo.assignedTechnicianId);
-    setWorkSiteId(wo.workSiteId);
-    setClientId(wo.clientId);
-    setCreatedDate(wo.createdDate ? new Date(wo.createdDate) : undefined);
-    setBillTo(wo.billTo || '');
-    setPoNumber(wo.poNumber || '');
-    setContactInfo(wo.contactInfo || '');
-    setServiceScheduleDate(wo.serviceScheduleDate ? new Date(wo.serviceScheduleDate) : undefined);
-    setQuotedAmount(wo.quotedAmount?.toString() || '');
-    setTimeAndMaterial(wo.timeAndMaterial || false);
-    setPermit(wo.permit || false);
-    setPermitCost(wo.permitCost?.toString() || '');
-    setPermitFiled(wo.permitFiled ? new Date(wo.permitFiled) : undefined);
-    setCoi(wo.coi || false);
-    setCoiRequested(wo.coiRequested ? new Date(wo.coiRequested) : undefined);
-    setCertifiedPayroll(wo.certifiedPayroll || false);
-    setCertifiedPayrollRequested(wo.certifiedPayrollRequested ? new Date(wo.certifiedPayrollRequested) : undefined);
-    setIntercoPO(wo.intercoPO || '');
-    setCustomerPO(wo.customerPO || '');
-    setEstimator(wo.estimator || '');
-    setCheckInOutURL(wo.checkInOutURL || '');
-
-    // Initialize new fields
-    setTempOnArrival(wo.tempOnArrival || '');
-    setTempOnLeaving(wo.tempOnLeaving || '');
-    setCustomerSignatureUrl(wo.customerSignatureUrl);
-    setSignatureDate(wo.signatureDate);
-  }
 
   // Effect to fetch initial component data
   useEffect(() => {
@@ -172,25 +104,6 @@ export default function WorkOrderDetailPage() {
     fetchData();
   }, [db, id, user]);
 
-  // Effect to initialize the form state once, when the workOrder is first loaded.
-  useEffect(() => {
-    if (workOrder && !isDataInitialized) {
-      initializeEditState(workOrder);
-      setIsDataInitialized(true);
-    }
-  }, [workOrder, isDataInitialized]);
-  
-  
-  const resetEditState = () => {
-    if (!workOrder) return;
-    initializeEditState(workOrder);
-  };
-  
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-    resetEditState();
-  };
-  
   const handleDirectionsClick = (workSite: WorkSite) => {
     if (!workSite.address) return;
     const fullAddress = [workSite.address, workSite.city, workSite.state].filter(Boolean).join(', ');
@@ -245,84 +158,49 @@ export default function WorkOrderDetailPage() {
     setTimeEntries(prev => [newTimeEntry, ...prev]);
   };
   
-  const handleTempUpdate = () => {
+  const handleTempUpdate = async (tempData: { tempOnArrival?: string, tempOnLeaving?: string }) => {
     if (!workOrderDocRef) return;
   
-    // Only update if the values have actually changed from the source data
-    if (tempOnArrival !== workOrder?.tempOnArrival || tempOnLeaving !== workOrder?.tempOnLeaving) {
-      const tempData = {
-        tempOnArrival,
-        tempOnLeaving,
-      };
-  
-      updateDocumentNonBlocking(workOrderDocRef, tempData).then(() => {
-        toast({ title: "Temperatures Updated", description: "The arrival and leaving temperatures have been saved." });
-        // Optimistically update the main workOrder object as well
-        setWorkOrder(prev => prev ? ({ ...prev, ...tempData }) : null);
-      }).catch(error => {
-        // Error is handled by the global handler, but you could add a toast here if you want
-        console.error("Failed to update temperatures", error);
-      });
+    try {
+      await updateDocumentNonBlocking(workOrderDocRef, tempData);
+      toast({ title: "Temperatures Updated", description: "The arrival and leaving temperatures have been saved." });
+      setWorkOrder(prev => prev ? ({ ...prev, ...tempData }) : null);
+    } catch (error) {
+      console.error("Failed to update temperatures", error);
     }
   };
 
-  const handleSave = (e: FormEvent) => {
-    e.preventDefault();
+  const handleSave = async (updatedData: Partial<WorkOrder>) => {
     if (!workOrderDocRef || !workOrder) return;
     
-    const selectedClient = clients.find(c => c.id === clientId);
-    const selectedWorkSite = workSites.find(ws => ws.id === workSiteId);
-
-    const updatedData: Partial<WorkOrder> = {
-        jobName: selectedWorkSite?.name,
-        description,
-        status,
-        assignedTechnicianId,
-        workSiteId,
-        clientId,
-        billTo: selectedClient?.name,
-        createdDate: createdDate?.toISOString(),
-        poNumber,
-        contactInfo,
-        serviceScheduleDate: serviceScheduleDate?.toISOString(),
-        quotedAmount: quotedAmount ? parseFloat(quotedAmount) : undefined,
-        timeAndMaterial,
-        permit,
-        permitCost: permitCost ? parseFloat(permitCost) : undefined,
-        permitFiled: permitFiled?.toISOString(),
-        coi,
-        coiRequested: coiRequested?.toISOString(),
-        certifiedPayroll,
-        certifiedPayrollRequested: certifiedPayrollRequested?.toISOString(),
-        intercoPO,
-        customerPO,
-        estimator,
-        checkInOutURL,
-        tempOnArrival,
-        tempOnLeaving,
-        customerSignatureUrl,
-        signatureDate
-    };
-
     // Firestore does not allow `undefined` values. We clean them here.
-    Object.keys(updatedData).forEach(key => {
-        const k = key as keyof typeof updatedData;
-        if ((updatedData as any)[k] === undefined) {
-          (updatedData as any)[k] = null;
+    const cleanedData = { ...updatedData };
+    Object.keys(cleanedData).forEach(key => {
+        const k = key as keyof typeof cleanedData;
+        if ((cleanedData as any)[k] === undefined) {
+          (cleanedData as any)[k] = null;
         }
     });
 
-    updateDocumentNonBlocking(workOrderDocRef, updatedData);
+    try {
+        await updateDocumentNonBlocking(workOrderDocRef, cleanedData);
 
-    
-    // Optimistically update the local state
-    setWorkOrder(prev => {
-        if (!prev) return null;
-        return { ...prev, ...updatedData, workSite: selectedWorkSite, client: selectedClient } as WorkOrder;
-    });
-    
-    toast({ title: "Work Order Saved", description: "Changes have been saved successfully." });
-    setIsEditing(false);
+        const selectedClient = clients.find(c => c.id === cleanedData.clientId);
+        const selectedWorkSite = workSites.find(ws => ws.id === cleanedData.workSiteId);
+        
+        // Optimistically update the local state
+        setWorkOrder(prev => {
+            if (!prev) return null;
+            return { ...prev, ...cleanedData, workSite: selectedWorkSite, client: selectedClient } as WorkOrder;
+        });
+        
+        toast({ title: "Work Order Saved", description: "Changes have been saved successfully." });
+        setIsEditing(false);
+
+    } catch (error) {
+        console.error("Error saving work order", error);
+        // Error toast is handled by the non-blocking update function
+    }
   };
 
   const handleSignatureSave = async (signatureDataUrl: string) => {
@@ -337,17 +215,11 @@ export default function WorkOrderDetailPage() {
 
         const sigDate = new Date().toISOString();
         
-        // Update state locally
-        setCustomerSignatureUrl(signatureUrl);
-        setSignatureDate(sigDate);
-
-        // Update firestore
         await updateDocumentNonBlocking(workOrderDocRef, {
             customerSignatureUrl: signatureUrl,
             signatureDate: sigDate
         });
         
-        // Also update local workOrder object
         setWorkOrder(prev => prev ? ({ ...prev, customerSignatureUrl: signatureUrl, signatureDate: sigDate }) : null);
 
         toast({ title: "Signature Saved", description: "The customer signature has been saved." });
@@ -438,8 +310,6 @@ export default function WorkOrderDetailPage() {
       });
   };
 
-
-
   if (isLoading) {
     return (
       <MainLayout>
@@ -504,43 +374,15 @@ export default function WorkOrderDetailPage() {
                 onDirectionsClick={handleDirectionsClick}
                 onSignatureSave={() => setIsSignatureDialogOpen(true)}
                 onTempUpdate={handleTempUpdate}
-                editableFields={{
-                    description, setDescription,
-                    status, setStatus,
-                    assignedTechnicianId, setAssignedTechnicianId,
-                    workSiteId, setWorkSiteId,
-                    clientId, setClientId,
-                    createdDate, setCreatedDate,
-                    billTo, setBillTo,
-                    poNumber, setPoNumber,
-                    contactInfo, setContactInfo,
-                    serviceScheduleDate, setServiceScheduleDate,
-                    quotedAmount, setQuotedAmount,
-                    timeAndMaterial, setTimeAndMaterial,
-                    permit, setPermit,
-                    permitCost, setPermitCost,
-                    permitFiled, setPermitFiled,
-                    coi, setCoi,
-                    coiRequested, setCoiRequested,
-                    certifiedPayroll, setCertifiedPayroll,
-                    certifiedPayrollRequested, setCertifiedPayrollRequested,
-                    intercoPO, setIntercoPO,
-                    customerPO, setCustomerPO,
-                    estimator, setEstimator,
-                    checkInOutURL, setCheckInOutURL,
-                    tempOnArrival, setTempOnArrival,
-                    tempOnLeaving, setTempOnLeaving,
-                    customerSignatureUrl, setCustomerSignatureUrl,
-                    signatureDate, setSignatureDate,
-                }}
                 onWorkOrderUpdate={handleSave}
+                onCancelEdit={() => setIsEditing(false)}
             />
         </div>
       </div>
       {isEditing && (
          <div className="fixed bottom-0 left-0 w-full bg-background border-t shadow-lg">
             <div className="container mx-auto py-3 px-4 flex justify-end gap-2">
-                <Button variant="outline" onClick={handleCancelEdit}>
+                <Button variant="outline" onClick={() => setIsEditing(false)}>
                   <Ban className="mr-2 h-4 w-4" /> Cancel
                 </Button>
                 <Button form="work-order-form" type="submit">
