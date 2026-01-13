@@ -486,7 +486,9 @@ export function WorkOrderDetails({
                     <DetailItem label="PO #">
                         {isEditing ? <Input className="h-8 sm:text-right" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} /> : <span className="font-medium">{workOrder.poNumber || 'N/A'}</span>}
                     </DetailItem>
-                    <DetailItem label="Check-in/Out Link" value={workOrder.checkInOutURL} isLink />
+                    <DetailItem label="Check-in/Out Link">
+                        {isEditing ? <Input className="h-8 sm:text-right" value={checkInOutURL} onChange={(e) => setCheckInOutURL(e.target.value)} /> : (workOrder.checkInOutURL ? <a href={getLinkUrl(workOrder.checkInOutURL)} target="_blank" rel="noopener noreferrer" className="font-medium text-accent hover:underline sm:text-right">{workOrder.checkInOutURL}</a> : <span className="font-medium">N/A</span>) }
+                    </DetailItem>
                     <DetailItem label="Contact Info">
                         {isEditing ? <Textarea className="sm:text-right" value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} /> : <span className="font-medium whitespace-pre-wrap sm:text-right">{workOrder.contactInfo || 'N/A'}</span>}
                     </DetailItem>
@@ -683,5 +685,7 @@ export function WorkOrderDetails({
     </>
   );
 }
+
+    
 
     
