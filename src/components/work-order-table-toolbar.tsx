@@ -1,5 +1,12 @@
 
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search } from 'lucide-react';
 import { CreateWorkOrderDialog } from './create-work-order-dialog';
@@ -9,7 +16,9 @@ import { ScrollArea } from './ui/scroll-area';
 interface WorkOrderTableToolbarProps {
   onSearchChange: (value: string) => void;
   onStatusChange: (status: string) => void;
-  currentFilter: string;
+  currentStatusFilter: string;
+  onAssignedToChange: (technicianId: string) => void;
+  currentAssignedToFilter: string;
   technicians: Technician[];
   workSites: WorkSite[];
   clients: Client[];
@@ -22,7 +31,9 @@ const statuses = ['All', 'Open', 'In Progress', 'On Hold', 'Completed'];
 export function WorkOrderTableToolbar({
   onSearchChange,
   onStatusChange,
-  currentFilter,
+  currentStatusFilter,
+  onAssignedToChange,
+  currentAssignedToFilter,
   technicians,
   workSites,
   clients,
@@ -40,7 +51,18 @@ export function WorkOrderTableToolbar({
         />
       </div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center w-full md:w-auto">
-        <Tabs value={currentFilter} onValueChange={onStatusChange} className="w-full sm:w-auto">
+        <Select value={currentAssignedToFilter} onValueChange={onAssignedToChange}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Filter by technician..." />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="All">All Technicians</SelectItem>
+                {technicians.map(tech => (
+                    <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+        <Tabs value={currentStatusFilter} onValueChange={onStatusChange} className="w-full sm:w-auto">
           <ScrollArea className="w-full sm:w-auto whitespace-nowrap">
             <TabsList className="w-full sm:w-auto">
               {statuses.map(status => (

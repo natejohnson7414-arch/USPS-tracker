@@ -19,33 +19,40 @@ export default function DashboardPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('All');
+  const [assignedToFilter, setAssignedToFilter] = useState('All');
   const hasSeeded = useRef(false);
+  const defaultFilterSet = useRef(false);
+
+  useEffect(() => {
+    // Set default filter for technician once user and role are loaded
+    if (user && currentUserRole && !defaultFilterSet.current) {
+        if (currentUserRole.name === 'Technician') {
+            setAssignedToFilter(user.uid);
+        }
+        defaultFilterSet.current = true;
+    }
+  }, [user, currentUserRole]);
 
   // Memoize the query to prevent re-creating it on every render
   const workOrdersQuery = useMemoFirebase(() => {
-    if (!db || !user || isRoleLoading) return null;
+    if (!db) return null;
 
-    const baseQuery = collection(db, 'work_orders');
-    const isTech = currentUserRole?.name === 'Technician';
+    let q = query(collection(db, 'work_orders'));
 
-    // Technician View
-    if (isTech) {
-        // If 'All' is selected, show all work orders
-        if (statusFilter === 'All') {
-            return query(baseQuery, where('assignedTechnicianId', '==', user.uid));
-        }
-        // Otherwise, filter by their ID and the selected status
-        return query(baseQuery, where('assignedTechnicianId', '==', user.uid), where('status', '==', statusFilter));
-    }
-    
-    // Admin/Other roles View
+    const filters = [];
     if (statusFilter !== 'All') {
-        return query(baseQuery, where('status', '==', statusFilter));
+        filters.push(where('status', '==', statusFilter));
+    }
+    if (assignedToFilter !== 'All') {
+        filters.push(where('assignedTechnicianId', '==', assignedToFilter));
     }
     
-    // Default for Admin: return all work orders
-    return query(baseQuery);
-  }, [db, user, isRoleLoading, currentUserRole, statusFilter]);
+    if (filters.length > 0) {
+        q = query(collection(db, 'work_orders'), ...filters);
+    }
+    
+    return q;
+  }, [db, statusFilter, assignedToFilter]);
 
   const { data: workOrders, isLoading: isWorkOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
 
@@ -138,6 +145,8 @@ export default function DashboardPage() {
         currentUserRole={currentUserRole}
         statusFilter={statusFilter}
         onStatusChange={setStatusFilter}
+        assignedToFilter={assignedToFilter}
+        onAssignedToChange={setAssignedToFilter}
       />
     </MainLayout>
   );

@@ -18,6 +18,8 @@ interface DashboardClientProps {
   currentUserRole: Role | null;
   statusFilter: string;
   onStatusChange: (status: string) => void;
+  assignedToFilter: string;
+  onAssignedToChange: (technicianId: string) => void;
 }
 
 export function DashboardClient({ 
@@ -27,7 +29,9 @@ export function DashboardClient({
     initialClients, 
     currentUserRole,
     statusFilter,
-    onStatusChange
+    onStatusChange,
+    assignedToFilter,
+    onAssignedToChange
 }: DashboardClientProps) {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
   const [workSites, setWorkSites] = useState<WorkSite[]>(initialWorkSites);
@@ -43,7 +47,7 @@ export function DashboardClient({
   const filteredWorkOrders = useMemo(() => {
     return workOrders.filter(order => {
       const lowerSearchTerm = searchTerm.toLowerCase();
-      // Status filter is now handled by the Firestore query in page.tsx
+      // Status and Assigned To filters are now handled by the Firestore query in page.tsx
       // We only need to apply the client-side search term filter
       const matchesSearch =
         order.jobName?.toLowerCase().includes(lowerSearchTerm) ||
@@ -64,7 +68,9 @@ export function DashboardClient({
         <WorkOrderTableToolbar
           onSearchChange={setSearchTerm}
           onStatusChange={onStatusChange}
-          currentFilter={statusFilter}
+          currentStatusFilter={statusFilter}
+          onAssignedToChange={onAssignedToChange}
+          currentAssignedToFilter={assignedToFilter}
           technicians={technicians}
           workSites={workSites}
           clients={clients}
