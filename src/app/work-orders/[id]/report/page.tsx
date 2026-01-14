@@ -3,7 +3,6 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useParams, notFound } from 'next/navigation';
-import Image from 'next/image';
 import { format } from 'date-fns';
 import { useFirestore } from '@/firebase';
 import { getWorkOrderById } from '@/lib/data';
@@ -66,47 +65,51 @@ export default function WorkOrderReportPage() {
         
         setIsDownloading(true);
 
-        // Temporarily add a class to hide the download button during capture
-        const downloadButton = document.getElementById('download-button');
-        downloadButton?.classList.add('hidden-for-download');
+        const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'pt',
+            format: 'a4'
+        });
+
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+
+        const reportPages = printRef.current.querySelectorAll('.pdf-page');
 
         try {
-            const canvas = await html2canvas(printRef.current, {
-                scale: 2, // Increase scale for better quality
-                useCORS: true,
-                onclone: (document) => {
-                    // This is a workaround to ensure images are loaded, especially from cross-origin sources
-                    const imagePromises: Promise<void>[] = [];
-                    document.querySelectorAll('img').forEach(img => {
-                        if (img.complete) return;
-                        imagePromises.push(new Promise(resolve => {
-                            img.onload = () => resolve();
-                            img.onerror = () => resolve();
-                        }));
-                    });
-                    return Promise.all(imagePromises);
+            for (let i = 0; i < reportPages.length; i++) {
+                const page = reportPages[i] as HTMLElement;
+                if (i > 0) {
+                    pdf.addPage();
                 }
-            });
-            const imgData = canvas.toDataURL('image/png');
-            
-            // A4 page dimensions in points (72 points per inch)
-            const pdfWidth = 595.28; 
-            const pdfHeight = 841.89;
 
-            const imgWidth = canvas.width;
-            const imgHeight = canvas.height;
-            const ratio = imgWidth / imgHeight;
+                const canvas = await html2canvas(page, {
+                    scale: 2,
+                    useCORS: true,
+                    // Allow tainting to handle cross-origin images gracefully
+                    allowTaint: true, 
+                });
 
-            const finalPdfWidth = pdfWidth;
-            const finalPdfHeight = pdfWidth / ratio;
-            
-            const pdf = new jsPDF({
-                orientation: 'portrait',
-                unit: 'pt',
-                format: 'a4'
-            });
+                const imgData = canvas.toDataURL('image/png');
+                const imgWidth = canvas.width;
+                const imgHeight = canvas.height;
+                const ratio = imgWidth / imgHeight;
+                
+                let finalPdfWidth = pdfWidth;
+                let finalPdfHeight = pdfWidth / ratio;
 
-            pdf.addImage(imgData, 'PNG', 0, 0, finalPdfWidth, finalPdfHeight);
+                // If content is taller than a page, scale it down
+                if (finalPdfHeight > pdfHeight) {
+                    finalPdfHeight = pdfHeight;
+                    finalPdfWidth = pdfHeight * ratio;
+                }
+                
+                const x = (pdfWidth - finalPdfWidth) / 2;
+                const y = 0;
+
+                pdf.addImage(imgData, 'PNG', x, y, finalPdfWidth, finalPdfHeight);
+            }
+
             pdf.save(`Work-Order-Report-${workOrder.id}.pdf`);
 
         } catch (e) {
@@ -114,8 +117,6 @@ export default function WorkOrderReportPage() {
             setError("Failed to generate PDF.");
         } finally {
             setIsDownloading(false);
-            // Remove the helper class
-            downloadButton?.classList.remove('hidden-for-download');
         }
     };
     
@@ -150,55 +151,23 @@ export default function WorkOrderReportPage() {
 
 
     return (
-        <div className="bg-gray-100 min-h-screen">
-        <div className="bg-white text-black p-8 font-sans mx-auto printable-area" style={{ width: '8.5in' }} ref={printRef}>
-            <style jsx global>{`
-                @media print {
-                    body * {
-                        visibility: hidden;
-                    }
-                    .printable-area, .printable-area * {
-                        visibility: visible;
-                    }
-                    .printable-area {
-                        position: absolute;
-                        left: 0;
-                        top: 0;
-                        width: 100%;
-                        margin: 0;
-                        border: none;
-                        box-shadow: none;
-                    }
-                    .hidden-for-download, .hidden-for-download * {
-                        visibility: hidden !important;
-                    }
-                    .page-break {
-                        break-before: page;
-                    }
-                    @page {
-                        size: auto;
-                        margin: 0mm;
-                    }
-                }
-                .hidden-for-download {
-                    display: none;
-                }
-            `}</style>
+        <div className="bg-gray-100 min-h-screen py-8">
+        <div className="bg-white text-black font-sans mx-auto printable-area" style={{ width: '8.5in' }} ref={printRef}>
             
             {/* Page 1: Main Report */}
-            <div style={{ minHeight: '11in' }}>
+            <div className="pdf-page p-8" style={{ minHeight: '11in' }}>
                 <header className="flex justify-between items-start mb-8">
                     <div>
                         <h2 className="font-bold text-lg">Facilities Office</h2>
                         <div className="relative h-16 w-48">
-                            <Image src="https://storage.googleapis.com/sourcegraph-assets/cody-play/usps-logo-250125B6-512A-4354-946A-89F15A335293.png" alt="USPS Logo" fill={true} style={{objectFit:"contain"}} />
+                            <img src="https://storage.googleapis.com/sourcegraph-assets/cody-play/usps-logo-250125B6-512A-4354-946A-89F15A335293.png" alt="USPS Logo" style={{objectFit:"contain", width: '100%', height: '100%'}} crossOrigin="anonymous" />
                         </div>
                         <p className="mt-4">Date: <span className="font-medium underline decoration-dotted">{signatureDate}</span></p>
                         <p className="mt-2">Facilities HUB Project Manager:</p>
                     </div>
                     <div>
                         <div className="relative h-16 w-48">
-                           <Image src="https://firebasestudio.app/assets/images/crawford-logo.png" alt="Crawford Company Logo" fill={true} style={{objectFit:"contain"}} />
+                           <img src="https://firebasestudio.app/assets/images/crawford-logo.png" alt="Crawford Company Logo" style={{objectFit:"contain", width: '100%', height: '100%'}} crossOrigin="anonymous" />
                         </div>
                         <p className="mt-4 text-right">Crawford Job #</p>
                         <div className="bg-gray-200 p-2 rounded text-center font-medium">{workOrder.id}</div>
@@ -247,9 +216,9 @@ export default function WorkOrderReportPage() {
                         </div>
                         <div className="w-2/3 border-2 border-black text-sm">
                             <div className="p-2 border-b-2 border-black font-medium min-h-[2rem]">{workOrder.contactInfo || ''}</div>
-                            <div className="p-2 border-b-2 border-black min-h-[3rem] flex items-center">
+                            <div className="p-2 border-b-2 border-black min-h-[3rem] h-[3rem] flex items-center">
                                 {!!workOrder.customerSignatureUrl && (
-                                    <Image src={workOrder.customerSignatureUrl} alt="Customer Signature" width={200} height={50} style={{objectFit:"contain"}} />
+                                    <img src={workOrder.customerSignatureUrl} alt="Customer Signature" className="h-full w-auto object-contain" crossOrigin="anonymous" />
                                 )}
                             </div>
                             <div className="p-2 border-b-2 border-black font-medium min-h-[2rem]">{signatureDate}</div>
@@ -264,7 +233,7 @@ export default function WorkOrderReportPage() {
             </div>
 
             {allPhotoUrls.length > 0 && (
-                <div className="page-break" style={{ minHeight: '11in' }}>
+                <div className="pdf-page p-8" style={{ minHeight: '11in' }}>
                     <header className="flex justify-between items-center mb-8">
                          <h1 className="font-bold text-xl">Photo Appendix</h1>
                          <p className="text-sm text-gray-600">Work Order # {workOrder.id}</p>
@@ -274,7 +243,7 @@ export default function WorkOrderReportPage() {
                             {allPhotoUrls.map((url, index) => (
                                 <div key={index} className="space-y-2">
                                     <div className="relative aspect-video w-full border rounded-lg overflow-hidden">
-                                        {!!url && <Image src={url} alt={`Work photo ${index + 1}`} fill={true} style={{objectFit:"contain"}} />}
+                                        {!!url && <img src={url} alt={`Work photo ${index + 1}`} style={{objectFit:"contain", width: '100%', height: '100%'}} crossOrigin="anonymous" />}
                                     </div>
                                     <p className="text-center text-sm text-gray-500">Photo {index + 1}</p>
                                 </div>
