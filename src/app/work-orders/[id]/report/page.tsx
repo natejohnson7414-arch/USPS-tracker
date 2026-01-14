@@ -86,7 +86,6 @@ export default function WorkOrderReportPage() {
                 const canvas = await html2canvas(page, {
                     scale: 2,
                     useCORS: true,
-                    // Allow tainting to handle cross-origin images gracefully
                     allowTaint: true, 
                 });
 
@@ -98,7 +97,6 @@ export default function WorkOrderReportPage() {
                 let finalPdfWidth = pdfWidth;
                 let finalPdfHeight = pdfWidth / ratio;
 
-                // If content is taller than a page, scale it down
                 if (finalPdfHeight > pdfHeight) {
                     finalPdfHeight = pdfHeight;
                     finalPdfWidth = pdfHeight * ratio;
@@ -154,7 +152,6 @@ export default function WorkOrderReportPage() {
         <div className="bg-gray-100 min-h-screen py-8">
         <div className="bg-white text-black font-sans mx-auto printable-area" style={{ width: '8.5in' }} ref={printRef}>
             
-            {/* Page 1: Main Report */}
             <div className="pdf-page p-8" style={{ minHeight: '11in' }}>
                 <header className="flex justify-between items-start mb-8">
                     <div>
@@ -178,11 +175,10 @@ export default function WorkOrderReportPage() {
                     <h1 className="text-center font-bold text-lg tracking-wider mb-4">WORK ACKNOWLEDGEMENT LETTER</h1>
                     
                     <div className="flex items-start gap-4">
-                        {/* Left details column */}
                         <div className="w-1/3 space-y-2 text-sm">
                             <p>Facility Name:</p>
                             <p>Work Description:</p>
-                            <div className="h-24"></div> {/* Spacer */}
+                            <div className="h-24"></div>
                             <p>Contractor:</p>
                             <p>Call #/Problem #:</p>
                             <p>Temp upon Arrival:</p>
@@ -190,7 +186,6 @@ export default function WorkOrderReportPage() {
                             <p>Before and After Pictures:</p>
                         </div>
 
-                        {/* Right table-like column */}
                         <div className="w-2/3 border-2 border-black text-sm">
                             <div className="p-2 border-b-2 border-black font-medium">{workOrder.workSite?.name || ''}</div>
                             <div className="p-2 border-b-2 border-black min-h-[9.5rem] break-words">{summarizedDescription}</div>
