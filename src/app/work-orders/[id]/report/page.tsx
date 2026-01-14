@@ -84,8 +84,8 @@ export default function WorkOrderReportPage() {
                 }
 
                 const canvas = await html2canvas(page, {
-                    scale: 2, // Higher scale for better quality
-                    useCORS: true,
+                    scale: 2,
+                    useCORS: true, 
                     allowTaint: true,
                 });
 
@@ -94,11 +94,9 @@ export default function WorkOrderReportPage() {
                 const canvasHeight = canvas.height;
                 const canvasRatio = canvasWidth / canvasHeight;
 
-                // Calculate the dimensions to fit the PDF page while maintaining aspect ratio
                 let finalPdfWidth = pdfWidth;
                 let finalPdfHeight = pdfWidth / canvasRatio;
 
-                // If the height is still too large, scale down by height instead
                 if (finalPdfHeight > pdfHeight) {
                     finalPdfHeight = pdfHeight;
                     finalPdfWidth = pdfHeight * canvasRatio;
@@ -149,6 +147,7 @@ export default function WorkOrderReportPage() {
     const signatureDate = workOrder.signatureDate ? format(new Date(workOrder.signatureDate), 'MM/dd/yyyy') : ' ';
     const allPhotoUrls = workOrder.notes.flatMap(note => note.photoUrls || []).filter(Boolean);
 
+    const getProxiedUrl = (url: string) => `/api/image-proxy?url=${encodeURIComponent(url)}`;
 
     return (
         <div className="bg-gray-100 min-h-screen py-8">
@@ -159,16 +158,14 @@ export default function WorkOrderReportPage() {
                     <div>
                         <h2 className="font-bold text-lg">Facilities Office</h2>
                         <div className="relative h-16 w-48">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src="https://storage.googleapis.com/sourcegraph-assets/cody-play/usps-logo.png" alt="USPS Logo" style={{objectFit:"contain", height: '100%', width: '100%'}} crossOrigin="anonymous" />
+                            <img src={getProxiedUrl("https://storage.googleapis.com/sourcegraph-assets/cody-play/usps-logo.png")} alt="USPS Logo" style={{objectFit:"contain", height: '100%', width: '100%'}} />
                         </div>
                         <p className="mt-4">Date: <span className="font-medium underline decoration-dotted">{signatureDate}</span></p>
                         <p className="mt-2">Facilities HUB Project Manager:</p>
                     </div>
                     <div>
                         <div className="relative h-16 w-48">
-                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                           <img src="https://firebasestudio.app/assets/images/crawford-logo.png" alt="Crawford Company Logo" style={{objectFit:"contain", height: '100%', width: '100%'}} crossOrigin="anonymous" />
+                           <img src={getProxiedUrl("https://www.crawford-company.com/hubfs/new-art-o-lite-logo-1.png")} alt="Crawford Company Logo" style={{objectFit:"contain", height: '100%', width: '100%'}} />
                         </div>
                         <p className="mt-4 text-right">Crawford Job #</p>
                         <div className="bg-gray-200 p-2 rounded text-center font-medium">{workOrder.id}</div>
@@ -217,8 +214,7 @@ export default function WorkOrderReportPage() {
                             <div className="p-2 border-b-2 border-black font-medium min-h-[2rem]">{workOrder.contactInfo || ''}</div>
                             <div className="p-2 border-b-2 border-black min-h-[3rem] h-[3rem] flex items-center">
                                 {!!workOrder.customerSignatureUrl && (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={workOrder.customerSignatureUrl} alt="Customer Signature" style={{ objectFit: 'contain', height: '40px', width: '150px' }} crossOrigin="anonymous" />
+                                    <img src={getProxiedUrl(workOrder.customerSignatureUrl)} alt="Customer Signature" style={{ objectFit: 'contain', height: '40px', width: '150px' }} />
                                 )}
                             </div>
                             <div className="p-2 border-b-2 border-black font-medium min-h-[2rem]">{signatureDate}</div>
@@ -243,8 +239,7 @@ export default function WorkOrderReportPage() {
                             {allPhotoUrls.map((url, index) => (
                                 <div key={index} className="space-y-2">
                                     <div className="relative aspect-video w-full border rounded-lg overflow-hidden">
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        {!!url && <img src={url} alt={`Work photo ${index + 1}`} style={{objectFit:"contain", height: '100%', width: '100%'}} crossOrigin="anonymous" />}
+                                        {!!url && <img src={getProxiedUrl(url)} alt={`Work photo ${index + 1}`} style={{objectFit:"contain", height: '100%', width: '100%'}} />}
                                     </div>
                                     <p className="text-center text-sm text-gray-500">Photo {index + 1}</p>
                                 </div>
