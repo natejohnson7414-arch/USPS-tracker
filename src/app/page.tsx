@@ -34,8 +34,9 @@ export default function DashboardPage() {
   }, [user, currentUserRole]);
 
   // Memoize the query to prevent re-creating it on every render
+  // CRITICAL: We must wait for the user to be authenticated before creating the query.
   const workOrdersQuery = useMemoFirebase(() => {
-    if (!db) return null;
+    if (!db || isAuthLoading || !user) return null;
 
     let q = query(collection(db, 'work_orders'));
 
@@ -52,7 +53,7 @@ export default function DashboardPage() {
     }
     
     return q;
-  }, [db, statusFilter, assignedToFilter]);
+  }, [db, statusFilter, assignedToFilter, user, isAuthLoading]);
 
   const { data: workOrders, isLoading: isWorkOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
 
