@@ -13,6 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Download, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import Image from 'next/image';
+
 
 export default function WorkOrderReportPage() {
     const params = useParams();
@@ -86,7 +88,7 @@ export default function WorkOrderReportPage() {
                 const canvas = await html2canvas(page, {
                     scale: 2,
                     useCORS: true,
-                    allowTaint: true, 
+                    allowTaint: true,
                 });
 
                 const imgData = canvas.toDataURL('image/png');
@@ -157,14 +159,14 @@ export default function WorkOrderReportPage() {
                     <div>
                         <h2 className="font-bold text-lg">Facilities Office</h2>
                         <div className="relative h-16 w-48">
-                            <img src="https://storage.googleapis.com/sourcegraph-assets/cody-play/usps-logo-250125B6-512A-4354-946A-89F15A335293.png" alt="USPS Logo" style={{objectFit:"contain", width: '100%', height: '100%'}} crossOrigin="anonymous" />
+                            <Image src="https://storage.googleapis.com/sourcegraph-assets/cody-play/usps-logo-250125B6-512A-4354-946A-89F15A335293.png" alt="USPS Logo" fill style={{objectFit:"contain"}} crossOrigin="anonymous" />
                         </div>
                         <p className="mt-4">Date: <span className="font-medium underline decoration-dotted">{signatureDate}</span></p>
                         <p className="mt-2">Facilities HUB Project Manager:</p>
                     </div>
                     <div>
                         <div className="relative h-16 w-48">
-                           <img src="https://firebasestudio.app/assets/images/crawford-logo.png" alt="Crawford Company Logo" style={{objectFit:"contain", width: '100%', height: '100%'}} crossOrigin="anonymous" />
+                           <Image src="https://firebasestudio.app/assets/images/crawford-logo.png" alt="Crawford Company Logo" fill style={{objectFit:"contain"}} crossOrigin="anonymous" />
                         </div>
                         <p className="mt-4 text-right">Crawford Job #</p>
                         <div className="bg-gray-200 p-2 rounded text-center font-medium">{workOrder.id}</div>
@@ -213,7 +215,7 @@ export default function WorkOrderReportPage() {
                             <div className="p-2 border-b-2 border-black font-medium min-h-[2rem]">{workOrder.contactInfo || ''}</div>
                             <div className="p-2 border-b-2 border-black min-h-[3rem] h-[3rem] flex items-center">
                                 {!!workOrder.customerSignatureUrl && (
-                                    <img src={workOrder.customerSignatureUrl} alt="Customer Signature" className="h-full w-auto object-contain" crossOrigin="anonymous" />
+                                    <Image src={workOrder.customerSignatureUrl} alt="Customer Signature" height={40} width={150} style={{ objectFit: 'contain' }} crossOrigin="anonymous" />
                                 )}
                             </div>
                             <div className="p-2 border-b-2 border-black font-medium min-h-[2rem]">{signatureDate}</div>
@@ -238,7 +240,7 @@ export default function WorkOrderReportPage() {
                             {allPhotoUrls.map((url, index) => (
                                 <div key={index} className="space-y-2">
                                     <div className="relative aspect-video w-full border rounded-lg overflow-hidden">
-                                        {!!url && <img src={url} alt={`Work photo ${index + 1}`} style={{objectFit:"contain", width: '100%', height: '100%'}} crossOrigin="anonymous" />}
+                                        {!!url && <Image src={url} alt={`Work photo ${index + 1}`} fill style={{objectFit:"contain"}} crossOrigin="anonymous" />}
                                     </div>
                                     <p className="text-center text-sm text-gray-500">Photo {index + 1}</p>
                                 </div>
@@ -258,3 +260,4 @@ export default function WorkOrderReportPage() {
     );
 
     
+}
