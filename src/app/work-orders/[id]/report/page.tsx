@@ -86,26 +86,28 @@ export default function WorkOrderReportPage() {
                 }
 
                 const canvas = await html2canvas(page, {
-                    scale: 2,
+                    scale: 2, // Higher scale for better quality
                     useCORS: true,
                     allowTaint: true,
                 });
 
                 const imgData = canvas.toDataURL('image/png');
-                const imgWidth = canvas.width;
-                const imgHeight = canvas.height;
-                const ratio = imgWidth / imgHeight;
-                
-                let finalPdfWidth = pdfWidth;
-                let finalPdfHeight = pdfWidth / ratio;
+                const canvasWidth = canvas.width;
+                const canvasHeight = canvas.height;
+                const canvasRatio = canvasWidth / canvasHeight;
 
+                // Calculate the dimensions to fit the PDF page while maintaining aspect ratio
+                let finalPdfWidth = pdfWidth;
+                let finalPdfHeight = pdfWidth / canvasRatio;
+
+                // If the height is still too large, scale down by height instead
                 if (finalPdfHeight > pdfHeight) {
                     finalPdfHeight = pdfHeight;
-                    finalPdfWidth = pdfHeight * ratio;
+                    finalPdfWidth = pdfHeight * canvasRatio;
                 }
                 
                 const x = (pdfWidth - finalPdfWidth) / 2;
-                const y = 0;
+                const y = (pdfHeight - finalPdfHeight) / 2;
 
                 pdf.addImage(imgData, 'PNG', x, y, finalPdfWidth, finalPdfHeight);
             }
