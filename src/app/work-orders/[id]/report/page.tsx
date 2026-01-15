@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Download, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import Image from 'next/image';
 
 export default function WorkOrderReportPage() {
     const params = useParams();
@@ -74,31 +75,30 @@ export default function WorkOrderReportPage() {
                 const page = pages[i];
     
                 const canvas = await html2canvas(page, {
-                    scale: 2, // Higher scale for better quality
-                    useCORS: true,
+                    scale: 2,
+                    useCORS: true, 
                     allowTaint: true,
                 });
     
                 const imgData = canvas.toDataURL('image/png');
                 const canvasWidth = canvas.width;
                 const canvasHeight = canvas.height;
+                const pdfWidth = canvasWidth;
+                const pdfHeight = canvasHeight;
     
                 if (i === 0) {
-                    // Initialize PDF on the first page
-                    const orientation = canvasWidth > canvasHeight ? 'l' : 'p';
+                    const orientation = pdfWidth > pdfHeight ? 'l' : 'p';
                     pdf = new jsPDF({
                         orientation,
                         unit: 'px',
-                        format: [canvasWidth, canvasHeight]
+                        format: [pdfWidth, pdfHeight]
                     });
                 } else {
-                    // For subsequent pages, add a new page with the correct dimensions
-                    const orientation = canvasWidth > canvasHeight ? 'l' : 'p';
-                    pdf!.addPage([canvasWidth, canvasHeight], orientation);
+                    const orientation = pdfWidth > pdfHeight ? 'l' : 'p';
+                    pdf!.addPage([pdfWidth, pdfHeight], orientation);
                 }
     
-                // Add the image to fill the entire page
-                pdf!.addImage(imgData, 'PNG', 0, 0, canvasWidth, canvasHeight);
+                pdf!.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
             }
     
             if (pdf) {
@@ -142,8 +142,6 @@ export default function WorkOrderReportPage() {
     const signatureDate = workOrder.signatureDate ? format(new Date(workOrder.signatureDate), 'MM/dd/yyyy') : ' ';
     const allPhotoUrls = workOrder.notes.flatMap(note => note.photoUrls || []).filter(Boolean);
 
-    const getProxiedUrl = (url: string) => `/api/image-proxy?url=${encodeURIComponent(url)}`;
-
     return (
         <div className="bg-gray-100 min-h-screen py-8">
              <div id="download-button" className="fixed bottom-8 right-8 z-50">
@@ -160,14 +158,14 @@ export default function WorkOrderReportPage() {
                     <div>
                         <h2 className="font-bold text-lg">Facilities Office</h2>
                         <div className="relative h-16 w-48">
-                            <img src={getProxiedUrl("https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/USPS_Eagle_logo.svg/1200px-USPS_Eagle_logo.svg.png")} alt="USPS Logo" style={{objectFit:"contain", height: '100%', width: '100%'}} crossOrigin="anonymous" />
+                             <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/USPS_Eagle_logo.svg/1200px-USPS_Eagle_logo.svg.png" alt="USPS Logo" fill style={{objectFit:"contain"}} unoptimized/>
                         </div>
                         <p className="mt-4">Date: <span className="font-medium underline decoration-dotted">{signatureDate}</span></p>
                         <p className="mt-2">Facilities HUB Project Manager:</p>
                     </div>
                     <div>
                         <div className="relative h-16 w-48">
-                           <img src={getProxiedUrl("https://www.crawford-company.com/hubfs/new-art-o-lite-logo-1.png")} alt="Crawford Company Logo" style={{objectFit:"contain", height: '100%', width: '100%'}} crossOrigin="anonymous" />
+                           <Image src="https://www.crawford-company.com/hubfs/new-art-o-lite-logo-1.png" alt="Crawford Company Logo" fill style={{objectFit:"contain"}} unoptimized/>
                         </div>
                         <p className="mt-4 text-right">Crawford Job #</p>
                         <div className="bg-gray-200 p-2 rounded text-center font-medium">{workOrder.id}</div>
@@ -216,7 +214,7 @@ export default function WorkOrderReportPage() {
                             <div className="p-2 border-b-2 border-black font-medium min-h-[2rem]">{workOrder.contactInfo || ''}</div>
                             <div className="p-2 border-b-2 border-black min-h-[3rem] h-[3rem] flex items-center">
                                 {!!workOrder.customerSignatureUrl && (
-                                    <img src={getProxiedUrl(workOrder.customerSignatureUrl)} alt="Customer Signature" className="object-contain h-full" crossOrigin="anonymous" />
+                                    <Image src={workOrder.customerSignatureUrl} alt="Customer Signature" className="object-contain h-full" width={150} height={50} unoptimized />
                                 )}
                             </div>
                             <div className="p-2 border-b-2 border-black font-medium min-h-[2rem]">{signatureDate}</div>
@@ -241,7 +239,7 @@ export default function WorkOrderReportPage() {
                             {allPhotoUrls.map((url, index) => (
                                 <div key={index} className="space-y-2">
                                     <div className="relative aspect-video w-full border rounded-lg overflow-hidden">
-                                        {!!url && <img src={getProxiedUrl(url)} alt={`Work photo ${index + 1}`} style={{objectFit:"contain", height: '100%', width: '100%'}} crossOrigin="anonymous" />}
+                                        {!!url && <Image src={url} alt={`Work photo ${index + 1}`} fill style={{objectFit:"contain"}} unoptimized />}
                                     </div>
                                     <p className="text-center text-sm text-gray-500">Photo {index + 1}</p>
                                 </div>
@@ -256,5 +254,3 @@ export default function WorkOrderReportPage() {
 
     
 }
-
-    
