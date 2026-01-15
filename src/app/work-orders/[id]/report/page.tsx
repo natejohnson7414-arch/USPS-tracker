@@ -63,24 +63,66 @@ export default function WorkOrderReportPage() {
     const handleDownload = async () => {
         const content = printRef.current;
         if (!content || !workOrder) return;
-        
+    
         setIsDownloading(true);
-
+    
         try {
             const pdf = new jsPDF('p', 'pt', 'a4');
-            await pdf.html(content, {
-                html2canvas: {
-                    scale: 0.7, // Adjust scale to fit content better
-                    useCORS: true,
-                },
-                autoPaging: 'text',
-                margin: [20, 20, 20, 20],
-                width: 595, // A4 width in points
-                windowWidth: content.scrollWidth,
-                callback: (doc) => {
-                    doc.save(`Work-Order-Report-${workOrder.id}.pdf`);
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+    
+            // Process all pages
+            const pages = content.querySelectorAll('.pdf-page') as NodeListOf<HTMLElement>;
+    
+            for (let i = 0; i < pages.length; i++) {
+                const page = pages[i];
+                if (i > 0) {
+                    pdf.addPage();
                 }
-            });
+    
+                const canvas = await html2canvas(page, {
+                    scale: 2, // Increase scale for better quality
+                    useCORS: true,
+                    allowTaint: true,
+                    onclone: (document) => {
+                        // This helps with rendering images that might not be visible
+                        const images = document.querySelectorAll('img');
+                        images.forEach(img => {
+                            if (!img.complete) {
+                                // You can add logic here to wait for images if needed, but useCORS should handle most cases
+                            }
+                        });
+                    }
+                });
+    
+                const canvasWidth = canvas.width;
+                const canvasHeight = canvas.height;
+                const canvasRatio = canvasWidth / canvasHeight;
+                const pdfRatio = pdfWidth / pdfHeight;
+    
+                let finalWidth, finalHeight;
+    
+                // Determine scaling based on aspect ratio comparison
+                if (canvasRatio > pdfRatio) {
+                    // Canvas is wider than PDF page, so fit to width
+                    finalWidth = pdfWidth;
+                    finalHeight = pdfWidth / canvasRatio;
+                } else {
+                    // Canvas is taller than or equal to PDF page aspect ratio, so fit to height
+                    finalHeight = pdfHeight;
+                    finalWidth = pdfHeight * canvasRatio;
+                }
+
+                // Center the image on the page (optional)
+                const x = (pdfWidth - finalWidth) / 2;
+                const y = (pdfHeight - finalHeight) / 2;
+    
+                const imgData = canvas.toDataURL('image/png');
+                pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
+            }
+    
+            pdf.save(`Work-Order-Report-${workOrder.id}.pdf`);
+    
         } catch (e) {
             console.error("Error generating PDF:", e);
             setError("Failed to generate PDF.");
@@ -122,6 +164,13 @@ export default function WorkOrderReportPage() {
 
     return (
         <div className="bg-gray-100 min-h-screen py-8">
+             <div id="download-button" className="fixed bottom-8 right-8 z-50">
+                <Button onClick={handleDownload} disabled={isDownloading}>
+                    {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                    {isDownloading ? 'Downloading...' : 'Download PDF'}
+                </Button>
+            </div>
+
         <div className="bg-white text-black font-sans mx-auto printable-area" style={{ width: '8.5in' }} ref={printRef}>
             
             <div className="pdf-page p-8" style={{ minHeight: '11in' }}>
@@ -129,14 +178,14 @@ export default function WorkOrderReportPage() {
                     <div>
                         <h2 className="font-bold text-lg">Facilities Office</h2>
                         <div className="relative h-16 w-48">
-                            <img src={getProxiedUrl("https://storage.googleapis.com/sourcegraph-assets/cody-play/usps-logo.png")} alt="USPS Logo" style={{objectFit:"contain", height: '100%', width: '100%'}} />
+                            <img src={getProxiedUrl("https://storage.googleapis.com/sourcegraph-assets/cody-play/usps-logo.png")} alt="USPS Logo" style={{objectFit:"contain", height: '100%', width: '100%'}} crossOrigin="anonymous" />
                         </div>
                         <p className="mt-4">Date: <span className="font-medium underline decoration-dotted">{signatureDate}</span></p>
                         <p className="mt-2">Facilities HUB Project Manager:</p>
                     </div>
                     <div>
                         <div className="relative h-16 w-48">
-                           <img src={getProxiedUrl("https://www.crawford-company.com/hubfs/new-art-o-lite-logo-1.png")} alt="Crawford Company Logo" style={{objectFit:"contain", height: '100%', width: '100%'}} />
+                           <img src={getProxiedUrl("https://www.crawford-company.com/hubfs/new-art-o-lite-logo-1.png")} alt="Crawford Company Logo" style={{objectFit:"contain", height: '100%', width: '100%'}} crossOrigin="anonymous" />
                         </div>
                         <p className="mt-4 text-right">Crawford Job #</p>
                         <div className="bg-gray-200 p-2 rounded text-center font-medium">{workOrder.id}</div>
@@ -185,7 +234,7 @@ export default function WorkOrderReportPage() {
                             <div className="p-2 border-b-2 border-black font-medium min-h-[2rem]">{workOrder.contactInfo || ''}</div>
                             <div className="p-2 border-b-2 border-black min-h-[3rem] h-[3rem] flex items-center">
                                 {!!workOrder.customerSignatureUrl && (
-                                    <img src={getProxiedUrl(workOrder.customerSignatureUrl)} alt="Customer Signature" className="object-contain h-full" />
+                                    <img src={getProxiedUrl(workOrder.customerSignatureUrl)} alt="Customer Signature" className="object-contain h-full" crossOrigin="anonymous" />
                                 )}
                             </div>
                             <div className="p-2 border-b-2 border-black font-medium min-h-[2rem]">{signatureDate}</div>
@@ -210,7 +259,7 @@ export default function WorkOrderReportPage() {
                             {allPhotoUrls.map((url, index) => (
                                 <div key={index} className="space-y-2">
                                     <div className="relative aspect-video w-full border rounded-lg overflow-hidden">
-                                        {!!url && <img src={getProxiedUrl(url)} alt={`Work photo ${index + 1}`} style={{objectFit:"contain", height: '100%', width: '100%'}} />}
+                                        {!!url && <img src={getProxiedUrl(url)} alt={`Work photo ${index + 1}`} style={{objectFit:"contain", height: '100%', width: '100%'}} crossOrigin="anonymous" />}
                                     </div>
                                     <p className="text-center text-sm text-gray-500">Photo {index + 1}</p>
                                 </div>
@@ -220,14 +269,10 @@ export default function WorkOrderReportPage() {
                 </div>
             )}
         </div>
-         <div id="download-button" className="fixed bottom-8 right-8">
-            <Button onClick={handleDownload} disabled={isDownloading}>
-                {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                {isDownloading ? 'Downloading...' : 'Download PDF'}
-            </Button>
-        </div>
         </div>
     );
 
     
 }
+
+    
