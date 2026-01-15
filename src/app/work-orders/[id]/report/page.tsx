@@ -91,24 +91,21 @@ export default function WorkOrderReportPage() {
                 const imgData = canvas.toDataURL('image/png');
                 const canvasWidth = canvas.width;
                 const canvasHeight = canvas.height;
-                
-                // Calculate the aspect ratio of the canvas
-                const ratio = canvasWidth / canvasHeight;
 
-                // Determine the width and height of the image on the PDF
-                let imgWidth = pdfWidth;
-                let imgHeight = imgWidth / ratio;
+                // Calculate aspect ratios
+                const widthRatio = pdfWidth / canvasWidth;
+                const heightRatio = pdfHeight / canvasHeight;
+                // Use the smaller ratio to ensure the image fits without being cropped
+                const ratio = Math.min(widthRatio, heightRatio);
 
-                // If the height is greater than the PDF height, scale by height instead
-                if (imgHeight > pdfHeight) {
-                    imgHeight = pdfHeight;
-                    imgWidth = imgHeight * ratio;
-                }
+                // Calculate the new dimensions for the image
+                const imgWidth = canvasWidth * ratio;
+                const imgHeight = canvasHeight * ratio;
 
                 // Center the image on the page
                 const x = (pdfWidth - imgWidth) / 2;
                 const y = (pdfHeight - imgHeight) / 2;
-
+                
                 pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
             }
 
@@ -264,5 +261,7 @@ export default function WorkOrderReportPage() {
 
     
 }
+
+    
 
     
