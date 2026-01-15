@@ -92,12 +92,18 @@ export default function WorkOrderReportPage() {
                 const imgData = canvas.toDataURL('image/png');
                 const canvasWidth = canvas.width;
                 const canvasHeight = canvas.height;
+                
                 const canvasRatio = canvasWidth / canvasHeight;
+                const pdfRatio = pdfWidth / pdfHeight;
 
-                let finalPdfWidth = pdfWidth;
-                let finalPdfHeight = pdfWidth / canvasRatio;
+                let finalPdfWidth, finalPdfHeight;
 
-                if (finalPdfHeight > pdfHeight) {
+                if (canvasRatio > pdfRatio) {
+                    // Canvas is wider than PDF page
+                    finalPdfWidth = pdfWidth;
+                    finalPdfHeight = pdfWidth / canvasRatio;
+                } else {
+                    // Canvas is taller than or equal to PDF page
                     finalPdfHeight = pdfHeight;
                     finalPdfWidth = pdfHeight * canvasRatio;
                 }
