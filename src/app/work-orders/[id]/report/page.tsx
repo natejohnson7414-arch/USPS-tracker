@@ -67,50 +67,43 @@ export default function WorkOrderReportPage() {
         setIsDownloading(true);
     
         try {
-            const pdf = new jsPDF('p', 'pt', 'a4');
             const pages = content.querySelectorAll('.pdf-page') as NodeListOf<HTMLElement>;
+            let pdf: jsPDF | null = null;
     
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                if (i > 0) {
-                    pdf.addPage();
-                }
     
                 const canvas = await html2canvas(page, {
-                    scale: 2,
+                    scale: 2, // Higher scale for better quality
                     useCORS: true,
                     allowTaint: true,
                 });
     
+                const imgData = canvas.toDataURL('image/png');
                 const canvasWidth = canvas.width;
                 const canvasHeight = canvas.height;
-                
-                // A4 page size in points: 595.28 x 841.89
-                const pdfPageWidth = pdf.internal.pageSize.getWidth();
-                const pdfPageHeight = pdf.internal.pageSize.getHeight();
-                
-                const margin = 40; // 20 points margin on each side
-                const contentWidth = pdfPageWidth - margin * 2;
-                const contentHeight = pdfPageHeight - margin * 2;
-
-                const widthRatio = contentWidth / canvasWidth;
-                const heightRatio = contentHeight / canvasHeight;
-                
-                // Use the smaller ratio to ensure the content fits and maintains aspect ratio
-                const scale = Math.min(widthRatio, heightRatio);
-
-                const finalWidth = canvasWidth * scale;
-                const finalHeight = canvasHeight * scale;
-
-                // Center the content on the page
-                const x = (pdfPageWidth - finalWidth) / 2;
-                const y = (pdfPageHeight - finalHeight) / 2;
-
-                const imgData = canvas.toDataURL('image/png');
-                pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
+    
+                if (i === 0) {
+                    // Initialize PDF on the first page
+                    const orientation = canvasWidth > canvasHeight ? 'l' : 'p';
+                    pdf = new jsPDF({
+                        orientation,
+                        unit: 'px',
+                        format: [canvasWidth, canvasHeight]
+                    });
+                } else {
+                    // For subsequent pages, add a new page with the correct dimensions
+                    const orientation = canvasWidth > canvasHeight ? 'l' : 'p';
+                    pdf!.addPage([canvasWidth, canvasHeight], orientation);
+                }
+    
+                // Add the image to fill the entire page
+                pdf!.addImage(imgData, 'PNG', 0, 0, canvasWidth, canvasHeight);
             }
     
-            pdf.save(`Work-Order-Report-${workOrder.id}.pdf`);
+            if (pdf) {
+                pdf.save(`Work-Order-Report-${workOrder.id}.pdf`);
+            }
     
         } catch (e) {
             console.error("Error generating PDF:", e);
@@ -263,3 +256,5 @@ export default function WorkOrderReportPage() {
 
     
 }
+
+    
