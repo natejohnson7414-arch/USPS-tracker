@@ -73,6 +73,10 @@ export default function WorkOrderReportPage() {
 
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
+        const padding = 20; // 20pt padding
+        const contentWidth = pdfWidth - (padding * 2);
+        const contentHeight = pdfHeight - (padding * 2);
+
 
         const reportPages = printRef.current.querySelectorAll('.pdf-page');
 
@@ -84,29 +88,33 @@ export default function WorkOrderReportPage() {
                 }
 
                 const canvas = await html2canvas(page, {
-                    scale: 2,
+                    scale: 2, // Higher scale for better quality
                     useCORS: true, 
                 });
 
                 const imgData = canvas.toDataURL('image/png');
                 const canvasWidth = canvas.width;
                 const canvasHeight = canvas.height;
+                const canvasAspectRatio = canvasWidth / canvasHeight;
+                const contentAspectRatio = contentWidth / contentHeight;
 
-                // Calculate aspect ratios
-                const widthRatio = pdfWidth / canvasWidth;
-                const heightRatio = pdfHeight / canvasHeight;
-                // Use the smaller ratio to ensure the image fits without being cropped
-                const ratio = Math.min(widthRatio, heightRatio);
+                let finalWidth, finalHeight, x, y;
 
-                // Calculate the new dimensions for the image
-                const imgWidth = canvasWidth * ratio;
-                const imgHeight = canvasHeight * ratio;
+                if (canvasAspectRatio > contentAspectRatio) {
+                    // Canvas is wider relative to content area
+                    finalWidth = contentWidth;
+                    finalHeight = finalWidth / canvasAspectRatio;
+                } else {
+                    // Canvas is taller or same aspect ratio
+                    finalHeight = contentHeight;
+                    finalWidth = finalHeight * canvasAspectRatio;
+                }
 
-                // Center the image on the page
-                const x = (pdfWidth - imgWidth) / 2;
-                const y = (pdfHeight - imgHeight) / 2;
+                // Center the image
+                x = (pdfWidth - finalWidth) / 2;
+                y = (pdfHeight - finalHeight) / 2;
                 
-                pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+                pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
             }
 
             pdf.save(`Work-Order-Report-${workOrder.id}.pdf`);
@@ -261,7 +269,5 @@ export default function WorkOrderReportPage() {
 
     
 }
-
-    
 
     
