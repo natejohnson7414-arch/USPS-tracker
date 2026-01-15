@@ -86,32 +86,30 @@ export default function WorkOrderReportPage() {
                 const canvas = await html2canvas(page, {
                     scale: 2,
                     useCORS: true, 
-                    allowTaint: true,
                 });
 
                 const imgData = canvas.toDataURL('image/png');
                 const canvasWidth = canvas.width;
                 const canvasHeight = canvas.height;
                 
-                const canvasRatio = canvasWidth / canvasHeight;
-                const pdfRatio = pdfWidth / pdfHeight;
+                // Calculate the aspect ratio of the canvas
+                const ratio = canvasWidth / canvasHeight;
 
-                let finalPdfWidth, finalPdfHeight;
+                // Determine the width and height of the image on the PDF
+                let imgWidth = pdfWidth;
+                let imgHeight = imgWidth / ratio;
 
-                if (canvasRatio > pdfRatio) {
-                    // Canvas is wider than PDF page
-                    finalPdfWidth = pdfWidth;
-                    finalPdfHeight = pdfWidth / canvasRatio;
-                } else {
-                    // Canvas is taller than or equal to PDF page
-                    finalPdfHeight = pdfHeight;
-                    finalPdfWidth = pdfHeight * canvasRatio;
+                // If the height is greater than the PDF height, scale by height instead
+                if (imgHeight > pdfHeight) {
+                    imgHeight = pdfHeight;
+                    imgWidth = imgHeight * ratio;
                 }
-                
-                const x = (pdfWidth - finalPdfWidth) / 2;
-                const y = (pdfHeight - finalPdfHeight) / 2;
 
-                pdf.addImage(imgData, 'PNG', x, y, finalPdfWidth, finalPdfHeight);
+                // Center the image on the page
+                const x = (pdfWidth - imgWidth) / 2;
+                const y = (pdfHeight - imgHeight) / 2;
+
+                pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
             }
 
             pdf.save(`Work-Order-Report-${workOrder.id}.pdf`);
@@ -220,7 +218,7 @@ export default function WorkOrderReportPage() {
                             <div className="p-2 border-b-2 border-black font-medium min-h-[2rem]">{workOrder.contactInfo || ''}</div>
                             <div className="p-2 border-b-2 border-black min-h-[3rem] h-[3rem] flex items-center">
                                 {!!workOrder.customerSignatureUrl && (
-                                    <img src={getProxiedUrl(workOrder.customerSignatureUrl)} alt="Customer Signature" style={{ objectFit: 'contain', height: '40px', width: '150px' }} />
+                                    <img src={getProxiedUrl(workOrder.customerSignatureUrl)} alt="Customer Signature" className="object-contain h-full" />
                                 )}
                             </div>
                             <div className="p-2 border-b-2 border-black font-medium min-h-[2rem]">{signatureDate}</div>
