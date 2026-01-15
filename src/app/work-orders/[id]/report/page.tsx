@@ -73,11 +73,7 @@ export default function WorkOrderReportPage() {
 
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
-        const padding = 20; // 20pt padding
-        const contentWidth = pdfWidth - (padding * 2);
-        const contentHeight = pdfHeight - (padding * 2);
-
-
+        
         const reportPages = printRef.current.querySelectorAll('.pdf-page');
 
         try {
@@ -88,33 +84,28 @@ export default function WorkOrderReportPage() {
                 }
 
                 const canvas = await html2canvas(page, {
-                    scale: 2, // Higher scale for better quality
+                    scale: 2,
                     useCORS: true, 
                 });
 
                 const imgData = canvas.toDataURL('image/png');
+                
                 const canvasWidth = canvas.width;
                 const canvasHeight = canvas.height;
-                const canvasAspectRatio = canvasWidth / canvasHeight;
-                const contentAspectRatio = contentWidth / contentHeight;
-
-                let finalWidth, finalHeight, x, y;
-
-                if (canvasAspectRatio > contentAspectRatio) {
-                    // Canvas is wider relative to content area
-                    finalWidth = contentWidth;
-                    finalHeight = finalWidth / canvasAspectRatio;
-                } else {
-                    // Canvas is taller or same aspect ratio
-                    finalHeight = contentHeight;
-                    finalWidth = finalHeight * canvasAspectRatio;
-                }
-
-                // Center the image
-                x = (pdfWidth - finalWidth) / 2;
-                y = (pdfHeight - finalHeight) / 2;
                 
-                pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
+                // Determine the correct scaling factor to fit the image within the PDF page
+                const widthRatio = pdfWidth / canvasWidth;
+                const heightRatio = pdfHeight / canvasHeight;
+                const ratio = Math.min(widthRatio, heightRatio);
+
+                const imgWidth = canvasWidth * ratio;
+                const imgHeight = canvasHeight * ratio;
+
+                // Center the image on the PDF page
+                const x = (pdfWidth - imgWidth) / 2;
+                const y = (pdfHeight - imgHeight) / 2;
+                
+                pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
             }
 
             pdf.save(`Work-Order-Report-${workOrder.id}.pdf`);
@@ -269,5 +260,3 @@ export default function WorkOrderReportPage() {
 
     
 }
-
-    
