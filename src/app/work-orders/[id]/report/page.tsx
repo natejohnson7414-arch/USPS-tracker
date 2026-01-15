@@ -68,10 +68,6 @@ export default function WorkOrderReportPage() {
     
         try {
             const pdf = new jsPDF('p', 'pt', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = pdf.internal.pageSize.getHeight();
-    
-            // Process all pages
             const pages = content.querySelectorAll('.pdf-page') as NodeListOf<HTMLElement>;
     
             for (let i = 0; i < pages.length; i++) {
@@ -81,42 +77,35 @@ export default function WorkOrderReportPage() {
                 }
     
                 const canvas = await html2canvas(page, {
-                    scale: 2, // Increase scale for better quality
+                    scale: 2,
                     useCORS: true,
                     allowTaint: true,
-                    onclone: (document) => {
-                        // This helps with rendering images that might not be visible
-                        const images = document.querySelectorAll('img');
-                        images.forEach(img => {
-                            if (!img.complete) {
-                                // You can add logic here to wait for images if needed, but useCORS should handle most cases
-                            }
-                        });
-                    }
                 });
     
                 const canvasWidth = canvas.width;
                 const canvasHeight = canvas.height;
-                const canvasRatio = canvasWidth / canvasHeight;
-                const pdfRatio = pdfWidth / pdfHeight;
-    
-                let finalWidth, finalHeight;
-    
-                // Determine scaling based on aspect ratio comparison
-                if (canvasRatio > pdfRatio) {
-                    // Canvas is wider than PDF page, so fit to width
-                    finalWidth = pdfWidth;
-                    finalHeight = pdfWidth / canvasRatio;
-                } else {
-                    // Canvas is taller than or equal to PDF page aspect ratio, so fit to height
-                    finalHeight = pdfHeight;
-                    finalWidth = pdfHeight * canvasRatio;
-                }
+                
+                // A4 page size in points: 595.28 x 841.89
+                const pdfPageWidth = pdf.internal.pageSize.getWidth();
+                const pdfPageHeight = pdf.internal.pageSize.getHeight();
+                
+                const margin = 40; // 20 points margin on each side
+                const contentWidth = pdfPageWidth - margin * 2;
+                const contentHeight = pdfPageHeight - margin * 2;
 
-                // Center the image on the page (optional)
-                const x = (pdfWidth - finalWidth) / 2;
-                const y = (pdfHeight - finalHeight) / 2;
-    
+                const widthRatio = contentWidth / canvasWidth;
+                const heightRatio = contentHeight / canvasHeight;
+                
+                // Use the smaller ratio to ensure the content fits and maintains aspect ratio
+                const scale = Math.min(widthRatio, heightRatio);
+
+                const finalWidth = canvasWidth * scale;
+                const finalHeight = canvasHeight * scale;
+
+                // Center the content on the page
+                const x = (pdfPageWidth - finalWidth) / 2;
+                const y = (pdfPageHeight - finalHeight) / 2;
+
                 const imgData = canvas.toDataURL('image/png');
                 pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
             }
@@ -274,5 +263,3 @@ export default function WorkOrderReportPage() {
 
     
 }
-
-    
