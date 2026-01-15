@@ -61,55 +61,26 @@ export default function WorkOrderReportPage() {
     }, [id, db]);
 
     const handleDownload = async () => {
-        if (!printRef.current || !workOrder) return;
+        const content = printRef.current;
+        if (!content || !workOrder) return;
         
         setIsDownloading(true);
 
-        const pdf = new jsPDF({
-            orientation: 'portrait',
-            unit: 'pt',
-            format: 'a4'
-        });
-
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        
-        const reportPages = printRef.current.querySelectorAll('.pdf-page');
-
         try {
-            for (let i = 0; i < reportPages.length; i++) {
-                const page = reportPages[i] as HTMLElement;
-                if (i > 0) {
-                    pdf.addPage();
+            const pdf = new jsPDF('p', 'pt', 'a4');
+            await pdf.html(content, {
+                html2canvas: {
+                    scale: 0.7, // Adjust scale to fit content better
+                    useCORS: true,
+                },
+                autoPaging: 'text',
+                margin: [20, 20, 20, 20],
+                width: 595, // A4 width in points
+                windowWidth: content.scrollWidth,
+                callback: (doc) => {
+                    doc.save(`Work-Order-Report-${workOrder.id}.pdf`);
                 }
-
-                const canvas = await html2canvas(page, {
-                    scale: 2,
-                    useCORS: true, 
-                });
-
-                const imgData = canvas.toDataURL('image/png');
-                
-                const canvasWidth = canvas.width;
-                const canvasHeight = canvas.height;
-                
-                // Determine the correct scaling factor to fit the image within the PDF page
-                const widthRatio = pdfWidth / canvasWidth;
-                const heightRatio = pdfHeight / canvasHeight;
-                const ratio = Math.min(widthRatio, heightRatio);
-
-                const imgWidth = canvasWidth * ratio;
-                const imgHeight = canvasHeight * ratio;
-
-                // Center the image on the PDF page
-                const x = (pdfWidth - imgWidth) / 2;
-                const y = (pdfHeight - imgHeight) / 2;
-                
-                pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
-            }
-
-            pdf.save(`Work-Order-Report-${workOrder.id}.pdf`);
-
+            });
         } catch (e) {
             console.error("Error generating PDF:", e);
             setError("Failed to generate PDF.");
