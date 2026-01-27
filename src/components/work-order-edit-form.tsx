@@ -120,6 +120,9 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
         }
     };
 
+    const isCompleteDisabled = status !== 'Review' && workOrder.status !== 'Completed';
+
+
     return (
         <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -150,9 +153,13 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
                                         <SelectItem value="Open">Open</SelectItem>
                                         <SelectItem value="In Progress">In Progress</SelectItem>
                                         <SelectItem value="On Hold">On Hold</SelectItem>
-                                        <SelectItem value="Completed">Completed</SelectItem>
+                                        <SelectItem value="Review">Review</SelectItem>
+                                        <SelectItem value="Completed" disabled={isCompleteDisabled}>Completed</SelectItem>
                                     </SelectContent>
                                 </Select>
+                                {isCompleteDisabled && (
+                                    <p className="text-xs text-muted-foreground">A job must be in 'Review' status before it can be completed.</p>
+                                )}
                             </div>
                              <div className="space-y-2">
                                 <Label>Date</Label>

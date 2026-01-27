@@ -6,7 +6,7 @@ import { useState, useRef, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry } from '@/lib/types';
+import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2 } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser } from '@/firebase';
@@ -22,6 +22,99 @@ import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
 import { getTechnicianById } from '@/lib/data';
 import { AddTimeDialog } from './add-time-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DatePicker } from './ui/date-picker';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+
+const AddActivityForm = ({ technicians, onAddActivity, isLoading }: { technicians: Technician[], onAddActivity: (activity: any) => void, isLoading: boolean }) => {
+    const [description, setDescription] = useState('');
+    const [technicianId, setTechnicianId] = useState<string | undefined>();
+    const [scheduledDate, setScheduledDate] = useState<Date | undefined>(new Date());
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!description || !technicianId || !scheduledDate) {
+            // Basic validation
+            return;
+        }
+        onAddActivity({
+            description,
+            technicianId,
+            scheduled_date: scheduledDate.toISOString(),
+            status: 'scheduled'
+        });
+        // Reset form
+        setDescription('');
+        setTechnicianId(undefined);
+        setScheduledDate(new Date());
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <Textarea 
+                placeholder="Describe the new activity..." 
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                required
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 <Select value={technicianId} onValueChange={setTechnicianId} required>
+                    <SelectTrigger><SelectValue placeholder="Assign a technician" /></SelectTrigger>
+                    <SelectContent>
+                        {technicians.map(tech => (
+                            <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                 <DatePicker date={scheduledDate} setDate={setScheduledDate} />
+            </div>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Add Activity
+            </Button>
+        </form>
+    );
+};
+
+const ActivityItem = ({ activity, onUpdateStatus, isTechnician, technicians }: { activity: Activity, onUpdateStatus: (id: string, status: Activity['status']) => void, isTechnician: boolean, technicians: Technician[] }) => {
+    const assignedTechnician = activity.technician || technicians.find(t => t.id === activity.technicianId);
+    
+    return (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg gap-4">
+            <div className="flex-1 space-y-1">
+                <p className="font-medium">{activity.description}</p>
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                     {assignedTechnician && (
+                        <div className="flex items-center gap-2">
+                             <Avatar className="h-6 w-6">
+                                <AvatarImage src={assignedTechnician.avatarUrl} alt={assignedTechnician.name} />
+                                <AvatarFallback>{assignedTechnician.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                           <span>{assignedTechnician.name}</span>
+                        </div>
+                    )}
+                    <span>{format(new Date(activity.scheduled_date), 'MMM d, yyyy')}</span>
+                </div>
+            </div>
+            <div>
+                 <Select value={activity.status} onValueChange={(status: Activity['status']) => onUpdateStatus(activity.id, status)}>
+                    <SelectTrigger className="w-[180px]">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="scheduled">Scheduled</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+        </div>
+    );
+}
+
+
 
 interface WorkOrderDetailsProps {
   workOrder: WorkOrder;
@@ -29,6 +122,7 @@ interface WorkOrderDetailsProps {
   trainingRecords: TrainingRecord[];
   onTrainingRecordDelete: (recordId: string) => void;
   timeEntries: TimeEntry[];
+  activities: Activity[];
   onNoteAdded: (note: Omit<WorkOrderNote, 'id'> & { photoFiles: File[] }) => void;
   onTimeAdded: (timeEntry: TimeEntry) => void;
   onNotePhotoDelete: (noteId: string, photoUrl: string) => void;
@@ -45,6 +139,9 @@ interface WorkOrderDetailsProps {
   contactInfo: string;
   setContactInfo: (value: string) => void;
   onContactInfoUpdate: () => void;
+  onAddActivity: (activity: Omit<Activity, 'id' | 'createdDate' | 'workOrderId'>) => void;
+  onUpdateActivityStatus: (activityId: string, status: Activity['status']) => void;
+  technicians: Technician[];
 }
 
 export function WorkOrderDetails({
@@ -53,6 +150,7 @@ export function WorkOrderDetails({
   trainingRecords,
   onTrainingRecordDelete,
   timeEntries,
+  activities,
   onNoteAdded,
   onTimeAdded,
   onNotePhotoDelete,
@@ -66,6 +164,9 @@ export function WorkOrderDetails({
   tempOnLeaving, setTempOnLeaving,
   contactInfo, setContactInfo,
   onContactInfoUpdate,
+  onAddActivity,
+  onUpdateActivityStatus,
+  technicians
 }: WorkOrderDetailsProps) {
   const db = useFirestore();
   const { user } = useUser();
@@ -235,6 +336,41 @@ export function WorkOrderDetails({
               </div>
           </CardContent>
         </Card>
+
+        <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarClock className="h-5 w-5" /> Scheduled Activities
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                {activities.length > 0 ? (
+                  activities.map(activity => (
+                    <ActivityItem 
+                      key={activity.id} 
+                      activity={activity} 
+                      technicians={technicians}
+                      onUpdateStatus={onUpdateActivityStatus}
+                      isTechnician={isTechnician} 
+                    />
+                  ))
+                ) : (
+                  <p className="text-center text-sm text-muted-foreground py-4">No scheduled activities.</p>
+                )}
+              </div>
+              {!isTechnician && (
+                <>
+                    <Separator />
+                    <AddActivityForm 
+                        technicians={technicians} 
+                        onAddActivity={onAddActivity}
+                        isLoading={false} // This should be wired up if there's a loading state for adding
+                    />
+                </>
+              )}
+            </CardContent>
+          </Card>
 
         <Card>
           <CardHeader>

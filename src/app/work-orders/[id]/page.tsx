@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, FormEvent } from 'react';
-import { getTechnicians, getWorkOrderById, getWorkSites, getClients, getTrainingRecordsByWorkOrderId, getTimeEntriesByWorkOrder, getTechnicianById, deleteTrainingRecord } from '@/lib/data';
+import { getTechnicians, getWorkOrderById, getWorkSites, getClients, getTrainingRecordsByWorkOrderId, getTimeEntriesByWorkOrder, getTechnicianById, deleteTrainingRecord, updateWorkOrderStatus, addWorkHistoryItem } from '@/lib/data';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
@@ -10,8 +10,8 @@ import { WorkOrderDetails } from '@/components/work-order-details';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Ban, Pencil, Save, Printer } from 'lucide-react';
 import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry } from '@/lib/types';
-import { doc, collection } from 'firebase/firestore';
+import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, ActivityHistoryItem } from '@/lib/types';
+import { doc, collection, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImage, deleteImage } from '@/firebase/storage';
 import { MapProviderSelection } from '@/components/map-provider-selection';
@@ -42,6 +42,7 @@ export default function WorkOrderDetailPage() {
   const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
   const [trainingRecords, setTrainingRecords] = useState<TrainingRecord[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingNote, setIsAddingNote] = useState(false);
@@ -85,6 +86,7 @@ export default function WorkOrderDetailPage() {
         
         if (fetchedWorkOrder) {
             setWorkOrder(fetchedWorkOrder);
+            setActivities(fetchedWorkOrder.activities || []);
             setTempOnArrival(fetchedWorkOrder.tempOnArrival || '');
             setTempOnLeaving(fetchedWorkOrder.tempOnLeaving || '');
             setContactInfo(fetchedWorkOrder.contactInfo || '');
@@ -130,6 +132,15 @@ export default function WorkOrderDetailPage() {
         };
 
         const docRef = await addDocumentNonBlocking(notesColRef, newNoteData);
+        
+        const technician = await getTechnicianById(db, user.uid);
+        const historyItem: Omit<ActivityHistoryItem, 'id' | 'timestamp'> = {
+            type: 'note',
+            text: `Note added: "${newNote.text.substring(0, 50)}${newNote.text.length > 50 ? '...' : ''}"`,
+            authorId: user.uid,
+            authorName: technician?.name || user.email!,
+        };
+        await addWorkHistoryItem(db, workOrder.id, historyItem);
 
         const optimisticNote: WorkOrderNote = {
             id: docRef.id,
@@ -148,6 +159,7 @@ export default function WorkOrderDetailPage() {
             };
         });
         toast({ title: "Note Added", description: "Your note and photos have been added." });
+        fetchData();
 
     } catch (error) {
         console.error("Error adding note:", error);
@@ -157,8 +169,19 @@ export default function WorkOrderDetailPage() {
     }
   };
 
-  const handleTimeAdded = (newTimeEntry: TimeEntry) => {
+  const handleTimeAdded = async (newTimeEntry: TimeEntry) => {
     setTimeEntries(prev => [newTimeEntry, ...prev]);
+    if (!db || !user || !workOrder) return;
+
+    const technician = await getTechnicianById(db, user.uid);
+    const historyItem: Omit<ActivityHistoryItem, 'id' | 'timestamp'> = {
+        type: 'time_log',
+        text: `Logged ${newTimeEntry.hours.toFixed(2)} hours.`,
+        authorId: user.uid,
+        authorName: technician?.name || user.email!,
+    };
+    await addWorkHistoryItem(db, workOrder.id, historyItem);
+    fetchData();
   };
   
   const handleTempUpdate = async () => {
@@ -314,6 +337,41 @@ export default function WorkOrderDetailPage() {
         });
   }
 
+  const handleAddActivity = async (newActivityData: Omit<Activity, 'id' | 'createdDate' | 'workOrderId'>) => {
+    if (!db || !user || !workOrder) return;
+    
+    const activityData = {
+        ...newActivityData,
+        workOrderId: workOrder.id,
+        createdDate: new Date().toISOString(),
+    };
+    
+    const activitiesColRef = collection(db, 'work_orders', workOrder.id, 'activities');
+    try {
+        const docRef = await addDocumentNonBlocking(activitiesColRef, activityData);
+        toast({ title: 'Activity Scheduled' });
+        await updateWorkOrderStatus(db, workOrder.id);
+        fetchData();
+    } catch(e) {
+        console.error(e);
+        toast({ title: 'Error', description: 'Failed to schedule activity', variant: 'destructive' });
+    }
+  };
+
+  const handleUpdateActivityStatus = async (activityId: string, status: Activity['status']) => {
+      if (!db || !workOrder) return;
+      const activityRef = doc(db, 'work_orders', workOrder.id, 'activities', activityId);
+      try {
+          await updateDocumentNonBlocking(activityRef, { status });
+          toast({ title: 'Activity Status Updated' });
+          await updateWorkOrderStatus(db, workOrder.id);
+          fetchData();
+      } catch(e) {
+        console.error(e);
+        toast({ title: 'Error', description: 'Failed to update activity status', variant: 'destructive' });
+      }
+  };
+
   if (isLoading || !workOrder) {
     return (
       <MainLayout>
@@ -370,6 +428,7 @@ export default function WorkOrderDetailPage() {
                     trainingRecords={trainingRecords}
                     onTrainingRecordDelete={handleTrainingRecordDelete}
                     timeEntries={timeEntries}
+                    activities={activities}
                     onNoteAdded={handleNoteAdded}
                     onTimeAdded={handleTimeAdded}
                     onNotePhotoDelete={handleNotePhotoDelete}
@@ -386,6 +445,9 @@ export default function WorkOrderDetailPage() {
                     contactInfo={contactInfo}
                     setContactInfo={setContactInfo}
                     onContactInfoUpdate={handleContactInfoUpdate}
+                    onAddActivity={handleAddActivity}
+                    onUpdateActivityStatus={handleUpdateActivityStatus}
+                    technicians={technicians}
                 />
             )}
         </div>

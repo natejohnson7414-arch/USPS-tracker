@@ -1,11 +1,11 @@
 
 
 'use client';
-import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client, TrainingRecord, HvacStartupReport, TimeEntry } from '@/lib/types';
-import { collection, getDoc, doc, query, where, deleteDoc } from 'firebase/firestore';
+import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client, TrainingRecord, HvacStartupReport, TimeEntry, Activity, ActivityHistoryItem } from '@/lib/types';
+import { collection, getDoc, doc, query, where, deleteDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 import { sampleRoles, sampleTechnicians, sampleWorkOrders, sampleWorkSites, sampleClients } from './sample-data';
-import { setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 
 export const seedDatabase = async (db: any) => {
     // Check if roles exist, which is a good indicator of a seeded DB
@@ -114,12 +114,15 @@ export const getWorkOrderById = async (db: any, id: string): Promise<WorkOrder |
         } as WorkOrderNote
     });
 
+    const activities = await getActivitiesByWorkOrderId(db, id);
+
     return {
       ...data,
       id: workOrderSnap.id,
       workSite: workSite,
       client: client,
       notes: notesList,
+      activities: activities,
     } as WorkOrder;
   } else {
     return undefined;
@@ -302,6 +305,61 @@ export const getTimeEntriesByWorkOrder = async (db: any, workOrderId: string): P
 };
     
 
+export const getActivitiesByWorkOrderId = async (db: any, workOrderId: string): Promise<Activity[]> => {
+    if (!db || !workOrderId) return [];
+    const activitiesCol = collection(db, 'work_orders', workOrderId, 'activities');
+    const snapshot = await getCollectionNonBlocking(activitiesCol);
 
+    const activities = await Promise.all(snapshot.docs.map(async (doc) => {
+        const data = doc.data();
+        let technician;
+        if (data.technicianId) {
+            technician = await getTechnicianById(db, data.technicianId);
+        }
+        return {
+            id: doc.id,
+            ...data,
+            technician: technician || undefined,
+        } as Activity;
+    }));
+    return activities.sort((a, b) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime());
+};
 
+export const updateWorkOrderStatus = async (db: any, workOrderId: string) => {
+    const activities = await getActivitiesByWorkOrderId(db, workOrderId);
+    const workOrderRef = doc(db, 'work_orders', workOrderId);
+    const workOrderSnap = await getDocumentNonBlocking(workOrderRef);
 
+    if (!workOrderSnap.exists()) return;
+
+    const currentStatus = workOrderSnap.data().status;
+    if (currentStatus === 'Completed') return; 
+
+    const hasActiveOrScheduled = activities.some(a => a.status === 'active' || a.status === 'scheduled');
+    const hasCompleted = activities.some(a => a.status === 'completed');
+    const hasOpenTasks = activities.some(a => a.status !== 'completed' && a.status !== 'cancelled');
+
+    let newStatus: WorkOrder['status'] | null = null;
+
+    if (hasActiveOrScheduled) {
+        newStatus = 'In Progress';
+    } else if (hasCompleted && !hasOpenTasks && currentStatus !== 'Open') {
+        newStatus = 'Review';
+    }
+    
+    if (newStatus && newStatus !== currentStatus) {
+        await updateDocumentNonBlocking(workOrderRef, { status: newStatus });
+    }
+};
+
+export const addWorkHistoryItem = async (db: any, workOrderId: string, item: Omit<ActivityHistoryItem, 'id' | 'timestamp'>) => {
+    const workOrderRef = doc(db, 'work_orders', workOrderId);
+    const historyItem = {
+        ...item,
+        id: `hist-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+    };
+    await updateDoc(workOrderRef, {
+        work_history: arrayUnion(historyItem)
+    });
+};
