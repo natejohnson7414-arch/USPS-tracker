@@ -352,9 +352,11 @@ export default function WorkOrderDetailPage() {
         toast({ title: 'Activity Scheduled' });
         await updateWorkOrderStatus(db, workOrder.id);
         fetchData();
-    } catch(e) {
-        console.error(e);
-        toast({ title: 'Error', description: 'Failed to schedule activity', variant: 'destructive' });
+    } catch(error) {
+        if (error instanceof Error && !error.message.includes('Missing or insufficient permissions')) {
+            console.error("Error scheduling activity:", error);
+            toast({ title: 'Error', description: 'Failed to schedule activity', variant: 'destructive' });
+        }
     }
   };
 
@@ -366,9 +368,11 @@ export default function WorkOrderDetailPage() {
           toast({ title: 'Activity Status Updated' });
           await updateWorkOrderStatus(db, workOrder.id);
           fetchData();
-      } catch(e) {
-        console.error(e);
-        toast({ title: 'Error', description: 'Failed to update activity status', variant: 'destructive' });
+      } catch(error) {
+        if (error instanceof Error && !error.message.includes('Missing or insufficient permissions')) {
+          console.error("Error updating activity status:", error);
+          toast({ title: 'Error', description: 'Failed to update activity status', variant: 'destructive' });
+        }
       }
   };
 
@@ -429,7 +433,7 @@ export default function WorkOrderDetailPage() {
                     onTrainingRecordDelete={handleTrainingRecordDelete}
                     timeEntries={timeEntries}
                     activities={activities}
-                    onNoteAdded={handleNoteAdded}
+                    onNoteAdded={onNoteAdded}
                     onTimeAdded={handleTimeAdded}
                     onNotePhotoDelete={handleNotePhotoDelete}
                     onNoteDelete={handleNoteDelete}
