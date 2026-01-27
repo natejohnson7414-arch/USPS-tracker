@@ -136,7 +136,7 @@
         },
         "status": {
           "type": "string",
-          "description": "Current status of the work order (e.g., Open, Assigned, In Progress, Completed)."
+          "description": "Current status of the work order (e.g., Open, In Progress, Review, Completed)."
         },
         "assignedTechnicianId": {
           "type": "string",
@@ -162,6 +162,13 @@
             "type": "string",
             "format": "date-time",
             "description": "The date the signature was captured."
+        },
+        "work_history": {
+          "type": "array",
+          "description": "A denormalized array of activity history for quick display.",
+          "items": {
+            "type": "object"
+          }
         }
       },
       "required": [
@@ -574,6 +581,21 @@
             }
         },
         "required": ["id", "technicianId", "date", "hours", "timeType"]
+    },
+    "Activity": {
+        "title": "Activity",
+        "type": "object",
+        "description": "Represents a schedulable task related to a work order.",
+        "properties": {
+            "id": { "type": "string" },
+            "workOrderId": { "type": "string" },
+            "technicianId": { "type": "string", "description": "The user_id of the technician assigned to this activity." },
+            "createdDate": { "type": "string", "format": "date-time" },
+            "scheduled_date": { "type": "string", "format": "date-time" },
+            "status": { "type": "string", "enum": ["scheduled", "active", "completed", "cancelled"] },
+            "description": { "type": "string", "description": "Description of the scheduled task." }
+        },
+        "required": ["id", "workOrderId", "technicianId", "createdDate", "status", "description"]
     }
   },
   "auth": {
@@ -684,6 +706,26 @@
             {
               "name": "updateId",
               "description": "Unique identifier for the work order update."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/work_orders/{workOrderId}/activities/{activityId}",
+        "definition": {
+          "entityName": "Activity",
+          "schema": {
+            "$ref": "#/backend/entities/Activity"
+          },
+          "description": "Stores scheduled activities for a work order. The status of these activities drives the parent work order's status.",
+          "params": [
+            {
+              "name": "workOrderId",
+              "description": "Unique identifier for the work order."
+            },
+            {
+              "name": "activityId",
+              "description": "Unique identifier for the activity."
             }
           ]
         }

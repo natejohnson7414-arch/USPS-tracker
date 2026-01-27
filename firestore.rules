@@ -209,6 +209,16 @@ service cloud.firestore {
         allow create: if isSignedIn() && !isParentWorkOrderCompleted(workOrderId);
         allow update, delete: if isAdmin() || (isOwner(get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.assignedTechnicianId) && !isParentWorkOrderCompleted(workOrderId));
       }
+      
+      /**
+       * @description Manages access to scheduled activities on a work order.
+       * @path /work_orders/{workOrderId}/activities/{activityId}
+       * @principle Access is granted to the assigned technician or an administrator.
+       */
+      match /activities/{activityId} {
+        allow read, list: if isSignedIn();
+        allow create, update, delete: if isAdmin() || isOwner(get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.assignedTechnicianId);
+      }
     }
 
     /**

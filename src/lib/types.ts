@@ -16,6 +16,27 @@ export type WorkOrderNote = {
   photoUrls?: string[];
 };
 
+export type Activity = {
+  id: string;
+  workOrderId: string;
+  technicianId: string;
+  createdDate: string;
+  scheduled_date: string;
+  status: 'scheduled' | 'active' | 'completed' | 'cancelled';
+  description: string;
+  technician?: Technician;
+};
+
+export type ActivityHistoryItem = {
+  id: string;
+  timestamp: string;
+  type: 'note' | 'time_log' | 'status_change' | 'activity_update';
+  text: string;
+  authorId: string;
+  authorName: string;
+};
+
+
 export type WorkOrder = {
   id: string; // Job #
   createdDate: string; // DATE
@@ -49,9 +70,11 @@ export type WorkOrder = {
   intercoPO?: string; // INTERCO PO#
   customerPO?: string; // CUSTOMER PO#
   estimator?: string; // ESTIMATOR/REQUESTED BY
-  status: 'Open' | 'In Progress' | 'On Hold' | 'Completed';
+  status: 'Open' | 'In Progress' | 'On Hold' | 'Review' | 'Completed';
   assignedTechnicianId?: string;
   notes: WorkOrderNote[];
+  activities: Activity[];
+  work_history: ActivityHistoryItem[];
   checkInOutURL?: string; // CHECK-IN/OUT
   // New fields for report
   tempOnArrival?: string;
