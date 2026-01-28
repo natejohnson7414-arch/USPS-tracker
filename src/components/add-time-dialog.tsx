@@ -154,7 +154,7 @@ export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, onTimeAdded }: A
             </Select>
           </div>
            <div className="grid gap-2">
-            <Label htmlFor="description">Description of Work</Label>
+            <Label htmlFor="description">Description of Work <span className="text-destructive">*</span></Label>
             <Textarea
               id="description"
               value={description}
