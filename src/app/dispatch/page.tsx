@@ -96,49 +96,56 @@ export default function DispatchBoardPage() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-px bg-border border-t border-l rounded-t-lg overflow-hidden">
-                    {weekDays.map(day => {
-                        const dayKey = format(day, 'yyyy-MM-dd');
-                        const dayActivities = activitiesByDay.get(dayKey) || [];
-                        return (
-                            <div key={dayKey} className="bg-card min-h-[200px]">
-                                <div className="p-2 border-b text-center font-semibold">
-                                    <p className="text-sm">{format(day, 'EEE')}</p>
-                                    <p className="text-2xl">{format(day, 'd')}</p>
+                <div className="overflow-x-auto pb-4">
+                    <div className="flex divide-x divide-border rounded-lg border min-w-[1400px]">
+                        {weekDays.map(day => {
+                            const dayKey = format(day, 'yyyy-MM-dd');
+                            const dayActivities = activitiesByDay.get(dayKey) || [];
+                            return (
+                                <div key={dayKey} className="flex flex-col flex-1">
+                                    <div className="p-2 border-b text-center font-semibold bg-muted/25">
+                                        <p className="text-sm">{format(day, 'EEE')}</p>
+                                        <p className="text-2xl">{format(day, 'd')}</p>
+                                    </div>
+                                    <div className="p-2 space-y-2 flex-grow min-h-[500px]">
+                                        {dayActivities.map(activity => (
+                                            <TooltipProvider key={activity.id}>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div className={cn('p-1.5 text-xs text-white rounded cursor-pointer shadow truncate', techColorMap.get(activity.technicianId) || 'bg-gray-400')}>
+                                                            {activity.technician?.name || 'Unassigned'}
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent className="max-w-xs">
+                                                        <p className="font-bold">{activity.parentWorkOrder?.workSite?.name || 'No Work Site'}</p>
+                                                        <p className="text-sm text-muted-foreground">{activity.parentWorkOrder?.jobName}</p>
+                                                        <p className="mt-2">{activity.description}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        ))}
+                                    </div>
                                 </div>
-                                <div className="p-2 space-y-2">
-                                    {dayActivities.map(activity => (
-                                        <TooltipProvider key={activity.id}>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <div className={cn('p-1.5 text-xs text-white rounded cursor-pointer shadow truncate', techColorMap.get(activity.technicianId) || 'bg-gray-400')}>
-                                                        {activity.technician?.name || 'Unassigned'}
-                                                    </div>
-                                                </TooltipTrigger>
-                                                <TooltipContent className="max-w-xs">
-                                                    <p className="font-bold">{activity.parentWorkOrder?.workSite?.name || 'No Work Site'}</p>
-                                                    <p className="text-sm text-muted-foreground">{activity.parentWorkOrder?.jobName}</p>
-                                                    <p className="mt-2">{activity.description}</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    ))}
-                                </div>
-                            </div>
-                        )
-                    })}
-                </div>
-                 <div className="border-l border-r border-b rounded-b-lg p-4 bg-card">
-                    <h3 className="font-semibold mb-2">Technician Key</h3>
-                    <div className="flex flex-wrap gap-4">
-                        {technicians.map(tech => (
-                             <div key={tech.id} className="flex items-center gap-2">
-                                <div className={cn("h-4 w-4 rounded-full", techColorMap.get(tech.id))}></div>
-                                <span className="text-sm">{tech.name}</span>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 </div>
+                
+                 <Card className="mt-4">
+                    <CardHeader>
+                        <CardTitle>Technician Key</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex flex-wrap gap-4">
+                            {technicians.map(tech => (
+                                <div key={tech.id} className="flex items-center gap-2">
+                                    <div className={cn("h-4 w-4 rounded-full", techColorMap.get(tech.id))}></div>
+                                    <span className="text-sm">{tech.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         </MainLayout>
     );
