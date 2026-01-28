@@ -6,6 +6,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import * as admin from 'firebase-admin';
 
 const CreateUserInputSchema = z.object({
   name: z.string().describe('The full name of the user.'),
@@ -37,21 +38,11 @@ const createUserFlow = ai.defineFlow(
     outputSchema: CreateUserOutputSchema,
   },
   async (input) => {
-    // Dynamically import firebase-admin to prevent it from being included in client-side bundles.
-    const admin = await import('firebase-admin');
-    
     // Initialize Firebase Admin SDK if not already initialized
     if (!admin.apps.length) {
-      try {
-        // Initialize without arguments to use Application Default Credentials
         admin.initializeApp();
-        console.log('Firebase Admin SDK initialized successfully.');
-      } catch (error: any) {
-        console.error('Error initializing Firebase Admin SDK:', error);
-        return { error: `Firebase Admin SDK initialization failed: ${error.message}` };
-      }
     }
-
+    
     const { email, password, name, roleId, avatarUrl } = input;
     const [firstName, ...lastNameParts] = name.split(' ');
     const lastName = lastNameParts.join(' ');
