@@ -8,6 +8,11 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import * as admin from 'firebase-admin';
 
+// Initialize Firebase Admin SDK if not already initialized
+if (!admin.apps.length) {
+    admin.initializeApp();
+}
+
 const CreateUserInputSchema = z.object({
   name: z.string().describe('The full name of the user.'),
   email: z.string().email().describe('The email address for the new user.'),
@@ -38,13 +43,6 @@ const createUserFlow = ai.defineFlow(
     outputSchema: CreateUserOutputSchema,
   },
   async (input) => {
-    // Initialize Firebase Admin SDK if not already initialized
-    if (!admin.apps.length) {
-        // When running in a Google Cloud environment, initializeApp() without arguments
-        // should automatically discover service account credentials.
-        admin.initializeApp();
-    }
-    
     const { email, password, name, roleId, avatarUrl } = input;
     const [firstName, ...lastNameParts] = name.split(' ');
     const lastName = lastNameParts.join(' ');
