@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -97,12 +96,12 @@ export default function DispatchBoardPage() {
                 </div>
 
                 <div className="overflow-x-auto pb-4">
-                    <div className="flex divide-x divide-border rounded-lg border min-w-[1400px]">
+                    <div className="grid grid-cols-7 divide-x divide-border rounded-lg border min-w-[1200px]">
                         {weekDays.map(day => {
                             const dayKey = format(day, 'yyyy-MM-dd');
                             const dayActivities = activitiesByDay.get(dayKey) || [];
                             return (
-                                <div key={dayKey} className="flex flex-col flex-1">
+                                <div key={dayKey} className="flex flex-col">
                                     <div className="p-2 border-b text-center font-semibold bg-muted/25">
                                         <p className="text-sm">{format(day, 'EEE')}</p>
                                         <p className="text-2xl">{format(day, 'd')}</p>
