@@ -388,3 +388,21 @@ export const getAllActivitiesWithDetails = async (db: any): Promise<Activity[]> 
     }
     return allActivities;
 };
+
+export const getIncompleteWorkOrders = async (db: any): Promise<WorkOrder[]> => {
+    if (!db) return [];
+    const workOrdersCol = collection(db, 'work_orders');
+    const q = query(workOrdersCol, where("status", "!=", "Completed"));
+    const snapshot = await getCollectionNonBlocking(q);
+    
+    const workOrdersList = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            ...data,
+            id: doc.id,
+            notes: [], // These are not needed for the list view
+            activities: [], // These are not needed for the list view
+        } as WorkOrder;
+    });
+     return workOrdersList.sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime());
+};

@@ -3,14 +3,16 @@
 import { useState, useEffect, useMemo } from 'react';
 import { MainLayout } from '@/components/main-layout';
 import { useFirestore } from '@/firebase';
-import { getAllActivitiesWithDetails, getTechnicians } from '@/lib/data';
-import type { Activity, Technician } from '@/lib/types';
+import { getAllActivitiesWithDetails, getTechnicians, getIncompleteWorkOrders } from '@/lib/data';
+import type { Activity, Technician, WorkOrder } from '@/lib/types';
 import { startOfWeek, addDays, format, isSameDay, subDays } from 'date-fns';
-import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const techColors = [
     'bg-sky-500', 'bg-emerald-500', 'bg-amber-500', 'bg-violet-500', 
@@ -22,18 +24,22 @@ export default function DispatchBoardPage() {
     const db = useFirestore();
     const [activities, setActivities] = useState<Activity[]>([]);
     const [technicians, setTechnicians] = useState<Technician[]>([]);
+    const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [currentDate, setCurrentDate] = useState(new Date());
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
         if (!db) return;
         setIsLoading(true);
         Promise.all([
             getAllActivitiesWithDetails(db),
-            getTechnicians(db)
-        ]).then(([fetchedActivities, fetchedTechnicians]) => {
+            getTechnicians(db),
+            getIncompleteWorkOrders(db)
+        ]).then(([fetchedActivities, fetchedTechnicians, fetchedWorkOrders]) => {
             setActivities(fetchedActivities);
             setTechnicians(fetchedTechnicians);
+            setWorkOrders(fetchedWorkOrders);
             setIsLoading(false);
         }).catch(err => {
             console.error("Failed to fetch dispatch data:", err);
@@ -68,6 +74,15 @@ export default function DispatchBoardPage() {
         });
         return grouped;
     }, [activities]);
+
+    const filteredWorkOrders = useMemo(() => {
+        if (!workOrders) return [];
+        return workOrders.filter(wo =>
+            wo.jobName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            wo.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            wo.description?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [workOrders, searchTerm]);
 
     if (isLoading) {
         return (
@@ -109,7 +124,7 @@ export default function DispatchBoardPage() {
                                         <p className="text-sm">{format(day, 'EEE')}</p>
                                         <p className="text-2xl">{format(day, 'd')}</p>
                                     </div>
-                                    <div className="p-2 space-y-2 flex-grow min-h-[500px] overflow-hidden">
+                                    <div className="p-2 space-y-2 flex-grow min-h-[200px] overflow-hidden">
                                         {dayActivities.map(activity => (
                                             <TooltipProvider key={activity.id}>
                                                 <Tooltip>
@@ -133,21 +148,58 @@ export default function DispatchBoardPage() {
                     </div>
                 </div>
                 
-                 <Card className="mt-4">
-                    <CardHeader>
-                        <CardTitle>Technician Key</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex flex-wrap gap-4">
-                            {technicians.map(tech => (
-                                <div key={tech.id} className="flex items-center gap-2">
-                                    <div className={cn("h-4 w-4 rounded-full", techColorMap.get(tech.id))}></div>
-                                    <span className="text-sm">{tech.name}</span>
+                <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-1">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Technician Key</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex flex-col gap-3">
+                                    {technicians.map(tech => (
+                                        <div key={tech.id} className="flex items-center gap-3 p-2 rounded-md border cursor-grab">
+                                            <div className={cn("h-4 w-4 rounded-full", techColorMap.get(tech.id))}></div>
+                                            <span className="text-sm font-medium">{tech.name}</span>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
+                            </CardContent>
+                        </Card>
+                    </div>
+                     <div className="lg:col-span-2">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Incomplete Work Orders</CardTitle>
+                                <div className="relative mt-4">
+                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Search by ID, name, or description..."
+                                        className="pl-8 w-full"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <ScrollArea className="h-[450px]">
+                                    <div className="space-y-3">
+                                    {filteredWorkOrders.length > 0 ? filteredWorkOrders.map(wo => (
+                                        <div key={wo.id} className="p-3 border rounded-lg bg-card hover:bg-muted/50">
+                                            <p className="font-semibold">{wo.jobName}</p>
+                                            <p className="text-sm text-muted-foreground">#{wo.id}</p>
+                                            <p className="text-sm text-muted-foreground mt-1 truncate">{wo.description}</p>
+                                        </div>
+                                    )) : (
+                                        <div className="text-center py-10 text-muted-foreground">
+                                            <p>No matching work orders found.</p>
+                                        </div>
+                                    )}
+                                    </div>
+                                </ScrollArea>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
             </div>
         </MainLayout>
     );
