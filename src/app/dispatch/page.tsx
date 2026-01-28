@@ -23,6 +23,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { addDocumentNonBlocking } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { useTechnician } from '@/hooks/use-technician';
 
 
 function TechnicianItem({ tech, techColorMap }: { tech: Technician, techColorMap: Map<string, string> }) {
@@ -135,6 +136,7 @@ const techColors = [
 export default function DispatchBoardPage() {
     const db = useFirestore();
     const { toast } = useToast();
+    const { role, isLoading: isRoleLoading } = useTechnician();
     const [activities, setActivities] = useState<Activity[]>([]);
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
@@ -164,22 +166,35 @@ export default function DispatchBoardPage() {
     );
 
     useEffect(() => {
-        if (!db) return;
-        setIsLoading(true);
-        Promise.all([
-            getAllActivitiesWithDetails(db),
-            getTechnicians(db),
-            getIncompleteWorkOrders(db)
-        ]).then(([fetchedActivities, fetchedTechnicians, fetchedWorkOrders]) => {
-            setActivities(fetchedActivities);
-            setTechnicians(fetchedTechnicians);
-            setWorkOrders(fetchedWorkOrders);
-            setIsLoading(false);
-        }).catch(err => {
-            console.error("Failed to fetch dispatch data:", err);
-            setIsLoading(false);
-        });
-    }, [db]);
+        if (!db || isRoleLoading) return;
+        
+        async function fetchData() {
+            setIsLoading(true);
+            try {
+                const activitiesPromise = getAllActivitiesWithDetails(db);
+                const techniciansPromise = getTechnicians(db);
+                
+                if (role?.name !== 'Technician') {
+                    const workOrdersPromise = getIncompleteWorkOrders(db);
+                    const [fetchedActivities, fetchedTechnicians, fetchedWorkOrders] = await Promise.all([activitiesPromise, techniciansPromise, workOrdersPromise]);
+                    setActivities(fetchedActivities);
+                    setTechnicians(fetchedTechnicians);
+                    setWorkOrders(fetchedWorkOrders);
+                } else {
+                    const [fetchedActivities, fetchedTechnicians] = await Promise.all([activitiesPromise, techniciansPromise]);
+                    setActivities(fetchedActivities);
+                    setTechnicians(fetchedTechnicians);
+                    setWorkOrders([]);
+                }
+            } catch (err) {
+                 console.error("Failed to fetch dispatch data:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        }
+
+        fetchData();
+    }, [db, role, isRoleLoading]);
 
     const techColorMap = useMemo(() => {
         const map = new Map<string, string>();
@@ -289,7 +304,7 @@ export default function DispatchBoardPage() {
         }
     }
 
-    if (isLoading) {
+    if (isLoading || isRoleLoading) {
         return (
             <MainLayout>
                 <div className="flex items-center justify-center h-full">
@@ -354,51 +369,53 @@ export default function DispatchBoardPage() {
                         </div>
                     </div>
                     
-                    <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div>
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Technician Key</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="flex flex-col gap-3">
-                                        {technicians.map(tech => (
-                                            <TechnicianItem key={tech.id} tech={tech} techColorMap={techColorMap} />
-                                        ))}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-                         <div>
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Incomplete Work Orders</CardTitle>
-                                    <div className="relative mt-4">
-                                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                        <Input
-                                            placeholder="Search by ID, name, or description..."
-                                            className="pl-8 w-full"
-                                            value={searchTerm}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                        />
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <ScrollArea className="h-[450px]">
-                                        <div className="space-y-3">
-                                        {filteredWorkOrders.length > 0 ? filteredWorkOrders.map(wo => (
-                                            <WorkOrderItem key={wo.id} wo={wo} />
-                                        )) : (
-                                            <div className="text-center py-10 text-muted-foreground">
-                                                <p>No matching work orders found.</p>
-                                            </div>
-                                        )}
+                    {role?.name !== 'Technician' && (
+                        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Technician Key</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="flex flex-col gap-3">
+                                            {technicians.map(tech => (
+                                                <TechnicianItem key={tech.id} tech={tech} techColorMap={techColorMap} />
+                                            ))}
                                         </div>
-                                    </ScrollArea>
-                                </CardContent>
-                            </Card>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                            <div>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Incomplete Work Orders</CardTitle>
+                                        <div className="relative mt-4">
+                                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                            <Input
+                                                placeholder="Search by ID, name, or description..."
+                                                className="pl-8 w-full"
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                            />
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <ScrollArea className="h-[450px]">
+                                            <div className="space-y-3">
+                                            {filteredWorkOrders.length > 0 ? filteredWorkOrders.map(wo => (
+                                                <WorkOrderItem key={wo.id} wo={wo} />
+                                            )) : (
+                                                <div className="text-center py-10 text-muted-foreground">
+                                                    <p>No matching work orders found.</p>
+                                                </div>
+                                            )}
+                                            </div>
+                                        </ScrollArea>
+                                    </CardContent>
+                                </Card>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
                  <DragOverlay>
                     {activeId ? (
@@ -420,6 +437,3 @@ export default function DispatchBoardPage() {
         </MainLayout>
     );
 }
-
-
-    
