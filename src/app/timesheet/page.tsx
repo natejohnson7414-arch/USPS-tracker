@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -16,12 +15,12 @@ import {
 } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
+import { Loader2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useFirestore, useUser, addDocumentNonBlocking, deleteDocumentNonBlocking, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
 import type { TimeEntry, WorkOrder } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval, addDays, subDays } from 'date-fns';
 import { getTimeEntriesByTechnician } from '@/lib/data';
 
 const hourOptions = Array.from({ length: 25 }, (_, i) => i);
@@ -42,6 +41,8 @@ export default function TimesheetPage() {
     const [timeType, setTimeType] = useState<'Regular' | 'Overtime' | 'Double Time'>('Regular');
     const [workOrderId, setWorkOrderId] = useState<string | null>('non-productive');
     const [notes, setNotes] = useState('');
+    
+    const [currentDate, setCurrentDate] = useState(new Date());
 
     const workOrdersQuery = useMemoFirebase(() => db ? query(collection(db, 'work_orders'), where("status", "!=", "Completed")) : null, [db]);
     const { data: workOrders } = useCollection<WorkOrder>(workOrdersQuery);
@@ -130,9 +131,28 @@ export default function TimesheetPage() {
             fetchTimeEntries(); // Re-fetch to revert optimistic update
         }
     };
+
+    const weekStartsOn = 1; // Monday
+    const weekStart = startOfWeek(currentDate, { weekStartsOn });
+    const weekEnd = endOfWeek(currentDate, { weekStartsOn });
+
+    const nextWeek = () => setCurrentDate(addDays(currentDate, 7));
+    const prevWeek = () => setCurrentDate(subDays(currentDate, 7));
+    const goToCurrentWeek = () => setCurrentDate(new Date());
+
+    const weeklyEntries = useMemo(() => {
+        return timeEntries.filter(entry => {
+            const entryDate = parseISO(entry.date);
+            return isWithinInterval(entryDate, { start: weekStart, end: weekEnd });
+        });
+    }, [timeEntries, weekStart, weekEnd]);
+
+    const weeklyTotalHours = useMemo(() => {
+        return weeklyEntries.reduce((total, entry) => total + entry.hours, 0);
+    }, [weeklyEntries]);
     
     const groupedEntries = useMemo(() => {
-        return timeEntries.reduce((acc, entry) => {
+        return weeklyEntries.reduce((acc, entry) => {
             const entryDate = format(parseISO(entry.date), 'yyyy-MM-dd');
             if (!acc[entryDate]) {
                 acc[entryDate] = [];
@@ -140,7 +160,7 @@ export default function TimesheetPage() {
             acc[entryDate].push(entry);
             return acc;
         }, {} as Record<string, TimeEntry[]>);
-    }, [timeEntries]);
+    }, [weeklyEntries]);
 
 
     return (
@@ -150,8 +170,25 @@ export default function TimesheetPage() {
                     <div className="lg:col-span-2">
                         <Card>
                             <CardHeader>
-                                <CardTitle>My Timesheet</CardTitle>
-                                <CardDescription>A log of your productive and non-productive hours.</CardDescription>
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                    <div>
+                                        <CardTitle>My Timesheet</CardTitle>
+                                        <CardDescription>A log of your productive and non-productive hours.</CardDescription>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button variant="outline" size="icon" onClick={prevWeek}><ChevronLeft className="h-4 w-4" /></Button>
+                                        <Button variant="outline" onClick={goToCurrentWeek}>This Week</Button>
+                                        <Button variant="outline" size="icon" onClick={nextWeek}><ChevronRight className="h-4 w-4" /></Button>
+                                    </div>
+                                </div>
+                                <div className="mt-4 pt-4 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                    <p className="font-semibold text-lg">
+                                        {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
+                                    </p>
+                                    <p className="font-bold text-xl">
+                                        Total: {weeklyTotalHours.toFixed(2)} hrs
+                                    </p>
+                                </div>
                             </CardHeader>
                             <CardContent>
                                 {isLoading ? (
@@ -161,12 +198,12 @@ export default function TimesheetPage() {
                                     </div>
                                 ) : Object.keys(groupedEntries).length > 0 ? (
                                     <div className="space-y-6">
-                                        {Object.entries(groupedEntries).map(([date, entries]) => (
+                                        {Object.keys(groupedEntries).sort().reverse().map(date => (
                                             <div key={date}>
                                                 <h3 className="text-lg font-semibold mb-2">{format(parseISO(date), 'EEEE, MMM d, yyyy')}</h3>
                                                 <div className="border rounded-md">
-                                                    {entries.map((entry, index) => (
-                                                        <div key={entry.id} className={`flex items-center justify-between p-3 ${index < entries.length - 1 ? 'border-b' : ''}`}>
+                                                    {groupedEntries[date].map((entry, index) => (
+                                                        <div key={entry.id} className={`flex items-center justify-between p-3 ${index < groupedEntries[date].length - 1 ? 'border-b' : ''}`}>
                                                             <div>
                                                                 <p className="font-medium">
                                                                     {entry.workOrderId ? (
@@ -194,7 +231,7 @@ export default function TimesheetPage() {
                                     </div>
                                 ) : (
                                     <div className="text-center p-8 text-muted-foreground">
-                                        <p>No time entries found.</p>
+                                        <p>No time entries found for this week.</p>
                                     </div>
                                 )}
                             </CardContent>
