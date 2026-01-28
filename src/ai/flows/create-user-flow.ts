@@ -5,7 +5,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import * as admin from 'firebase-admin';
 
 const CreateUserInputSchema = z.object({
   name: z.string().describe('The full name of the user.'),
@@ -37,6 +36,9 @@ const createUserFlow = ai.defineFlow(
     outputSchema: CreateUserOutputSchema,
   },
   async (input) => {
+    // Dynamically import firebase-admin to prevent it from being included in client-side bundles.
+    const admin = await import('firebase-admin');
+    
     // Initialize Firebase Admin SDK if not already initialized
     if (!admin.apps.length) {
       try {
@@ -85,7 +87,7 @@ const createUserFlow = ai.defineFlow(
         return { uid: newUserRecord.uid };
 
     } catch (dbError: any) {
-        console.error("Error creating user profile in Firestore:", dbError);
+        console.error("User auth account was created, but failed to create database profile:", dbError);
         
         // Critical cleanup step: If Firestore profile creation fails, delete the orphaned Auth user.
         try {
