@@ -263,9 +263,11 @@ export function WorkOrderDetails({
     if (url.startsWith('http')) {
         return url;
     }
-    // Basic check for a phone number
-    if (/^\+?[0-9\s-()]+$/.test(url)) {
-        return `tel:${url.replace(/\s/g, '')}`;
+    // If it has digits, assume it's a phone number.
+    if (/\d/.test(url)) {
+        // Convert ';' to 'w' for waiting, then strip invalid characters.
+        const sanitizedPhone = url.replace(/;/g, 'w').replace(/[^0-9+,w#*]/g, '');
+        return `tel:${sanitizedPhone}`;
     }
     return url;
   }
