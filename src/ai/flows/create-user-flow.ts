@@ -40,7 +40,9 @@ const createUserFlow = ai.defineFlow(
   async (input) => {
     // Initialize Firebase Admin SDK if not already initialized
     if (!admin.apps.length) {
-        admin.initializeApp();
+        admin.initializeApp({
+            credential: admin.credential.applicationDefault(),
+        });
     }
     
     const { email, password, name, roleId, avatarUrl } = input;
