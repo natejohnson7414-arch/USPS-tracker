@@ -21,7 +21,7 @@ import { useTechnician } from '@/hooks/use-technician';
 
 export function Header() {
   const { user } = useUser();
-  const { technician, isLoading } = useTechnician();
+  const { technician, role, isLoading } = useTechnician();
   const auth = useAuth();
 
   const handleLogout = async () => {
@@ -59,7 +59,7 @@ export function Header() {
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{technician?.name || user.email}</p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      {technician?.roleId ? 'Technician' : 'User'}
+                      {role?.name || 'User'}
                     </p>
                   </div>
                 </DropdownMenuLabel>
