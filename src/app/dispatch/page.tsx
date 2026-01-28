@@ -148,8 +148,8 @@ export default function DispatchBoardPage() {
                     </div>
                 </div>
                 
-                <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-1">
+                <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
                         <Card>
                             <CardHeader>
                                 <CardTitle>Technician Key</CardTitle>
@@ -166,7 +166,7 @@ export default function DispatchBoardPage() {
                             </CardContent>
                         </Card>
                     </div>
-                     <div className="lg:col-span-2">
+                     <div>
                         <Card>
                             <CardHeader>
                                 <CardTitle>Incomplete Work Orders</CardTitle>
