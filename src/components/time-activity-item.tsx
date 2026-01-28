@@ -23,6 +23,7 @@ export function TimeActivityItem({ timeEntry, onTimeEntryDelete }: TimeActivityI
                 <p className="text-xs text-muted-foreground">{format(new Date(timeEntry.date), 'MMM d, yyyy')}</p>
             </div>
             <p className="text-sm text-muted-foreground">Logged <span className="font-semibold">{timeEntry.hours.toFixed(2)} hours</span> of {timeEntry.timeType} time.</p>
+            {timeEntry.notes && <p className="text-sm mt-1 bg-muted p-2 rounded-md">{timeEntry.notes}</p>}
         </div>
         
         <Button

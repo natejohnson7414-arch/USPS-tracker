@@ -1,3 +1,4 @@
+
 'use client';
 import {
   Dialog,
@@ -12,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from './ui/date-picker';
+import { Textarea } from './ui/textarea';
 import type { TimeEntry } from '@/lib/types';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -39,6 +41,7 @@ export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, onTimeAdded }: A
   const [selectedHours, setSelectedHours] = useState(0);
   const [selectedMinutes, setSelectedMinutes] = useState(0);
   const [timeType, setTimeType] = useState<'Regular' | 'Overtime' | 'Double Time'>('Regular');
+  const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const resetForm = () => {
@@ -46,6 +49,7 @@ export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, onTimeAdded }: A
     setSelectedHours(0);
     setSelectedMinutes(0);
     setTimeType('Regular');
+    setDescription('');
   };
 
   const handleSave = async () => {
@@ -56,8 +60,8 @@ export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, onTimeAdded }: A
     
     const totalHours = selectedHours + selectedMinutes / 60;
 
-    if (!date || totalHours <= 0 || !timeType) {
-      toast({ title: 'Missing Fields', description: 'Please fill out all fields and ensure time is greater than 0.', variant: 'destructive' });
+    if (!date || totalHours <= 0 || !timeType || !description) {
+      toast({ title: 'Missing Fields', description: 'Please fill out all fields, including the description.', variant: 'destructive' });
       return;
     }
 
@@ -70,6 +74,7 @@ export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, onTimeAdded }: A
         date: date.toISOString(),
         hours: totalHours,
         timeType: timeType,
+        notes: description,
       };
       
       const docRef = await addDocumentNonBlocking(collection(db, 'time_entries'), timeEntryData);
@@ -147,6 +152,16 @@ export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, onTimeAdded }: A
                 <SelectItem value="Double Time">Double Time</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+           <div className="grid gap-2">
+            <Label htmlFor="description">Description of Work</Label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe the work you performed..."
+              required
+            />
           </div>
         </div>
         <DialogFooter>
