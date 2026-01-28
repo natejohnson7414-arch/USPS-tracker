@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,7 +8,7 @@ import { List, PlusCircle, MoreHorizontal, Ban } from 'lucide-react';
 import { WorkSiteForm } from '@/components/work-site-form';
 import type { WorkSite } from '@/lib/types';
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, query, doc } from 'firebase/firestore';
+import { collection, query, doc, orderBy } from 'firebase/firestore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,7 +67,7 @@ export default function WorkSitesPage() {
     
     const workSitesQuery = useMemoFirebase(() => {
         if (!db) return null;
-        return query(collection(db, 'work_sites'));
+        return query(collection(db, 'work_sites'), orderBy('name', 'asc'));
     }, [db]);
 
     const { data: workSites, isLoading: areSitesLoading } = useCollection<WorkSite>(workSitesQuery);
