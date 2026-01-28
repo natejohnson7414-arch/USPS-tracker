@@ -40,9 +40,9 @@ const createUserFlow = ai.defineFlow(
   async (input) => {
     // Initialize Firebase Admin SDK if not already initialized
     if (!admin.apps.length) {
-        admin.initializeApp({
-            credential: admin.credential.applicationDefault(),
-        });
+        // When running in a Google Cloud environment, initializeApp() without arguments
+        // should automatically discover service account credentials.
+        admin.initializeApp();
     }
     
     const { email, password, name, roleId, avatarUrl } = input;
