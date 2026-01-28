@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -111,13 +112,13 @@ export default function DispatchBoardPage() {
                 </div>
 
                 <div className="overflow-x-auto pb-4">
-                    <div className="grid grid-cols-7 rounded-lg border min-w-[1200px]">
+                    <div className="flex rounded-lg border">
                         {weekDays.map((day, index) => {
                             const dayKey = format(day, 'yyyy-MM-dd');
                             const dayActivities = activitiesByDay.get(dayKey) || [];
                             return (
                                 <div key={dayKey} className={cn(
-                                    "flex flex-col flex-shrink-0", 
+                                    "flex flex-col w-[14.28%] min-w-[170px] flex-shrink-0", 
                                     index < weekDays.length - 1 && "border-r border-border"
                                 )}>
                                     <div className="p-2 border-b text-center font-semibold bg-muted/25">
