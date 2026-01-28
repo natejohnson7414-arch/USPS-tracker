@@ -96,20 +96,20 @@ export default function DispatchBoardPage() {
                 </div>
 
                 <div className="overflow-x-auto pb-4">
-                    <div className="flex rounded-lg border min-w-[1200px]">
+                    <div className="grid grid-cols-7 rounded-lg border min-w-[1200px]">
                         {weekDays.map((day, index) => {
                             const dayKey = format(day, 'yyyy-MM-dd');
                             const dayActivities = activitiesByDay.get(dayKey) || [];
                             return (
                                 <div key={dayKey} className={cn(
-                                    "flex flex-col flex-shrink-0 w-[calc(100%/7)]", 
+                                    "flex flex-col flex-shrink-0", 
                                     index < weekDays.length - 1 && "border-r border-border"
                                 )}>
                                     <div className="p-2 border-b text-center font-semibold bg-muted/25">
                                         <p className="text-sm">{format(day, 'EEE')}</p>
                                         <p className="text-2xl">{format(day, 'd')}</p>
                                     </div>
-                                    <div className="p-2 space-y-2 flex-grow min-h-[500px]">
+                                    <div className="p-2 space-y-2 flex-grow min-h-[500px] overflow-hidden">
                                         {dayActivities.map(activity => (
                                             <TooltipProvider key={activity.id}>
                                                 <Tooltip>
