@@ -77,9 +77,19 @@ const AddActivityForm = ({ technicians, onAddActivity, isLoading }: { technician
     );
 };
 
-const ActivityItem = ({ activity, onUpdateStatus, isTechnician, technicians }: { activity: Activity, onUpdateStatus: (id: string, status: Activity['status']) => void, isTechnician: boolean, technicians: Technician[] }) => {
+const ActivityItem = ({ activity, onUpdateStatus, isTechnician, technicians, currentUserId, onAddTimeClick }: { 
+    activity: Activity, 
+    onUpdateStatus: (id: string, status: Activity['status']) => void, 
+    isTechnician: boolean, 
+    technicians: Technician[],
+    currentUserId?: string,
+    onAddTimeClick: () => void,
+}) => {
     const assignedTechnician = activity.technician || technicians.find(t => t.id === activity.technicianId);
     
+    // Check if the logged-in user is assigned to this activity
+    const isCurrentUserAssigned = activity.technicianId === currentUserId;
+
     return (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg gap-4">
             <div className="flex-1 space-y-1">
@@ -97,7 +107,13 @@ const ActivityItem = ({ activity, onUpdateStatus, isTechnician, technicians }: {
                     <span>{format(new Date(activity.scheduled_date), 'MMM d, yyyy')}</span>
                 </div>
             </div>
-            <div>
+            <div className="flex items-center gap-2">
+                {isCurrentUserAssigned && (
+                     <Button variant="outline" size="sm" onClick={onAddTimeClick}>
+                        <Clock className="mr-2 h-4 w-4" />
+                        Add Time
+                    </Button>
+                )}
                  <Select value={activity.status} onValueChange={(status: Activity['status']) => onUpdateStatus(activity.id, status)}>
                     <SelectTrigger className="w-[180px]">
                         <SelectValue />
@@ -272,6 +288,10 @@ export function WorkOrderDetails({
     return url;
   }
 
+  const handleAddTimeClick = () => {
+    setIsAddTimeOpen(true);
+  };
+
   return (
     <>
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -355,6 +375,8 @@ export function WorkOrderDetails({
                       technicians={technicians}
                       onUpdateStatus={onUpdateActivityStatus}
                       isTechnician={isTechnician} 
+                      currentUserId={user?.uid}
+                      onAddTimeClick={handleAddTimeClick}
                     />
                   ))
                 ) : (
@@ -450,10 +472,6 @@ export function WorkOrderDetails({
                       multiple
                   />
                 <div className="flex-1 flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setIsAddTimeOpen(true)} disabled={isAddingNote}>
-                      <Clock className="mr-2 h-4 w-4" />
-                      Add Time
-                  </Button>
                   <Button type="button" onClick={handleAddNote} disabled={isAddingNote || (!newNote && newNotePhotos.length === 0)}>
                       {isAddingNote && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       {isAddingNote ? "Adding..." : "Add Note"}
@@ -694,3 +712,4 @@ export function WorkOrderDetails({
     </>
   );
 }
+
