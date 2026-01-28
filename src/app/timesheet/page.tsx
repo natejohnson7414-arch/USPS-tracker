@@ -106,7 +106,7 @@ export default function TimesheetPage() {
             fetchTimeEntries(); // Refresh the list
 
         } catch (error) {
-             if (error instanceof Error && !error.message.includes('permission-error')) {
+             if (error instanceof Error && !error.message.startsWith('Missing or insufficient permissions:')) {
                 console.error("Error saving time entry:", error);
                 toast({ title: 'Save Failed', description: 'Could not save the time entry.', variant: 'destructive' });
             }

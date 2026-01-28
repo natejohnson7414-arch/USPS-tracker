@@ -89,7 +89,7 @@ export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, onTimeAdded }: A
       setIsOpen(false);
 
     } catch (error) {
-       if (error instanceof Error && !error.message.includes('permission-error')) {
+       if (error instanceof Error && !error.message.startsWith('Missing or insufficient permissions:')) {
             console.error("Error adding time entry:", error);
             toast({ title: 'Save Failed', description: 'Could not add time entry.', variant: 'destructive' });
         }
