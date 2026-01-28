@@ -40,7 +40,7 @@ function initializeAdmin() {
           clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
           // The private key must have its newlines escaped in the .env file.
           // This line of code replaces the escaped newlines with actual newlines.
-          privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
         }),
       });
     } catch (error: any) {
