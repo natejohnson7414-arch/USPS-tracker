@@ -25,6 +25,7 @@ export type Activity = {
   status: 'scheduled' | 'active' | 'completed' | 'cancelled';
   description: string;
   technician?: Technician;
+  parentWorkOrder?: Partial<WorkOrder>;
 };
 
 export type ActivityHistoryItem = {

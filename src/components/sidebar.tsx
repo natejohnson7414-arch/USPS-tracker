@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from 'next/link';
@@ -11,13 +12,14 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { PanelLeft, Wrench, Package2, Home, Users, MapPin, Building, ClipboardSignature, FileCog } from 'lucide-react';
+import { PanelLeft, Wrench, Package2, Home, Users, MapPin, Building, ClipboardSignature, FileCog, LayoutDashboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useTechnician } from '@/hooks/use-technician';
 
 const navLinks = [
   { href: '/', label: 'Work Orders', icon: Home },
+  { href: '/dispatch', label: 'Dispatch Board', icon: LayoutDashboard },
   { href: '/users', label: 'Users', icon: Users },
   { href: '/work-sites', label: 'Work Sites', icon: MapPin },
   { href: '/clients', label: 'Clients', icon: Building },

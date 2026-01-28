@@ -363,3 +363,28 @@ export const addWorkHistoryItem = async (db: any, workOrderId: string, item: Omi
         work_history: arrayUnion(historyItem)
     });
 };
+
+export const getAllActivitiesWithDetails = async (db: any): Promise<Activity[]> => {
+    if (!db) return [];
+    const workOrdersSnap = await getCollectionNonBlocking(collection(db, 'work_orders'));
+    let allActivities: Activity[] = [];
+
+    for (const woDoc of workOrdersSnap.docs) {
+        // Get the full work order details which includes activities
+        const workOrder = await getWorkOrderById(db, woDoc.id); 
+        if (workOrder && workOrder.activities) {
+            // Enrich each activity with a reference to its parent work order details
+            const enrichedActivities = workOrder.activities.map(activity => ({
+                ...activity,
+                parentWorkOrder: {
+                    id: workOrder.id,
+                    jobName: workOrder.jobName,
+                    description: workOrder.description,
+                    workSite: workOrder.workSite
+                }
+            }));
+            allActivities = allActivities.concat(enrichedActivities);
+        }
+    }
+    return allActivities;
+};
