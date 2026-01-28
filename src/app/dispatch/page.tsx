@@ -1,7 +1,7 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
 import { useFirestore } from '@/firebase';
 import { getAllActivitiesWithDetails, getTechnicians, getIncompleteWorkOrders, updateWorkOrderStatus } from '@/lib/data';
@@ -48,17 +48,19 @@ function WorkOrderItem({ wo }: { wo: WorkOrder }) {
     });
     
     return (
-        <div 
-            ref={setNodeRef} 
-            className={cn(
-                "p-3 border rounded-lg bg-card transition-colors",
-                isOver ? "bg-accent border-accent-foreground" : "hover:bg-muted/50"
-            )}
-        >
-            <p className="font-semibold">{wo.jobName}</p>
-            <p className="text-sm text-muted-foreground">#{wo.id}</p>
-            <p className="text-sm text-muted-foreground mt-1 truncate">{wo.description}</p>
-        </div>
+        <Link href={`/work-orders/${wo.id}`} className="block">
+            <div 
+                ref={setNodeRef} 
+                className={cn(
+                    "p-3 border rounded-lg bg-card transition-colors",
+                    isOver ? "bg-accent border-accent-foreground" : "hover:bg-muted/50"
+                )}
+            >
+                <p className="font-semibold">{wo.jobName}</p>
+                <p className="text-sm text-muted-foreground">#{wo.id}</p>
+                <p className="text-sm text-muted-foreground mt-1 truncate">{wo.description}</p>
+            </div>
+        </Link>
     )
 }
 
