@@ -6,6 +6,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import admin from 'firebase-admin';
 
 const CreateUserInputSchema = z.object({
   name: z.string().describe('The full name of the user.'),
@@ -36,9 +37,6 @@ const createUserFlow = ai.defineFlow(
     outputSchema: CreateUserOutputSchema,
   },
   async (input) => {
-    // Dynamically import and initialize admin SDK inside the server-only flow.
-    const admin = await import('firebase-admin');
-
     // Bulletproof initialization, guarded against re-runs.
     if (!admin.apps.length) {
         try {
