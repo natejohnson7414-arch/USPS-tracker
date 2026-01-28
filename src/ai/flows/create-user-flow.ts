@@ -6,12 +6,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import * as admin from 'firebase-admin';
-
-// Initialize Firebase Admin SDK if not already initialized
-if (!admin.apps.length) {
-    admin.initializeApp();
-}
+import { adminAuth, adminDb } from '@/firebase/admin';
 
 const CreateUserInputSchema = z.object({
   name: z.string().describe('The full name of the user.'),
@@ -49,7 +44,7 @@ const createUserFlow = ai.defineFlow(
     
     let newUserRecord;
     try {
-        newUserRecord = await admin.auth().createUser({
+        newUserRecord = await adminAuth.createUser({
             email,
             password,
             displayName: name,
@@ -64,7 +59,7 @@ const createUserFlow = ai.defineFlow(
     }
 
     try {
-        const technicianRef = admin.firestore().collection('technicians').doc(newUserRecord.uid);
+        const technicianRef = adminDb.collection('technicians').doc(newUserRecord.uid);
         await technicianRef.set({
             id: newUserRecord.uid,
             firstName,
@@ -82,7 +77,7 @@ const createUserFlow = ai.defineFlow(
         
         // Critical cleanup step: If Firestore profile creation fails, delete the orphaned Auth user.
         try {
-            await admin.auth().deleteUser(newUserRecord.uid);
+            await adminAuth.deleteUser(newUserRecord.uid);
             console.log(`Successfully cleaned up orphaned auth user: ${newUserRecord.uid}`);
         } catch (cleanupError: any) {
             console.error(`CRITICAL: Failed to clean up orphaned auth user ${newUserRecord.uid}. Manual cleanup required.`, cleanupError);
