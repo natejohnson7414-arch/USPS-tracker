@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A server-side flow to create a new user in Firebase Authentication and Firestore.
@@ -42,9 +43,8 @@ const createUserFlow = ai.defineFlow(
     // Initialize Firebase Admin SDK if not already initialized
     if (!admin.apps.length) {
       try {
-        admin.initializeApp({
-          credential: admin.credential.applicationDefault(),
-        });
+        // Initialize without arguments to use Application Default Credentials
+        admin.initializeApp();
         console.log('Firebase Admin SDK initialized successfully.');
       } catch (error: any) {
         console.error('Error initializing Firebase Admin SDK:', error);
