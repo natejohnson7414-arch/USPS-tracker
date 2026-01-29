@@ -4,7 +4,6 @@
  * @fileOverview A server-side flow to create a new user in Firebase Authentication and Firestore.
  */
 
-import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import admin from 'firebase-admin';
 
@@ -26,18 +25,7 @@ const CreateUserOutputSchema = z.object({
 export type CreateUserOutput = z.infer<typeof CreateUserOutputSchema>;
 
 export async function createUser(input: CreateUserInput): Promise<CreateUserOutput> {
-  return createUserFlow(input);
-}
-
-
-const createUserFlow = ai.defineFlow(
-  {
-    name: 'createUserFlow',
-    inputSchema: CreateUserInputSchema,
-    outputSchema: CreateUserOutputSchema,
-  },
-  async (input) => {
-    // Bulletproof initialization, guarded against re-runs, and executed only inside the server-side flow.
+   // Bulletproof initialization, guarded against re-runs, and executed only inside the server-side function.
     if (!admin.apps.length) {
         try {
           admin.initializeApp({
@@ -46,13 +34,13 @@ const createUserFlow = ai.defineFlow(
               clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
               // The private key must have its newlines escaped in the .env file.
               // This line of code replaces the escaped newlines with actual newlines.
-              privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+              privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
             }),
           });
         } catch (error: any) {
           console.error('Firebase Admin SDK initialization failed:', error);
-          // Throw a more informative error to help with debugging.
-          throw new Error(`Admin SDK init failed: ${error.message}. Ensure FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY are set in your .env file.`);
+          // Return a structured error instead of throwing.
+          return { error: `Admin SDK init failed: ${error.message}. Ensure FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY are set in your .env file.` };
         }
     }
     
@@ -106,5 +94,4 @@ const createUserFlow = ai.defineFlow(
 
         return { error: `User auth account was created, but failed to create database profile: ${dbError.message}` };
     }
-  }
-);
+}
