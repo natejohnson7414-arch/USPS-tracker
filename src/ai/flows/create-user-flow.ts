@@ -37,7 +37,7 @@ const createUserFlow = ai.defineFlow(
     outputSchema: CreateUserOutputSchema,
   },
   async (input) => {
-    // Bulletproof initialization, guarded against re-runs.
+    // Bulletproof initialization, guarded against re-runs, and executed only inside the server-side flow.
     if (!admin.apps.length) {
         try {
           admin.initializeApp({
