@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { Textarea } from './ui/textarea';
 import { DatePicker } from './ui/date-picker';
 import { Loader2, PlusCircle, FileUp, Building } from 'lucide-react';
 import type { Technician, WorkOrder, WorkSite, Client } from '@/lib/types';
@@ -34,6 +34,7 @@ import { Card, CardContent, CardHeader } from './ui/card';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { ScrollArea } from './ui/scroll-area';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { cn } from '@/lib/utils';
 
 interface CreateWorkOrderDialogProps {
   technicians: Technician[];
@@ -84,6 +85,8 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
   const [manualPhone, setManualPhone] = useState('');
   const [manualWorkOrder, setManualWorkOrder] = useState('');
 
+  const [errors, setErrors] = useState<{ jobId?: boolean, workSiteId?: boolean, description?: boolean }>({});
+
   const resetForm = () => {
     setJobId('');
     setCreatedDate(new Date());
@@ -117,6 +120,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
     setWebLinkUrl('');
     setManualPhone('');
     setManualWorkOrder('');
+    setErrors({});
   };
   
   useEffect(() => {
@@ -249,19 +253,36 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
 
 
   const handleSubmit = async () => {
-    const selectedWorkSite = workSites.find(ws => ws.id === workSiteId);
-    const selectedClient = clients.find(c => c.id === clientId);
+    setErrors({});
     
-    if (!db || !jobId || !selectedWorkSite || !description) {
-      toast({
-        title: 'Missing Information',
-        description: 'Job #, Job Site, and Description are required.',
-        variant: 'destructive',
-      });
-      return;
+    const validationErrors: { jobId?: boolean, workSiteId?: boolean, description?: boolean } = {};
+    if (!jobId) validationErrors.jobId = true;
+    if (!workSiteId) validationErrors.workSiteId = true;
+    if (!description) validationErrors.description = true;
+
+    if (Object.keys(validationErrors).length > 0) {
+        setErrors(validationErrors);
+        toast({
+            title: 'Missing Information',
+            description: 'Job #, Job Site, and Description are required.',
+            variant: 'destructive',
+        });
+        return;
+    }
+
+    if (!db) {
+        toast({
+            title: 'Database Error',
+            description: 'Not connected to the database.',
+            variant: 'destructive',
+        });
+        return;
     }
 
     setIsSubmitting(true);
+    
+    const selectedWorkSite = workSites.find(ws => ws.id === workSiteId);
+    const selectedClient = clients.find(c => c.id === clientId);
 
     let finalCheckInOutURL: string | undefined = undefined;
     let finalCheckInWorkOrderNumber: string | undefined = undefined;
@@ -289,7 +310,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
       const newWorkOrderData = {
         id: jobId,
         createdDate: (createdDate || new Date()).toISOString(),
-        jobName: selectedWorkSite.name,
+        jobName: selectedWorkSite!.name,
         description,
         status: 'Open' as const,
         assignedTechnicianId,
@@ -391,7 +412,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
                 </div>
                 <div className="grid gap-2">
                     <Label htmlFor="jobId">Job #</Label>
-                    <Input id="jobId" value={jobId} onChange={e => setJobId(e.target.value)} required/>
+                    <Input id="jobId" value={jobId} onChange={e => setJobId(e.target.value)} required className={cn(errors.jobId && "border-destructive")} />
                 </div>
             </div>
              <div className="grid gap-2">
@@ -470,7 +491,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
                 <div className="grid gap-2">
                     <Label htmlFor="workSite">Job Site / Name</Label>
                     <Select onValueChange={setWorkSiteId} value={workSiteId} disabled={isSubmitting}>
-                    <SelectTrigger>
+                    <SelectTrigger className={cn(errors.workSiteId && "border-destructive")}>
                         <SelectValue placeholder="Select a work site" />
                     </SelectTrigger>
                     <SelectContent>
@@ -486,7 +507,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
 
             <div className="grid gap-2">
                 <Label htmlFor="description">Job Description</Label>
-                <Textarea id="description" value={description} onChange={e => setDescription(e.target.value)} required/>
+                <Textarea id="description" value={description} onChange={e => setDescription(e.target.value)} required className={cn(errors.description && "border-destructive")} />
             </div>
             <div className="grid gap-2">
                 <Label htmlFor="serviceScheduleDate">Service Schedule Date</Label>
