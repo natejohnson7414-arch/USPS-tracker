@@ -135,75 +135,80 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
 
     resetForm();
     setIsExtracting(true);
-    toast({ title: 'Extracting Data...', description: 'Please wait while the AI analyzes the PDF.' });
-
+    
     try {
         const reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = async () => {
             const dataUri = reader.result as string;
-            const extractedData = await extractWorkOrderInfo({ pdfDataUri: dataUri });
-
-            const matchedClient = clients.find(c => c.name.toLowerCase().includes(extractedData.billTo?.toLowerCase() || ''));
-            if (matchedClient) setClientId(matchedClient.id);
-
-            const matchedWorkSite = workSites.find(ws => 
-                (ws.address && extractedData.jobSiteAddress && ws.address.toLowerCase() === extractedData.jobSiteAddress.toLowerCase()) ||
-                (ws.name && extractedData.jobName && ws.name.toLowerCase() === extractedData.jobName.toLowerCase())
-            );
-
-            if (matchedWorkSite) {
-                setWorkSiteId(matchedWorkSite.id);
-            } else if (extractedData.jobSiteAddress || extractedData.jobName) {
-                setShowCreateSitePrompt(true);
-                setExtractedAddress(extractedData.jobSiteAddress || null);
-                setExtractedCity(extractedData.jobSiteCity || null);
-                setExtractedState(extractedData.jobSiteState || null);
-                setNewSiteName(extractedData.jobName || extractedData.jobSiteAddress || '');
-            }
-
-            if (extractedData.id) setJobId(extractedData.id);
-            if (extractedData.createdDate) setCreatedDate(new Date(extractedData.createdDate));
-            if (extractedData.poNumber) setPoNumber(extractedData.poNumber);
-            if (extractedData.contactInfo) setContactInfo(extractedData.contactInfo);
-            if (extractedData.description) setDescription(extractedData.description);
-            if (extractedData.serviceScheduleDate) setServiceScheduleDate(new Date(extractedData.serviceScheduleDate));
-            if (extractedData.quotedAmount) setQuotedAmount(extractedData.quotedAmount);
-            if (extractedData.timeAndMaterial) setTimeAndMaterial(extractedData.timeAndMaterial);
-            if (extractedData.permit) setPermit(extractedData.permit);
-            if (extractedData.permitCost) setPermitCost(extractedData.permitCost);
-            if (extractedData.permitFiled) setPermitFiled(new Date(extractedData.permitFiled));
-            if (extractedData.coi) setCoi(extractedData.coi);
-            if (extractedData.coiRequested) setCoiRequested(new Date(extractedData.coiRequested));
-            if (extractedData.certifiedPayroll) setCertifiedPayroll(extractedData.certifiedPayroll);
-            if (extractedData.certifiedPayrollRequested) setCertifiedPayrollRequested(new Date(extractedData.certifiedPayrollRequested));
-            if (extractedData.intercoPO) setIntercoPO(extractedData.intercoPO);
-            if (extractedData.customerPO) setCustomerPO(extractedData.customerPO);
-            if (extractedData.estimator) setEstimator(extractedData.estimator);
             
-            if (extractedData.checkInOutURL) {
-              if (extractedData.checkInOutURL.startsWith('tel:')) {
-                setCheckInType('manual');
-                setManualPhone(extractedData.checkInOutURL.replace('tel:', ''));
-              } else if (extractedData.checkInOutURL.startsWith('http')) {
-                setCheckInType('weblink');
-                setWebLinkUrl(extractedData.checkInOutURL);
+            try {
+              const extractedData = await extractWorkOrderInfo({ pdfDataUri: dataUri });
+
+              const matchedClient = clients.find(c => c.name.toLowerCase().includes(extractedData.billTo?.toLowerCase() || ''));
+              if (matchedClient) setClientId(matchedClient.id);
+
+              const matchedWorkSite = workSites.find(ws => 
+                  (ws.address && extractedData.jobSiteAddress && ws.address.toLowerCase() === extractedData.jobSiteAddress.toLowerCase()) ||
+                  (ws.name && extractedData.jobName && ws.name.toLowerCase() === extractedData.jobName.toLowerCase())
+              );
+
+              if (matchedWorkSite) {
+                  setWorkSiteId(matchedWorkSite.id);
+              } else if (extractedData.jobSiteAddress || extractedData.jobName) {
+                  setShowCreateSitePrompt(true);
+                  setExtractedAddress(extractedData.jobSiteAddress || null);
+                  setExtractedCity(extractedData.jobSiteCity || null);
+                  setExtractedState(extractedData.jobSiteState || null);
+                  setNewSiteName(extractedData.jobName || extractedData.jobSiteAddress || '');
               }
+
+              if (extractedData.id) setJobId(extractedData.id);
+              if (extractedData.createdDate) setCreatedDate(new Date(extractedData.createdDate));
+              if (extractedData.poNumber) setPoNumber(extractedData.poNumber);
+              if (extractedData.contactInfo) setContactInfo(extractedData.contactInfo);
+              if (extractedData.description) setDescription(extractedData.description);
+              if (extractedData.serviceScheduleDate) setServiceScheduleDate(new Date(extractedData.serviceScheduleDate));
+              if (extractedData.quotedAmount) setQuotedAmount(extractedData.quotedAmount);
+              if (extractedData.timeAndMaterial) setTimeAndMaterial(extractedData.timeAndMaterial);
+              if (extractedData.permit) setPermit(extractedData.permit);
+              if (extractedData.permitCost) setPermitCost(extractedData.permitCost);
+              if (extractedData.permitFiled) setPermitFiled(new Date(extractedData.permitFiled));
+              if (extractedData.coi) setCoi(extractedData.coi);
+              if (extractedData.coiRequested) setCoiRequested(new Date(extractedData.coiRequested));
+              if (extractedData.certifiedPayroll) setCertifiedPayroll(extractedData.certifiedPayroll);
+              if (extractedData.certifiedPayrollRequested) setCertifiedPayrollRequested(new Date(extractedData.certifiedPayrollRequested));
+              if (extractedData.intercoPO) setIntercoPO(extractedData.intercoPO);
+              if (extractedData.customerPO) setCustomerPO(extractedData.customerPO);
+              if (extractedData.estimator) setEstimator(extractedData.estimator);
+              
+              if (extractedData.checkInOutURL) {
+                if (extractedData.checkInOutURL.startsWith('tel:')) {
+                  setCheckInType('manual');
+                  setManualPhone(extractedData.checkInOutURL.replace('tel:', ''));
+                } else if (extractedData.checkInOutURL.startsWith('http')) {
+                  setCheckInType('weblink');
+                  setWebLinkUrl(extractedData.checkInOutURL);
+                }
+              }
+              
+              toast({ title: 'Extraction Complete', description: 'Form has been auto-populated. Please review.' });
+            } catch (error) {
+              console.error('Error extracting work order info:', error);
+              toast({ title: 'Extraction Failed', description: 'The AI could not extract data from the PDF.', variant: 'destructive' });
+            } finally {
+              setIsExtracting(false);
             }
-            
-            toast({ title: 'Extraction Complete', description: 'Form has been auto-populated. Please review.' });
         };
 
         reader.onerror = (error) => {
             console.error('Error reading file:', error);
             toast({ title: 'File Read Error', description: 'Could not read the uploaded file.', variant: 'destructive' });
+            setIsExtracting(false);
         }
-
     } catch (error) {
-        console.error('Error extracting work order info:', error);
-        toast({ title: 'Extraction Failed', description: 'The AI could not extract data from the PDF.', variant: 'destructive' });
-    } finally {
         setIsExtracting(false);
+    } finally {
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
@@ -378,6 +383,13 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-4xl bg-blue-50">
+        {isExtracting && (
+            <div className="absolute inset-0 bg-slate-100/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <p className="mt-4 text-lg font-medium text-primary">Scanning PDF...</p>
+              <p className="text-muted-foreground">Please wait while the AI extracts the data.</p>
+            </div>
+        )}
         <DialogHeader>
           <DialogTitle>Small Job Form</DialogTitle>
            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
@@ -391,11 +403,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
                     accept="application/pdf"
                 />
                 <Button variant="destructive" onClick={() => fileInputRef.current?.click()} disabled={isExtracting || isSubmitting} className="w-full sm:w-auto">
-                    {isExtracting ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                        <FileUp className="mr-2 h-4 w-4" />
-                    )}
+                    <FileUp className="mr-2 h-4 w-4" />
                     Upload &amp; Autofill from PDF
                 </Button>
             </div>
