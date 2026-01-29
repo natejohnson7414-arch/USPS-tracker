@@ -71,7 +71,7 @@ const createUserFlow = ai.defineFlow(
             displayName: name,
         });
 
-    } catch (error: any)
+    } catch (error: any) {
         console.error("Error creating user in Firebase Auth:", error);
         if (error.code === 'auth/email-already-exists') {
             return { error: 'The email address is already in use by another account.'};
