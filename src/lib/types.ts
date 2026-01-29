@@ -77,6 +77,7 @@ export type WorkOrder = {
   activities: Activity[];
   work_history: ActivityHistoryItem[];
   checkInOutURL?: string; // CHECK-IN/OUT
+  checkInWorkOrderNumber?: string;
   // New fields for report
   tempOnArrival?: string;
   tempOnLeaving?: string;

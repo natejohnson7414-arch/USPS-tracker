@@ -1,3 +1,4 @@
+
 'use client';
 import Link from 'next/link';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -72,20 +73,27 @@ export function WorkOrderCard({ order, technician, workSite, onDirectionsClick }
                 </div>
             </CardContent>
             {(workSite?.address || order.checkInOutURL) && (
-                 <CardFooter className="flex gap-2">
-                    {order.checkInOutURL && (
-                         <Button asChild variant="secondary" className="w-full">
-                            <a href={getLinkUrl(order.checkInOutURL)} target="_blank" rel="noopener noreferrer">
-                                <LinkIcon className="mr-2 h-4 w-4" />
-                                Check-in
-                            </a>
-                        </Button>
-                    )}
-                    {workSite?.address && (
-                         <Button variant="outline" className="w-full" onClick={() => onDirectionsClick(workSite.address)}>
-                            <Map className="mr-2 h-4 w-4" />
-                            Directions
-                        </Button>
+                 <CardFooter className="flex-col items-stretch gap-2">
+                    <div className="flex gap-2">
+                        {order.checkInOutURL && (
+                            <Button asChild variant="secondary" className="w-full">
+                                <a href={getLinkUrl(order.checkInOutURL)} target="_blank" rel="noopener noreferrer">
+                                    <LinkIcon className="mr-2 h-4 w-4" />
+                                    Check-in
+                                </a>
+                            </Button>
+                        )}
+                        {workSite?.address && (
+                            <Button variant="outline" className="w-full" onClick={() => onDirectionsClick(workSite.address)}>
+                                <Map className="mr-2 h-4 w-4" />
+                                Directions
+                            </Button>
+                        )}
+                    </div>
+                    {order.checkInWorkOrderNumber && (
+                        <p className="text-xs text-muted-foreground text-center pt-1">
+                            Manual WO: {order.checkInWorkOrderNumber}
+                        </p>
                     )}
                 </CardFooter>
             )}

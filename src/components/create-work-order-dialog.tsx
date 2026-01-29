@@ -33,6 +33,7 @@ import { extractWorkOrderInfo } from '@/ai/flows/extract-work-order-flow';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { ScrollArea } from './ui/scroll-area';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 
 interface CreateWorkOrderDialogProps {
   technicians: Technician[];
@@ -49,15 +50,12 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // State for the "create new site" prompt
   const [showCreateSitePrompt, setShowCreateSitePrompt] = useState(false);
   const [extractedAddress, setExtractedAddress] = useState<string | null>(null);
   const [extractedCity, setExtractedCity] = useState<string | null>(null);
   const [extractedState, setExtractedState] = useState<string | null>(null);
   const [newSiteName, setNewSiteName] = useState<string>('');
 
-
-  // Form state based on the new template
   const [jobId, setJobId] = useState('');
   const [createdDate, setCreatedDate] = useState<Date | undefined>(new Date());
   const [clientId, setClientId] = useState<string | undefined>();
@@ -79,8 +77,12 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
   const [customerPO, setCustomerPO] = useState('');
   const [estimator, setEstimator] = useState('');
   const [assignedTechnicianId, setAssignedTechnicianId] = useState<string | undefined>();
-  const [checkInOutURL, setCheckInOutURL] = useState('');
   
+  const [checkInType, setCheckInType] = useState<'none' | 'emcor' | 'weblink' | 'manual'>('none');
+  const [emcorWorkOrder, setEmcorWorkOrder] = useState('');
+  const [webLinkUrl, setWebLinkUrl] = useState('');
+  const [manualPhone, setManualPhone] = useState('');
+  const [manualWorkOrder, setManualWorkOrder] = useState('');
 
   const resetForm = () => {
     setJobId('');
@@ -104,16 +106,20 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
     setCustomerPO('');
     setEstimator('');
     setAssignedTechnicianId(undefined);
-    setCheckInOutURL('');
     setShowCreateSitePrompt(false);
     setExtractedAddress(null);
     setExtractedCity(null);
     setExtractedState(null);
     setNewSiteName('');
+    
+    setCheckInType('none');
+    setEmcorWorkOrder('');
+    setWebLinkUrl('');
+    setManualPhone('');
+    setManualWorkOrder('');
   };
   
   useEffect(() => {
-    // When the dialog opens, if there's an extracted name, pre-fill the input
     if (showCreateSitePrompt && newSiteName) {
         setNewSiteName(newSiteName);
     }
@@ -134,11 +140,9 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
             const dataUri = reader.result as string;
             const extractedData = await extractWorkOrderInfo({ pdfDataUri: dataUri });
 
-            // Find matching client
             const matchedClient = clients.find(c => c.name.toLowerCase().includes(extractedData.billTo?.toLowerCase() || ''));
             if (matchedClient) setClientId(matchedClient.id);
 
-            // Check for matching work site by address
             const matchedWorkSite = workSites.find(ws => 
                 (ws.address && extractedData.jobSiteAddress && ws.address.toLowerCase() === extractedData.jobSiteAddress.toLowerCase()) ||
                 (ws.name && extractedData.jobName && ws.name.toLowerCase() === extractedData.jobName.toLowerCase())
@@ -147,7 +151,6 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
             if (matchedWorkSite) {
                 setWorkSiteId(matchedWorkSite.id);
             } else if (extractedData.jobSiteAddress || extractedData.jobName) {
-                // If no match is found but an address was extracted, show the prompt
                 setShowCreateSitePrompt(true);
                 setExtractedAddress(extractedData.jobSiteAddress || null);
                 setExtractedCity(extractedData.jobSiteCity || null);
@@ -155,7 +158,6 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
                 setNewSiteName(extractedData.jobName || extractedData.jobSiteAddress || '');
             }
 
-            // Update form state with other data
             if (extractedData.id) setJobId(extractedData.id);
             if (extractedData.createdDate) setCreatedDate(new Date(extractedData.createdDate));
             if (extractedData.poNumber) setPoNumber(extractedData.poNumber);
@@ -174,7 +176,16 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
             if (extractedData.intercoPO) setIntercoPO(extractedData.intercoPO);
             if (extractedData.customerPO) setCustomerPO(extractedData.customerPO);
             if (extractedData.estimator) setEstimator(extractedData.estimator);
-            if (extractedData.checkInOutURL) setCheckInOutURL(extractedData.checkInOutURL);
+            
+            if (extractedData.checkInOutURL) {
+              if (extractedData.checkInOutURL.startsWith('tel:')) {
+                setCheckInType('manual');
+                setManualPhone(extractedData.checkInOutURL.replace('tel:', ''));
+              } else if (extractedData.checkInOutURL.startsWith('http')) {
+                setCheckInType('weblink');
+                setWebLinkUrl(extractedData.checkInOutURL);
+              }
+            }
             
             toast({ title: 'Extraction Complete', description: 'Form has been auto-populated. Please review.' });
         };
@@ -189,7 +200,6 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
         toast({ title: 'Extraction Failed', description: 'The AI could not extract data from the PDF.', variant: 'destructive' });
     } finally {
         setIsExtracting(false);
-        // Reset file input so the same file can be uploaded again
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
@@ -209,7 +219,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
             address: extractedAddress || '',
             city: extractedCity || '', 
             state: extractedState || '', 
-            zip: '', // Zip can be added later
+            zip: '',
         };
 
         const docRef = await addDocumentNonBlocking(workSitesRef, newSiteData);
@@ -253,6 +263,26 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
 
     setIsSubmitting(true);
 
+    let finalCheckInOutURL: string | undefined = undefined;
+    let finalCheckInWorkOrderNumber: string | undefined = undefined;
+
+    switch (checkInType) {
+        case 'emcor':
+            if (emcorWorkOrder) {
+                finalCheckInOutURL = `tel:1-866-684-0431,,,,,1,,,1,500047#,,${emcorWorkOrder}`;
+            }
+            break;
+        case 'weblink':
+            finalCheckInOutURL = webLinkUrl;
+            break;
+        case 'manual':
+            if (manualPhone) {
+                finalCheckInOutURL = `tel:${manualPhone}`;
+            }
+            finalCheckInWorkOrderNumber = manualWorkOrder;
+            break;
+    }
+
     try {
       const workOrderRef = doc(db, 'work_orders', jobId);
 
@@ -281,10 +311,10 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
         intercoPO,
         customerPO,
         estimator,
-        checkInOutURL
+        checkInOutURL: finalCheckInOutURL,
+        checkInWorkOrderNumber: finalCheckInWorkOrderNumber,
       };
 
-      // Firestore does not allow `undefined` values. We clean them here.
       Object.keys(newWorkOrderData).forEach(key => {
         const k = key as keyof typeof newWorkOrderData;
         if ((newWorkOrderData as any)[k] === undefined) {
@@ -499,9 +529,50 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
           </div>
           {/* Right Column */}
           <div className="space-y-4">
-            <div className="grid gap-2">
-                <Label htmlFor="checkInOutURL">Check-in/Out Link/Phone</Label>
-                <Input id="checkInOutURL" value={checkInOutURL} onChange={e => setCheckInOutURL(e.target.value)} />
+            <div className="space-y-3 rounded-md border p-4">
+              <Label>Check-in/Out</Label>
+              <RadioGroup value={checkInType} onValueChange={(v) => setCheckInType(v as any)}>
+                <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="none" id="checkin-none" />
+                    <Label htmlFor="checkin-none">None</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="emcor" id="checkin-emcor" />
+                    <Label htmlFor="checkin-emcor">EMCOR Call-In/Out</Label>
+                </div>
+                {checkInType === 'emcor' && (
+                    <div className="pl-6 pt-2">
+                        <Label htmlFor="emcor-wo">EMCOR Work Order #</Label>
+                        <Input id="emcor-wo" value={emcorWorkOrder} onChange={(e) => setEmcorWorkOrder(e.target.value)} />
+                    </div>
+                )}
+                 <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="weblink" id="checkin-weblink" />
+                    <Label htmlFor="checkin-weblink">Web Link</Label>
+                </div>
+                {checkInType === 'weblink' && (
+                    <div className="pl-6 pt-2">
+                        <Label htmlFor="weblink-url">URL</Label>
+                        <Input id="weblink-url" value={webLinkUrl} onChange={(e) => setWebLinkUrl(e.target.value)} placeholder="https://example.com" />
+                    </div>
+                )}
+                 <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="manual" id="checkin-manual" />
+                    <Label htmlFor="checkin-manual">Manual Phone Check-in</Label>
+                </div>
+                 {checkInType === 'manual' && (
+                    <div className="space-y-2 pl-6 pt-2">
+                        <div>
+                            <Label htmlFor="manual-phone">Phone Number</Label>
+                            <Input id="manual-phone" type="tel" value={manualPhone} onChange={(e) => setManualPhone(e.target.value)} />
+                        </div>
+                        <div>
+                            <Label htmlFor="manual-wo">Work Order #</Label>
+                            <Input id="manual-wo" value={manualWorkOrder} onChange={(e) => setManualWorkOrder(e.target.value)} />
+                        </div>
+                    </div>
+                )}
+              </RadioGroup>
             </div>
             <div className="grid gap-2">
                 <Label htmlFor="poNumber">PO #</Label>

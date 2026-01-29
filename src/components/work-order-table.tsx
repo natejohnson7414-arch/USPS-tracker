@@ -145,21 +145,26 @@ export function WorkOrderTable({ workOrders, technicians, workSites }: WorkOrder
                         </Link>
                       </TableCell>
                       <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                              {order.checkInOutURL && (
-                                <Button asChild variant="outline" size="icon">
-                                    <a href={getLinkUrl(order.checkInOutURL)} target="_blank" rel="noopener noreferrer">
-                                        <LinkIcon className="h-4 w-4" />
-                                        <span className="sr-only">Check-in</span>
-                                    </a>
-                                </Button>
-                              )}
-                              {workSite?.address && (
-                                  <Button variant="outline" size="icon" onClick={() => handleDirectionsClick(workSite)}>
-                                      <Map className="h-4 w-4" />
-                                      <span className="sr-only">Get Directions</span>
+                          <div className="flex flex-col items-end gap-1">
+                            <div className="flex justify-end gap-2">
+                                {order.checkInOutURL && (
+                                  <Button asChild variant="outline" size="icon">
+                                      <a href={getLinkUrl(order.checkInOutURL)} target="_blank" rel="noopener noreferrer">
+                                          <LinkIcon className="h-4 w-4" />
+                                          <span className="sr-only">Check-in</span>
+                                      </a>
                                   </Button>
-                              )}
+                                )}
+                                {workSite?.address && (
+                                    <Button variant="outline" size="icon" onClick={() => handleDirectionsClick(workSite)}>
+                                        <Map className="h-4 w-4" />
+                                        <span className="sr-only">Get Directions</span>
+                                    </Button>
+                                )}
+                            </div>
+                             {order.checkInWorkOrderNumber && (
+                                <p className="text-xs text-muted-foreground pr-1">Manual WO: {order.checkInWorkOrderNumber}</p>
+                            )}
                           </div>
                       </TableCell>
                     </TableRow>

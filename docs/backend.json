@@ -146,6 +146,10 @@
             "type": "string",
             "description": "A URL or phone number for technician check-in and check-out."
         },
+        "checkInWorkOrderNumber": {
+            "type": "string",
+            "description": "The work order number to be used for a manual phone check-in."
+        },
         "tempOnArrival": {
             "type": "string",
             "description": "Temperature recorded upon arrival at the job site."

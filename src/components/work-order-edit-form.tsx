@@ -2,9 +2,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import type { WorkOrder, Technician, WorkSite, Client } from '@/lib/types';
 import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -19,6 +16,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Loader2, Save, Ban } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 
 interface WorkOrderEditFormProps {
     workOrder: WorkOrder;
@@ -35,28 +33,75 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
     const [isLoading, setIsLoading] = useState(false);
 
     // Form state for all editable fields
-    const [description, setDescription] = useState(workOrder.description || '');
-    const [status, setStatus] = useState<WorkOrder['status']>(workOrder.status || 'Open');
-    const [assignedTechnicianId, setAssignedTechnicianId] = useState(workOrder.assignedTechnicianId);
-    const [workSiteId, setWorkSiteId] = useState(workOrder.workSiteId);
-    const [clientId, setClientId] = useState(workOrder.clientId);
-    const [createdDate, setCreatedDate] = useState(workOrder.createdDate ? new Date(workOrder.createdDate) : undefined);
-    const [poNumber, setPoNumber] = useState(workOrder.poNumber || '');
-    const [contactInfo, setContactInfo] = useState(workOrder.contactInfo || '');
-    const [serviceScheduleDate, setServiceScheduleDate] = useState(workOrder.serviceScheduleDate ? new Date(workOrder.serviceScheduleDate) : undefined);
-    const [quotedAmount, setQuotedAmount] = useState(workOrder.quotedAmount?.toString() || '');
-    const [timeAndMaterial, setTimeAndMaterial] = useState(workOrder.timeAndMaterial || false);
-    const [permit, setPermit] = useState(workOrder.permit || false);
-    const [permitCost, setPermitCost] = useState(workOrder.permitCost?.toString() || '');
-    const [permitFiled, setPermitFiled] = useState(workOrder.permitFiled ? new Date(workOrder.permitFiled) : undefined);
-    const [coi, setCoi] = useState(workOrder.coi || false);
-    const [coiRequested, setCoiRequested] = useState(workOrder.coiRequested ? new Date(workOrder.coiRequested) : undefined);
-    const [certifiedPayroll, setCertifiedPayroll] = useState(workOrder.certifiedPayroll || false);
-    const [certifiedPayrollRequested, setCertifiedPayrollRequested] = useState(workOrder.certifiedPayrollRequested ? new Date(workOrder.certifiedPayrollRequested) : undefined);
-    const [intercoPO, setIntercoPO] = useState(workOrder.intercoPO || '');
-    const [customerPO, setCustomerPO] = useState(workOrder.customerPO || '');
-    const [estimator, setEstimator] = useState(workOrder.estimator || '');
-    const [checkInOutURL, setCheckInOutURL] = useState(workOrder.checkInOutURL || '');
+    const [description, setDescription] = useState('');
+    const [status, setStatus] = useState<WorkOrder['status']>('Open');
+    const [assignedTechnicianId, setAssignedTechnicianId] = useState<string | undefined>();
+    const [workSiteId, setWorkSiteId] = useState<string | undefined>();
+    const [clientId, setClientId] = useState<string | undefined>();
+    const [createdDate, setCreatedDate] = useState<Date | undefined>();
+    const [poNumber, setPoNumber] = useState('');
+    const [contactInfo, setContactInfo] = useState('');
+    const [serviceScheduleDate, setServiceScheduleDate] = useState<Date | undefined>();
+    const [quotedAmount, setQuotedAmount] = useState('');
+    const [timeAndMaterial, setTimeAndMaterial] = useState(false);
+    const [permit, setPermit] = useState(false);
+    const [permitCost, setPermitCost] = useState('');
+    const [permitFiled, setPermitFiled] = useState<Date | undefined>();
+    const [coi, setCoi] = useState(false);
+    const [coiRequested, setCoiRequested] = useState<Date | undefined>();
+    const [certifiedPayroll, setCertifiedPayroll] = useState(false);
+    const [certifiedPayrollRequested, setCertifiedPayrollRequested] = useState<Date | undefined>();
+    const [intercoPO, setIntercoPO] = useState('');
+    const [customerPO, setCustomerPO] = useState('');
+    const [estimator, setEstimator] = useState('');
+    
+    const [checkInType, setCheckInType] = useState<'none' | 'emcor' | 'weblink' | 'manual'>('none');
+    const [emcorWorkOrder, setEmcorWorkOrder] = useState('');
+    const [webLinkUrl, setWebLinkUrl] = useState('');
+    const [manualPhone, setManualPhone] = useState('');
+    const [manualWorkOrder, setManualWorkOrder] = useState('');
+
+    useEffect(() => {
+        if (workOrder) {
+            setDescription(workOrder.description || '');
+            setStatus(workOrder.status || 'Open');
+            setAssignedTechnicianId(workOrder.assignedTechnicianId);
+            setWorkSiteId(workOrder.workSiteId);
+            setClientId(workOrder.clientId);
+            setCreatedDate(workOrder.createdDate ? new Date(workOrder.createdDate) : undefined);
+            setPoNumber(workOrder.poNumber || '');
+            setContactInfo(workOrder.contactInfo || '');
+            setServiceScheduleDate(workOrder.serviceScheduleDate ? new Date(workOrder.serviceScheduleDate) : undefined);
+            setQuotedAmount(workOrder.quotedAmount?.toString() || '');
+            setTimeAndMaterial(workOrder.timeAndMaterial || false);
+            setPermit(workOrder.permit || false);
+            setPermitCost(workOrder.permitCost?.toString() || '');
+            setPermitFiled(workOrder.permitFiled ? new Date(workOrder.permitFiled) : undefined);
+            setCoi(workOrder.coi || false);
+            setCoiRequested(workOrder.coiRequested ? new Date(workOrder.coiRequested) : undefined);
+            setCertifiedPayroll(workOrder.certifiedPayroll || false);
+            setCertifiedPayrollRequested(workOrder.certifiedPayrollRequested ? new Date(workOrder.certifiedPayrollRequested) : undefined);
+            setIntercoPO(workOrder.intercoPO || '');
+            setCustomerPO(workOrder.customerPO || '');
+            setEstimator(workOrder.estimator || '');
+
+            const url = workOrder.checkInOutURL;
+            setManualWorkOrder(workOrder.checkInWorkOrderNumber || '');
+            
+            if (url?.startsWith('tel:1-866-684-0431')) {
+                setCheckInType('emcor');
+                setEmcorWorkOrder(url.split(',,').pop() || '');
+            } else if (url?.startsWith('http')) {
+                setCheckInType('weblink');
+                setWebLinkUrl(url);
+            } else if (url?.startsWith('tel:')) {
+                setCheckInType('manual');
+                setManualPhone(url.replace('tel:', ''));
+            } else {
+                setCheckInType('none');
+            }
+        }
+    }, [workOrder]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -66,6 +111,28 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
         }
 
         setIsLoading(true);
+
+        let finalCheckInOutURL: string | undefined | null = null;
+        let finalCheckInWorkOrderNumber: string | undefined | null = null;
+
+        switch (checkInType) {
+            case 'emcor':
+                if (emcorWorkOrder) {
+                    finalCheckInOutURL = `tel:1-866-684-0431,,,,,1,,,1,500047#,,${emcorWorkOrder}`;
+                }
+                break;
+            case 'weblink':
+                finalCheckInOutURL = webLinkUrl;
+                break;
+            case 'manual':
+                if (manualPhone) {
+                    finalCheckInOutURL = `tel:${manualPhone}`;
+                }
+                finalCheckInWorkOrderNumber = manualWorkOrder;
+                break;
+            default:
+                break;
+        }
 
         const workOrderRef = doc(db, 'work_orders', workOrder.id);
         const selectedWorkSite = workSites.find(ws => ws.id === workSiteId);
@@ -95,10 +162,10 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
             intercoPO,
             customerPO,
             estimator,
-            checkInOutURL,
+            checkInOutURL: finalCheckInOutURL,
+            checkInWorkOrderNumber: finalCheckInWorkOrderNumber,
         };
 
-        // Remove undefined keys before sending to Firestore
         Object.keys(cleanedData).forEach(key => {
             const k = key as keyof typeof cleanedData;
             if ((cleanedData as any)[k] === undefined) {
@@ -176,9 +243,50 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
                                 <Label>PO #</Label>
                                 <Input value={poNumber} onChange={e => setPoNumber(e.target.value)} />
                             </div>
-                             <div className="space-y-2">
-                                <Label>Check-in Link</Label>
-                                <Input value={checkInOutURL} onChange={e => setCheckInOutURL(e.target.value)} />
+                            <div className="space-y-3 rounded-md border p-4">
+                                <Label>Check-in/Out</Label>
+                                <RadioGroup value={checkInType} onValueChange={(v) => setCheckInType(v as any)}>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="none" id="edit-checkin-none" />
+                                        <Label htmlFor="edit-checkin-none">None</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="emcor" id="edit-checkin-emcor" />
+                                        <Label htmlFor="edit-checkin-emcor">EMCOR Call-In/Out</Label>
+                                    </div>
+                                    {checkInType === 'emcor' && (
+                                        <div className="pl-6 pt-2">
+                                            <Label htmlFor="edit-emcor-wo">EMCOR Work Order #</Label>
+                                            <Input id="edit-emcor-wo" value={emcorWorkOrder} onChange={(e) => setEmcorWorkOrder(e.target.value)} />
+                                        </div>
+                                    )}
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="weblink" id="edit-checkin-weblink" />
+                                        <Label htmlFor="edit-checkin-weblink">Web Link</Label>
+                                    </div>
+                                    {checkInType === 'weblink' && (
+                                        <div className="pl-6 pt-2">
+                                            <Label htmlFor="edit-weblink-url">URL</Label>
+                                            <Input id="edit-weblink-url" value={webLinkUrl} onChange={(e) => setWebLinkUrl(e.target.value)} placeholder="https://example.com" />
+                                        </div>
+                                    )}
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="manual" id="edit-checkin-manual" />
+                                        <Label htmlFor="edit-checkin-manual">Manual Phone Check-in</Label>
+                                    </div>
+                                    {checkInType === 'manual' && (
+                                        <div className="space-y-2 pl-6 pt-2">
+                                            <div>
+                                                <Label htmlFor="edit-manual-phone">Phone Number</Label>
+                                                <Input id="edit-manual-phone" type="tel" value={manualPhone} onChange={(e) => setManualPhone(e.target.value)} />
+                                            </div>
+                                            <div>
+                                                <Label htmlFor="edit-manual-wo">Work Order #</Label>
+                                                <Input id="edit-manual-wo" value={manualWorkOrder} onChange={(e) => setManualWorkOrder(e.target.value)} />
+                                            </div>
+                                        </div>
+                                    )}
+                                </RadioGroup>
                             </div>
                             <div className="space-y-2">
                                 <Label>Contact Info</Label>

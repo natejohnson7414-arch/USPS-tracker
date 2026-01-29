@@ -274,7 +274,7 @@ export function WorkOrderDetails({
       }
   };
     
-  const getLinkUrl = (url: string) => {
+  const getLinkUrl = (url: string | undefined) => {
     if (!url) return '#';
     if (url.startsWith('http')) {
         return url;
@@ -317,12 +317,19 @@ export function WorkOrderDetails({
                     </div>
                      <div className="flex items-center gap-2">
                         {workOrder.checkInOutURL && (
-                            <Button asChild variant="outline" size="icon">
-                                <a href={getLinkUrl(workOrder.checkInOutURL)} target="_blank" rel="noopener noreferrer">
-                                    <LinkIcon className="h-4 w-4" />
-                                    <span className="sr-only">Check-in</span>
-                                </a>
-                            </Button>
+                            <div className="flex flex-col items-center">
+                                <Button asChild variant="outline" size="icon">
+                                    <a href={getLinkUrl(workOrder.checkInOutURL)} target="_blank" rel="noopener noreferrer">
+                                        <LinkIcon className="h-4 w-4" />
+                                        <span className="sr-only">Check-in</span>
+                                    </a>
+                                </Button>
+                                {workOrder.checkInWorkOrderNumber && (
+                                    <p className="text-xs text-muted-foreground mt-1 max-w-[60px] truncate" title={workOrder.checkInWorkOrderNumber}>
+                                        WO: {workOrder.checkInWorkOrderNumber}
+                                    </p>
+                                )}
+                            </div>
                         )}
                         {workOrder.workSite && (
                           <Button variant="outline" size="icon" onClick={() => onDirectionsClick(workOrder.workSite!)}>
@@ -504,12 +511,19 @@ export function WorkOrderDetails({
                       <CardTitle>Details</CardTitle>
                        <div className="flex items-center gap-2">
                         {workOrder.checkInOutURL && (
-                             <Button asChild variant="outline" size="icon">
-                                <a href={getLinkUrl(workOrder.checkInOutURL)} target="_blank" rel="noopener noreferrer">
-                                    <LinkIcon className="h-4 w-4" />
-                                    <span className="sr-only">Check-in</span>
-                                </a>
-                            </Button>
+                            <div className="flex flex-col items-center">
+                                <Button asChild variant="outline" size="icon">
+                                    <a href={getLinkUrl(workOrder.checkInOutURL)} target="_blank" rel="noopener noreferrer">
+                                        <LinkIcon className="h-4 w-4" />
+                                        <span className="sr-only">Check-in</span>
+                                    </a>
+                                </Button>
+                                {workOrder.checkInWorkOrderNumber && (
+                                    <p className="text-xs text-muted-foreground mt-1 max-w-[60px] truncate" title={workOrder.checkInWorkOrderNumber}>
+                                        WO: {workOrder.checkInWorkOrderNumber}
+                                    </p>
+                                )}
+                            </div>
                         )}
                         {workOrder.workSite && (
                           <Button variant="outline" size="icon" onClick={() => onDirectionsClick(workOrder.workSite!)}>
@@ -712,4 +726,3 @@ export function WorkOrderDetails({
     </>
   );
 }
-
