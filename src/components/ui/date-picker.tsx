@@ -17,10 +17,12 @@ export function DatePicker({
   date,
   setDate,
   className,
+  disabled,
 }: {
   date?: Date
   setDate: (date?: Date) => void
   className?: string
+  disabled?: boolean
 }) {
   const [open, setOpen] = React.useState(false);
 
@@ -34,6 +36,7 @@ export function DatePicker({
             !date && "text-muted-foreground",
             className
           )}
+          disabled={disabled}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
           {date ? format(date, "PPP") : <span>Pick a date</span>}

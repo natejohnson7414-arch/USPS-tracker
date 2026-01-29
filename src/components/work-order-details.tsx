@@ -111,7 +111,7 @@ const ActivityItem = ({ activity, onUpdateStatus, isTechnician, technicians, cur
                 {isCurrentUserAssigned && (
                      <Button variant="outline" size="sm" onClick={onAddTimeClick}>
                         <Clock className="mr-2 h-4 w-4" />
-                        Add Time
+                        Time Posting
                     </Button>
                 )}
                  <Select value={activity.status} onValueChange={(status: Activity['status']) => onUpdateStatus(activity.id, status)}>
@@ -197,6 +197,7 @@ export function WorkOrderDetails({
   const [timeEntryToDelete, setTimeEntryToDelete] = useState<string | null>(null);
   const [trainingRecordToDelete, setTrainingRecordToDelete] = useState<string | null>(null);
   const [isAddTimeOpen, setIsAddTimeOpen] = useState(false);
+  const [activityForTimePosting, setActivityForTimePosting] = useState<Activity | null>(null);
 
   // Combine and sort notes and time entries
   const combinedActivity = [
@@ -288,7 +289,8 @@ export function WorkOrderDetails({
     return url;
   }
 
-  const handleAddTimeClick = () => {
+  const handleAddTimeClick = (activity: Activity) => {
+    setActivityForTimePosting(activity);
     setIsAddTimeOpen(true);
   };
 
@@ -383,7 +385,7 @@ export function WorkOrderDetails({
                       onUpdateStatus={onUpdateActivityStatus}
                       isTechnician={isTechnician} 
                       currentUserId={user?.uid}
-                      onAddTimeClick={handleAddTimeClick}
+                      onAddTimeClick={() => handleAddTimeClick(activity)}
                     />
                   ))
                 ) : (
@@ -719,8 +721,14 @@ export function WorkOrderDetails({
 
       <AddTimeDialog 
         isOpen={isAddTimeOpen}
-        setIsOpen={setIsAddTimeOpen}
+        setIsOpen={(isOpen) => {
+            if (!isOpen) {
+                setActivityForTimePosting(null);
+            }
+            setIsAddTimeOpen(isOpen);
+        }}
         workOrderId={workOrder.id}
+        activity={activityForTimePosting}
         onTimeAdded={onTimeAdded}
       />
     </>

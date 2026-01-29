@@ -14,13 +14,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from './ui/date-picker';
 import { Textarea } from './ui/textarea';
-import type { TimeEntry } from '@/lib/types';
-import { useState } from 'react';
+import type { TimeEntry, Activity } from '@/lib/types';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, addDocumentNonBlocking } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { useTechnician } from '@/hooks/use-technician';
+import { format } from 'date-fns';
 
 const hourOptions = Array.from({ length: 25 }, (_, i) => i);
 const minuteOptions = [0, 15, 30, 45];
@@ -29,10 +30,11 @@ interface AddTimeDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   workOrderId: string;
+  activity: Activity | null;
   onTimeAdded: (newTimeEntry: TimeEntry) => void;
 }
 
-export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, onTimeAdded }: AddTimeDialogProps) {
+export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, activity, onTimeAdded }: AddTimeDialogProps) {
   const db = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
@@ -44,13 +46,19 @@ export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, onTimeAdded }: A
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const resetForm = () => {
-    setDate(new Date());
-    setSelectedHours(0);
-    setSelectedMinutes(0);
-    setTimeType('Regular');
-    setDescription('');
-  };
+  useEffect(() => {
+    if (isOpen) {
+        if (activity) {
+            setDate(new Date(activity.scheduled_date));
+        } else {
+            setDate(new Date());
+        }
+        setSelectedHours(0);
+        setSelectedMinutes(0);
+        setTimeType('Regular');
+        setDescription('');
+    }
+  }, [isOpen, activity]);
 
   const handleSave = async () => {
     if (!db || !user) {
@@ -85,7 +93,6 @@ export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, onTimeAdded }: A
           technicianName: user.displayName || user.email || 'Unknown User',
       });
       toast({ title: 'Time Entry Added', description: `Successfully logged ${totalHours.toFixed(2)} hours.` });
-      resetForm();
       setIsOpen(false);
 
     } catch (error) {
@@ -102,15 +109,16 @@ export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, onTimeAdded }: A
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Time to Work Order</DialogTitle>
+          <DialogTitle>Add Time Posting</DialogTitle>
           <DialogDescription>
             Log your hours for work order #{workOrderId}.
+            {activity && ` Activity Date: ${format(new Date(activity.scheduled_date), 'PPP')}`}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="date">Date</Label>
-            <DatePicker date={date} setDate={setDate} />
+            <DatePicker date={date} setDate={setDate} disabled={!!activity} />
           </div>
           <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
