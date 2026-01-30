@@ -63,34 +63,34 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
 
     useEffect(() => {
         if (workOrder) {
-            setDescription(workOrder.description || '');
-            setStatus(workOrder.status || 'Open');
-            setAssignedTechnicianId(workOrder.assignedTechnicianId || undefined);
-            setWorkSiteId(workOrder.workSiteId || undefined);
-            setClientId(workOrder.clientId || undefined);
+            setDescription(workOrder.description ?? '');
+            setStatus(workOrder.status ?? 'Open');
+            setAssignedTechnicianId(workOrder.assignedTechnicianId ?? undefined);
+            setWorkSiteId(workOrder.workSiteId ?? undefined);
+            setClientId(workOrder.clientId ?? undefined);
             setCreatedDate(workOrder.createdDate ? new Date(workOrder.createdDate) : undefined);
-            setPoNumber(workOrder.poNumber || '');
-            setContactInfo(workOrder.contactInfo || '');
+            setPoNumber(workOrder.poNumber ?? '');
+            setContactInfo(workOrder.contactInfo ?? '');
             setServiceScheduleDate(workOrder.serviceScheduleDate ? new Date(workOrder.serviceScheduleDate) : undefined);
-            setQuotedAmount(workOrder.quotedAmount?.toString() || '');
-            setTimeAndMaterial(workOrder.timeAndMaterial || false);
-            setPermit(workOrder.permit || false);
-            setPermitCost(workOrder.permitCost?.toString() || '');
+            setQuotedAmount(workOrder.quotedAmount?.toString() ?? '');
+            setTimeAndMaterial(workOrder.timeAndMaterial ?? false);
+            setPermit(workOrder.permit ?? false);
+            setPermitCost(workOrder.permitCost?.toString() ?? '');
             setPermitFiled(workOrder.permitFiled ? new Date(workOrder.permitFiled) : undefined);
-            setCoi(workOrder.coi || false);
+            setCoi(workOrder.coi ?? false);
             setCoiRequested(workOrder.coiRequested ? new Date(workOrder.coiRequested) : undefined);
-            setCertifiedPayroll(workOrder.certifiedPayroll || false);
+            setCertifiedPayroll(workOrder.certifiedPayroll ?? false);
             setCertifiedPayrollRequested(workOrder.certifiedPayrollRequested ? new Date(workOrder.certifiedPayrollRequested) : undefined);
-            setIntercoPO(workOrder.intercoPO || '');
-            setCustomerPO(workOrder.customerPO || '');
-            setEstimator(workOrder.estimator || '');
+            setIntercoPO(workOrder.intercoPO ?? '');
+            setCustomerPO(workOrder.customerPO ?? '');
+            setEstimator(workOrder.estimator ?? '');
 
             const url = workOrder.checkInOutURL;
-            setManualWorkOrder(workOrder.checkInWorkOrderNumber || '');
+            setManualWorkOrder(workOrder.checkInWorkOrderNumber ?? '');
             
             if (url?.startsWith('tel:1-866-684-0431')) {
                 setCheckInType('emcor');
-                setEmcorWorkOrder(url.split(',,').pop() || '');
+                setEmcorWorkOrder(url.split(',,').pop() ?? '');
             } else if (url?.startsWith('http')) {
                 setCheckInType('weblink');
                 setWebLinkUrl(url);
@@ -382,6 +382,8 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
         </form>
     );
 }
+    
+
     
 
     
