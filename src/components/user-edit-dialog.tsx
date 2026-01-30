@@ -41,6 +41,7 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [roleId, setRoleId] = useState('');
+  const [employeeId, setEmployeeId] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -53,6 +54,7 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
         setEmail(user.email);
         setRoleId(userRole?.id || '');
         setAvatarUrl(user.avatarUrl || null);
+        setEmployeeId(user.employeeId || '');
         setPassword('');
       } else {
         // Reset for new user
@@ -60,6 +62,7 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
         setEmail('');
         setRoleId('');
         setPassword('');
+        setEmployeeId('');
         setAvatarUrl(avatarOptions[0]?.imageUrl || null);
       }
     }
@@ -80,6 +83,7 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
                 email,
                 roleId,
                 avatarUrl: avatarUrl,
+                employeeId: employeeId,
             };
             
             const userRef = doc(db, 'technicians', user.id);
@@ -99,6 +103,7 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
               password,
               roleId,
               avatarUrl,
+              employeeId,
             });
 
             if (result.uid) {
@@ -189,6 +194,12 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
               Email
             </Label>
             <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="col-span-3" />
+          </div>
+           <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="employeeId" className="text-right">
+              Employee ID
+            </Label>
+            <Input id="employeeId" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} className="col-span-3" />
           </div>
            {!user && (
             <div className="grid grid-cols-4 items-center gap-4">

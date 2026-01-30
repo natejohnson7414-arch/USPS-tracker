@@ -39,6 +39,7 @@ export function UsersTable({ users, onEditUser, onDeleteUser, onToggleDisableUse
           <TableHeader>
             <TableRow>
               <TableHead>User</TableHead>
+              <TableHead>Employee ID</TableHead>
               <TableHead>Email</TableHead>
               <TableHead className="w-[180px]">Role</TableHead>
               <TableHead className="w-[80px] text-right">Actions</TableHead>
@@ -61,6 +62,9 @@ export function UsersTable({ users, onEditUser, onDeleteUser, onToggleDisableUse
                       </Avatar>
                       <div className="font-medium">{user.name}</div>
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-muted-foreground">{user.employeeId}</div>
                   </TableCell>
                   <TableCell>
                     <div className="text-muted-foreground">{user.email}</div>
@@ -115,7 +119,7 @@ export function UsersTable({ users, onEditUser, onDeleteUser, onToggleDisableUse
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center">
+                <TableCell colSpan={5} className="h-24 text-center">
                   No users found.
                 </TableCell>
               </TableRow>

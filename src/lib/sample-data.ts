@@ -13,30 +13,35 @@ export const sampleTechnicians: Omit<Technician, 'roleId'>[] = [
     name: 'Sarah Chen',
     email: 'sarah.chen@example.com',
     avatarUrl: PlaceHolderImages.find(img => img.id === 'tech-1')?.imageUrl || '',
+    employeeId: 'E12345',
   },
   {
     id: 'tech_2',
     name: 'David Rodriguez',
     email: 'david.rodriguez@example.com',
     avatarUrl: PlaceHolderImages.find(img => img.id === 'tech-2')?.imageUrl || '',
+    employeeId: 'E12346',
   },
    {
     id: 'tech_3',
     name: 'Maria Garcia',
     email: 'maria.garcia@example.com',
     avatarUrl: PlaceHolderImages.find(img => img.id === 'tech-3')?.imageUrl || '',
+    employeeId: 'E12347',
   },
    {
     id: 'tech_4',
     name: 'Ben Carter',
     email: 'ben.carter@example.com',
     avatarUrl: PlaceHolderImages.find(img => img.id === 'tech-4')?.imageUrl || '',
+    employeeId: 'E12348',
   },
   {
     id: 'tech_5',
     name: 'Nate Johnson',
     email: 'njohnsonsr@crawford-company.com',
     avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxtYW4lMjBwb3J0cmFpdCUyMHNpbXBsZXxlbnwwfHx8fDE3NjQ4NjA0MDZ8MA&ixlib=rb-4.1.0&q=80&w=1080',
+    employeeId: 'E12349',
   }
 ];
 

@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A server-side flow to create a new user in Firebase Authentication and Firestore.
@@ -32,6 +33,7 @@ const CreateUserInputSchema = z.object({
   password: z.string().min(6).describe('The password for the new user (must be at least 6 characters).'),
   roleId: z.string().describe("The ID of the user's role."),
   avatarUrl: z.string().nullable().describe('The URL for the user avatar image.'),
+  employeeId: z.string().optional().describe('The employee ID for the user.'),
 });
 
 export type CreateUserInput = z.infer<typeof CreateUserInputSchema>;
@@ -52,7 +54,7 @@ export async function createUser(input: CreateUserInput): Promise<CreateUserOutp
   const adminAuth = getAuth();
   const adminDb = getFirestore();
 
-  const { email, password, name, roleId, avatarUrl } = input;
+  const { email, password, name, roleId, avatarUrl, employeeId } = input;
   const [firstName, ...lastNameParts] = name.split(' ');
   const lastName = lastNameParts.join(' ');
 
@@ -75,6 +77,7 @@ export async function createUser(input: CreateUserInput): Promise<CreateUserOutp
     const technicianRef = adminDb.collection('technicians').doc(newUserRecord.uid);
     await technicianRef.set({
       id: newUserRecord.uid,
+      employeeId: employeeId || null,
       firstName,
       lastName,
       email: email,

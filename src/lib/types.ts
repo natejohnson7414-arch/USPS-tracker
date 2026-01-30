@@ -2,6 +2,7 @@
 
 export type Technician = {
   id: string;
+  employeeId?: string;
   name: string;
   avatarUrl: string;
   email?: string;
@@ -93,6 +94,7 @@ export type Role = {
 
 export type AppUser = {
     id: string;
+    employeeId?: string;
     name: string;
     email: string;
     avatarUrl: string;

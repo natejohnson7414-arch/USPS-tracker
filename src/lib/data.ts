@@ -29,6 +29,7 @@ export const seedDatabase = async (db: any) => {
                 const [firstName, ...lastName] = tech.name.split(' ');
                 const techData = {
                     id: tech.id, // Use the id from sample data
+                    employeeId: tech.employeeId,
                     firstName,
                     lastName: lastName.join(' '),
                     email: tech.email,
@@ -138,6 +139,7 @@ export const getTechnicians = async (db: any): Promise<Technician[]> => {
         const data = doc.data();
         return {
             id: doc.id,
+            employeeId: data.employeeId,
             name: `${data.firstName} ${data.lastName}`,
             avatarUrl: data.avatarUrl,
             email: data.email,
@@ -156,6 +158,7 @@ export const getTechnicianById = async (db: any, id: string): Promise<Technician
         const data = techSnap.data();
          return {
             id: techSnap.id,
+            employeeId: data.employeeId,
             name: `${data.firstName} ${data.lastName}`,
             avatarUrl: data.avatarUrl,
             email: data.email,
@@ -181,6 +184,7 @@ export const getUsers = async (db: any, roles: Role[]): Promise<AppUser[]> => {
         const role = roles.find(r => r.id === tech.roleId);
         return {
             id: tech.id,
+            employeeId: tech.employeeId,
             name: tech.name,
             email: tech.email || 'N/A',
             avatarUrl: tech.avatarUrl,

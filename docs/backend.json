@@ -193,6 +193,10 @@
           "type": "string",
           "description": "Unique identifier for the Technician entity."
         },
+        "employeeId": {
+          "type": "string",
+          "description": "Employee ID number for the technician."
+        },
         "firstName": {
           "type": "string",
           "description": "First name of the technician."
