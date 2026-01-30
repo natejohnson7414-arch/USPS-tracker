@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, notFound, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { useFirestore } from '@/firebase';
@@ -69,7 +69,7 @@ export default function WorkOrderReportPage() {
         fetchAndSummarize();
     }, [id, db]);
 
-    const handleDownload = async () => {
+    const handleDownload = useCallback(async () => {
         const content = printRef.current;
         if (!content || !workOrder) return;
     
@@ -119,7 +119,7 @@ export default function WorkOrderReportPage() {
         } finally {
             setIsDownloading(false);
         }
-    };
+    }, [workOrder]);
     
     const handlePrint = () => {
         window.print();
@@ -135,8 +135,22 @@ export default function WorkOrderReportPage() {
                 setTimeout(() => window.print(), 500);
             }
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isLoading, searchParams, isInIframe]);
+    }, [isLoading, searchParams, isInIframe, handleDownload]);
+    
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            if (event.data === 'download-pdf') {
+                handleDownload();
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+
+        return () => {
+            window.removeEventListener('message', handleMessage);
+        };
+    }, [handleDownload]);
+
 
     const action = searchParams.get('action');
 

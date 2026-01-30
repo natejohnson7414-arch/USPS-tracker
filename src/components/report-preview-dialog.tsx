@@ -31,7 +31,11 @@ export function ReportPreviewDialog({ isOpen, onOpenChange, workOrderId }: Repor
   };
 
   const handleDownload = () => {
-    window.open(`${reportUrl}?action=download`, '_blank');
+    const iframe = document.getElementById('report-iframe') as HTMLIFrameElement;
+    // Post a message to the iframe to tell it to start the download.
+    if (iframe?.contentWindow) {
+      iframe.contentWindow.postMessage('download-pdf', '*');
+    }
   };
   
   return (
