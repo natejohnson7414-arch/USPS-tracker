@@ -215,6 +215,9 @@ export default function DispatchBoardPage() {
     const activitiesByDay = useMemo(() => {
         const grouped = new Map<string, Activity[]>();
         activities.forEach(activity => {
+            if (activity.status === 'cancelled') {
+                return; // Skip cancelled activities
+            }
             const dateStr = format(new Date(activity.scheduled_date), 'yyyy-MM-dd');
             if (!grouped.has(dateStr)) {
                 grouped.set(dateStr, []);
