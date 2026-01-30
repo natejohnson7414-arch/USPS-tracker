@@ -20,15 +20,26 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
-import { addDocumentNonBlocking } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useTechnician } from '@/hooks/use-technician';
+import { useTechnician as useRole } from '@/hooks/use-technician';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 
 function TechnicianItem({ tech, techColorMap }: { tech: Technician, techColorMap: Map<string, string> }) {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-        id: tech.id,
+        id: `technician-${tech.id}`,
+         data: {
+            type: 'technician',
+            technician: tech,
+        }
     });
     const style = {
         transform: CSS.Translate.toString(transform),
@@ -45,7 +56,11 @@ function TechnicianItem({ tech, techColorMap }: { tech: Technician, techColorMap
 
 function WorkOrderItem({ wo }: { wo: WorkOrder }) {
     const { setNodeRef, isOver } = useDroppable({
-        id: wo.id,
+        id: `workorder-${wo.id}`,
+        data: {
+            type: 'workorder',
+            workOrder: wo,
+        }
     });
     
     return (
@@ -63,6 +78,40 @@ function WorkOrderItem({ wo }: { wo: WorkOrder }) {
             </div>
         </Link>
     )
+}
+
+function DraggableActivityItem({ activity, techColorMap }: { activity: Activity, techColorMap: Map<string, string> }) {
+    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+        id: `activity-${activity.id}`,
+        data: {
+            type: 'activity',
+            activity: activity,
+        },
+    });
+
+    const style = {
+        transform: CSS.Translate.toString(transform),
+        opacity: isDragging ? 0.5 : 1,
+    };
+    
+    return (
+        <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="w-full touch-none">
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <div className={cn('p-1.5 text-xs text-white rounded cursor-grab shadow truncate', techColorMap.get(activity.technicianId) || 'bg-gray-400')}>
+                            {activity.technician?.name || 'Unassigned'}
+                        </div>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                        <p className="font-bold">{activity.parentWorkOrder?.workSite?.name || 'No Work Site'}</p>
+                        <p className="text-sm text-muted-foreground">{activity.parentWorkOrder?.jobName}</p>
+                        <p className="mt-2">{activity.description}</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        </div>
+    );
 }
 
 function ScheduleActivityDialog({ 
@@ -136,7 +185,7 @@ const techColors = [
 export default function DispatchBoardPage() {
     const db = useFirestore();
     const { toast } = useToast();
-    const { role, isLoading: isRoleLoading } = useTechnician();
+    const { role, isLoading: isRoleLoading } = useRole();
     const [activities, setActivities] = useState<Activity[]>([]);
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
@@ -149,6 +198,9 @@ export default function DispatchBoardPage() {
     const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [activeId, setActiveId] = useState<string | null>(null);
+    const [activeDragItem, setActiveDragItem] = useState<any>(null);
+
+    const [view, setView] = useState<'week' | 'day'>('week');
 
     const sensors = useSensors(
         useSensor(MouseSensor, {
@@ -204,12 +256,29 @@ export default function DispatchBoardPage() {
         return map;
     }, [technicians]);
     
-    const weekStartsOn = 1; // Monday
-    const weekStart = startOfWeek(currentDate, { weekStartsOn });
-    const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+    const calendarDays = useMemo(() => {
+        if (view === 'week') {
+            const weekStartsOn = 1; // Monday
+            const weekStart = startOfWeek(currentDate, { weekStartsOn });
+            return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+        }
+        return [currentDate];
+    }, [currentDate, view]);
     
-    const nextWeek = () => setCurrentDate(addDays(currentDate, 7));
-    const prevWeek = () => setCurrentDate(subDays(currentDate, 7));
+    const handlePrev = () => {
+        if (view === 'week') {
+            setCurrentDate(subDays(currentDate, 7));
+        } else {
+            setCurrentDate(subDays(currentDate, 1));
+        }
+    }
+    const handleNext = () => {
+        if (view === 'week') {
+            setCurrentDate(addDays(currentDate, 7));
+        } else {
+            setCurrentDate(addDays(currentDate, 1));
+        }
+    }
     const goToToday = () => setCurrentDate(new Date());
 
     const activitiesByDay = useMemo(() => {
@@ -238,20 +307,58 @@ export default function DispatchBoardPage() {
     
     function handleDragStart(event: any) {
         setActiveId(event.active.id);
+        setActiveDragItem(event.active.data.current ?? null);
     }
+    
+     async function handleActivityDateChange(activity: Activity, newDate: Date) {
+        if (!db) return;
+
+        // Preserve the time part of the original scheduled_date.
+        const originalDate = new Date(activity.scheduled_date);
+        const timePart = format(originalDate, 'HH:mm:ss.SSS');
+        const newDateStr = format(newDate, 'yyyy-MM-dd');
+        const newDateTime = new Date(`${newDateStr}T${timePart}`);
+
+        const activityRef = doc(db, 'work_orders', activity.workOrderId, 'activities', activity.id);
+        
+        const originalActivities = activities;
+        const updatedActivities = activities.map(a => 
+            a.id === activity.id ? { ...a, scheduled_date: newDateTime.toISOString() } : a
+        );
+        setActivities(updatedActivities);
+
+        try {
+            await updateDocumentNonBlocking(activityRef, { scheduled_date: newDateTime.toISOString() });
+            toast({ title: 'Activity Rescheduled', description: `Moved to ${format(newDateTime, 'MMM d, yyyy')}.` });
+        } catch (error) {
+            console.error("Error rescheduling activity:", error);
+            toast({ title: 'Error', description: 'Failed to reschedule activity.', variant: 'destructive' });
+            setActivities(originalActivities);
+        }
+    }
+
 
     function handleDragEnd(event: any) {
         const { over, active } = event;
         setActiveId(null);
+        setActiveDragItem(null);
 
         if (over) {
-            const technician = technicians.find(t => t.id === active.id);
-            const workOrder = filteredWorkOrders.find(wo => wo.id === over.id);
+            if (active.data.current?.type === 'activity' && over.data.current?.type === 'day') {
+                const activity = active.data.current.activity as Activity;
+                const newDate = over.data.current.date as Date;
+                if (!isSameDay(new Date(activity.scheduled_date), newDate)) {
+                    handleActivityDateChange(activity, newDate);
+                }
+            } else if (active.data.current?.type === 'technician' && over.data.current?.type === 'workorder') {
+                const technician = active.data.current.technician as Technician;
+                const workOrder = over.data.current.workOrder as WorkOrder;
 
-            if (technician && workOrder) {
-                setSelectedTechnician(technician);
-                setSelectedWorkOrder(workOrder);
-                setIsScheduleModalOpen(true);
+                if (technician && workOrder) {
+                    setSelectedTechnician(technician);
+                    setSelectedWorkOrder(workOrder);
+                    setIsScheduleModalOpen(true);
+                }
             }
         }
     }
@@ -274,7 +381,6 @@ export default function DispatchBoardPage() {
             const activitiesColRef = collection(db, 'work_orders', selectedWorkOrder.id, 'activities');
             const newDoc = await addDocumentNonBlocking(activitiesColRef, activityData);
 
-            // Optimistically update the UI
             const newActivity: Activity = {
                 ...activityData,
                 id: newDoc.id,
@@ -291,10 +397,8 @@ export default function DispatchBoardPage() {
             
             toast({ title: 'Activity Scheduled Successfully' });
             
-            // Refetch incomplete orders in case one was moved to 'In Progress'
             const incompleteOrders = await getIncompleteWorkOrders(db);
             setWorkOrders(incompleteOrders);
-
 
         } catch (error) {
             if (error instanceof Error && !error.message.includes('permission-error')) {
@@ -306,6 +410,15 @@ export default function DispatchBoardPage() {
             setIsScheduleModalOpen(false);
         }
     }
+
+    const headerDateDisplay = useMemo(() => {
+        if (view === 'week') {
+            const weekStartsOn = 1; // Monday
+            const weekStart = startOfWeek(currentDate, { weekStartsOn });
+            return format(weekStart, 'MMMM yyyy');
+        }
+        return format(currentDate, 'MMMM d, yyyy');
+    }, [currentDate, view]);
 
     if (isLoading || isRoleLoading) {
         return (
@@ -325,45 +438,46 @@ export default function DispatchBoardPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                         <h1 className="text-3xl font-bold tracking-tight">Dispatch Board</h1>
                         <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" onClick={prevWeek}><ChevronLeft className="h-4 w-4" /></Button>
+                             <Select value={view} onValueChange={(v) => setView(v as any)}>
+                                <SelectTrigger className="w-[120px]">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="day">Day</SelectItem>
+                                    <SelectItem value="week">Week</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Button variant="outline" size="icon" onClick={handlePrev}><ChevronLeft className="h-4 w-4" /></Button>
                             <Button variant="outline" onClick={goToToday}>Today</Button>
-                            <Button variant="outline" size="icon" onClick={nextWeek}><ChevronRight className="h-4 w-4" /></Button>
+                            <Button variant="outline" size="icon" onClick={handleNext}><ChevronRight className="h-4 w-4" /></Button>
                              <div className="hidden sm:block ml-4 font-semibold text-lg">
-                                {format(weekStart, 'MMMM yyyy')}
+                                {headerDateDisplay}
                             </div>
                         </div>
                     </div>
 
                     <div className="overflow-x-auto pb-4">
                         <div className="flex rounded-lg border">
-                            {weekDays.map((day, index) => {
+                            {calendarDays.map((day, index) => {
                                 const dayKey = format(day, 'yyyy-MM-dd');
                                 const dayActivities = activitiesByDay.get(dayKey) || [];
+                                const { setNodeRef, isOver } = useDroppable({
+                                    id: dayKey,
+                                    data: { type: 'day', date: day }
+                                });
                                 return (
                                     <div key={dayKey} className={cn(
-                                        "flex flex-col w-[14.28%] min-w-[170px] flex-shrink-0", 
-                                        index < weekDays.length - 1 && "border-r border-border"
+                                        "flex flex-col flex-shrink-0", 
+                                        view === 'week' ? "w-[14.28%] min-w-[170px]" : "w-full",
+                                        index < calendarDays.length - 1 && "border-r border-border"
                                     )}>
                                         <div className="p-2 border-b text-center font-semibold bg-muted/25">
                                             <p className="text-sm">{format(day, 'EEE')}</p>
                                             <p className="text-2xl">{format(day, 'd')}</p>
                                         </div>
-                                        <div className="p-2 space-y-2 flex-grow min-h-[200px] overflow-hidden">
+                                        <div ref={setNodeRef} className={cn("p-2 space-y-2 flex-grow min-h-[200px] overflow-hidden", isOver && "bg-accent")}>
                                             {dayActivities.map(activity => (
-                                                <TooltipProvider key={activity.id}>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <div className={cn('p-1.5 text-xs text-white rounded cursor-pointer shadow truncate', techColorMap.get(activity.technicianId) || 'bg-gray-400')}>
-                                                                {activity.technician?.name || 'Unassigned'}
-                                                            </div>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent className="max-w-xs">
-                                                            <p className="font-bold">{activity.parentWorkOrder?.workSite?.name || 'No Work Site'}</p>
-                                                            <p className="text-sm text-muted-foreground">{activity.parentWorkOrder?.jobName}</p>
-                                                            <p className="mt-2">{activity.description}</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
+                                                <DraggableActivityItem key={activity.id} activity={activity} techColorMap={techColorMap} />
                                             ))}
                                         </div>
                                     </div>
@@ -421,10 +535,14 @@ export default function DispatchBoardPage() {
                     )}
                 </div>
                  <DragOverlay>
-                    {activeId ? (
+                    {activeId && activeDragItem?.type === 'activity' ? (
+                        <div className={cn('p-1.5 text-xs text-white rounded cursor-grabbing shadow-lg truncate', techColorMap.get(activeDragItem.activity.technicianId) || 'bg-gray-400')}>
+                            {activeDragItem.activity.technician?.name || 'Unassigned'}
+                        </div>
+                    ) : activeId && activeDragItem?.type === 'technician' ? (
                         <div className="flex items-center gap-3 p-2 rounded-md border cursor-grabbing bg-card shadow-lg">
-                             <div className={cn("h-4 w-4 rounded-full", techColorMap.get(activeId))}></div>
-                            <span className="text-sm font-medium">{technicians.find(t => t.id === activeId)?.name}</span>
+                             <div className={cn("h-4 w-4 rounded-full", techColorMap.get(activeDragItem.technician.id))}></div>
+                            <span className="text-sm font-medium">{activeDragItem.technician.name}</span>
                         </div>
                     ) : null}
                 </DragOverlay>
