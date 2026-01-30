@@ -127,7 +127,7 @@ function WorkOrderItem({ wo }: { wo: WorkOrder }) {
 function DraggableActivityItem({ activity, techColorMap }: { activity: Activity, techColorMap: Map<string, string> }) {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id: `activity-${activity.id}`,
-        data: {
+         data: {
             type: 'activity',
             activity: activity,
         },
@@ -157,7 +157,8 @@ function DraggableActivityItem({ activity, techColorMap }: { activity: Activity,
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs">
                         <p className="font-bold">{activity.parentWorkOrder?.jobName}</p>
-                        <p className="text-sm text-muted-foreground">{activity.parentWorkOrder?.workSite?.name || 'No Work Site'}</p>
+                        <p className="text-sm text-muted-foreground">#{activity.workOrderId}</p>
+                        <p className="text-sm text-muted-foreground mt-1">{activity.parentWorkOrder?.workSite?.name || 'No Work Site'}</p>
                         <p className="mt-2">{activity.description}</p>
                     </TooltipContent>
                 </Tooltip>
@@ -394,13 +395,11 @@ export default function DispatchBoardPage() {
                 setCurrentDate(subDays(currentDate, 1));
                 break;
             case 'week':
+            case 'month':
                  setCurrentDate(subWeeks(currentDate, 1));
                 break;
             case 'two-week':
                 setCurrentDate(subWeeks(currentDate, 2));
-                break;
-            case 'month':
-                 setCurrentDate(subWeeks(currentDate, 1));
                 break;
         }
     }
@@ -410,13 +409,11 @@ export default function DispatchBoardPage() {
                 setCurrentDate(addDays(currentDate, 1));
                 break;
             case 'week':
+            case 'month':
                 setCurrentDate(addWeeks(currentDate, 1));
                 break;
             case 'two-week':
                 setCurrentDate(addWeeks(currentDate, 2));
-                break;
-            case 'month':
-                setCurrentDate(addWeeks(currentDate, 1));
                 break;
         }
     }
