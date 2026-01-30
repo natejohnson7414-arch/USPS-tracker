@@ -158,6 +158,8 @@ export default function WorkOrderReportPage() {
     if (!workOrder) {
         notFound();
     }
+
+    const proxiedUrl = (url: string) => `/api/image-proxy?url=${encodeURIComponent(url)}`;
     
     const signatureDate = workOrder.signatureDate ? format(new Date(workOrder.signatureDate), 'MM/dd/yyyy') : ' ';
     const allPhotoUrls = workOrder.notes.flatMap(note => note.photoUrls || []).filter(Boolean);
@@ -246,7 +248,7 @@ export default function WorkOrderReportPage() {
                             <div className="w-1/3 flex items-center pr-4 text-sm"><p>Signature:</p></div>
                             <div className="w-2/3 border-2 border-black p-2 -ml-px -mt-px min-h-[3rem] flex items-center">
                                 {!!workOrder.customerSignatureUrl && (
-                                    <Image src={workOrder.customerSignatureUrl} alt="Customer Signature" className="object-contain max-h-full" width={150} height={40} unoptimized />
+                                    <Image src={proxiedUrl(workOrder.customerSignatureUrl)} alt="Customer Signature" className="object-contain max-h-full" width={150} height={40} unoptimized />
                                 )}
                             </div>
                         </div>
@@ -277,7 +279,7 @@ export default function WorkOrderReportPage() {
                             {allPhotoUrls.map((url, index) => (
                                 <div key={index} className="space-y-2">
                                     <div className="relative aspect-video w-full border rounded-lg overflow-hidden">
-                                        {!!url && <Image src={url} alt={`Work photo ${index + 1}`} fill style={{objectFit:"contain"}} unoptimized />}
+                                        {!!url && <Image src={proxiedUrl(url)} alt={`Work photo ${index + 1}`} fill style={{objectFit:"contain"}} unoptimized />}
                                     </div>
                                     <p className="text-center text-sm text-gray-500">Photo {index + 1}</p>
                                 </div>
@@ -293,3 +295,4 @@ export default function WorkOrderReportPage() {
     
 
     
+
