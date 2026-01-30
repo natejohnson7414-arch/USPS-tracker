@@ -81,12 +81,12 @@ export default function WorkOrderReportPage() {
                 const page = pages[i];
     
                 const canvas = await html2canvas(page, {
-                    scale: 2,
+                    scale: 1.5,
                     useCORS: true, 
                     allowTaint: true,
                 });
     
-                const imgData = canvas.toDataURL('image/png');
+                const imgData = canvas.toDataURL('image/jpeg', 0.8);
                 const canvasWidth = canvas.width;
                 const canvasHeight = canvas.height;
                 const pdfWidth = canvasWidth;
@@ -97,14 +97,15 @@ export default function WorkOrderReportPage() {
                     pdf = new jsPDF({
                         orientation,
                         unit: 'px',
-                        format: [pdfWidth, pdfHeight]
+                        format: [pdfWidth, pdfHeight],
+                        hotfixes: ['px_scaling'],
                     });
                 } else {
                     const orientation = pdfWidth > pdfHeight ? 'l' : 'p';
                     pdf!.addPage([pdfWidth, pdfHeight], orientation);
                 }
     
-                pdf!.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf!.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
             }
     
             if (pdf) {
