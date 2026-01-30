@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -7,7 +6,7 @@ import { MainLayout } from '@/components/main-layout';
 import { useFirestore } from '@/firebase';
 import { getAllActivitiesWithDetails, getTechnicians, getIncompleteWorkOrders, updateWorkOrderStatus } from '@/lib/data';
 import type { Activity, Technician, WorkOrder } from '@/lib/types';
-import { startOfWeek, addDays, format, isSameDay, subDays, addWeeks, subWeeks, isToday } from 'date-fns';
+import { startOfWeek, addDays, format, isSameDay, subDays, addWeeks, subWeeks, isToday, endOfMonth, eachDayOfInterval, getMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight, Loader2, Search, Coffee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -33,7 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-const NON_PRODUCTIVE_WO_ID = 'WO-24-0001';
+const NON_PRODUCTIVE_WO_ID = '24-0001';
 
 function TechnicianItem({ tech, techColorMap }: { tech: Technician, techColorMap: Map<string, string> }) {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -223,7 +222,7 @@ function CalendarDay({ day, dayActivities, techColorMap, view, index, totalDays,
             (view === 'week' || view === 'two-week') && index < totalDays - 1 && "border-r",
             isMonthView && "border-b",
             isMonthView && (index + 1) % 7 !== 0 && "border-r",
-            isMonthView && monthParity === 'odd' && 'bg-muted'
+            isMonthView && monthParity === 'odd' && 'bg-muted/50'
         )}>
             {!isMonthView && (
                  <div className="p-2 border-b text-center font-semibold bg-muted/25">
@@ -645,7 +644,7 @@ export default function DispatchBoardPage() {
                                 {calendarDays.map((day, index) => {
                                     const dayKey = format(day, 'yyyy-MM-dd');
                                     const dayActivities = activitiesByDay.get(dayKey) || [];
-                                    const monthParity = day.getMonth() % 2 === 0 ? 'even' : 'odd';
+                                    const monthParity = getMonth(day) % 2 === 0 ? 'even' : 'odd';
 
                                     return (
                                         <CalendarDay
@@ -736,5 +735,3 @@ export default function DispatchBoardPage() {
         </MainLayout>
     );
 }
-
-    

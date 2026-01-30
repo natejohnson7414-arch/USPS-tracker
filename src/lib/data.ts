@@ -68,12 +68,12 @@ export const seedDatabase = async (db: any) => {
     }
     
     // Always ensure the non-productive work order exists
-    const nonProductiveWorkOrderRef = doc(db, 'work_orders', 'WO-24-0001');
+    const nonProductiveWorkOrderRef = doc(db, 'work_orders', '24-0001');
     const nonProductiveWorkOrderSnap = await getDocumentNonBlocking(nonProductiveWorkOrderRef);
     if (!nonProductiveWorkOrderSnap.exists()) {
         console.log("Creating non-productive work order...");
         await setDocumentNonBlocking(nonProductiveWorkOrderRef, {
-            id: 'WO-24-0001',
+            id: '24-0001',
             jobName: 'Non-Productive Time',
             description: 'Assign non-billable tasks like shop time, training, or meetings.',
             status: 'Open',
