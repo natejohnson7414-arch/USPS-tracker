@@ -1,3 +1,4 @@
+
 'use client';
 import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client, TrainingRecord, HvacStartupReport, TimeEntry, Activity, ActivityHistoryItem } from '@/lib/types';
 import { collection, getDoc, doc, query, where, deleteDoc, updateDoc, arrayUnion } from 'firebase/firestore';
@@ -388,24 +389,39 @@ export const getAllActivitiesWithDetails = async (db: any): Promise<Activity[]> 
     const workOrdersSnap = await getCollectionNonBlocking(collection(db, 'work_orders'));
     let allActivities: Activity[] = [];
 
-    for (const woDoc of workOrdersSnap.docs) {
-        // Get the full work order details which includes activities
-        const workOrder = await getWorkOrderById(db, woDoc.id); 
-        if (workOrder && workOrder.activities) {
-            // Enrich each activity with a reference to its parent work order details
-            const enrichedActivities = workOrder.activities.map(activity => ({
-                ...activity,
+    // Using Promise.all to fetch activities for all work orders concurrently
+    await Promise.all(workOrdersSnap.docs.map(async (woDoc) => {
+        const activitiesSnap = await getCollectionNonBlocking(collection(db, 'work_orders', woDoc.id, 'activities'));
+        if (!activitiesSnap.empty) {
+            const workOrderData = woDoc.data();
+            const workSite = workOrderData.workSiteId ? await getWorkSiteById(db, workOrderData.workSiteId) : undefined;
+            
+            const activities = activitiesSnap.docs.map(activityDoc => ({
+                id: activityDoc.id,
+                ...activityDoc.data(),
                 parentWorkOrder: {
-                    id: workOrder.id,
-                    jobName: workOrder.jobName,
-                    description: workOrder.description,
-                    workSite: workOrder.workSite
+                    id: woDoc.id,
+                    jobName: workOrderData.jobName,
+                    description: workOrderData.description,
+                    workSite: workSite
                 }
-            }));
-            allActivities = allActivities.concat(enrichedActivities);
+            } as Activity));
+            allActivities.push(...activities);
         }
-    }
-    return allActivities;
+    }));
+
+    // Now, populate all technician details in one go
+    const technicianIds = [...new Set(allActivities.map(a => a.technicianId).filter(Boolean))];
+    const technicianPromises = technicianIds.map(id => getTechnicianById(db, id as string));
+    const technicians = (await Promise.all(technicianPromises)).filter(Boolean) as Technician[];
+    const technicianMap = new Map(technicians.map(t => [t.id, t]));
+
+    const populatedActivities = allActivities.map(activity => ({
+        ...activity,
+        technician: activity.technicianId ? technicianMap.get(activity.technicianId) : undefined,
+    }));
+
+    return populatedActivities;
 };
 
 export const getIncompleteWorkOrders = async (db: any): Promise<WorkOrder[]> => {
