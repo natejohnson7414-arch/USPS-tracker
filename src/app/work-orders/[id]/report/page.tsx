@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -187,6 +188,18 @@ export default function WorkOrderReportPage() {
     const afterPhotos = workOrder.afterPhotoUrls || [];
     const activityPhotos = workOrder.notes.flatMap(note => note.photoUrls || []).filter(Boolean);
 
+    const photosPerPage = 4;
+
+    const beforePhotoChunks = Array.from({ length: Math.ceil(beforePhotos.length / photosPerPage) }, (_, i) =>
+        beforePhotos.slice(i * photosPerPage, i * photosPerPage + photosPerPage)
+    );
+    const afterPhotoChunks = Array.from({ length: Math.ceil(afterPhotos.length / photosPerPage) }, (_, i) =>
+        afterPhotos.slice(i * photosPerPage, i * photosPerPage + photosPerPage)
+    );
+    const activityPhotoChunks = Array.from({ length: Math.ceil(activityPhotos.length / photosPerPage) }, (_, i) =>
+        activityPhotos.slice(i * photosPerPage, i * photosPerPage + photosPerPage)
+    );
+
     return (
         <div className="bg-gray-100 min-h-screen py-8">
             {!action && !isInIframe && (
@@ -285,68 +298,68 @@ export default function WorkOrderReportPage() {
                 </main>
             </div>
 
-            {beforePhotos.length > 0 && (
-                <div className="pdf-page p-8" style={{ minHeight: '11in' }}>
+            {beforePhotoChunks.map((chunk, pageIndex) => (
+                <div key={`before-page-${pageIndex}`} className="pdf-page p-8" style={{ minHeight: '11in' }}>
                     <header className="flex justify-between items-center mb-8">
-                         <h1 className="font-bold text-xl">Before Photos</h1>
+                         <h1 className="font-bold text-xl">Before Photos {beforePhotoChunks.length > 1 ? `(Page ${pageIndex + 1})` : ''}</h1>
                          <p className="text-sm text-gray-600">Work Order # {workOrder.id}</p>
                     </header>
                     <main>
                          <div className="grid grid-cols-2 gap-8">
-                            {beforePhotos.map((url, index) => (
+                            {chunk.map((url, index) => (
                                 <div key={index} className="space-y-2">
                                     <div className="w-full border rounded-lg overflow-hidden">
-                                        {!!url && <img src={proxiedUrl(url)} alt={`Before photo ${index + 1}`} className="aspect-video object-contain w-full" />}
+                                        {!!url && <img src={proxiedUrl(url)} alt={`Before photo ${pageIndex * photosPerPage + index + 1}`} className="aspect-video object-contain w-full" />}
                                     </div>
-                                    <p className="text-center text-sm text-gray-500">Before Photo {index + 1}</p>
+                                    <p className="text-center text-sm text-gray-500">Before Photo {pageIndex * photosPerPage + index + 1}</p>
                                 </div>
                             ))}
                         </div>
                     </main>
                 </div>
-            )}
+            ))}
             
-            {afterPhotos.length > 0 && (
-                <div className="pdf-page p-8" style={{ minHeight: '11in' }}>
+            {afterPhotoChunks.map((chunk, pageIndex) => (
+                <div key={`after-page-${pageIndex}`} className="pdf-page p-8" style={{ minHeight: '11in' }}>
                     <header className="flex justify-between items-center mb-8">
-                         <h1 className="font-bold text-xl">After Photos</h1>
+                         <h1 className="font-bold text-xl">After Photos {afterPhotoChunks.length > 1 ? `(Page ${pageIndex + 1})` : ''}</h1>
                          <p className="text-sm text-gray-600">Work Order # {workOrder.id}</p>
                     </header>
                     <main>
                          <div className="grid grid-cols-2 gap-8">
-                            {afterPhotos.map((url, index) => (
+                            {chunk.map((url, index) => (
                                 <div key={index} className="space-y-2">
                                     <div className="w-full border rounded-lg overflow-hidden">
-                                        {!!url && <img src={proxiedUrl(url)} alt={`After photo ${index + 1}`} className="aspect-video object-contain w-full" />}
+                                        {!!url && <img src={proxiedUrl(url)} alt={`After photo ${pageIndex * photosPerPage + index + 1}`} className="aspect-video object-contain w-full" />}
                                     </div>
-                                    <p className="text-center text-sm text-gray-500">After Photo {index + 1}</p>
+                                    <p className="text-center text-sm text-gray-500">After Photo {pageIndex * photosPerPage + index + 1}</p>
                                 </div>
                             ))}
                         </div>
                     </main>
                 </div>
-            )}
+            ))}
 
-            {activityPhotos.length > 0 && (
-                <div className="pdf-page p-8" style={{ minHeight: '11in' }}>
+            {activityPhotoChunks.map((chunk, pageIndex) => (
+                <div key={`activity-page-${pageIndex}`} className="pdf-page p-8" style={{ minHeight: '11in' }}>
                     <header className="flex justify-between items-center mb-8">
-                         <h1 className="font-bold text-xl">Activity Photos</h1>
+                         <h1 className="font-bold text-xl">Activity Photos {activityPhotoChunks.length > 1 ? `(Page ${pageIndex + 1})` : ''}</h1>
                          <p className="text-sm text-gray-600">Work Order # {workOrder.id}</p>
                     </header>
                     <main>
                          <div className="grid grid-cols-2 gap-8">
-                            {activityPhotos.map((url, index) => (
+                            {chunk.map((url, index) => (
                                 <div key={index} className="space-y-2">
                                     <div className="w-full border rounded-lg overflow-hidden">
-                                        {!!url && <img src={proxiedUrl(url)} alt={`Activity photo ${index + 1}`} className="aspect-video object-contain w-full" />}
+                                        {!!url && <img src={proxiedUrl(url)} alt={`Activity photo ${pageIndex * photosPerPage + index + 1}`} className="aspect-video object-contain w-full" />}
                                     </div>
-                                    <p className="text-center text-sm text-gray-500">Activity Photo {index + 1}</p>
+                                    <p className="text-center text-sm text-gray-500">Activity Photo {pageIndex * photosPerPage + index + 1}</p>
                                 </div>
                             ))}
                         </div>
                     </main>
                 </div>
-            )}
+            ))}
         </div>
         </div>
     );
