@@ -7,7 +7,7 @@ import { MainLayout } from '@/components/main-layout';
 import { useFirestore } from '@/firebase';
 import { getAllActivitiesWithDetails, getTechnicians, getIncompleteWorkOrders, updateWorkOrderStatus } from '@/lib/data';
 import type { Activity, Technician, WorkOrder } from '@/lib/types';
-import { startOfWeek, addDays, format, isSameDay, subDays } from 'date-fns';
+import { startOfWeek, addDays, format, isSameDay, subDays, addWeeks, subWeeks, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isToday } from 'date-fns';
 import { ChevronLeft, ChevronRight, Loader2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -183,24 +183,42 @@ const techColors = [
     'bg-cyan-500', 'bg-lime-500'
 ];
 
-function CalendarDay({ day, dayActivities, techColorMap, view, index, totalDays }: { day: Date, dayActivities: Activity[], techColorMap: Map<string, string>, view: 'week' | 'day', index: number, totalDays: number }) {
+function CalendarDay({ day, dayActivities, techColorMap, view, index, totalDays, isCurrentMonth }: { day: Date, dayActivities: Activity[], techColorMap: Map<string, string>, view: 'day' | 'week' | 'two-week' | 'month', index: number, totalDays: number, isCurrentMonth?: boolean }) {
     const dayKey = format(day, 'yyyy-MM-dd');
     const { setNodeRef, isOver } = useDroppable({
         id: dayKey,
         data: { type: 'day', date: day }
     });
 
+    const isMonthView = view === 'month';
+
     return (
         <div className={cn(
             "flex flex-col flex-shrink-0",
-            view === 'week' ? "w-[14.28%] min-w-[170px]" : "w-full",
-            index < totalDays - 1 && "border-r border-border"
+            !isMonthView ? "w-[14.28%] min-w-[170px]" : "w-[14.28%]",
+            (view === 'week' || view === 'two-week') && index < totalDays - 1 && "border-r",
+            isMonthView && "border-b",
+            isMonthView && (index + 1) % 7 !== 0 && "border-r",
+            isMonthView && !isCurrentMonth && "bg-muted/40",
         )}>
-            <div className="p-2 border-b text-center font-semibold bg-muted/25">
-                <p className="text-sm">{format(day, 'EEE')}</p>
-                <p className="text-2xl">{format(day, 'd')}</p>
-            </div>
-            <div ref={setNodeRef} className={cn("p-2 space-y-2 flex-grow min-h-[200px] overflow-hidden", isOver && "bg-accent")}>
+            {!isMonthView && (
+                 <div className="p-2 border-b text-center font-semibold bg-muted/25">
+                    <p className="text-sm">{format(day, 'EEE')}</p>
+                    <p className={cn("text-2xl", isToday(day) && "text-primary font-bold")}>{format(day, 'd')}</p>
+                </div>
+            )}
+            {isMonthView && (
+                 <div className="p-1 text-right">
+                    <p className={cn(
+                        "text-sm font-medium inline-block h-6 w-6 flex items-center justify-center",
+                        isToday(day) && "bg-primary text-primary-foreground rounded-full",
+                        !isCurrentMonth && !isToday(day) && "text-muted-foreground"
+                    )}>
+                        {format(day, 'd')}
+                    </p>
+                </div>
+            )}
+            <div ref={setNodeRef} className={cn("p-2 space-y-2 flex-grow min-h-[120px] overflow-hidden", isOver && "bg-accent")}>
                 {dayActivities.map(activity => (
                     <DraggableActivityItem key={activity.id} activity={activity} techColorMap={techColorMap} />
                 ))}
@@ -228,7 +246,7 @@ export default function DispatchBoardPage() {
     const [activeId, setActiveId] = useState<string | null>(null);
     const [activeDragItem, setActiveDragItem] = useState<any>(null);
 
-    const [view, setView] = useState<'week' | 'day'>('week');
+    const [view, setView] = useState<'week' | 'day' | 'two-week' | 'month'>('week');
 
     const sensors = useSensors(
         useSensor(MouseSensor, {
@@ -285,26 +303,59 @@ export default function DispatchBoardPage() {
     }, [technicians]);
     
     const calendarDays = useMemo(() => {
-        if (view === 'week') {
-            const weekStartsOn = 1; // Monday
-            const weekStart = startOfWeek(currentDate, { weekStartsOn });
-            return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+        const weekStartsOn = 1; // Monday
+        let start;
+        switch (view) {
+            case 'day':
+                return [currentDate];
+            case 'week':
+                start = startOfWeek(currentDate, { weekStartsOn });
+                return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+            case 'two-week':
+                start = startOfWeek(currentDate, { weekStartsOn });
+                return Array.from({ length: 14 }, (_, i) => addDays(start, i));
+            case 'month':
+                const monthStart = startOfMonth(currentDate);
+                const calendarStart = startOfWeek(monthStart, { weekStartsOn });
+                const monthEnd = endOfMonth(currentDate);
+                const calendarEnd = endOfWeek(monthEnd, { weekStartsOn });
+                return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+            default:
+                start = startOfWeek(currentDate, { weekStartsOn });
+                return Array.from({ length: 7 }, (_, i) => addDays(start, i));
         }
-        return [currentDate];
     }, [currentDate, view]);
     
     const handlePrev = () => {
-        if (view === 'week') {
-            setCurrentDate(subDays(currentDate, 7));
-        } else {
-            setCurrentDate(subDays(currentDate, 1));
+        switch (view) {
+            case 'day':
+                setCurrentDate(subDays(currentDate, 1));
+                break;
+            case 'week':
+                setCurrentDate(subWeeks(currentDate, 1));
+                break;
+            case 'two-week':
+                setCurrentDate(subWeeks(currentDate, 2));
+                break;
+            case 'month':
+                setCurrentDate(subMonths(currentDate, 1));
+                break;
         }
     }
     const handleNext = () => {
-        if (view === 'week') {
-            setCurrentDate(addDays(currentDate, 7));
-        } else {
-            setCurrentDate(addDays(currentDate, 1));
+        switch (view) {
+            case 'day':
+                setCurrentDate(addDays(currentDate, 1));
+                break;
+            case 'week':
+                setCurrentDate(addWeeks(currentDate, 1));
+                break;
+            case 'two-week':
+                setCurrentDate(addWeeks(currentDate, 2));
+                break;
+            case 'month':
+                setCurrentDate(addMonths(currentDate, 1));
+                break;
         }
     }
     const goToToday = () => setCurrentDate(new Date());
@@ -440,12 +491,31 @@ export default function DispatchBoardPage() {
     }
 
     const headerDateDisplay = useMemo(() => {
-        if (view === 'week') {
-            const weekStartsOn = 1; // Monday
-            const weekStart = startOfWeek(currentDate, { weekStartsOn });
-            return format(weekStart, 'MMMM yyyy');
+        const weekStartsOn = 1; // Monday
+        if (view === 'day') {
+            return format(currentDate, 'MMMM d, yyyy');
         }
-        return format(currentDate, 'MMMM d, yyyy');
+        if (view === 'month') {
+            return format(currentDate, 'MMMM yyyy');
+        }
+        
+        let start, end;
+        if (view === 'week') {
+            start = startOfWeek(currentDate, { weekStartsOn });
+            end = addDays(start, 6);
+        } else { // two-week
+            start = startOfWeek(currentDate, { weekStartsOn });
+            end = addDays(start, 13);
+        }
+        
+        if (start.getMonth() === end.getMonth()) {
+            return `${format(start, 'MMMM d')} - ${format(end, 'd, yyyy')}`;
+        }
+        if (start.getFullYear() === end.getFullYear()) {
+            return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`;
+        }
+        return `${format(start, 'MMM d, yyyy')} - ${format(end, 'MMM d, yyyy')}`;
+
     }, [currentDate, view]);
 
     if (isLoading || isRoleLoading) {
@@ -467,12 +537,14 @@ export default function DispatchBoardPage() {
                         <h1 className="text-3xl font-bold tracking-tight">Dispatch Board</h1>
                         <div className="flex items-center gap-2">
                              <Select value={view} onValueChange={(v) => setView(v as any)}>
-                                <SelectTrigger className="w-[120px]">
+                                <SelectTrigger className="w-[130px]">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="day">Day</SelectItem>
                                     <SelectItem value="week">Week</SelectItem>
+                                    <SelectItem value="two-week">Two Week</SelectItem>
+                                    <SelectItem value="month">Month</SelectItem>
                                 </SelectContent>
                             </Select>
                             <Button variant="outline" size="icon" onClick={handlePrev}><ChevronLeft className="h-4 w-4" /></Button>
@@ -483,12 +555,23 @@ export default function DispatchBoardPage() {
                             </div>
                         </div>
                     </div>
-
-                    <div className="overflow-x-auto pb-4">
-                         <div className="flex rounded-lg border">
+                    {view === 'month' && (
+                        <div className="flex rounded-t-lg border-l border-r border-t bg-muted/25">
+                            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                                <div key={day} className="w-[14.28%] p-2 text-center font-semibold text-sm text-muted-foreground">{day}</div>
+                            ))}
+                        </div>
+                    )}
+                    <div className={cn(view !== 'month' ? "overflow-x-auto" : "", "pb-4")}>
+                         <div className={cn(
+                            "flex rounded-lg border", 
+                            view === 'month' && "flex-wrap rounded-t-none border-t-0"
+                        )}>
                             {calendarDays.map((day, index) => {
                                 const dayKey = format(day, 'yyyy-MM-dd');
                                 const dayActivities = activitiesByDay.get(dayKey) || [];
+                                const isCurrentMonth = view === 'month' ? day.getMonth() === currentDate.getMonth() : undefined;
+
                                 return (
                                     <CalendarDay
                                         key={dayKey}
@@ -498,6 +581,7 @@ export default function DispatchBoardPage() {
                                         view={view}
                                         index={index}
                                         totalDays={calendarDays.length}
+                                        isCurrentMonth={isCurrentMonth}
                                     />
                                 );
                             })}
