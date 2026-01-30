@@ -507,7 +507,12 @@ export default function DispatchBoardPage() {
             toast({ title: 'Activity Scheduled Successfully' });
             
             const incompleteOrders = await getIncompleteWorkOrders(db);
-            setWorkOrders(incompleteOrders);
+            const sortedOrders = incompleteOrders.sort((a, b) => {
+                if (a.id === NON_PRODUCTIVE_WO_ID) return -1;
+                if (b.id === NON_PRODUCTIVE_WO_ID) return 1;
+                return new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime();
+            });
+            setWorkOrders(sortedOrders);
 
         } catch (error) {
             if (error instanceof Error && !error.message.includes('permission-error')) {
