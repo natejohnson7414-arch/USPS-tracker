@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -206,16 +205,10 @@ export default function WorkOrderReportPage() {
                 <header className="flex justify-between items-start mb-8">
                     <div>
                         <h2 className="font-bold text-lg">Facilities Office</h2>
-                        <div className="relative h-16 w-48">
-                             <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/USPS_Eagle_logo.svg/1200px-USPS_Eagle_logo.svg.png" alt="USPS Logo" fill style={{objectFit:"contain"}} unoptimized/>
-                        </div>
                         <p className="mt-4">Date: <span className="font-medium underline decoration-dotted">{signatureDate}</span></p>
                         <p className="mt-2">Facilities HUB Project Manager:</p>
                     </div>
                     <div>
-                        <div className="relative h-16 w-48">
-                           <Image src="https://www.crawford-company.com/hubfs/new-art-o-lite-logo-1.png" alt="Crawford Company Logo" fill style={{objectFit:"contain"}} unoptimized/>
-                        </div>
                         <p className="mt-4 text-right">Crawford Job #</p>
                         <div className="bg-gray-200 p-2 rounded text-center font-medium">{workOrder.id}</div>
                     </div>
@@ -239,15 +232,15 @@ export default function WorkOrderReportPage() {
                         </div>
                         <div className="flex items-stretch">
                             <div className="w-1/3 flex items-center pr-4 text-sm"><p>Call #/Problem #:</p></div>
-                            <div className="w-2/3 border-2 border-black p-2 text-sm -ml-px -mt-px min-h-[2rem] flex items-center">{workOrder.customerPO || ''}</div>
+                            <div className="w-2/3 border-2 border-black p-2 text-sm -ml-px -mt-px flex items-center min-h-[2rem]">{workOrder.customerPO || ''}</div>
                         </div>
                         <div className="flex items-stretch">
                             <div className="w-1/3 flex items-center pr-4 text-sm"><p>Temp upon Arrival:</p></div>
-                            <div className="w-2/3 border-2 border-black p-2 text-sm -ml-px -mt-px min-h-[2rem] flex items-center">{workOrder.tempOnArrival || ''}</div>
+                            <div className="w-2/3 border-2 border-black p-2 text-sm -ml-px -mt-px flex items-center min-h-[2rem]">{workOrder.tempOnArrival || ''}</div>
                         </div>
                         <div className="flex items-stretch">
                             <div className="w-1/3 flex items-center pr-4 text-sm"><p>Temp upon Leaving:</p></div>
-                            <div className="w-2/3 border-2 border-black p-2 text-sm -ml-px -mt-px min-h-[2rem] flex items-center">{workOrder.tempOnLeaving || ''}</div>
+                            <div className="w-2/3 border-2 border-black p-2 text-sm -ml-px -mt-px flex items-center min-h-[2rem]">{workOrder.tempOnLeaving || ''}</div>
                         </div>
                         <div className="flex items-stretch">
                             <div className="w-1/3 flex items-center pr-4 text-sm"><p>Before and After Pictures:</p></div>
@@ -269,7 +262,7 @@ export default function WorkOrderReportPage() {
                             <div className="w-1/3 flex items-center pr-4 text-sm"><p>Signature:</p></div>
                             <div className="w-2/3 border-2 border-black p-2 -ml-px -mt-px min-h-[3rem] flex items-center">
                                 {!!workOrder.customerSignatureUrl && (
-                                    <Image src={proxiedUrl(workOrder.customerSignatureUrl)} alt="Customer Signature" className="object-contain max-h-full" width={150} height={40} unoptimized />
+                                    <img src={proxiedUrl(workOrder.customerSignatureUrl)} alt="Customer Signature" style={{ objectFit: 'contain', maxHeight: '100%', maxWidth: '150px' }} />
                                 )}
                             </div>
                         </div>
