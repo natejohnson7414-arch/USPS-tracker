@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -7,7 +6,7 @@ import { MainLayout } from '@/components/main-layout';
 import { useFirestore } from '@/firebase';
 import { getAllActivitiesWithDetails, getTechnicians, getIncompleteWorkOrders, updateWorkOrderStatus } from '@/lib/data';
 import type { Activity, Technician, WorkOrder } from '@/lib/types';
-import { startOfWeek, addDays, format, isSameDay, subDays, addWeeks, subWeeks, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isToday } from 'date-fns';
+import { startOfWeek, addDays, format, isSameDay, subDays, addWeeks, subWeeks, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isToday, endOfWeek } from 'date-fns';
 import { ChevronLeft, ChevronRight, Loader2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
