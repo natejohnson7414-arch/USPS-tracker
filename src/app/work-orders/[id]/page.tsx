@@ -36,12 +36,6 @@ import { SignaturePad } from '@/components/signature-pad';
 import { useTechnician as useRoleData } from '@/hooks/use-technician';
 import { WorkOrderEditForm } from '@/components/work-order-edit-form';
 import { ReportPreviewDialog } from '@/components/report-preview-dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 
 export default function WorkOrderDetailPage() {
   const params = useParams();
@@ -463,29 +457,12 @@ export default function WorkOrderDetailPage() {
               </Link>
             </Button>
              <div className="flex items-center gap-2">
-                 {!isTechnician && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline">
-                          <Printer className="mr-2 h-4 w-4" />
-                          Report
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => router.push(`/work-orders/${id}/report?action=print`)}>
-                          <Printer className="mr-2 h-4 w-4" />
-                          Print
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => router.push(`/work-orders/${id}/report?action=download`)}>
-                          <Download className="mr-2 h-4 w-4" />
-                          Download PDF
-                        </DropdownMenuItem>
-                         <DropdownMenuItem onSelect={() => setIsReportDialogOpen(true)}>
-                          Preview
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
+                {!isTechnician && (
+                    <Button variant="outline" onClick={() => setIsReportDialogOpen(true)}>
+                        <Printer className="mr-2 h-4 w-4" />
+                        Report
+                    </Button>
+                )}
 
 
                 {!isEditing && !isTechnician && (
