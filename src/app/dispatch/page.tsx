@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -222,7 +223,7 @@ function CalendarDay({ day, dayActivities, techColorMap, view, index, totalDays,
             (view === 'week' || view === 'two-week') && index < totalDays - 1 && "border-r",
             isMonthView && "border-b",
             isMonthView && (index + 1) % 7 !== 0 && "border-r",
-            isMonthView && monthParity === 'odd' && 'bg-muted/20'
+            isMonthView && monthParity === 'odd' && 'bg-muted'
         )}>
             {!isMonthView && (
                  <div className="p-2 border-b text-center font-semibold bg-muted/25">
@@ -528,15 +529,15 @@ export default function DispatchBoardPage() {
         }
         
         let start, end;
-        if (view === 'week') {
+        if (view === 'week' || view === 'month') {
             start = startOfWeek(currentDate, { weekStartsOn });
-            end = addDays(start, 6);
+            end = addDays(start, calendarDays.length - 1);
         } else if (view === 'two-week') { 
             start = startOfWeek(currentDate, { weekStartsOn });
             end = addDays(start, 13);
-        } else { // month (5-week view)
+        } else {
             start = startOfWeek(currentDate, { weekStartsOn });
-            end = addDays(start, 34); // 35 days total, so add 34
+            end = addDays(start, 6);
         }
         
         if (start.getMonth() === end.getMonth()) {
@@ -547,7 +548,7 @@ export default function DispatchBoardPage() {
         }
         return `${format(start, 'MMM d, yyyy')} - ${format(end, 'MMM d, yyyy')}`;
 
-    }, [currentDate, view]);
+    }, [currentDate, view, calendarDays]);
 
     if (isLoading || isRoleLoading) {
         return (
@@ -735,3 +736,5 @@ export default function DispatchBoardPage() {
         </MainLayout>
     );
 }
+
+    
