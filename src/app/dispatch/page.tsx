@@ -561,31 +561,75 @@ export default function DispatchBoardPage() {
                             ))}
                         </div>
                     )}
-                    <div className={cn(view !== 'month' ? "overflow-x-auto" : "", "pb-4")}>
-                         <div className={cn(
-                            "flex rounded-lg border", 
-                            view === 'month' && "flex-wrap rounded-t-none border-t-0"
-                        )}>
-                            {calendarDays.map((day, index) => {
-                                const dayKey = format(day, 'yyyy-MM-dd');
-                                const dayActivities = activitiesByDay.get(dayKey) || [];
-                                const isCurrentMonth = view === 'month' ? day.getMonth() === currentDate.getMonth() : undefined;
-
-                                return (
-                                    <CalendarDay
-                                        key={dayKey}
-                                        day={day}
-                                        dayActivities={dayActivities}
-                                        techColorMap={techColorMap}
-                                        view={view}
-                                        index={index}
-                                        totalDays={calendarDays.length}
-                                        isCurrentMonth={isCurrentMonth}
-                                    />
-                                );
-                            })}
+                    
+                    {view === 'two-week' ? (
+                        <div className="space-y-2 pb-4">
+                            <div className="overflow-x-auto">
+                                <div className="flex rounded-lg border">
+                                    {calendarDays.slice(0, 7).map((day, index) => {
+                                        const dayKey = format(day, 'yyyy-MM-dd');
+                                        const dayActivities = activitiesByDay.get(dayKey) || [];
+                                        return (
+                                            <CalendarDay
+                                                key={dayKey}
+                                                day={day}
+                                                dayActivities={dayActivities}
+                                                techColorMap={techColorMap}
+                                                view={view}
+                                                index={index}
+                                                totalDays={7}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <div className="flex rounded-lg border">
+                                    {calendarDays.slice(7, 14).map((day, index) => {
+                                        const dayKey = format(day, 'yyyy-MM-dd');
+                                        const dayActivities = activitiesByDay.get(dayKey) || [];
+                                        return (
+                                            <CalendarDay
+                                                key={dayKey}
+                                                day={day}
+                                                dayActivities={dayActivities}
+                                                techColorMap={techColorMap}
+                                                view={view}
+                                                index={index}
+                                                totalDays={7}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                        <div className={cn(view !== 'month' ? "overflow-x-auto" : "", "pb-4")}>
+                            <div className={cn(
+                                "flex rounded-lg border", 
+                                view === 'month' && "flex-wrap rounded-t-none border-t-0"
+                            )}>
+                                {calendarDays.map((day, index) => {
+                                    const dayKey = format(day, 'yyyy-MM-dd');
+                                    const dayActivities = activitiesByDay.get(dayKey) || [];
+                                    const isCurrentMonth = view === 'month' ? day.getMonth() === currentDate.getMonth() : undefined;
+
+                                    return (
+                                        <CalendarDay
+                                            key={dayKey}
+                                            day={day}
+                                            dayActivities={dayActivities}
+                                            techColorMap={techColorMap}
+                                            view={view}
+                                            index={index}
+                                            totalDays={calendarDays.length}
+                                            isCurrentMonth={isCurrentMonth}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                     
                     {role?.name !== 'Technician' && (
                         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
