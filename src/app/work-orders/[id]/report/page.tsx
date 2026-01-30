@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Download, Loader2, Printer } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import Image from 'next/image';
 
 export default function WorkOrderReportPage() {
     const params = useParams();
@@ -182,7 +181,10 @@ export default function WorkOrderReportPage() {
     const proxiedUrl = (url: string) => `/api/image-proxy?url=${encodeURIComponent(url)}`;
     
     const signatureDate = workOrder.signatureDate ? format(new Date(workOrder.signatureDate), 'MM/dd/yyyy') : ' ';
-    const allPhotoUrls = workOrder.notes.flatMap(note => note.photoUrls || []).filter(Boolean);
+    
+    const beforePhotos = workOrder.beforePhotoUrls || [];
+    const afterPhotos = workOrder.afterPhotoUrls || [];
+    const activityPhotos = workOrder.notes.flatMap(note => note.photoUrls || []).filter(Boolean);
 
     return (
         <div className="bg-gray-100 min-h-screen py-8">
@@ -282,21 +284,62 @@ export default function WorkOrderReportPage() {
                 </main>
             </div>
 
-            {allPhotoUrls.length > 0 && (
+            {beforePhotos.length > 0 && (
                 <div className="pdf-page p-8" style={{ minHeight: '11in' }}>
                     <header className="flex justify-between items-center mb-8">
-                         <h1 className="font-bold text-xl">Photo Appendix</h1>
+                         <h1 className="font-bold text-xl">Before Photos</h1>
                          <p className="text-sm text-gray-600">Work Order # {workOrder.id}</p>
                     </header>
                     <main>
                          <div className="grid grid-cols-2 gap-8">
-                            {allPhotoUrls.map((url, index) => (
+                            {beforePhotos.map((url, index) => (
                                 <div key={index} className="space-y-2">
                                     <div className="w-full border rounded-lg overflow-hidden">
-                                        {/* Use a standard img tag for better html2canvas compatibility */}
-                                        {!!url && <img src={proxiedUrl(url)} alt={`Work photo ${index + 1}`} style={{ width: '100%', height: 'auto', display: 'block' }} />}
+                                        {!!url && <img src={proxiedUrl(url)} alt={`Before photo ${index + 1}`} className="aspect-video object-contain w-full" />}
                                     </div>
-                                    <p className="text-center text-sm text-gray-500">Photo {index + 1}</p>
+                                    <p className="text-center text-sm text-gray-500">Before Photo {index + 1}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </main>
+                </div>
+            )}
+            
+            {afterPhotos.length > 0 && (
+                <div className="pdf-page p-8" style={{ minHeight: '11in' }}>
+                    <header className="flex justify-between items-center mb-8">
+                         <h1 className="font-bold text-xl">After Photos</h1>
+                         <p className="text-sm text-gray-600">Work Order # {workOrder.id}</p>
+                    </header>
+                    <main>
+                         <div className="grid grid-cols-2 gap-8">
+                            {afterPhotos.map((url, index) => (
+                                <div key={index} className="space-y-2">
+                                    <div className="w-full border rounded-lg overflow-hidden">
+                                        {!!url && <img src={proxiedUrl(url)} alt={`After photo ${index + 1}`} className="aspect-video object-contain w-full" />}
+                                    </div>
+                                    <p className="text-center text-sm text-gray-500">After Photo {index + 1}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </main>
+                </div>
+            )}
+
+            {activityPhotos.length > 0 && (
+                <div className="pdf-page p-8" style={{ minHeight: '11in' }}>
+                    <header className="flex justify-between items-center mb-8">
+                         <h1 className="font-bold text-xl">Activity Photos</h1>
+                         <p className="text-sm text-gray-600">Work Order # {workOrder.id}</p>
+                    </header>
+                    <main>
+                         <div className="grid grid-cols-2 gap-8">
+                            {activityPhotos.map((url, index) => (
+                                <div key={index} className="space-y-2">
+                                    <div className="w-full border rounded-lg overflow-hidden">
+                                        {!!url && <img src={proxiedUrl(url)} alt={`Activity photo ${index + 1}`} className="aspect-video object-contain w-full" />}
+                                    </div>
+                                    <p className="text-center text-sm text-gray-500">Activity Photo {index + 1}</p>
                                 </div>
                             ))}
                         </div>

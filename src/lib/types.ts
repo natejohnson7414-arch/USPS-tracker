@@ -84,6 +84,8 @@ export type WorkOrder = {
   tempOnLeaving?: string;
   customerSignatureUrl?: string;
   signatureDate?: string;
+  beforePhotoUrls?: string[];
+  afterPhotoUrls?: string[];
 };
 
 

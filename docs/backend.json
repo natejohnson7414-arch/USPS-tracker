@@ -173,6 +173,16 @@
           "items": {
             "type": "object"
           }
+        },
+        "beforePhotoUrls": {
+          "type": "array",
+          "description": "URLs of photos taken before work was started.",
+          "items": { "type": "string" }
+        },
+        "afterPhotoUrls": {
+          "type": "array",
+          "description": "URLs of photos taken after work was completed.",
+          "items": { "type": "string" }
         }
       },
       "required": [

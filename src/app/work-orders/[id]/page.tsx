@@ -8,10 +8,10 @@ import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
 import { WorkOrderDetails } from '@/components/work-order-details';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Ban, Pencil, Save, Printer } from 'lucide-react';
+import { ArrowLeft, Ban, Pencil, Save, Printer, Download } from 'lucide-react';
 import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, ActivityHistoryItem } from '@/lib/types';
-import { doc, collection, arrayUnion } from 'firebase/firestore';
+import { doc, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImage, deleteImage } from '@/firebase/storage';
 import { MapProviderSelection } from '@/components/map-provider-selection';
@@ -36,6 +36,12 @@ import { SignaturePad } from '@/components/signature-pad';
 import { useTechnician as useRoleData } from '@/hooks/use-technician';
 import { WorkOrderEditForm } from '@/components/work-order-edit-form';
 import { ReportPreviewDialog } from '@/components/report-preview-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export default function WorkOrderDetailPage() {
   const params = useParams();
@@ -57,6 +63,7 @@ export default function WorkOrderDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingNote, setIsAddingNote] = useState(false);
+  const [isSavingPhotos, setIsSavingPhotos] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
@@ -126,21 +133,16 @@ export default function WorkOrderDetailPage() {
     setSelectedAddress(fullAddress);
   };
 
-  const handleNoteAdded = async (newNote: Omit<WorkOrderNote, 'id'> & { photoFiles: File[] }) => {
+  const handleNoteAdded = async (newNote: Omit<WorkOrderNote, 'id' | 'photoUrls'>) => {
     if (!db || !user || !workOrderDocRef || !workOrder) return;
     const notesColRef = collection(workOrderDocRef, 'updates');
     setIsAddingNote(true);
 
     try {
-        const photoUrls = await Promise.all(
-            newNote.photoFiles.map(file => uploadImage(file, `work-orders/${id}/${Date.now()}-${file.name}`))
-        );
-
         const newNoteData = {
             workOrderId: workOrder.id,
             notes: newNote.text,
             createdAt: newNote.createdAt,
-            photoUrls: photoUrls,
         };
 
         const docRef = await addDocumentNonBlocking(notesColRef, newNoteData);
@@ -158,19 +160,14 @@ export default function WorkOrderDetailPage() {
             id: docRef.id,
             text: newNote.text,
             createdAt: newNote.createdAt,
-            photoUrls: photoUrls,
         };
         
-        // Optimistically update UI
         setWorkOrder(prev => {
             if (!prev) return null;
             const updatedNotes = [optimisticNote, ...(prev.notes || [])];
-            return {
-                ...prev,
-                notes: updatedNotes,
-            };
+            return { ...prev, notes: updatedNotes };
         });
-        toast({ title: "Note Added", description: "Your note and photos have been added." });
+        toast({ title: "Note Added", description: "Your note has been added." });
         fetchData();
 
     } catch (error) {
@@ -180,6 +177,61 @@ export default function WorkOrderDetailPage() {
         setIsAddingNote(false);
     }
   };
+
+  const handlePhotosAdded = async (type: 'before' | 'after', files: File[]) => {
+    if (!db || !workOrder || files.length === 0) return;
+    
+    setIsSavingPhotos(true);
+    const toastId = toast({ title: `Uploading ${files.length} ${type} photo(s)...` });
+
+    try {
+      const uploadPromises = files.map(file => 
+        uploadImage(file, `work-orders/${workOrder.id}/${type}/${Date.now()}-${file.name}`)
+      );
+      const uploadedUrls = await Promise.all(uploadPromises);
+
+      const fieldToUpdate = type === 'before' ? 'beforePhotoUrls' : 'afterPhotoUrls';
+      const currentUrls = workOrder[fieldToUpdate] || [];
+      const newUrls = [...currentUrls, ...uploadedUrls];
+
+      await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), {
+        [fieldToUpdate]: newUrls,
+      });
+
+      setWorkOrder(prev => prev ? { ...prev, [fieldToUpdate]: newUrls } : null);
+      
+      toastId.dismiss();
+      toast({ title: "Photos Uploaded", description: `${files.length} photo(s) have been added.` });
+
+    } catch (error) {
+      console.error(`Error adding ${type} photos:`, error);
+      toastId.dismiss();
+      toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload photos." });
+    } finally {
+      setIsSavingPhotos(false);
+    }
+  };
+
+  const handlePhotoDeleted = async (type: 'before' | 'after', urlToDelete: string) => {
+    if (!db || !workOrder) return;
+
+    const fieldToUpdate = type === 'before' ? 'beforePhotoUrls' : 'afterPhotoUrls';
+    const currentUrls = workOrder[fieldToUpdate] || [];
+    const newUrls = currentUrls.filter(url => url !== urlToDelete);
+
+    setWorkOrder(prev => prev ? { ...prev, [fieldToUpdate]: newUrls } : null);
+
+    try {
+        await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { [fieldToUpdate]: newUrls });
+        await deleteImage(urlToDelete);
+        toast({ title: "Photo Deleted" });
+    } catch(error) {
+        console.error(`Error deleting ${type} photo:`, error);
+        toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete photo." });
+        setWorkOrder(prev => prev ? { ...prev, [fieldToUpdate]: currentUrls } : null); // Revert
+    }
+  };
+
 
   const handleTimeAdded = async (newTimeEntry: TimeEntry) => {
     setTimeEntries(prev => [newTimeEntry, ...prev]);
@@ -411,12 +463,30 @@ export default function WorkOrderDetailPage() {
               </Link>
             </Button>
              <div className="flex items-center gap-2">
-                {!isTechnician && (
-                    <Button variant="outline" onClick={() => setIsReportDialogOpen(true)}>
-                        <Printer className="mr-2 h-4 w-4" />
-                        Report
-                    </Button>
-                )}
+                 {!isTechnician && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                          <Printer className="mr-2 h-4 w-4" />
+                          Report
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => router.push(`/work-orders/${id}/report?action=print`)}>
+                          <Printer className="mr-2 h-4 w-4" />
+                          Print
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push(`/work-orders/${id}/report?action=download`)}>
+                          <Download className="mr-2 h-4 w-4" />
+                          Download PDF
+                        </DropdownMenuItem>
+                         <DropdownMenuItem onClick={() => setIsReportDialogOpen(true)}>
+                          Preview
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+
 
                 {!isEditing && !isTechnician && (
                   <Button variant="outline" onClick={() => setIsEditing(true)}>
@@ -447,8 +517,13 @@ export default function WorkOrderDetailPage() {
                     onTimeAdded={handleTimeAdded}
                     onNotePhotoDelete={handleNotePhotoDelete}
                     onNoteDelete={handleNoteDelete}
+                    onBeforePhotosAdded={(files) => handlePhotosAdded('before', files)}
+                    onAfterPhotosAdded={(files) => handlePhotosAdded('after', files)}
+                    onBeforePhotoDelete={(url) => handlePhotoDeleted('before', url)}
+                    onAfterPhotoDelete={(url) => handlePhotoDeleted('after', url)}
                     onTimeEntryDelete={handleTimeEntryDelete}
                     isAddingNote={isAddingNote}
+                    isSavingPhotos={isSavingPhotos}
                     onDirectionsClick={handleDirectionsClick}
                     onSignatureSave={() => setIsSignatureDialogOpen(true)}
                     onTempUpdate={handleTempUpdate}

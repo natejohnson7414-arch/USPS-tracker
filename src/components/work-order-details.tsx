@@ -139,12 +139,17 @@ interface WorkOrderDetailsProps {
   onTrainingRecordDelete: (recordId: string) => void;
   timeEntries: TimeEntry[];
   activities: Activity[];
-  onNoteAdded: (note: Omit<WorkOrderNote, 'id'> & { photoFiles: File[] }) => void;
+  onNoteAdded: (note: Omit<WorkOrderNote, 'id' | 'photoUrls'>) => void;
   onTimeAdded: (timeEntry: TimeEntry) => void;
   onNotePhotoDelete: (noteId: string, photoUrl: string) => void;
   onNoteDelete: (noteId: string) => void;
+  onBeforePhotosAdded: (files: File[]) => void;
+  onAfterPhotosAdded: (files: File[]) => void;
+  onBeforePhotoDelete: (photoUrl: string) => void;
+  onAfterPhotoDelete: (photoUrl: string) => void;
   onTimeEntryDelete: (timeEntryId: string) => void;
   isAddingNote: boolean;
+  isSavingPhotos: boolean;
   onDirectionsClick: (workSite: WorkSite) => void;
   onSignatureSave: () => void;
   onTempUpdate: () => void;
@@ -171,8 +176,13 @@ export function WorkOrderDetails({
   onTimeAdded,
   onNotePhotoDelete,
   onNoteDelete,
+  onBeforePhotosAdded,
+  onAfterPhotosAdded,
+  onBeforePhotoDelete,
+  onAfterPhotoDelete,
   onTimeEntryDelete,
   isAddingNote,
+  isSavingPhotos,
   onDirectionsClick,
   onSignatureSave,
   onTempUpdate,
@@ -190,8 +200,7 @@ export function WorkOrderDetails({
   const [assignedTechnician, setAssignedTechnician] = useState<Technician | undefined>();
   
   const [newNote, setNewNote] = useState('');
-  const [newNotePhotos, setNewNotePhotos] = useState<{ url: string, file: File }[]>([]);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [photoSheetTarget, setPhotoSheetTarget] = useState<'before' | 'after' | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
   const [timeEntryToDelete, setTimeEntryToDelete] = useState<string | null>(null);
@@ -225,33 +234,28 @@ export function WorkOrderDetails({
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (files) {
-      const newFiles = Array.from(files).map(file => ({
-        url: URL.createObjectURL(file),
-        file
-      }));
-      setNewNotePhotos(prev => [...prev, ...newFiles]);
-      setIsSheetOpen(false);
+    if (files && photoSheetTarget) {
+      const fileArray = Array.from(files);
+      if (photoSheetTarget === 'before') {
+        onBeforePhotosAdded(fileArray);
+      } else if (photoSheetTarget === 'after') {
+        onAfterPhotosAdded(fileArray);
+      }
+      setPhotoSheetTarget(null);
     }
     event.target.value = '';
   };
   
-  const handleRemoveNewPhoto = (photoUrlToRemove: string) => {
-    setNewNotePhotos(prev => prev.filter(photo => photo.url !== photoUrlToRemove));
-  };
 
   const handleAddNote = () => {
-    if (!user) return;
+    if (!user || !newNote) return;
 
     onNoteAdded({
       text: newNote,
       createdAt: new Date().toISOString(),
-      photoFiles: newNotePhotos.map(p => p.file),
-      photoUrls: [], // This will be populated after upload
     });
     
     setNewNote('');
-    setNewNotePhotos([]);
   };
 
   const confirmDeleteNote = () => {
@@ -404,6 +408,53 @@ export function WorkOrderDetails({
               )}
             </CardContent>
           </Card>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle>Job Photos</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div>
+                    <h3 className="font-medium mb-2">Before Photos</h3>
+                    {isSavingPhotos && photoSheetTarget === 'before' && <Loader2 className="h-5 w-5 animate-spin mb-2" />}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
+                        {(workOrder.beforePhotoUrls || []).map((url) => (
+                            <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
+                                <Image src={url} alt={`Before photo`} fill style={{ objectFit: 'cover' }} />
+                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onBeforePhotoDelete(url)}>
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <Button variant="outline" onClick={() => setPhotoSheetTarget('before')} disabled={isSavingPhotos}>
+                        <Camera className="mr-2 h-4 w-4" /> Add Before Photos
+                    </Button>
+                </div>
+                <Separator />
+                <div>
+                    <h3 className="font-medium mb-2">After Photos</h3>
+                    {isSavingPhotos && photoSheetTarget === 'after' && <Loader2 className="h-5 w-5 animate-spin mb-2" />}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
+                        {(workOrder.afterPhotoUrls || []).map((url) => (
+                            <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
+                                <Image src={url} alt={`After photo`} fill style={{ objectFit: 'cover' }} />
+                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onAfterPhotoDelete(url)}>
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <Button variant="outline" onClick={() => setPhotoSheetTarget('after')} disabled={isSavingPhotos}>
+                        <Camera className="mr-2 h-4 w-4" /> Add After Photos
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
@@ -419,73 +470,11 @@ export function WorkOrderDetails({
                 onChange={e => setNewNote(e.target.value)}
                 disabled={isAddingNote}
               />
-              {newNotePhotos.length > 0 && (
-                <div className="grid grid-cols-3 gap-4">
-                  {newNotePhotos.map((photo, index) => (
-                      <div key={index} className="relative w-full aspect-square border rounded-md">
-                          <Image src={photo.url} alt={`Note preview ${index + 1}`} fill style={{ objectFit: 'cover' }} className="rounded-md" />
-                          <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                          onClick={() => handleRemoveNewPhoto(photo.url)}
-                          disabled={isAddingNote}
-                          >
-                          <X className="h-4 w-4" />
-                          </Button>
-                      </div>
-                  ))}
-                </div>
-              )}
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                  <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                      <SheetTrigger asChild>
-                        <Button type="button" variant="outline" disabled={isAddingNote}>
-                          <Camera className="mr-2 h-4 w-4" />
-                          Attach Photo
-                        </Button>
-                      </SheetTrigger>
-                      <SheetContent side="bottom">
-                        <SheetHeader>
-                          <SheetTitle>Add a photo</SheetTitle>
-                        </SheetHeader>
-                        <div className="grid gap-4 py-4">
-                          <Button type="button" variant="outline" className="justify-start" onClick={() => takePhotoInputRef.current?.click()}>
-                            <Video className="mr-4 h-5 w-5" />
-                            Take Photo
-                          </Button>
-                          <Button type="button" variant="outline" className="justify-start" onClick={() => chooseFromLibraryInputRef.current?.click()}>
-                            <Library className="mr-4 h-5 w-5" />
-                            Choose from Library
-                          </Button>
-                        </div>
-                      </SheetContent>
-                  </Sheet>
-
-                  <input
-                      type="file"
-                      ref={takePhotoInputRef}
-                      onChange={handleFileChange}
-                      className="hidden"
-                      accept="image/*"
-                      capture="environment"
-                      multiple
-                  />
-                  <input
-                      type="file"
-                      ref={chooseFromLibraryInputRef}
-                      onChange={handleFileChange}
-                      className="hidden"
-                      accept="image/*"
-                      multiple
-                  />
-                <div className="flex-1 flex justify-end gap-2">
-                  <Button type="button" onClick={handleAddNote} disabled={isAddingNote || (!newNote && newNotePhotos.length === 0)}>
-                      {isAddingNote && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      {isAddingNote ? "Adding..." : "Add Note"}
-                  </Button>
-                </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" onClick={handleAddNote} disabled={isAddingNote || !newNote}>
+                    {isAddingNote && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Add Note
+                </Button>
               </div>
             </div>
             <Separator />
@@ -730,6 +719,40 @@ export function WorkOrderDetails({
         workOrderId={workOrder.id}
         activity={activityForTimePosting}
         onTimeAdded={onTimeAdded}
+      />
+      <Sheet open={!!photoSheetTarget} onOpenChange={(isOpen) => !isOpen && setPhotoSheetTarget(null)}>
+          <SheetContent side="bottom">
+            <SheetHeader>
+              <SheetTitle>Add {photoSheetTarget} photos</SheetTitle>
+            </SheetHeader>
+            <div className="grid gap-4 py-4">
+              <Button type="button" variant="outline" className="justify-start" onClick={() => takePhotoInputRef.current?.click()}>
+                <Video className="mr-4 h-5 w-5" />
+                Take Photo(s)
+              </Button>
+              <Button type="button" variant="outline" className="justify-start" onClick={() => chooseFromLibraryInputRef.current?.click()}>
+                <Library className="mr-4 h-5 w-5" />
+                Choose from Library
+              </Button>
+            </div>
+          </SheetContent>
+      </Sheet>
+      <input
+          type="file"
+          ref={takePhotoInputRef}
+          onChange={handleFileChange}
+          className="hidden"
+          accept="image/*"
+          capture="environment"
+          multiple
+      />
+      <input
+          type="file"
+          ref={chooseFromLibraryInputRef}
+          onChange={handleFileChange}
+          className="hidden"
+          accept="image/*"
+          multiple
       />
     </>
   );
