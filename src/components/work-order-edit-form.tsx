@@ -65,9 +65,13 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
         if (workOrder) {
             setDescription(workOrder.description ?? '');
             setStatus(workOrder.status ?? 'Open');
-            setAssignedTechnicianId(workOrder.assignedTechnicianId || undefined);
-            setWorkSiteId(workOrder.workSiteId || undefined);
-            setClientId(workOrder.clientId || undefined);
+
+            // This is the definitive fix: ensure falsy values (null, '', undefined) become undefined
+            // so the Select component shows its placeholder.
+            setAssignedTechnicianId(workOrder.assignedTechnicianId ? workOrder.assignedTechnicianId : undefined);
+            setWorkSiteId(workOrder.workSiteId ? workOrder.workSiteId : undefined);
+            setClientId(workOrder.clientId ? workOrder.clientId : undefined);
+            
             setCreatedDate(workOrder.createdDate ? new Date(workOrder.createdDate) : undefined);
             setPoNumber(workOrder.poNumber ?? '');
             setContactInfo(workOrder.contactInfo ?? '');
@@ -90,7 +94,9 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
             
             if (url?.startsWith('tel:1-866-684-0431')) {
                 setCheckInType('emcor');
-                setEmcorWorkOrder(url.split(',,').pop() ?? '');
+                // Correctly parse the EMCOR work order number from the end of the string
+                const parts = url.split(',');
+                setEmcorWorkOrder(parts[parts.length - 1] ?? '');
             } else if (url?.startsWith('http')) {
                 setCheckInType('weblink');
                 setWebLinkUrl(url);
@@ -384,4 +390,6 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
 }
 
     
+    
+
     
