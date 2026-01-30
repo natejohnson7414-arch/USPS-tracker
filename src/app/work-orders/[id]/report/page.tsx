@@ -299,8 +299,9 @@ export default function WorkOrderReportPage() {
                          <div className="grid grid-cols-2 gap-8">
                             {allPhotoUrls.map((url, index) => (
                                 <div key={index} className="space-y-2">
-                                    <div className="relative aspect-video w-full border rounded-lg overflow-hidden">
-                                        {!!url && <Image src={proxiedUrl(url)} alt={`Work photo ${index + 1}`} fill style={{objectFit:"contain"}} unoptimized />}
+                                    <div className="w-full border rounded-lg overflow-hidden">
+                                        {/* Use a standard img tag for better html2canvas compatibility */}
+                                        {!!url && <img src={proxiedUrl(url)} alt={`Work photo ${index + 1}`} style={{ width: '100%', height: 'auto', display: 'block' }} />}
                                     </div>
                                     <p className="text-center text-sm text-gray-500">Photo {index + 1}</p>
                                 </div>
@@ -312,3 +313,4 @@ export default function WorkOrderReportPage() {
         </div>
         </div>
     );
+}
