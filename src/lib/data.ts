@@ -1,5 +1,3 @@
-
-
 'use client';
 import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client, TrainingRecord, HvacStartupReport, TimeEntry, Activity, ActivityHistoryItem } from '@/lib/types';
 import { collection, getDoc, doc, query, where, deleteDoc, updateDoc, arrayUnion } from 'firebase/firestore';
@@ -67,6 +65,23 @@ export const seedDatabase = async (db: any) => {
         console.log("Database seeding complete.");
     } else {
         console.log("Database already contains data. Skipping seed.");
+    }
+    
+    // Always ensure the non-productive work order exists
+    const nonProductiveWorkOrderRef = doc(db, 'work_orders', 'WO-24-0001');
+    const nonProductiveWorkOrderSnap = await getDocumentNonBlocking(nonProductiveWorkOrderRef);
+    if (!nonProductiveWorkOrderSnap.exists()) {
+        console.log("Creating non-productive work order...");
+        await setDocumentNonBlocking(nonProductiveWorkOrderRef, {
+            id: 'WO-24-0001',
+            jobName: 'Non-Productive Time',
+            description: 'Assign non-billable tasks like shop time, training, or meetings.',
+            status: 'Open',
+            createdDate: new Date(0).toISOString(),
+            notes: [],
+            activities: [],
+            work_history: [],
+        }, { merge: false });
     }
 }
 

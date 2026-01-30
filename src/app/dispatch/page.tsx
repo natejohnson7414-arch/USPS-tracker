@@ -7,7 +7,7 @@ import { useFirestore } from '@/firebase';
 import { getAllActivitiesWithDetails, getTechnicians, getIncompleteWorkOrders, updateWorkOrderStatus } from '@/lib/data';
 import type { Activity, Technician, WorkOrder } from '@/lib/types';
 import { startOfWeek, addDays, format, isSameDay, subDays, addWeeks, subWeeks, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isToday, endOfWeek } from 'date-fns';
-import { ChevronLeft, ChevronRight, Loader2, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Search, Coffee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+const NON_PRODUCTIVE_WO_ID = 'WO-24-0001';
 
 function TechnicianItem({ tech, techColorMap }: { tech: Technician, techColorMap: Map<string, string> }) {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -62,20 +63,31 @@ function WorkOrderItem({ wo }: { wo: WorkOrder }) {
             workOrder: wo,
         }
     });
+
+    const isNonProductive = wo.id === NON_PRODUCTIVE_WO_ID;
+    
+    const content = (
+        <div 
+            ref={setNodeRef} 
+            className={cn(
+                "p-3 border rounded-lg bg-card transition-colors",
+                isOver ? "bg-accent border-accent-foreground" : "hover:bg-muted/50",
+                isNonProductive && "bg-muted border-dashed"
+            )}
+        >
+            <p className="font-semibold">{wo.jobName}</p>
+            <p className="text-sm text-muted-foreground">#{wo.id}</p>
+            <p className="text-sm text-muted-foreground mt-1 truncate">{wo.description}</p>
+        </div>
+    );
+    
+    if (isNonProductive) {
+        return content;
+    }
     
     return (
         <Link href={`/work-orders/${wo.id}`} className="block">
-            <div 
-                ref={setNodeRef} 
-                className={cn(
-                    "p-3 border rounded-lg bg-card transition-colors",
-                    isOver ? "bg-accent border-accent-foreground" : "hover:bg-muted/50"
-                )}
-            >
-                <p className="font-semibold">{wo.jobName}</p>
-                <p className="text-sm text-muted-foreground">#{wo.id}</p>
-                <p className="text-sm text-muted-foreground mt-1 truncate">{wo.description}</p>
-            </div>
+            {content}
         </Link>
     )
 }
@@ -94,18 +106,26 @@ function DraggableActivityItem({ activity, techColorMap }: { activity: Activity,
         opacity: isDragging ? 0.5 : 1,
     };
     
+    const isNonProductive = activity.workOrderId === NON_PRODUCTIVE_WO_ID;
+    
     return (
         <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="w-full touch-none">
             <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        <div className={cn('p-1.5 text-xs text-white rounded cursor-grab shadow truncate', techColorMap.get(activity.technicianId) || 'bg-gray-400')}>
-                            {activity.technician?.name || 'Unassigned'}
+                        <div className={cn(
+                            'p-1.5 text-xs text-white rounded cursor-grab shadow flex items-center', 
+                            isNonProductive 
+                                ? 'bg-slate-500' // A neutral color
+                                : techColorMap.get(activity.technicianId) || 'bg-gray-400'
+                        )}>
+                             {isNonProductive && <Coffee className="h-3 w-3 mr-1.5 shrink-0" />}
+                            <span className="truncate">{activity.technician?.name || 'Unassigned'}</span>
                         </div>
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs">
-                        <p className="font-bold">{activity.parentWorkOrder?.workSite?.name || 'No Work Site'}</p>
-                        <p className="text-sm text-muted-foreground">{activity.parentWorkOrder?.jobName}</p>
+                        <p className="font-bold">{activity.parentWorkOrder?.jobName}</p>
+                        <p className="text-sm text-muted-foreground">{activity.parentWorkOrder?.workSite?.name || 'No Work Site'}</p>
                         <p className="mt-2">{activity.description}</p>
                     </TooltipContent>
                 </Tooltip>
@@ -134,7 +154,11 @@ function ScheduleActivityDialog({
     
     useEffect(() => {
         if(isOpen) {
-            setDescription(`Schedule ${technician?.name} for job: ${workOrder?.jobName}`);
+             if (workOrder?.id === NON_PRODUCTIVE_WO_ID) {
+                setDescription('');
+             } else {
+                setDescription(`Schedule ${technician?.name} for job: ${workOrder?.jobName}`);
+             }
             setScheduledDate(new Date());
         }
     }, [isOpen, technician, workOrder]);
@@ -276,7 +300,14 @@ export default function DispatchBoardPage() {
                     const [fetchedActivities, fetchedTechnicians, fetchedWorkOrders] = await Promise.all([activitiesPromise, techniciansPromise, workOrdersPromise]);
                     setActivities(fetchedActivities);
                     setTechnicians(fetchedTechnicians);
-                    setWorkOrders(fetchedWorkOrders);
+                    
+                    const sortedWorkOrders = fetchedWorkOrders.sort((a, b) => {
+                        if (a.id === NON_PRODUCTIVE_WO_ID) return -1;
+                        if (b.id === NON_PRODUCTIVE_WO_ID) return 1;
+                        return new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime();
+                    });
+
+                    setWorkOrders(sortedWorkOrders);
                 } else {
                     const [fetchedActivities, fetchedTechnicians] = await Promise.all([activitiesPromise, techniciansPromise]);
                     setActivities(fetchedActivities);
