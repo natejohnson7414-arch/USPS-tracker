@@ -434,6 +434,23 @@ export default function WorkOrderDetailPage() {
       }
   };
 
+  const handleDeleteActivity = async (activityId: string) => {
+    if (!db || !workOrder) return;
+    const activityRef = doc(db, 'work_orders', workOrder.id, 'activities', activityId);
+    try {
+        await deleteDocumentNonBlocking(activityRef);
+        toast({ title: 'Activity Deleted' });
+        await updateWorkOrderStatus(db, workOrder.id);
+        fetchData();
+    } catch (error) {
+        console.error('Error deleting activity:', error);
+        if (error instanceof Error && !error.message.includes('permission-error')) {
+            toast({ title: 'Delete Failed', variant: 'destructive' });
+        }
+    }
+  };
+
+
   if (isLoading || !workOrder) {
     return (
       <MainLayout>
@@ -445,6 +462,7 @@ export default function WorkOrderDetailPage() {
   }
 
   const isTechnician = currentUserRole?.name === 'Technician';
+  const isAdmin = currentUserRole?.name === 'Administrator';
 
   return (
     <MainLayout>
@@ -486,6 +504,7 @@ export default function WorkOrderDetailPage() {
                 <WorkOrderDetails
                     workOrder={workOrder}
                     isTechnician={isTechnician}
+                    isAdmin={isAdmin}
                     trainingRecords={trainingRecords}
                     onTrainingRecordDelete={handleTrainingRecordDelete}
                     timeEntries={timeEntries}
@@ -513,6 +532,7 @@ export default function WorkOrderDetailPage() {
                     onContactInfoUpdate={handleContactInfoUpdate}
                     onAddActivity={handleAddActivity}
                     onUpdateActivityStatus={handleUpdateActivityStatus}
+                    onDeleteActivity={handleDeleteActivity}
                     technicians={technicians}
                 />
             )}

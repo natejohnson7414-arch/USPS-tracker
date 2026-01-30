@@ -77,13 +77,15 @@ const AddActivityForm = ({ technicians, onAddActivity, isLoading }: { technician
     );
 };
 
-const ActivityItem = ({ activity, onUpdateStatus, isTechnician, technicians, currentUserId, onAddTimeClick }: { 
+const ActivityItem = ({ activity, onUpdateStatus, isTechnician, technicians, currentUserId, onAddTimeClick, isAdmin, onDeleteClick }: { 
     activity: Activity, 
     onUpdateStatus: (id: string, status: Activity['status']) => void, 
     isTechnician: boolean, 
+    isAdmin: boolean,
     technicians: Technician[],
     currentUserId?: string,
     onAddTimeClick: () => void,
+    onDeleteClick: () => void,
 }) => {
     const assignedTechnician = activity.technician || technicians.find(t => t.id === activity.technicianId);
     
@@ -114,7 +116,7 @@ const ActivityItem = ({ activity, onUpdateStatus, isTechnician, technicians, cur
                         Time Posting
                     </Button>
                 )}
-                 <Select value={activity.status} onValueChange={(status: Activity['status']) => onUpdateStatus(activity.id, status)}>
+                 <Select value={activity.status} onValueChange={(status: Activity['status']) => onUpdateStatus(activity.id, status)} disabled={!isAdmin && isTechnician && !isCurrentUserAssigned}>
                     <SelectTrigger className="w-[180px]">
                         <SelectValue />
                     </SelectTrigger>
@@ -125,6 +127,12 @@ const ActivityItem = ({ activity, onUpdateStatus, isTechnician, technicians, cur
                         <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
                 </Select>
+                 {isAdmin && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onDeleteClick}>
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Delete Activity</span>
+                    </Button>
+                )}
             </div>
         </div>
     );
@@ -135,6 +143,7 @@ const ActivityItem = ({ activity, onUpdateStatus, isTechnician, technicians, cur
 interface WorkOrderDetailsProps {
   workOrder: WorkOrder;
   isTechnician: boolean;
+  isAdmin: boolean;
   trainingRecords: TrainingRecord[];
   onTrainingRecordDelete: (recordId: string) => void;
   timeEntries: TimeEntry[];
@@ -162,12 +171,14 @@ interface WorkOrderDetailsProps {
   onContactInfoUpdate: () => void;
   onAddActivity: (activity: Omit<Activity, 'id' | 'createdDate' | 'workOrderId'>) => void;
   onUpdateActivityStatus: (activityId: string, status: Activity['status']) => void;
+  onDeleteActivity: (activityId: string) => void;
   technicians: Technician[];
 }
 
 export function WorkOrderDetails({
   workOrder,
   isTechnician,
+  isAdmin,
   trainingRecords,
   onTrainingRecordDelete,
   timeEntries,
@@ -192,6 +203,7 @@ export function WorkOrderDetails({
   onContactInfoUpdate,
   onAddActivity,
   onUpdateActivityStatus,
+  onDeleteActivity,
   technicians
 }: WorkOrderDetailsProps) {
   const db = useFirestore();
@@ -205,6 +217,7 @@ export function WorkOrderDetails({
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
   const [timeEntryToDelete, setTimeEntryToDelete] = useState<string | null>(null);
   const [trainingRecordToDelete, setTrainingRecordToDelete] = useState<string | null>(null);
+  const [activityToDelete, setActivityToDelete] = useState<Activity | null>(null);
   const [isAddTimeOpen, setIsAddTimeOpen] = useState(false);
   const [activityForTimePosting, setActivityForTimePosting] = useState<Activity | null>(null);
 
@@ -279,6 +292,13 @@ export function WorkOrderDetails({
       }
   };
     
+  const confirmDeleteActivity = () => {
+    if (activityToDelete) {
+        onDeleteActivity(activityToDelete.id);
+        setActivityToDelete(null);
+    }
+  };
+
   const getLinkUrl = (url: string | undefined) => {
     if (!url) return '#';
     if (url.startsWith('http')) {
@@ -390,6 +410,8 @@ export function WorkOrderDetails({
                       isTechnician={isTechnician} 
                       currentUserId={user?.uid}
                       onAddTimeClick={() => handleAddTimeClick(activity)}
+                      isAdmin={isAdmin}
+                      onDeleteClick={() => setActivityToDelete(activity)}
                     />
                   ))
                 ) : (
@@ -703,6 +725,21 @@ export function WorkOrderDetails({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDeleteTrainingRecord}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+       <AlertDialog open={!!activityToDelete} onOpenChange={(open) => !open && setActivityToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this scheduled activity.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteActivity}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
