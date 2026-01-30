@@ -118,7 +118,7 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
         switch (checkInType) {
             case 'emcor':
                 if (emcorWorkOrder) {
-                    finalCheckInOutURL = `tel:1-866-684-0431,,,,,1,,,1,500047#,,${emcorWorkOrder}`;
+                    finalCheckInOutURL = 'tel:1-866-684-0431,,,,,1,,,1,500047#,' + emcorWorkOrder;
                 }
                 break;
             case 'weblink':

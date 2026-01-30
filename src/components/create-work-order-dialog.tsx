@@ -123,12 +123,6 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
     setErrors({});
   };
   
-  useEffect(() => {
-    if (showCreateSitePrompt && newSiteName) {
-        setNewSiteName(newSiteName);
-    }
-  }, [showCreateSitePrompt, newSiteName]);
-
   const handlePdfUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -295,7 +289,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
     switch (checkInType) {
         case 'emcor':
             if (emcorWorkOrder) {
-                finalCheckInOutURL = `tel:1-866-684-0431,,,,,1,,,1,500047#,,${emcorWorkOrder}`;
+                finalCheckInOutURL = 'tel:1-866-684-0431,,,,,1,,,1,500047#,' + emcorWorkOrder;
             }
             break;
         case 'weblink':
