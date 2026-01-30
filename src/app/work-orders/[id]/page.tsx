@@ -472,15 +472,15 @@ export default function WorkOrderDetailPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => router.push(`/work-orders/${id}/report?action=print`)}>
+                        <DropdownMenuItem onSelect={() => router.push(`/work-orders/${id}/report?action=print`)}>
                           <Printer className="mr-2 h-4 w-4" />
                           Print
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => router.push(`/work-orders/${id}/report?action=download`)}>
+                        <DropdownMenuItem onSelect={() => router.push(`/work-orders/${id}/report?action=download`)}>
                           <Download className="mr-2 h-4 w-4" />
                           Download PDF
                         </DropdownMenuItem>
-                         <DropdownMenuItem onClick={() => setIsReportDialogOpen(true)}>
+                         <DropdownMenuItem onSelect={() => setIsReportDialogOpen(true)}>
                           Preview
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -548,7 +548,7 @@ export default function WorkOrderDetailPage() {
             onOpenChange={() => setSelectedAddress(null)} 
         />
         <Dialog open={isSignatureDialogOpen} onOpenChange={setIsSignatureDialogOpen}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="h-[90vh] w-[90vw] max-w-full flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Customer Signature</DialogTitle>
                     <DialogDescription>Please sign in the box below.</DialogDescription>
@@ -556,6 +556,7 @@ export default function WorkOrderDetailPage() {
                 <SignaturePad 
                     onSave={handleSignatureSave}
                     onClear={() => {}}
+                    className="flex-1 min-h-0 py-4"
                 />
             </DialogContent>
         </Dialog>

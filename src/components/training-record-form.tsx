@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -399,7 +398,7 @@ export function TrainingRecordForm({ record, onFormSaved, onCancel }: TrainingRe
         </div>
     </div>
     <Dialog open={isSignatureDialogOpen} onOpenChange={setIsSignatureDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="h-[90vh] w-[90vw] max-w-full flex flex-col">
             <DialogHeader>
                 <DialogTitle>Provide Signature</DialogTitle>
                 <DialogDescription>Please sign in the box below.</DialogDescription>
@@ -407,6 +406,7 @@ export function TrainingRecordForm({ record, onFormSaved, onCancel }: TrainingRe
             <SignaturePad 
                 onSave={handleSignatureSave}
                 onClear={() => {}}
+                className="flex-1 min-h-0 py-4"
             />
         </DialogContent>
     </Dialog>
