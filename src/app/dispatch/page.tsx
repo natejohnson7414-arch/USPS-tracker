@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -181,6 +182,33 @@ const techColors = [
     'bg-pink-500', 'bg-indigo-500', 'bg-teal-500', 'bg-rose-500',
     'bg-cyan-500', 'bg-lime-500'
 ];
+
+function CalendarDay({ day, dayActivities, techColorMap, view, index, totalDays }: { day: Date, dayActivities: Activity[], techColorMap: Map<string, string>, view: 'week' | 'day', index: number, totalDays: number }) {
+    const dayKey = format(day, 'yyyy-MM-dd');
+    const { setNodeRef, isOver } = useDroppable({
+        id: dayKey,
+        data: { type: 'day', date: day }
+    });
+
+    return (
+        <div className={cn(
+            "flex flex-col flex-shrink-0",
+            view === 'week' ? "w-[14.28%] min-w-[170px]" : "w-full",
+            index < totalDays - 1 && "border-r border-border"
+        )}>
+            <div className="p-2 border-b text-center font-semibold bg-muted/25">
+                <p className="text-sm">{format(day, 'EEE')}</p>
+                <p className="text-2xl">{format(day, 'd')}</p>
+            </div>
+            <div ref={setNodeRef} className={cn("p-2 space-y-2 flex-grow min-h-[200px] overflow-hidden", isOver && "bg-accent")}>
+                {dayActivities.map(activity => (
+                    <DraggableActivityItem key={activity.id} activity={activity} techColorMap={techColorMap} />
+                ))}
+            </div>
+        </div>
+    );
+}
+
 
 export default function DispatchBoardPage() {
     const db = useFirestore();
@@ -457,31 +485,21 @@ export default function DispatchBoardPage() {
                     </div>
 
                     <div className="overflow-x-auto pb-4">
-                        <div className="flex rounded-lg border">
+                         <div className="flex rounded-lg border">
                             {calendarDays.map((day, index) => {
                                 const dayKey = format(day, 'yyyy-MM-dd');
                                 const dayActivities = activitiesByDay.get(dayKey) || [];
-                                const { setNodeRef, isOver } = useDroppable({
-                                    id: dayKey,
-                                    data: { type: 'day', date: day }
-                                });
                                 return (
-                                    <div key={dayKey} className={cn(
-                                        "flex flex-col flex-shrink-0", 
-                                        view === 'week' ? "w-[14.28%] min-w-[170px]" : "w-full",
-                                        index < calendarDays.length - 1 && "border-r border-border"
-                                    )}>
-                                        <div className="p-2 border-b text-center font-semibold bg-muted/25">
-                                            <p className="text-sm">{format(day, 'EEE')}</p>
-                                            <p className="text-2xl">{format(day, 'd')}</p>
-                                        </div>
-                                        <div ref={setNodeRef} className={cn("p-2 space-y-2 flex-grow min-h-[200px] overflow-hidden", isOver && "bg-accent")}>
-                                            {dayActivities.map(activity => (
-                                                <DraggableActivityItem key={activity.id} activity={activity} techColorMap={techColorMap} />
-                                            ))}
-                                        </div>
-                                    </div>
-                                )
+                                    <CalendarDay
+                                        key={dayKey}
+                                        day={day}
+                                        dayActivities={dayActivities}
+                                        techColorMap={techColorMap}
+                                        view={view}
+                                        index={index}
+                                        totalDays={calendarDays.length}
+                                    />
+                                );
                             })}
                         </div>
                     </div>
