@@ -31,27 +31,59 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const NON_PRODUCTIVE_WO_ID = '24-0001';
 
-function TechnicianItem({ tech, techColorMap }: { tech: Technician, techColorMap: Map<string, string> }) {
+function TechnicianItem({ tech, techColorMap, isMultiSelect, isSelected, onToggleSelect }: { tech: Technician, techColorMap: Map<string, string>, isMultiSelect: boolean, isSelected: boolean, onToggleSelect: (id: string) => void }) {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id: `technician-${tech.id}`,
          data: {
             type: 'technician',
             technician: tech,
-        }
+        },
+        disabled: isMultiSelect
     });
     const style = {
-        transform: CSS.Translate.toString(transform),
+        transform: isMultiSelect ? undefined : CSS.Translate.toString(transform),
         opacity: isDragging ? 0.5 : 1,
     };
 
     return (
-        <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="flex items-center gap-3 p-2 rounded-md border cursor-grab bg-card touch-none">
+        <div 
+            ref={isMultiSelect ? undefined : setNodeRef}
+            style={style}
+            {...(isMultiSelect ? {} : listeners)}
+            {...(isMultiSelect ? {} : attributes)}
+            onClick={isMultiSelect ? () => onToggleSelect(tech.id) : undefined}
+            className={cn("flex items-center gap-3 p-2 rounded-md border touch-none", 
+                isMultiSelect ? "cursor-pointer hover:bg-muted" : "cursor-grab bg-card",
+                isSelected && isMultiSelect && "ring-2 ring-primary bg-accent text-accent-foreground"
+            )}
+        >
+            {isMultiSelect && <Checkbox checked={isSelected} readOnly className="mr-2" />}
             <div className={cn("h-4 w-4 rounded-full", techColorMap.get(tech.id))}></div>
             <span className="text-sm font-medium">{tech.name}</span>
         </div>
+    );
+}
+
+function DraggableTechnicianGroup({ selectedTechnicians }: { selectedTechnicians: Technician[] }) {
+    const { attributes, listeners, setNodeRef } = useDraggable({
+        id: 'technician-group',
+        data: {
+            type: 'technician-group',
+            technicians: selectedTechnicians,
+        }
+    });
+
+    if (selectedTechnicians.length === 0) return null;
+    
+    return (
+         <div ref={setNodeRef} {...listeners} {...attributes} className="flex items-center justify-center gap-3 p-2 my-2 rounded-md border-2 border-primary cursor-grab bg-primary/10 touch-none">
+            <span className="text-sm font-medium text-primary">Drag {selectedTechnicians.length} Technicians</span>
+         </div>
     );
 }
 
@@ -137,14 +169,14 @@ function DraggableActivityItem({ activity, techColorMap }: { activity: Activity,
 function ScheduleActivityDialog({ 
     isOpen, 
     onOpenChange, 
-    technician, 
+    technicians, 
     workOrder,
     onSubmit,
     isSubmitting
 }: { 
     isOpen: boolean, 
     onOpenChange: (open: boolean) => void,
-    technician: Technician | null,
+    technicians: Technician[] | null,
     workOrder: WorkOrder | null,
     onSubmit: (data: { description: string, scheduledDate: Date }) => void,
     isSubmitting: boolean,
@@ -153,15 +185,16 @@ function ScheduleActivityDialog({
     const [scheduledDate, setScheduledDate] = useState<Date | undefined>(new Date());
     
     useEffect(() => {
-        if(isOpen) {
+        if(isOpen && technicians && technicians.length > 0) {
+             const techNames = technicians.map(t => t.name).join(', ');
              if (workOrder?.id === NON_PRODUCTIVE_WO_ID) {
                 setDescription('');
              } else {
-                setDescription(`Schedule ${technician?.name} for job: ${workOrder?.jobName}`);
+                setDescription(`Schedule ${techNames} for job: ${workOrder?.jobName}`);
              }
             setScheduledDate(new Date());
         }
-    }, [isOpen, technician, workOrder]);
+    }, [isOpen, technicians, workOrder]);
 
     const handleSubmit = () => {
         if (description && scheduledDate) {
@@ -175,7 +208,7 @@ function ScheduleActivityDialog({
                 <DialogHeader>
                     <DialogTitle>Schedule New Activity</DialogTitle>
                     <DialogDescription>
-                        Assign <span className="font-semibold">{technician?.name}</span> to work order <span className="font-semibold">#{workOrder?.id}</span>.
+                        Assign <span className="font-semibold">{technicians?.map(t => t.name).join(', ')}</span> to work order <span className="font-semibold">#{workOrder?.id}</span>.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
@@ -222,7 +255,7 @@ function CalendarDay({ day, dayActivities, techColorMap, view, index, totalDays,
             (view === 'week' || view === 'two-week') && index < totalDays - 1 && "border-r",
             isMonthView && "border-b",
             isMonthView && (index + 1) % 7 !== 0 && "border-r",
-            isMonthView && monthParity === 'odd' && 'bg-muted/50'
+            isMonthView && monthParity === 'odd' && 'bg-muted/40'
         )}>
             {!isMonthView && (
                  <div className="p-2 border-b text-center font-semibold bg-muted/25">
@@ -261,12 +294,15 @@ export default function DispatchBoardPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [searchTerm, setSearchTerm] = useState('');
 
-    const [selectedTechnician, setSelectedTechnician] = useState<Technician | null>(null);
+    const [techniciansToSchedule, setTechniciansToSchedule] = useState<Technician[]>([]);
     const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrder | null>(null);
     const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [activeDragItem, setActiveDragItem] = useState<any>(null);
+
+    const [isMultiSelect, setIsMultiSelect] = useState(false);
+    const [selectedTechIds, setSelectedTechIds] = useState<string[]>([]);
 
     const [view, setView] = useState<'week' | 'day' | 'two-week' | 'month'>('week');
 
@@ -344,7 +380,7 @@ export default function DispatchBoardPage() {
                 start = startOfWeek(currentDate, { weekStartsOn });
                 return Array.from({ length: 14 }, (_, i) => addDays(start, i));
             case 'month':
-                start = startOfWeek(currentDate, { weekStartsOn });
+                 start = startOfWeek(currentDate, { weekStartsOn });
                 return Array.from({ length: 35 }, (_, i) => addDays(start, i)); // 5 weeks
             default:
                 start = startOfWeek(currentDate, { weekStartsOn });
@@ -358,13 +394,13 @@ export default function DispatchBoardPage() {
                 setCurrentDate(subDays(currentDate, 1));
                 break;
             case 'week':
-                setCurrentDate(subWeeks(currentDate, 1));
+                 setCurrentDate(subWeeks(currentDate, 1));
                 break;
             case 'two-week':
                 setCurrentDate(subWeeks(currentDate, 2));
                 break;
             case 'month':
-                setCurrentDate(subWeeks(currentDate, 1));
+                 setCurrentDate(subWeeks(currentDate, 1));
                 break;
         }
     }
@@ -448,59 +484,70 @@ export default function DispatchBoardPage() {
         setActiveId(null);
         setActiveDragItem(null);
 
-        if (over) {
-            if (active.data.current?.type === 'activity' && over.data.current?.type === 'day') {
-                const activity = active.data.current.activity as Activity;
-                const newDate = over.data.current.date as Date;
-                if (!isSameDay(new Date(activity.scheduled_date), newDate)) {
-                    handleActivityDateChange(activity, newDate);
-                }
-            } else if (active.data.current?.type === 'technician' && over.data.current?.type === 'workorder') {
-                const technician = active.data.current.technician as Technician;
-                const workOrder = over.data.current.workOrder as WorkOrder;
+        if (!over) return;
 
-                if (technician && workOrder) {
-                    setSelectedTechnician(technician);
-                    setSelectedWorkOrder(workOrder);
-                    setIsScheduleModalOpen(true);
-                }
+        if (active.data.current?.type === 'activity' && over.data.current?.type === 'day') {
+            const activity = active.data.current.activity as Activity;
+            const newDate = over.data.current.date as Date;
+            if (!isSameDay(new Date(activity.scheduled_date), newDate)) {
+                handleActivityDateChange(activity, newDate);
+            }
+        } else if (active.data.current?.type === 'technician' && over.data.current?.type === 'workorder') {
+            const technician = active.data.current.technician as Technician;
+            const workOrder = over.data.current.workOrder as WorkOrder;
+
+            if (technician && workOrder) {
+                setTechniciansToSchedule([technician]);
+                setSelectedWorkOrder(workOrder);
+                setIsScheduleModalOpen(true);
+            }
+        } else if (active.data.current?.type === 'technician-group' && over.data.current?.type === 'workorder') {
+            const technicians = active.data.current.technicians as Technician[];
+            const workOrder = over.data.current.workOrder as WorkOrder;
+
+            if (technicians.length > 0 && workOrder) {
+                setTechniciansToSchedule(technicians);
+                setSelectedWorkOrder(workOrder);
+                setIsScheduleModalOpen(true);
             }
         }
     }
 
     async function handleScheduleActivity(data: { description: string, scheduledDate: Date }) {
-        if (!db || !selectedTechnician || !selectedWorkOrder) return;
+        if (!db || !techniciansToSchedule || techniciansToSchedule.length === 0 || !selectedWorkOrder) return;
 
         setIsSubmitting(true);
 
         try {
-            const activityData = {
-                description: data.description,
-                scheduled_date: data.scheduledDate.toISOString(),
-                technicianId: selectedTechnician.id,
-                workOrderId: selectedWorkOrder.id,
-                createdDate: new Date().toISOString(),
-                status: 'scheduled' as const,
-            };
+            const createActivityPromises = techniciansToSchedule.map(tech => {
+                const activityData = {
+                    description: data.description,
+                    scheduled_date: data.scheduledDate.toISOString(),
+                    technicianId: tech.id,
+                    workOrderId: selectedWorkOrder.id,
+                    createdDate: new Date().toISOString(),
+                    status: 'scheduled' as const,
+                };
+                const activitiesColRef = collection(db, 'work_orders', selectedWorkOrder.id, 'activities');
+                return addDocumentNonBlocking(activitiesColRef, activityData).then(docRef => ({
+                    ...activityData,
+                    id: docRef.id,
+                    technician: tech,
+                     parentWorkOrder: {
+                        id: selectedWorkOrder.id,
+                        jobName: selectedWorkOrder.jobName,
+                        workSite: workOrders.find(wo => wo.id === selectedWorkOrder.id)?.workSite
+                    }
+                }));
+            });
+            
+            const newActivities = await Promise.all(createActivityPromises);
 
-            const activitiesColRef = collection(db, 'work_orders', selectedWorkOrder.id, 'activities');
-            const newDoc = await addDocumentNonBlocking(activitiesColRef, activityData);
-
-            const newActivity: Activity = {
-                ...activityData,
-                id: newDoc.id,
-                technician: selectedTechnician,
-                parentWorkOrder: {
-                    id: selectedWorkOrder.id,
-                    jobName: selectedWorkOrder.jobName,
-                    workSite: workOrders.find(wo => wo.id === selectedWorkOrder.id)?.workSite
-                }
-            };
-            setActivities(prev => [...prev, newActivity]);
+            setActivities(prev => [...prev, ...newActivities]);
 
             await updateWorkOrderStatus(db, selectedWorkOrder.id);
             
-            toast({ title: 'Activity Scheduled Successfully' });
+            toast({ title: `${newActivities.length} Activities Scheduled Successfully` });
             
             const incompleteOrders = await getIncompleteWorkOrders(db);
             const sortedOrders = incompleteOrders.sort((a, b) => {
@@ -518,6 +565,7 @@ export default function DispatchBoardPage() {
         } finally {
             setIsSubmitting(false);
             setIsScheduleModalOpen(false);
+            setSelectedTechIds([]);
         }
     }
 
@@ -528,16 +576,8 @@ export default function DispatchBoardPage() {
         }
         
         let start, end;
-        if (view === 'week' || view === 'month') {
-            start = startOfWeek(currentDate, { weekStartsOn });
-            end = addDays(start, calendarDays.length - 1);
-        } else if (view === 'two-week') { 
-            start = startOfWeek(currentDate, { weekStartsOn });
-            end = addDays(start, 13);
-        } else {
-            start = startOfWeek(currentDate, { weekStartsOn });
-            end = addDays(start, 6);
-        }
+        start = startOfWeek(currentDate, { weekStartsOn });
+        end = addDays(start, calendarDays.length - 1);
         
         if (start.getMonth() === end.getMonth()) {
             return `${format(start, 'MMMM d')} - ${format(end, 'd, yyyy')}`;
@@ -548,6 +588,19 @@ export default function DispatchBoardPage() {
         return `${format(start, 'MMM d, yyyy')} - ${format(end, 'MMM d, yyyy')}`;
 
     }, [currentDate, view, calendarDays]);
+
+    const handleMultiSelectToggle = (checked: boolean) => {
+        setIsMultiSelect(checked);
+        setSelectedTechIds([]); // Reset selection when toggling
+    };
+
+    const handleToggleTechSelection = (techId: string) => {
+        setSelectedTechIds(prev =>
+            prev.includes(techId)
+                ? prev.filter(id => id !== techId)
+                : [...prev, techId]
+        );
+    };
 
     if (isLoading || isRoleLoading) {
         return (
@@ -627,8 +680,8 @@ export default function DispatchBoardPage() {
                                                 dayActivities={dayActivities}
                                                 techColorMap={techColorMap}
                                                 view={view}
-                                                index={index}
-                                                totalDays={7}
+                                                index={index + 7}
+                                                totalDays={14}
                                             />
                                         );
                                     })}
@@ -667,13 +720,35 @@ export default function DispatchBoardPage() {
                         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div>
                                 <Card>
-                                    <CardHeader>
-                                        <CardTitle>Technician Key</CardTitle>
+                                     <CardHeader>
+                                        <div className="flex items-center justify-between">
+                                            <CardTitle>Technician Key</CardTitle>
+                                            <div className="flex items-center space-x-2">
+                                                <Label htmlFor="multi-select-toggle">Multi-select</Label>
+                                                <Switch
+                                                    id="multi-select-toggle"
+                                                    checked={isMultiSelect}
+                                                    onCheckedChange={handleMultiSelectToggle}
+                                                />
+                                            </div>
+                                        </div>
                                     </CardHeader>
                                     <CardContent>
                                         <div className="flex flex-col gap-3">
+                                            {isMultiSelect && (
+                                                <DraggableTechnicianGroup
+                                                    selectedTechnicians={technicians.filter(t => selectedTechIds.includes(t.id))}
+                                                />
+                                            )}
                                             {technicians.map(tech => (
-                                                <TechnicianItem key={tech.id} tech={tech} techColorMap={techColorMap} />
+                                                <TechnicianItem 
+                                                    key={tech.id} 
+                                                    tech={tech} 
+                                                    techColorMap={techColorMap} 
+                                                    isMultiSelect={isMultiSelect}
+                                                    isSelected={selectedTechIds.includes(tech.id)}
+                                                    onToggleSelect={handleToggleTechSelection}
+                                                />
                                             ))}
                                         </div>
                                     </CardContent>
@@ -721,13 +796,17 @@ export default function DispatchBoardPage() {
                              <div className={cn("h-4 w-4 rounded-full", techColorMap.get(activeDragItem.technician.id))}></div>
                             <span className="text-sm font-medium">{activeDragItem.technician.name}</span>
                         </div>
+                    ) : activeId && activeDragItem?.type === 'technician-group' ? (
+                         <div className="flex items-center justify-center gap-3 p-2 rounded-md border cursor-grabbing bg-primary text-primary-foreground shadow-lg">
+                            <span className="text-sm font-medium">{activeDragItem.technicians.length} technicians</span>
+                        </div>
                     ) : null}
                 </DragOverlay>
             </DndContext>
             <ScheduleActivityDialog
                 isOpen={isScheduleModalOpen}
                 onOpenChange={setIsScheduleModalOpen}
-                technician={selectedTechnician}
+                technicians={techniciansToSchedule}
                 workOrder={selectedWorkOrder}
                 onSubmit={handleScheduleActivity}
                 isSubmitting={isSubmitting}
