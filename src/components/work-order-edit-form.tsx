@@ -65,9 +65,9 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
         if (workOrder) {
             setDescription(workOrder.description ?? '');
             setStatus(workOrder.status ?? 'Open');
-            setAssignedTechnicianId(workOrder.assignedTechnicianId ?? undefined);
-            setWorkSiteId(workOrder.workSiteId ?? undefined);
-            setClientId(workOrder.clientId ?? undefined);
+            setAssignedTechnicianId(workOrder.assignedTechnicianId || undefined);
+            setWorkSiteId(workOrder.workSiteId || undefined);
+            setClientId(workOrder.clientId || undefined);
             setCreatedDate(workOrder.createdDate ? new Date(workOrder.createdDate) : undefined);
             setPoNumber(workOrder.poNumber ?? '');
             setContactInfo(workOrder.contactInfo ?? '');
@@ -382,6 +382,8 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
         </form>
     );
 }
+    
+
     
 
     
