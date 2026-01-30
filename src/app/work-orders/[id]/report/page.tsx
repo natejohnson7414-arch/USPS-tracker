@@ -27,6 +27,13 @@ export default function WorkOrderReportPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isDownloading, setIsDownloading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isInIframe, setIsInIframe] = useState(false);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setIsInIframe(window.self !== window.top);
+        }
+    }, []);
 
     useEffect(() => {
         if (!id || !db) return;
@@ -120,7 +127,7 @@ export default function WorkOrderReportPage() {
     
     useEffect(() => {
         const action = searchParams.get('action');
-        if (!isLoading && action) {
+        if (!isLoading && action && !isInIframe) {
             if (action === 'download') {
                 handleDownload();
             } else if (action === 'print') {
@@ -129,7 +136,7 @@ export default function WorkOrderReportPage() {
             }
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isLoading, searchParams]);
+    }, [isLoading, searchParams, isInIframe]);
 
     const action = searchParams.get('action');
 
@@ -166,8 +173,8 @@ export default function WorkOrderReportPage() {
 
     return (
         <div className="bg-gray-100 min-h-screen py-8">
-            {!action && (
-                <div id="action-buttons" className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-2">
+            {!action && !isInIframe && (
+                <div id="action-buttons" className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-2 print:hidden">
                     <Button onClick={handlePrint}>
                         <Printer className="mr-2 h-4 w-4" />
                         Print
@@ -291,8 +298,3 @@ export default function WorkOrderReportPage() {
         </div>
         </div>
     );
-
-    
-
-    
-

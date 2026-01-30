@@ -35,6 +35,7 @@ import {
 import { SignaturePad } from '@/components/signature-pad';
 import { useTechnician as useRoleData } from '@/hooks/use-technician';
 import { WorkOrderEditForm } from '@/components/work-order-edit-form';
+import { ReportPreviewDialog } from '@/components/report-preview-dialog';
 
 export default function WorkOrderDetailPage() {
   const params = useParams();
@@ -483,25 +484,11 @@ export default function WorkOrderDetailPage() {
                 />
             </DialogContent>
         </Dialog>
-        <AlertDialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Generate Report</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        How would you like to generate the report for Work Order #{workOrder.id}?
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => window.open(`/work-orders/${id}/report?action=print`, '_blank')}>Print</AlertDialogAction>
-                    <AlertDialogAction onClick={() => window.open(`/work-orders/${id}/report?action=download`, '_blank')}>Download PDF</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+        <ReportPreviewDialog
+            isOpen={isReportDialogOpen}
+            onOpenChange={setIsReportDialogOpen}
+            workOrderId={workOrder.id}
+        />
     </MainLayout>
   );
 }
-
-    
-
-    
