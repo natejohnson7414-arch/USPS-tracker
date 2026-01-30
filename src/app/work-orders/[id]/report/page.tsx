@@ -175,26 +175,34 @@ export default function WorkOrderReportPage() {
                 <main>
                     <h1 className="text-center font-bold text-lg tracking-wider mb-4">WORK ACKNOWLEDGEMENT LETTER</h1>
                     
-                    <div className="flex items-start gap-4">
-                        <div className="w-1/3 space-y-2 text-sm">
-                            <p>Facility Name:</p>
-                            <p>Work Description:</p>
-                            <div className="h-24"></div>
-                            <p>Contractor:</p>
-                            <p>Call #/Problem #:</p>
-                            <p>Temp upon Arrival:</p>
-                            <p>Temp upon Leaving:</p>
-                            <p>Before and After Pictures:</p>
+                    <div className="space-y-[-2px]">
+                        <div className="flex items-stretch">
+                            <div className="w-1/3 flex items-center pr-4 text-sm"><p>Facility Name:</p></div>
+                            <div className="w-2/3 border-2 border-black p-2 text-sm font-medium -ml-px -mt-px flex items-center min-h-[2rem]">{workOrder.workSite?.name || ''}</div>
                         </div>
-
-                        <div className="w-2/3 border-2 border-black text-sm">
-                            <div className="p-2 border-b-2 border-black font-medium">{workOrder.workSite?.name || ''}</div>
-                            <div className="p-2 border-b-2 border-black min-h-[9.5rem] break-words">{summarizedDescription}</div>
-                            <div className="p-2 border-b-2 border-black font-medium">Crawford Co</div>
-                            <div className="p-2 border-b-2 border-black min-h-[1.8rem]">{workOrder.customerPO || ''}</div>
-                            <div className="p-2 border-b-2 border-black min-h-[1.8rem]">{workOrder.tempOnArrival || ''}</div>
-                            <div className="p-2 border-b-2 border-black min-h-[1.8rem]">{workOrder.tempOnLeaving || ''}</div>
-                            <div className="p-2 font-medium">See below</div>
+                        <div className="flex items-stretch">
+                            <div className="w-1/3 flex items-start pt-2 pr-4 text-sm"><p>Work Description:</p></div>
+                            <div className="w-2/3 border-2 border-black p-2 text-sm -ml-px -mt-px min-h-[9.5rem] break-words">{summarizedDescription}</div>
+                        </div>
+                        <div className="flex items-stretch">
+                            <div className="w-1/3 flex items-center pr-4 text-sm"><p>Contractor:</p></div>
+                            <div className="w-2/3 border-2 border-black p-2 text-sm font-medium -ml-px -mt-px flex items-center min-h-[2rem]">Crawford Co</div>
+                        </div>
+                        <div className="flex items-stretch">
+                            <div className="w-1/3 flex items-center pr-4 text-sm"><p>Call #/Problem #:</p></div>
+                            <div className="w-2/3 border-2 border-black p-2 text-sm -ml-px -mt-px min-h-[2rem] flex items-center">{workOrder.customerPO || ''}</div>
+                        </div>
+                        <div className="flex items-stretch">
+                            <div className="w-1/3 flex items-center pr-4 text-sm"><p>Temp upon Arrival:</p></div>
+                            <div className="w-2/3 border-2 border-black p-2 text-sm -ml-px -mt-px min-h-[2rem] flex items-center">{workOrder.tempOnArrival || ''}</div>
+                        </div>
+                        <div className="flex items-stretch">
+                            <div className="w-1/3 flex items-center pr-4 text-sm"><p>Temp upon Leaving:</p></div>
+                            <div className="w-2/3 border-2 border-black p-2 text-sm -ml-px -mt-px min-h-[2rem] flex items-center">{workOrder.tempOnLeaving || ''}</div>
+                        </div>
+                        <div className="flex items-stretch">
+                            <div className="w-1/3 flex items-center pr-4 text-sm"><p>Before and After Pictures:</p></div>
+                            <div className="w-2/3 border-2 border-black p-2 text-sm font-medium -ml-px -mt-px flex items-center min-h-[2rem]">See below</div>
                         </div>
                     </div>
 
@@ -203,22 +211,26 @@ export default function WorkOrderReportPage() {
                         <p className="text-sm">Please review this sheet and verify that the above listed contractor has been on site to address the item(s) described in "Work Description". Please print, sign, and date below on the day that work was completed.</p>
                     </div>
                     
-                    <div className="flex items-start gap-4 mt-2">
-                        <div className="w-1/3 space-y-2 text-sm">
-                            <p>Name:</p>
-                            <p>Signature:</p>
-                            <p>Date:</p>
-                            <p>Comments:</p>
+                    <div className="space-y-[-2px] mt-2">
+                        <div className="flex items-stretch">
+                            <div className="w-1/3 flex items-center pr-4 text-sm"><p>Name:</p></div>
+                            <div className="w-2/3 border-2 border-black p-2 text-sm font-medium -ml-px -mt-px min-h-[2rem] flex items-center">{workOrder.contactInfo || ''}</div>
                         </div>
-                        <div className="w-2/3 border-2 border-black text-sm">
-                            <div className="p-2 border-b-2 border-black font-medium min-h-[2rem]">{workOrder.contactInfo || ''}</div>
-                            <div className="p-2 border-b-2 border-black min-h-[3rem] h-[3rem] flex items-center">
+                        <div className="flex items-stretch">
+                            <div className="w-1/3 flex items-center pr-4 text-sm"><p>Signature:</p></div>
+                            <div className="w-2/3 border-2 border-black p-2 -ml-px -mt-px min-h-[3rem] flex items-center">
                                 {!!workOrder.customerSignatureUrl && (
-                                    <Image src={workOrder.customerSignatureUrl} alt="Customer Signature" className="object-contain h-full" width={150} height={50} unoptimized />
+                                    <Image src={workOrder.customerSignatureUrl} alt="Customer Signature" className="object-contain max-h-full" width={150} height={40} unoptimized />
                                 )}
                             </div>
-                            <div className="p-2 border-b-2 border-black font-medium min-h-[2rem]">{signatureDate}</div>
-                            <div className="p-2 min-h-[4rem]"></div>
+                        </div>
+                        <div className="flex items-stretch">
+                            <div className="w-1/3 flex items-center pr-4 text-sm"><p>Date:</p></div>
+                            <div className="w-2/3 border-2 border-black p-2 text-sm font-medium -ml-px -mt-px min-h-[2rem] flex items-center">{signatureDate}</div>
+                        </div>
+                        <div className="flex items-stretch">
+                            <div className="w-1/3 flex items-start pt-2 pr-4 text-sm"><p>Comments:</p></div>
+                            <div className="w-2/3 border-2 border-black p-2 -ml-px -mt-px min-h-[4rem]"></div>
                         </div>
                     </div>
 
@@ -253,4 +265,5 @@ export default function WorkOrderReportPage() {
     );
 
     
-}
+
+    
