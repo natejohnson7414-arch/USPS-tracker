@@ -6,7 +6,7 @@ import { MainLayout } from '@/components/main-layout';
 import { useFirestore } from '@/firebase';
 import { getAllActivitiesWithDetails, getTechnicians, getIncompleteWorkOrders, updateWorkOrderStatus } from '@/lib/data';
 import type { Activity, Technician, WorkOrder } from '@/lib/types';
-import { startOfWeek, addDays, format, isSameDay, subDays, addWeeks, subWeeks, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isToday, endOfWeek } from 'date-fns';
+import { startOfWeek, addDays, format, isSameDay, subDays, addWeeks, subWeeks, isToday } from 'date-fns';
 import { ChevronLeft, ChevronRight, Loader2, Search, Coffee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -206,7 +206,7 @@ const techColors = [
     'bg-cyan-500', 'bg-lime-500'
 ];
 
-function CalendarDay({ day, dayActivities, techColorMap, view, index, totalDays, isCurrentMonth }: { day: Date, dayActivities: Activity[], techColorMap: Map<string, string>, view: 'day' | 'week' | 'two-week' | 'month', index: number, totalDays: number, isCurrentMonth?: boolean }) {
+function CalendarDay({ day, dayActivities, techColorMap, view, index, totalDays }: { day: Date, dayActivities: Activity[], techColorMap: Map<string, string>, view: 'day' | 'week' | 'two-week' | 'month', index: number, totalDays: number }) {
     const dayKey = format(day, 'yyyy-MM-dd');
     const { setNodeRef, isOver } = useDroppable({
         id: dayKey,
@@ -222,7 +222,6 @@ function CalendarDay({ day, dayActivities, techColorMap, view, index, totalDays,
             (view === 'week' || view === 'two-week') && index < totalDays - 1 && "border-r",
             isMonthView && "border-b",
             isMonthView && (index + 1) % 7 !== 0 && "border-r",
-            isMonthView && !isCurrentMonth && "bg-muted/40",
         )}>
             {!isMonthView && (
                  <div className="p-2 border-b text-center font-semibold bg-muted/25">
@@ -235,7 +234,6 @@ function CalendarDay({ day, dayActivities, techColorMap, view, index, totalDays,
                     <p className={cn(
                         "text-sm font-medium inline-block h-6 w-6 flex items-center justify-center",
                         isToday(day) && "bg-primary text-primary-foreground rounded-full",
-                        !isCurrentMonth && !isToday(day) && "text-muted-foreground"
                     )}>
                         {format(day, 'd')}
                     </p>
@@ -345,11 +343,8 @@ export default function DispatchBoardPage() {
                 start = startOfWeek(currentDate, { weekStartsOn });
                 return Array.from({ length: 14 }, (_, i) => addDays(start, i));
             case 'month':
-                const monthStart = startOfMonth(currentDate);
-                const calendarStart = startOfWeek(monthStart, { weekStartsOn });
-                const monthEnd = endOfMonth(currentDate);
-                const calendarEnd = endOfWeek(monthEnd, { weekStartsOn });
-                return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+                start = startOfWeek(currentDate, { weekStartsOn });
+                return Array.from({ length: 42 }, (_, i) => addDays(start, i)); // 6 weeks
             default:
                 start = startOfWeek(currentDate, { weekStartsOn });
                 return Array.from({ length: 7 }, (_, i) => addDays(start, i));
@@ -368,7 +363,7 @@ export default function DispatchBoardPage() {
                 setCurrentDate(subWeeks(currentDate, 2));
                 break;
             case 'month':
-                setCurrentDate(subMonths(currentDate, 1));
+                setCurrentDate(subWeeks(currentDate, 1));
                 break;
         }
     }
@@ -384,7 +379,7 @@ export default function DispatchBoardPage() {
                 setCurrentDate(addWeeks(currentDate, 2));
                 break;
             case 'month':
-                setCurrentDate(addMonths(currentDate, 1));
+                setCurrentDate(addWeeks(currentDate, 1));
                 break;
         }
     }
@@ -530,17 +525,17 @@ export default function DispatchBoardPage() {
         if (view === 'day') {
             return format(currentDate, 'MMMM d, yyyy');
         }
-        if (view === 'month') {
-            return format(currentDate, 'MMMM yyyy');
-        }
         
         let start, end;
         if (view === 'week') {
             start = startOfWeek(currentDate, { weekStartsOn });
             end = addDays(start, 6);
-        } else { // two-week
+        } else if (view === 'two-week') { 
             start = startOfWeek(currentDate, { weekStartsOn });
             end = addDays(start, 13);
+        } else { // month (6-week view)
+            start = startOfWeek(currentDate, { weekStartsOn });
+            end = addDays(start, 41); // 42 days total, so add 41
         }
         
         if (start.getMonth() === end.getMonth()) {
@@ -648,7 +643,6 @@ export default function DispatchBoardPage() {
                                 {calendarDays.map((day, index) => {
                                     const dayKey = format(day, 'yyyy-MM-dd');
                                     const dayActivities = activitiesByDay.get(dayKey) || [];
-                                    const isCurrentMonth = view === 'month' ? day.getMonth() === currentDate.getMonth() : undefined;
 
                                     return (
                                         <CalendarDay
@@ -659,7 +653,6 @@ export default function DispatchBoardPage() {
                                             view={view}
                                             index={index}
                                             totalDays={calendarDays.length}
-                                            isCurrentMonth={isCurrentMonth}
                                         />
                                     );
                                 })}
