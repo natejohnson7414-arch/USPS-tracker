@@ -442,8 +442,8 @@ export default function WorkOrderDetailPage() {
                     onTrainingRecordDelete={handleTrainingRecordDelete}
                     timeEntries={timeEntries}
                     activities={activities}
-                    onNoteAdded={onNoteAdded}
-                    onTimeAdded={onTimeAdded}
+                    onNoteAdded={handleNoteAdded}
+                    onTimeAdded={handleTimeAdded}
                     onNotePhotoDelete={handleNotePhotoDelete}
                     onNoteDelete={handleNoteDelete}
                     onTimeEntryDelete={handleTimeEntryDelete}
@@ -501,5 +501,7 @@ export default function WorkOrderDetailPage() {
     </MainLayout>
   );
 }
+
+    
 
     
