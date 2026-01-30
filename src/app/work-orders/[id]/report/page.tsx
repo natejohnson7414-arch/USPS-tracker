@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useParams, notFound } from 'next/navigation';
+import { useParams, notFound, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { useFirestore } from '@/firebase';
 import { getWorkOrderById } from '@/lib/data';
@@ -10,7 +10,7 @@ import type { WorkOrder } from '@/lib/types';
 import { summarizeNotes } from '@/ai/flows/summarize-notes-flow';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, Loader2, Printer } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import Image from 'next/image';
@@ -20,6 +20,7 @@ export default function WorkOrderReportPage() {
     const id = params.id as string;
     const db = useFirestore();
     const printRef = useRef<HTMLDivElement>(null);
+    const searchParams = useSearchParams();
 
     const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
     const [summarizedDescription, setSummarizedDescription] = useState<string>('');
@@ -113,6 +114,25 @@ export default function WorkOrderReportPage() {
         }
     };
     
+    const handlePrint = () => {
+        window.print();
+    }
+    
+    useEffect(() => {
+        const action = searchParams.get('action');
+        if (!isLoading && action) {
+            if (action === 'download') {
+                handleDownload();
+            } else if (action === 'print') {
+                // A small delay can help ensure images are loaded before the print dialog opens
+                setTimeout(() => window.print(), 500);
+            }
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isLoading, searchParams]);
+
+    const action = searchParams.get('action');
+
     if (isLoading) {
         return (
             <div className="flex h-screen items-center justify-center bg-gray-100">
@@ -144,12 +164,18 @@ export default function WorkOrderReportPage() {
 
     return (
         <div className="bg-gray-100 min-h-screen py-8">
-             <div id="download-button" className="fixed bottom-8 right-8 z-50">
-                <Button onClick={handleDownload} disabled={isDownloading}>
-                    {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                    {isDownloading ? 'Downloading...' : 'Download PDF'}
-                </Button>
-            </div>
+            {!action && (
+                <div id="action-buttons" className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-2">
+                    <Button onClick={handlePrint}>
+                        <Printer className="mr-2 h-4 w-4" />
+                        Print
+                    </Button>
+                    <Button onClick={handleDownload} disabled={isDownloading}>
+                        {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                        {isDownloading ? 'Downloading...' : 'Download PDF'}
+                    </Button>
+                </div>
+            )}
 
         <div className="bg-white text-black font-sans mx-auto printable-area" style={{ width: '8.5in' }} ref={printRef}>
             

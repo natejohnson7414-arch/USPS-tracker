@@ -22,6 +22,16 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { SignaturePad } from '@/components/signature-pad';
 import { useTechnician as useRoleData } from '@/hooks/use-technician';
 import { WorkOrderEditForm } from '@/components/work-order-edit-form';
@@ -48,6 +58,7 @@ export default function WorkOrderDetailPage() {
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   
   const [tempOnArrival, setTempOnArrival] = useState('');
   const [tempOnLeaving, setTempOnLeaving] = useState('');
@@ -400,11 +411,9 @@ export default function WorkOrderDetailPage() {
             </Button>
              <div className="flex items-center gap-2">
                 {!isTechnician && (
-                    <Button variant="outline" asChild>
-                        <Link href={`/work-orders/${id}/report`} target="_blank">
-                            <Printer className="mr-2 h-4 w-4" />
-                            Report
-                        </Link>
+                    <Button variant="outline" onClick={() => setIsReportDialogOpen(true)}>
+                        <Printer className="mr-2 h-4 w-4" />
+                        Report
                     </Button>
                 )}
 
@@ -433,8 +442,8 @@ export default function WorkOrderDetailPage() {
                     onTrainingRecordDelete={handleTrainingRecordDelete}
                     timeEntries={timeEntries}
                     activities={activities}
-                    onNoteAdded={handleNoteAdded}
-                    onTimeAdded={handleTimeAdded}
+                    onNoteAdded={onNoteAdded}
+                    onTimeAdded={onTimeAdded}
                     onNotePhotoDelete={handleNotePhotoDelete}
                     onNoteDelete={handleNoteDelete}
                     onTimeEntryDelete={handleTimeEntryDelete}
@@ -474,6 +483,21 @@ export default function WorkOrderDetailPage() {
                 />
             </DialogContent>
         </Dialog>
+        <AlertDialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Generate Report</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        How would you like to generate the report for Work Order #{workOrder.id}?
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => window.open(`/work-orders/${id}/report?action=print`, '_blank')}>Print</AlertDialogAction>
+                    <AlertDialogAction onClick={() => window.open(`/work-orders/${id}/report?action=download`, '_blank')}>Download PDF</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </MainLayout>
   );
 }
