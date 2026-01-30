@@ -188,7 +188,7 @@ export default function WorkOrderReportPage() {
     const afterPhotos = workOrder.afterPhotoUrls || [];
     const activityPhotos = workOrder.notes.flatMap(note => note.photoUrls || []).filter(Boolean);
 
-    const photosPerPage = 4;
+    const photosPerPage = 6;
 
     const beforePhotoChunks = Array.from({ length: Math.ceil(beforePhotos.length / photosPerPage) }, (_, i) =>
         beforePhotos.slice(i * photosPerPage, i * photosPerPage + photosPerPage)
