@@ -206,7 +206,7 @@ const techColors = [
     'bg-cyan-500', 'bg-lime-500'
 ];
 
-function CalendarDay({ day, dayActivities, techColorMap, view, index, totalDays }: { day: Date, dayActivities: Activity[], techColorMap: Map<string, string>, view: 'day' | 'week' | 'two-week' | 'month', index: number, totalDays: number }) {
+function CalendarDay({ day, dayActivities, techColorMap, view, index, totalDays, monthParity }: { day: Date, dayActivities: Activity[], techColorMap: Map<string, string>, view: 'day' | 'week' | 'two-week' | 'month', index: number, totalDays: number, monthParity?: 'even' | 'odd' }) {
     const dayKey = format(day, 'yyyy-MM-dd');
     const { setNodeRef, isOver } = useDroppable({
         id: dayKey,
@@ -222,6 +222,7 @@ function CalendarDay({ day, dayActivities, techColorMap, view, index, totalDays 
             (view === 'week' || view === 'two-week') && index < totalDays - 1 && "border-r",
             isMonthView && "border-b",
             isMonthView && (index + 1) % 7 !== 0 && "border-r",
+            isMonthView && monthParity === 'odd' && 'bg-muted/20'
         )}>
             {!isMonthView && (
                  <div className="p-2 border-b text-center font-semibold bg-muted/25">
@@ -344,7 +345,7 @@ export default function DispatchBoardPage() {
                 return Array.from({ length: 14 }, (_, i) => addDays(start, i));
             case 'month':
                 start = startOfWeek(currentDate, { weekStartsOn });
-                return Array.from({ length: 42 }, (_, i) => addDays(start, i)); // 6 weeks
+                return Array.from({ length: 35 }, (_, i) => addDays(start, i)); // 5 weeks
             default:
                 start = startOfWeek(currentDate, { weekStartsOn });
                 return Array.from({ length: 7 }, (_, i) => addDays(start, i));
@@ -533,9 +534,9 @@ export default function DispatchBoardPage() {
         } else if (view === 'two-week') { 
             start = startOfWeek(currentDate, { weekStartsOn });
             end = addDays(start, 13);
-        } else { // month (6-week view)
+        } else { // month (5-week view)
             start = startOfWeek(currentDate, { weekStartsOn });
-            end = addDays(start, 41); // 42 days total, so add 41
+            end = addDays(start, 34); // 35 days total, so add 34
         }
         
         if (start.getMonth() === end.getMonth()) {
@@ -643,6 +644,7 @@ export default function DispatchBoardPage() {
                                 {calendarDays.map((day, index) => {
                                     const dayKey = format(day, 'yyyy-MM-dd');
                                     const dayActivities = activitiesByDay.get(dayKey) || [];
+                                    const monthParity = day.getMonth() % 2 === 0 ? 'even' : 'odd';
 
                                     return (
                                         <CalendarDay
@@ -653,6 +655,7 @@ export default function DispatchBoardPage() {
                                             view={view}
                                             index={index}
                                             totalDays={calendarDays.length}
+                                            monthParity={monthParity}
                                         />
                                     );
                                 })}
