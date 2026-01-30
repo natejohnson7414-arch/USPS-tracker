@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -32,29 +31,30 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
 
-    // Form state for all editable fields
-    const [description, setDescription] = useState('');
-    const [status, setStatus] = useState<WorkOrder['status']>('Open');
-    const [assignedTechnicianId, setAssignedTechnicianId] = useState<string | undefined>();
-    const [workSiteId, setWorkSiteId] = useState<string | undefined>();
-    const [clientId, setClientId] = useState<string | undefined>();
-    const [createdDate, setCreatedDate] = useState<Date | undefined>();
-    const [poNumber, setPoNumber] = useState('');
-    const [contactInfo, setContactInfo] = useState('');
-    const [serviceScheduleDate, setServiceScheduleDate] = useState<Date | undefined>();
-    const [quotedAmount, setQuotedAmount] = useState('');
-    const [timeAndMaterial, setTimeAndMaterial] = useState(false);
-    const [permit, setPermit] = useState(false);
-    const [permitCost, setPermitCost] = useState('');
-    const [permitFiled, setPermitFiled] = useState<Date | undefined>();
-    const [coi, setCoi] = useState(false);
-    const [coiRequested, setCoiRequested] = useState<Date | undefined>();
-    const [certifiedPayroll, setCertifiedPayroll] = useState(false);
-    const [certifiedPayrollRequested, setCertifiedPayrollRequested] = useState<Date | undefined>();
-    const [intercoPO, setIntercoPO] = useState('');
-    const [customerPO, setCustomerPO] = useState('');
-    const [estimator, setEstimator] = useState('');
+    // Initialize state directly from props. This is safe because the form is remounted each time it's opened.
+    const [description, setDescription] = useState(workOrder.description ?? '');
+    const [status, setStatus] = useState<WorkOrder['status']>(workOrder.status ?? 'Open');
+    const [assignedTechnicianId, setAssignedTechnicianId] = useState<string | undefined>(workOrder.assignedTechnicianId || undefined);
+    const [workSiteId, setWorkSiteId] = useState<string | undefined>(workOrder.workSiteId || undefined);
+    const [clientId, setClientId] = useState<string | undefined>(workOrder.clientId || undefined);
+    const [createdDate, setCreatedDate] = useState<Date | undefined>(workOrder.createdDate ? new Date(workOrder.createdDate) : undefined);
+    const [poNumber, setPoNumber] = useState(workOrder.poNumber ?? '');
+    const [contactInfo, setContactInfo] = useState(workOrder.contactInfo ?? '');
+    const [serviceScheduleDate, setServiceScheduleDate] = useState<Date | undefined>(workOrder.serviceScheduleDate ? new Date(workOrder.serviceScheduleDate) : undefined);
+    const [quotedAmount, setQuotedAmount] = useState(workOrder.quotedAmount?.toString() ?? '');
+    const [timeAndMaterial, setTimeAndMaterial] = useState(workOrder.timeAndMaterial ?? false);
+    const [permit, setPermit] = useState(workOrder.permit ?? false);
+    const [permitCost, setPermitCost] = useState(workOrder.permitCost?.toString() ?? '');
+    const [permitFiled, setPermitFiled] = useState<Date | undefined>(workOrder.permitFiled ? new Date(workOrder.permitFiled) : undefined);
+    const [coi, setCoi] = useState(workOrder.coi ?? false);
+    const [coiRequested, setCoiRequested] = useState<Date | undefined>(workOrder.coiRequested ? new Date(workOrder.coiRequested) : undefined);
+    const [certifiedPayroll, setCertifiedPayroll] = useState(workOrder.certifiedPayroll ?? false);
+    const [certifiedPayrollRequested, setCertifiedPayrollRequested] = useState<Date | undefined>(workOrder.certifiedPayrollRequested ? new Date(workOrder.certifiedPayrollRequested) : undefined);
+    const [intercoPO, setIntercoPO] = useState(workOrder.intercoPO ?? '');
+    const [customerPO, setCustomerPO] = useState(workOrder.customerPO ?? '');
+    const [estimator, setEstimator] = useState(workOrder.estimator ?? '');
     
+    // State for check-in logic needs a useEffect because it's more complex.
     const [checkInType, setCheckInType] = useState<'none' | 'emcor' | 'weblink' | 'manual'>('none');
     const [emcorWorkOrder, setEmcorWorkOrder] = useState('');
     const [webLinkUrl, setWebLinkUrl] = useState('');
@@ -63,40 +63,13 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
 
     useEffect(() => {
         if (workOrder) {
-            setDescription(workOrder.description ?? '');
-            setStatus(workOrder.status ?? 'Open');
-
-            // This is the definitive fix: ensure falsy values (null, '', undefined) become undefined
-            // so the Select component shows its placeholder.
-            setAssignedTechnicianId(workOrder.assignedTechnicianId ? workOrder.assignedTechnicianId : undefined);
-            setWorkSiteId(workOrder.workSiteId ? workOrder.workSiteId : undefined);
-            setClientId(workOrder.clientId ? workOrder.clientId : undefined);
-            
-            setCreatedDate(workOrder.createdDate ? new Date(workOrder.createdDate) : undefined);
-            setPoNumber(workOrder.poNumber ?? '');
-            setContactInfo(workOrder.contactInfo ?? '');
-            setServiceScheduleDate(workOrder.serviceScheduleDate ? new Date(workOrder.serviceScheduleDate) : undefined);
-            setQuotedAmount(workOrder.quotedAmount?.toString() ?? '');
-            setTimeAndMaterial(workOrder.timeAndMaterial ?? false);
-            setPermit(workOrder.permit ?? false);
-            setPermitCost(workOrder.permitCost?.toString() ?? '');
-            setPermitFiled(workOrder.permitFiled ? new Date(workOrder.permitFiled) : undefined);
-            setCoi(workOrder.coi ?? false);
-            setCoiRequested(workOrder.coiRequested ? new Date(workOrder.coiRequested) : undefined);
-            setCertifiedPayroll(workOrder.certifiedPayroll ?? false);
-            setCertifiedPayrollRequested(workOrder.certifiedPayrollRequested ? new Date(workOrder.certifiedPayrollRequested) : undefined);
-            setIntercoPO(workOrder.intercoPO ?? '');
-            setCustomerPO(workOrder.customerPO ?? '');
-            setEstimator(workOrder.estimator ?? '');
-
             const url = workOrder.checkInOutURL;
             setManualWorkOrder(workOrder.checkInWorkOrderNumber ?? '');
             
             if (url?.startsWith('tel:1-866-684-0431')) {
                 setCheckInType('emcor');
-                // Correctly parse the EMCOR work order number from the end of the string
                 const parts = url.split(',');
-                setEmcorWorkOrder(parts[parts.length - 1] ?? '');
+                setEmcorWorkOrder(parts[parts.length - 1]?.replace('#', '') ?? '');
             } else if (url?.startsWith('http')) {
                 setCheckInType('weblink');
                 setWebLinkUrl(url);
@@ -388,8 +361,3 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
         </form>
     );
 }
-
-    
-    
-
-    
