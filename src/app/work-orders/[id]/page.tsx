@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useState, useMemo, FormEvent } from 'react';
@@ -8,7 +9,7 @@ import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
 import { WorkOrderDetails } from '@/components/work-order-details';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Ban, Pencil, Save, Printer, Download } from 'lucide-react';
+import { ArrowLeft, Ban, Pencil, Save, Printer, Download, Receipt } from 'lucide-react';
 import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, ActivityHistoryItem } from '@/lib/types';
 import { doc, collection } from 'firebase/firestore';
@@ -481,6 +482,12 @@ export default function WorkOrderDetailPage() {
                         Report
                     </Button>
                 )}
+                
+                <Button asChild variant="outline">
+                    <Link href={`/work-orders/${workOrder.id}/start-quote`}>
+                        <Receipt className="mr-2 h-4 w-4" /> Start Quote
+                    </Link>
+                </Button>
 
 
                 {!isEditing && !isTechnician && (
@@ -509,7 +516,7 @@ export default function WorkOrderDetailPage() {
                     onTrainingRecordDelete={handleTrainingRecordDelete}
                     timeEntries={timeEntries}
                     activities={activities}
-                    onNoteAdded={handleNoteAdded}
+                    onNoteAdded={onNoteAdded}
                     onTimeAdded={handleTimeAdded}
                     onNotePhotoDelete={handleNotePhotoDelete}
                     onNoteDelete={handleNoteDelete}
@@ -529,7 +536,7 @@ export default function WorkOrderDetailPage() {
                     setTempOnLeaving={setTempOnLeaving}
                     contactInfo={contactInfo}
                     setContactInfo={setContactInfo}
-                    onContactInfoUpdate={handleContactInfoUpdate}
+                    onContactInfoUpdate={onContactInfoUpdate}
                     onAddActivity={handleAddActivity}
                     onUpdateActivityStatus={handleUpdateActivityStatus}
                     onDeleteActivity={handleDeleteActivity}

@@ -1,6 +1,7 @@
 
+
 'use client';
-import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client, TrainingRecord, HvacStartupReport, TimeEntry, Activity, ActivityHistoryItem } from '@/lib/types';
+import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client, TrainingRecord, HvacStartupReport, TimeEntry, Activity, ActivityHistoryItem, Quote } from '@/lib/types';
 import { collection, getDoc, doc, query, where, deleteDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 import { sampleRoles, sampleTechnicians, sampleWorkOrders, sampleWorkSites, sampleClients } from './sample-data';
@@ -440,4 +441,47 @@ export const getIncompleteWorkOrders = async (db: any): Promise<WorkOrder[]> => 
         } as WorkOrder;
     });
      return workOrdersList.sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime());
+};
+
+export const getQuoteById = async (db: any, id: string): Promise<Quote | undefined> => {
+    const quoteRef = doc(db, 'quotes', id);
+    const quoteSnap = await getDocumentNonBlocking(quoteRef);
+
+    if (quoteSnap.exists()) {
+        const data = quoteSnap.data();
+        
+        const [client, workSite, technician] = await Promise.all([
+            data.clientId ? getClientById(db, data.clientId) : Promise.resolve(undefined),
+            data.workSiteId ? getWorkSiteById(db, data.workSiteId) : Promise.resolve(undefined),
+            data.createdBy_technicianId ? getTechnicianById(db, data.createdBy_technicianId) : Promise.resolve(undefined)
+        ]);
+
+        return {
+            ...data,
+            id: quoteSnap.id,
+            client,
+            workSite,
+            createdBy_technician: technician
+        } as Quote;
+    } else {
+        return undefined;
+    }
+};
+
+export const getQuotes = async (db: any): Promise<Quote[]> => {
+  if (!db) return [];
+  const quotesCol = collection(db, 'quotes');
+  const snapshot = await getCollectionNonBlocking(quotesCol);
+  
+  const quotes = await Promise.all(snapshot.docs.map(async doc => {
+    const data = doc.data();
+    const client = data.clientId ? await getClientById(db, data.clientId) : undefined;
+    return {
+      ...data,
+      id: doc.id,
+      client,
+    } as Quote;
+  }));
+  
+  return quotes.sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime());
 };

@@ -1,0 +1,148 @@
+
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { format } from 'date-fns';
+import { MainLayout } from '@/components/main-layout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Ban, Loader2, Receipt } from 'lucide-react';
+import { useFirestore } from '@/firebase';
+import { useTechnician } from '@/hooks/use-technician';
+import { getQuotes } from '@/lib/data';
+import type { Quote } from '@/lib/types';
+import { cn } from '@/lib/utils';
+
+function QuoteStatusBadge({ status }: { status: Quote['status'] }) {
+  const variant = {
+    Draft: 'secondary',
+    Sent: 'default',
+    Accepted: 'default',
+    Rejected: 'destructive',
+    Archived: 'outline',
+  } as const;
+  
+  const color = {
+    Draft: 'bg-gray-200 text-gray-800',
+    Sent: 'bg-blue-500 text-white',
+    Accepted: 'bg-green-600 text-white',
+    Rejected: 'bg-red-600 text-white',
+    Archived: 'bg-gray-500 text-white'
+  }
+
+  return (
+    <Badge variant={variant[status]} className={cn('capitalize', color[status], `hover:${color[status]}`)}>
+      {status}
+    </Badge>
+  );
+}
+
+
+export default function QuotesPage() {
+    const db = useFirestore();
+    const { role, isLoading: isRoleLoading } = useTechnician();
+    const [quotes, setQuotes] = useState<Quote[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if (!db || isRoleLoading) return;
+        
+        if(role?.name !== 'Technician') {
+            getQuotes(db).then(setQuotes).finally(() => setIsLoading(false));
+        } else {
+            setIsLoading(false);
+        }
+    }, [db, role, isRoleLoading]);
+
+
+    if (isRoleLoading || isLoading) {
+        return (
+            <MainLayout>
+                <div className="flex items-center justify-center h-full">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                    <p className="ml-4">Loading Quotes...</p>
+                </div>
+            </MainLayout>
+        )
+    }
+
+    if (role?.name === 'Technician') {
+        return (
+             <MainLayout>
+                <div className="container mx-auto py-8 text-center">
+                    <div className="flex flex-col items-center gap-4">
+                        <Ban className="h-16 w-16 text-destructive" />
+                        <h1 className="text-2xl font-bold">Unauthorized Access</h1>
+                        <p className="text-muted-foreground">You do not have permission to view this page.</p>
+                         <Button asChild>
+                            <a href="/">Go to Dashboard</a>
+                        </Button>
+                    </div>
+                </div>
+            </MainLayout>
+        )
+    }
+
+  return (
+    <MainLayout>
+      <div className="container mx-auto py-8">
+        <div className="flex items-center justify-between space-y-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Quotes</h1>
+            <p className="text-muted-foreground">
+              Manage and track all customer quotes.
+            </p>
+          </div>
+        </div>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle>All Quotes</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Quote #</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Job Name</TableHead>
+                            <TableHead>Client</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Total</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {quotes.length > 0 ? quotes.map(quote => (
+                            <TableRow key={quote.id}>
+                                <TableCell>
+                                    <Link href={`/quotes/${quote.id}`} className="font-medium text-primary hover:underline">
+                                        {quote.quoteNumber}
+                                    </Link>
+                                </TableCell>
+                                <TableCell>{format(new Date(quote.createdDate), 'MMM d, yyyy')}</TableCell>
+                                <TableCell>{quote.jobName}</TableCell>
+                                <TableCell>{quote.client?.name || 'N/A'}</TableCell>
+                                <TableCell><QuoteStatusBadge status={quote.status} /></TableCell>
+                                <TableCell className="text-right font-mono">
+                                    {quote.total.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                                </TableCell>
+                            </TableRow>
+                        )) : (
+                            <TableRow>
+                                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                                    <Receipt className="mx-auto h-12 w-12" />
+                                    <p className="mt-4">No quotes found.</p>
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+      </div>
+    </MainLayout>
+  );
+}

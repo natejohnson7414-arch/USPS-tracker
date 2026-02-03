@@ -269,5 +269,17 @@ service cloud.firestore {
         allow update: if isAdmin() || (isSignedIn() && isOwner(resource.data.technicianId));
         allow delete: if isAdmin() || (isSignedIn() && isOwner(resource.data.technicianId));
      }
+
+    /**
+     * @description Manages access to quotes. Admins have full access. Technicians can create quotes
+     * and read quotes they created.
+     * @path /quotes/{quoteId}
+     */
+    match /quotes/{quoteId} {
+      allow read: if isAdmin() || (isTechnician() && resource.data.createdBy_technicianId == request.auth.uid);
+      allow list: if isAdmin();
+      allow create: if isTechnician();
+      allow update, delete: if isAdmin();
+    }
   }
 }

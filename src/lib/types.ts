@@ -1,5 +1,6 @@
 
 
+
 export type Technician = {
   id: string;
   employeeId?: string;
@@ -238,3 +239,32 @@ export type TimeEntry = {
     technicianName?: string;
 };
     
+export type QuoteLineItem = {
+    id: string;
+    description: string;
+    quantity: number;
+    unitPrice: number;
+};
+
+export type Quote = {
+    id: string;
+    workOrderId?: string;
+    quoteNumber: string;
+    status: 'Draft' | 'Sent' | 'Accepted' | 'Rejected' | 'Archived';
+    clientId?: string;
+    client?: Client;
+    workSiteId?: string;
+    workSite?: WorkSite;
+    jobName?: string; // Denormalized for display
+    description: string;
+    photos: string[];
+    videos: string[];
+    createdDate: string;
+    createdBy_technicianId: string;
+    createdBy_technician?: Technician;
+    lineItems: QuoteLineItem[];
+    subtotal: number;
+    tax: number;
+    total: number;
+    adminNotes?: string;
+};
