@@ -46,7 +46,6 @@ export default function StartQuotePage() {
             .then(wo => {
                 if (wo) {
                     setWorkOrder(wo);
-                    setDescription(wo.description);
                 } else {
                     toast({ title: 'Work Order not found', variant: 'destructive' });
                     router.push('/');
@@ -180,7 +179,7 @@ export default function StartQuotePage() {
                                     rows={5}
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
-                                    placeholder="Describe the necessary work, materials, and any other important details..."
+                                    placeholder={workOrder.description || "Describe the necessary work, materials, and any other important details..."}
                                 />
                             </div>
                             
