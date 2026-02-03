@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { MainLayout } from '@/components/main-layout';
@@ -15,6 +15,8 @@ import { useTechnician } from '@/hooks/use-technician';
 import { getQuotes } from '@/lib/data';
 import type { Quote } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 function QuoteStatusBadge({ status }: { status: Quote['status'] }) {
   const variant = {
@@ -40,12 +42,14 @@ function QuoteStatusBadge({ status }: { status: Quote['status'] }) {
   );
 }
 
+const quoteStatuses: (Quote['status'] | 'All')[] = ['All', 'Draft', 'Sent', 'Accepted', 'Rejected', 'Archived'];
 
 export default function QuotesPage() {
     const db = useFirestore();
     const { role, isLoading: isRoleLoading } = useTechnician();
     const [quotes, setQuotes] = useState<Quote[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [statusFilter, setStatusFilter] = useState<Quote['status'] | 'All'>('All');
 
     useEffect(() => {
         if (!db || isRoleLoading) return;
@@ -56,6 +60,13 @@ export default function QuotesPage() {
             setIsLoading(false);
         }
     }, [db, role, isRoleLoading]);
+
+    const filteredQuotes = useMemo(() => {
+        if (statusFilter === 'All') {
+            return quotes;
+        }
+        return quotes.filter(quote => quote.status === statusFilter);
+    }, [quotes, statusFilter]);
 
 
     if (isRoleLoading || isLoading) {
@@ -89,13 +100,22 @@ export default function QuotesPage() {
   return (
     <MainLayout>
       <div className="container mx-auto py-8">
-        <div className="flex items-center justify-between space-y-4 mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Quotes</h1>
             <p className="text-muted-foreground">
               Manage and track all customer quotes.
             </p>
           </div>
+           <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as Quote['status'] | 'All')} className="w-full sm:w-auto">
+            <ScrollArea className="w-full sm:w-auto whitespace-nowrap">
+                <TabsList className="w-full sm:w-auto">
+                    {quoteStatuses.map(status => (
+                        <TabsTrigger key={status} value={status}>{status}</TabsTrigger>
+                    ))}
+                </TabsList>
+            </ScrollArea>
+          </Tabs>
         </div>
         
         <Card>
@@ -115,7 +135,7 @@ export default function QuotesPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {quotes.length > 0 ? quotes.map(quote => (
+                        {filteredQuotes.length > 0 ? filteredQuotes.map(quote => (
                             <TableRow key={quote.id}>
                                 <TableCell>
                                     <Link href={`/quotes/${quote.id}`} className="font-medium text-primary hover:underline">
@@ -134,7 +154,7 @@ export default function QuotesPage() {
                             <TableRow>
                                 <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                                     <Receipt className="mx-auto h-12 w-12" />
-                                    <p className="mt-4">No quotes found.</p>
+                                    <p className="mt-4">No quotes found for this status.</p>
                                 </TableCell>
                             </TableRow>
                         )}
