@@ -37,8 +37,7 @@ export default function StartQuotePage() {
     const [photos, setPhotos] = useState<File[]>([]);
     const [videos, setVideos] = useState<File[]>([]);
     
-    const photoInputRef = useRef<HTMLInputElement>(null);
-    const videoInputRef = useRef<HTMLInputElement>(null);
+    const mediaInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (!db || typeof workOrderId !== 'string') return;
@@ -60,14 +59,19 @@ export default function StartQuotePage() {
             .finally(() => setIsLoading(false));
     }, [db, workOrderId, router, toast]);
     
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'photo' | 'video') => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            const files = Array.from(e.target.files);
-            if (type === 'photo') {
-                setPhotos(prev => [...prev, ...files]);
-            } else {
-                setVideos(prev => [...prev, ...files]);
-            }
+            const imageFiles: File[] = [];
+            const videoFiles: File[] = [];
+            Array.from(e.target.files).forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    imageFiles.push(file);
+                } else if (file.type.startsWith('video/')) {
+                    videoFiles.push(file);
+                }
+            });
+            setPhotos(prev => [...prev, ...imageFiles]);
+            setVideos(prev => [...prev, ...videoFiles]);
         }
         e.target.value = ''; // Reset input
     };
@@ -186,6 +190,41 @@ export default function StartQuotePage() {
                                     placeholder={workOrder.description || "Describe the necessary work, materials, and any other important details..."}
                                 />
                             </div>
+
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label>Photos &amp; Videos</Label>
+                                    <Button type="button" variant="outline" onClick={() => mediaInputRef.current?.click()}>
+                                        <Upload className="mr-2 h-4 w-4" /> Upload Media
+                                    </Button>
+                                    <input type="file" ref={mediaInputRef} multiple accept="image/*,video/*" className="hidden" onChange={handleFileChange} />
+                                </div>
+                                {photos.length > 0 && (
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                        {photos.map((file, index) => (
+                                            <div key={index} className="relative group aspect-square">
+                                                <Image src={URL.createObjectURL(file)} alt={file.name} fill className="object-cover rounded-lg border" />
+                                                <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => removeMedia(index, 'photo')}>
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {videos.length > 0 && (
+                                     <div className="space-y-2">
+                                        {videos.map((file, index) => (
+                                            <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
+                                                <Video className="h-5 w-5 text-muted-foreground" />
+                                                <p className="text-sm flex-1 truncate">{file.name}</p>
+                                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => removeMedia(index, 'video')}>
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                             
                             <div className="space-y-2">
                                 <Label htmlFor="quote-labor">Estimated Labor (include second person if needed)</Label>
@@ -207,51 +246,6 @@ export default function StartQuotePage() {
                                     onChange={(e) => setMaterialsNeeded(e.target.value)}
                                     placeholder="List all parts and materials required for the job..."
                                 />
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label>Photos</Label>
-                                    <Button type="button" variant="outline" onClick={() => photoInputRef.current?.click()}>
-                                        <Upload className="mr-2 h-4 w-4" /> Upload Photos
-                                    </Button>
-                                    <input type="file" ref={photoInputRef} multiple accept="image/*" className="hidden" onChange={(e) => handleFileChange(e, 'photo')} />
-                                </div>
-                                {photos.length > 0 && (
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                                        {photos.map((file, index) => (
-                                            <div key={index} className="relative group aspect-square">
-                                                <Image src={URL.createObjectURL(file)} alt={file.name} fill className="object-cover rounded-lg border" />
-                                                <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => removeMedia(index, 'photo')}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label>Videos</Label>
-                                    <Button type="button" variant="outline" onClick={() => videoInputRef.current?.click()}>
-                                        <Video className="mr-2 h-4 w-4" /> Upload Videos
-                                    </Button>
-                                    <input type="file" ref={videoInputRef} multiple accept="video/*" className="hidden" onChange={(e) => handleFileChange(e, 'video')} />
-                                </div>
-                                {videos.length > 0 && (
-                                     <div className="space-y-2">
-                                        {videos.map((file, index) => (
-                                            <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
-                                                <Video className="h-5 w-5 text-muted-foreground" />
-                                                <p className="text-sm flex-1 truncate">{file.name}</p>
-                                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => removeMedia(index, 'video')}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
                             </div>
 
                              <div className="flex justify-end pt-4">
