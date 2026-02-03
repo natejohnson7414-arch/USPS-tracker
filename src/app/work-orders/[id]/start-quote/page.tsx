@@ -32,6 +32,8 @@ export default function StartQuotePage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     
     const [description, setDescription] = useState('');
+    const [estimatedLabor, setEstimatedLabor] = useState('');
+    const [materialsNeeded, setMaterialsNeeded] = useState('');
     const [photos, setPhotos] = useState<File[]>([]);
     const [videos, setVideos] = useState<File[]>([]);
     
@@ -109,6 +111,8 @@ export default function StartQuotePage() {
                 workSiteId: workOrder.workSiteId,
                 jobName: workOrder.jobName,
                 description,
+                estimatedLabor,
+                materialsNeeded,
                 photos: photoUrls,
                 videos: videoUrls,
                 createdDate: new Date().toISOString(),
@@ -183,6 +187,28 @@ export default function StartQuotePage() {
                                 />
                             </div>
                             
+                            <div className="space-y-2">
+                                <Label htmlFor="quote-labor">Estimated Labor (include second person if needed)</Label>
+                                <Textarea 
+                                    id="quote-labor" 
+                                    rows={3}
+                                    value={estimatedLabor}
+                                    onChange={(e) => setEstimatedLabor(e.target.value)}
+                                    placeholder="e.g., 2 hours for one person, 1 hour for second person for assistance."
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="quote-materials">Description of Materials Needed</Label>
+                                <Textarea 
+                                    id="quote-materials" 
+                                    rows={4}
+                                    value={materialsNeeded}
+                                    onChange={(e) => setMaterialsNeeded(e.target.value)}
+                                    placeholder="List all parts and materials required for the job..."
+                                />
+                            </div>
+
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <Label>Photos</Label>

@@ -257,6 +257,8 @@ export type Quote = {
     workSite?: WorkSite;
     jobName?: string; // Denormalized for display
     description: string;
+    estimatedLabor?: string;
+    materialsNeeded?: string;
     photos: string[];
     videos: string[];
     createdDate: string;

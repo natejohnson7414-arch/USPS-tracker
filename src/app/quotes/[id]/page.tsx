@@ -20,7 +20,7 @@ import { useTechnician } from '@/hooks/use-technician';
 import { getQuoteById } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import type { Quote, QuoteLineItem } from '@/lib/types';
-import { Loader2, ArrowLeft, Ban, Trash2, PlusCircle, FileText } from 'lucide-react';
+import { Loader2, ArrowLeft, Ban, Trash2, PlusCircle, FileText, Video } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { doc } from 'firebase/firestore';
 
@@ -208,10 +208,32 @@ export default function QuoteDetailPage() {
                         </Card>
                         
                         <Card>
-                            <CardHeader><CardTitle>Technician's Notes</CardTitle></CardHeader>
+                            <CardHeader><CardTitle>Technician's Submission</CardTitle></CardHeader>
                             <CardContent>
-                                <p className="text-muted-foreground whitespace-pre-wrap">{quote.description}</p>
-                                <div className="mt-4 space-y-4">
+                                <div className="space-y-4">
+                                    <div>
+                                        <h3 className="font-medium text-sm text-muted-foreground">Description of Work to be Quoted</h3>
+                                        <p className="text-sm whitespace-pre-wrap">{quote.description}</p>
+                                    </div>
+
+                                    {quote.estimatedLabor && (
+                                    <div>
+                                        <h3 className="font-medium text-sm text-muted-foreground">Estimated Labor</h3>
+                                        <p className="text-sm whitespace-pre-wrap">{quote.estimatedLabor}</p>
+                                    </div>
+                                    )}
+
+                                    {quote.materialsNeeded && (
+                                    <div>
+                                        <h3 className="font-medium text-sm text-muted-foreground">Materials Needed</h3>
+                                        <p className="text-sm whitespace-pre-wrap">{quote.materialsNeeded}</p>
+                                    </div>
+                                    )}
+                                </div>
+                                
+                                <Separator className="my-6" />
+
+                                <div className="space-y-4">
                                     {quote.photos.length > 0 && (
                                         <div>
                                             <h3 className="font-medium mb-2">Photos</h3>

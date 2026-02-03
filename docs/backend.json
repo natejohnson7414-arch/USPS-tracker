@@ -15,6 +15,8 @@
         "workSiteId": { "type": "string" },
         "jobName": { "type": "string", "description": "Denormalized from Work Order or Work Site for display." },
         "description": { "type": "string", "description": "Initial description of work needed, provided by the technician." },
+        "estimatedLabor": { "type": "string", "description": "Estimated labor for the job, including notes about a second person if needed." },
+        "materialsNeeded": { "type": "string", "description": "A description of the materials needed for the job." },
         "photos": { "type": "array", "description": "URLs of photos.", "items": { "type": "string" } },
         "videos": { "type": "array", "description": "URLs of videos.", "items": { "type": "string" } },
         "createdDate": { "type": "string", "format": "date-time" },
