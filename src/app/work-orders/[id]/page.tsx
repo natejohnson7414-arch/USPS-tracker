@@ -600,7 +600,7 @@ export default function WorkOrderDetailPage() {
                     onTimeEntryDelete={handleTimeEntryDelete}
                     isAddingNote={isAddingNote}
                     isSavingPhotos={isSavingPhotos}
-                    onDirectionsClick={onDirectionsClick}
+                    onDirectionsClick={handleDirectionsClick}
                     onSignatureSave={() => setIsSignatureDialogOpen(true)}
                     onTempUpdate={handleTempUpdate}
                     tempOnArrival={tempOnArrival}
