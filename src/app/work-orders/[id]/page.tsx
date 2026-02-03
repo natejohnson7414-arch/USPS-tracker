@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, FormEvent } from 'react';
-import { getTechnicians, getWorkOrderById, getWorkSites, getClients, getTrainingRecordsByWorkOrderId, getTimeEntriesByWorkOrder, getTechnicianById, deleteTrainingRecord, updateWorkOrderStatus, addWorkHistoryItem } from '@/lib/data';
+import { getTechnicians, getWorkOrderById, getWorkSites, getClients, getTrainingRecordsByWorkOrderId, getTimeEntriesByWorkOrder, getTechnicianById, deleteTrainingRecord, updateWorkOrderStatus, addWorkHistoryItem, getQuotesByWorkOrderId } from '@/lib/data';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
@@ -11,7 +11,7 @@ import { WorkOrderDetails } from '@/components/work-order-details';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Ban, Pencil, Save, Printer, Download, Receipt } from 'lucide-react';
 import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, ActivityHistoryItem } from '@/lib/types';
+import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, ActivityHistoryItem, Quote } from '@/lib/types';
 import { doc, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImage, deleteImage } from '@/firebase/storage';
@@ -37,6 +37,7 @@ import { SignaturePad } from '@/components/signature-pad';
 import { useTechnician as useRoleData } from '@/hooks/use-technician';
 import { WorkOrderEditForm } from '@/components/work-order-edit-form';
 import { ReportPreviewDialog } from '@/components/report-preview-dialog';
+import { Loader2 } from 'lucide-react';
 
 export default function WorkOrderDetailPage() {
   const params = useParams();
@@ -55,6 +56,7 @@ export default function WorkOrderDetailPage() {
   const [trainingRecords, setTrainingRecords] = useState<TrainingRecord[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingNote, setIsAddingNote] = useState(false);
@@ -66,6 +68,7 @@ export default function WorkOrderDetailPage() {
   const [tempOnArrival, setTempOnArrival] = useState('');
   const [tempOnLeaving, setTempOnLeaving] = useState('');
   const [contactInfo, setContactInfo] = useState('');
+  const [isDownloading, setIsDownloading] = useState(false);
   
   const workOrderDocRef = useMemoFirebase(() => {
     if (!db) return null;
@@ -82,14 +85,16 @@ export default function WorkOrderDetailPage() {
             fetchedWorkSites, 
             fetchedClients,
             fetchedTrainingRecords,
-            fetchedTimeEntries
+            fetchedTimeEntries,
+            fetchedQuotes
         ] = await Promise.all([
           getTechnicians(db),
           getWorkOrderById(db, id),
           getWorkSites(db),
           getClients(db),
           getTrainingRecordsByWorkOrderId(db, id),
-          getTimeEntriesByWorkOrder(db, id)
+          getTimeEntriesByWorkOrder(db, id),
+          getQuotesByWorkOrderId(db, id)
         ]);
 
         setTechnicians(fetchedTechnicians);
@@ -97,6 +102,7 @@ export default function WorkOrderDetailPage() {
         setClients(fetchedClients);
         setTrainingRecords(fetchedTrainingRecords);
         setTimeEntries(fetchedTimeEntries);
+        setQuotes(fetchedQuotes);
         
         if (fetchedWorkOrder) {
             setWorkOrder(fetchedWorkOrder);
@@ -451,6 +457,69 @@ export default function WorkOrderDetailPage() {
     }
   };
 
+  const handleDownloadMedia = async () => {
+    if (!workOrder) return;
+    setIsDownloading(true);
+
+    const photoUrls = [
+        ...(workOrder.beforePhotoUrls || []),
+        ...(workOrder.afterPhotoUrls || []),
+        ...(workOrder.notes?.flatMap(note => note.photoUrls || []) || []),
+        ...(quotes.flatMap(quote => quote.photos || []))
+    ];
+
+    const videoUrls = quotes.flatMap(quote => quote.videos || []);
+
+    const allUrls = [...photoUrls, ...videoUrls];
+
+    if (allUrls.length === 0) {
+        toast({ title: "No media to download." });
+        setIsDownloading(false);
+        return;
+    }
+
+    toast({ title: `Starting download of ${allUrls.length} media files...` });
+
+    for (const [index, url] of allUrls.entries()) {
+        try {
+            // Use the proxy for CORS
+            const response = await fetch(`/api/image-proxy?url=${encodeURIComponent(url)}`);
+            if (!response.ok) {
+                console.error(`Failed to fetch ${url}: ${response.statusText}`);
+                toast({ title: `Download failed for file ${index + 1}`, variant: "destructive" });
+                continue; // continue to next file
+            }
+            const blob = await response.blob();
+            const objectUrl = window.URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = objectUrl;
+            
+            // Extract filename from URL
+            const urlParts = new URL(url);
+            const pathParts = urlParts.pathname.split('/');
+            a.download = decodeURIComponent(pathParts[pathParts.length - 1]);
+            
+            document.body.appendChild(a);
+            a.click();
+            
+            // Cleanup
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(objectUrl);
+
+            // Small delay between downloads
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+        } catch (error) {
+            console.error("Download failed for", url, error);
+            toast({ title: `Download failed for file ${index + 1}`, variant: "destructive" });
+        }
+    }
+    
+    toast({ title: "All downloads initiated." });
+    setIsDownloading(false);
+};
+
 
   if (isLoading || !workOrder) {
     return (
@@ -476,6 +545,10 @@ export default function WorkOrderDetailPage() {
               </Link>
             </Button>
              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={handleDownloadMedia} disabled={isDownloading}>
+                    {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                    Download Media
+                </Button>
                 {!isTechnician && (
                     <Button variant="outline" onClick={() => setIsReportDialogOpen(true)}>
                         <Printer className="mr-2 h-4 w-4" />
@@ -527,7 +600,7 @@ export default function WorkOrderDetailPage() {
                     onTimeEntryDelete={handleTimeEntryDelete}
                     isAddingNote={isAddingNote}
                     isSavingPhotos={isSavingPhotos}
-                    onDirectionsClick={handleDirectionsClick}
+                    onDirectionsClick={onDirectionsClick}
                     onSignatureSave={() => setIsSignatureDialogOpen(true)}
                     onTempUpdate={handleTempUpdate}
                     tempOnArrival={tempOnArrival}

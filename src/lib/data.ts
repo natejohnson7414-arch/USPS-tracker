@@ -443,6 +443,14 @@ export const getIncompleteWorkOrders = async (db: any): Promise<WorkOrder[]> => 
      return workOrdersList.sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime());
 };
 
+export const getQuotesByWorkOrderId = async (db: any, workOrderId: string): Promise<Quote[]> => {
+    if (!db || !workOrderId) return [];
+    const quotesCol = collection(db, 'quotes');
+    const q = query(quotesCol, where("workOrderId", "==", workOrderId));
+    const snapshot = await getCollectionNonBlocking(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quote));
+};
+
 export const getQuoteById = async (db: any, id: string): Promise<Quote | undefined> => {
     const quoteRef = doc(db, 'quotes', id);
     const quoteSnap = await getDocumentNonBlocking(quoteRef);
