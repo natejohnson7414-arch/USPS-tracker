@@ -15,8 +15,13 @@ import { useTechnician } from '@/hooks/use-technician';
 import { getQuotes } from '@/lib/data';
 import type { Quote } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 function QuoteStatusBadge({ status }: { status: Quote['status'] }) {
   const variant = {
@@ -107,15 +112,16 @@ export default function QuotesPage() {
               Manage and track all customer quotes.
             </p>
           </div>
-           <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as Quote['status'] | 'All')} className="w-full sm:w-auto">
-            <ScrollArea className="w-full sm:w-auto whitespace-nowrap">
-                <TabsList className="w-full sm:w-auto">
-                    {quoteStatuses.map(status => (
-                        <TabsTrigger key={status} value={status}>{status}</TabsTrigger>
-                    ))}
-                </TabsList>
-            </ScrollArea>
-          </Tabs>
+           <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as Quote['status'] | 'All')}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Filter by status..." />
+            </SelectTrigger>
+            <SelectContent>
+              {quoteStatuses.map(status => (
+                <SelectItem key={status} value={status}>{status}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         
         <Card>
@@ -166,3 +172,4 @@ export default function QuotesPage() {
     </MainLayout>
   );
 }
+    
