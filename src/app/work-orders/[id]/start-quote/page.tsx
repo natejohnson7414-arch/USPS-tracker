@@ -19,6 +19,7 @@ import type { WorkOrder, Quote } from '@/lib/types';
 import { Loader2, ArrowLeft, Upload, Video, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { collection } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { notifyAdminsOfNewQuote } from '@/ai/flows/notify-admins-flow';
 
 export default function StartQuotePage() {
     const { id: workOrderId } = useParams();
@@ -96,11 +97,11 @@ export default function StartQuotePage() {
         setIsSubmitting(true);
         
         try {
-            const quoteId = `QT-${Date.now()}`;
+            const quoteNumber = `QT-${Date.now()}`;
             
             const uploadPromises = [
-                ...photos.map(file => uploadImage(file, `quotes/${quoteId}/photos/${file.name}`)),
-                ...videos.map(file => uploadImage(file, `quotes/${quoteId}/videos/${file.name}`))
+                ...photos.map(file => uploadImage(file, `quotes/${quoteNumber}/photos/${file.name}`)),
+                ...videos.map(file => uploadImage(file, `quotes/${quoteNumber}/videos/${file.name}`))
             ];
             
             const uploadedUrls = await Promise.all(uploadPromises);
@@ -108,7 +109,7 @@ export default function StartQuotePage() {
             const videoUrls = uploadedUrls.slice(photos.length);
 
             const newQuote: Omit<Quote, 'id'> = {
-                quoteNumber: quoteId,
+                quoteNumber: quoteNumber,
                 status: 'Draft',
                 workOrderId: workOrder.id,
                 clientId: workOrder.clientId,
@@ -130,6 +131,21 @@ export default function StartQuotePage() {
             await addDocumentNonBlocking(collection(db, 'quotes'), newQuote);
 
             toast({ title: 'Quote Started', description: 'Your quote has been submitted for review.' });
+            
+            // Notify administrators, but don't block the UI
+            notifyAdminsOfNewQuote({
+                quoteId: quoteNumber,
+                workOrderId: workOrder.id,
+                jobName: workOrder.jobName,
+                technicianName: user.displayName || user.email || 'Unknown Technician'
+            }).then(result => {
+                if (result.success) {
+                    console.log('Admin notification process initiated.');
+                } else {
+                    console.warn('Admin notification failed:', result.message);
+                }
+            });
+
             router.push(`/work-orders/${workOrder.id}`);
 
         } catch (error) {
