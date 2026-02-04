@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser } from '@/firebase';
@@ -40,6 +40,13 @@ const AddActivityForm = ({ technicians, onAddActivity, isLoading, isTechnician, 
     // The technician ID to display. For techs, it's their own ID. For admins, it's what they selected.
     const displayTechnicianId = isTechnician ? currentUserId : selectedTechnicianId;
 
+    useEffect(() => {
+        if (isTechnician && currentUserId) {
+            setSelectedTechnicianId(currentUserId);
+        }
+    }, [isTechnician, currentUserId]);
+
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -50,6 +57,9 @@ const AddActivityForm = ({ technicians, onAddActivity, isLoading, isTechnician, 
             // Basic validation
             return;
         }
+        
+        if (isLoading) return;
+
         onAddActivity({
             description,
             technicianId: submissionTechnicianId,
@@ -359,7 +369,7 @@ export function WorkOrderDetails({
               <div className="flex flex-col items-end gap-2">
                 <StatusBadge status={workOrder.status} />
                 {canCompleteWorkOrder && (
-                  <Button onClick={onMarkForReview} disabled={isSubmittingReview} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Button onClick={onMarkForReview} disabled={isSubmittingReview} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                     {isSubmittingReview && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Submit for Review
                   </Button>
@@ -684,10 +694,18 @@ export function WorkOrderDetails({
       
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ClipboardCheck className="h-5 w-5" />
-              Training Records
-            </CardTitle>
+            <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <ClipboardCheck className="h-5 w-5" />
+                  Training Records
+                </CardTitle>
+                <Button asChild variant="outline" size="sm">
+                    <Link href={`/training-attendance?workOrderId=${workOrder.id}`}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Training
+                    </Link>
+                </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {trainingRecords.length > 0 ? (

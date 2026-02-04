@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
 import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -31,6 +32,7 @@ import { uploadImage } from '@/firebase/storage';
 import { collection, query } from 'firebase/firestore';
 import type { TrainingRecord, Attendee, WorkOrder } from '@/lib/types';
 import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
+import { getWorkOrderById } from '@/lib/data';
 
 const checklistItems = {
   item1: 'Have trainees sign the owners training sign-in sheet.',
@@ -68,6 +70,8 @@ const checklistItems = {
 export default function TrainingAttendancePage() {
   const db = useFirestore();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const woIdFromQuery = searchParams.get('workOrderId');
 
   const [isSaving, setIsSaving] = useState(false);
   const [trainingCourse, setTrainingCourse] = useState('');
@@ -88,6 +92,18 @@ export default function TrainingAttendancePage() {
   const [workOrderId, setWorkOrderId] = useState<string | undefined>();
   const workOrdersQuery = useMemoFirebase(() => db ? query(collection(db, 'work_orders')) : null, [db]);
   const { data: workOrders } = useCollection<WorkOrder>(workOrdersQuery);
+
+  useEffect(() => {
+    if (woIdFromQuery && db) {
+        setWorkOrderId(woIdFromQuery);
+        // fetch work order to pre-populate course name
+        getWorkOrderById(db, woIdFromQuery).then(wo => {
+            if (wo) {
+                setTrainingCourse(wo.jobName);
+            }
+        });
+    }
+  }, [woIdFromQuery, db]);
 
   const handleAddAttendee = () => {
     setAttendees([...attendees, { id: `attendee-${Date.now()}`, name: '' }]);
@@ -238,7 +254,7 @@ export default function TrainingAttendancePage() {
                 <div className="space-y-4">
                    <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
                     <label className="font-semibold">Work Order:</label>
-                     <Select onValueChange={setWorkOrderId} value={workOrderId} disabled={isSaving}>
+                     <Select onValueChange={setWorkOrderId} value={workOrderId} disabled={isSaving || !!woIdFromQuery}>
                         <SelectTrigger>
                             <SelectValue placeholder="Select a work order (optional)" />
                         </SelectTrigger>
