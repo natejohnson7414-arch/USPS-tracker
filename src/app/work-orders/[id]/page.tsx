@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, FormEvent } from 'react';
-import { getTechnicians, getWorkOrderById, getWorkSites, getClients, getTrainingRecordsByWorkOrderId, getTimeEntriesByWorkOrder, getTechnicianById, deleteTrainingRecord, updateWorkOrderStatus, addWorkHistoryItem, getQuotesByWorkOrderId, getHvacStartupReportsByWorkOrderId, deleteHvacStartupReport } from '@/lib/data';
+import { getTechnicians, getWorkOrderById, getWorkSites, getClients, getTrainingRecordsByWorkOrderId, getTimeEntriesByWorkOrder, getTechnicianById, deleteTrainingRecord, updateWorkOrderStatus, addWorkHistoryItem, getQuotesByWorkOrderId, getHvacStartupReportsByWorkOrderId, deleteHvacStartupReport, getActivitiesByWorkOrderId } from '@/lib/data';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
@@ -39,6 +39,8 @@ import { useTechnician as useRoleData } from '@/hooks/use-technician';
 import { WorkOrderEditForm } from '@/components/work-order-edit-form';
 import { ReportPreviewDialog } from '@/components/report-preview-dialog';
 import { Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function WorkOrderDetailPage() {
   const params = useParams();
@@ -93,7 +95,8 @@ export default function WorkOrderDetailPage() {
             fetchedTrainingRecords,
             fetchedHvacReports,
             fetchedTimeEntries,
-            fetchedQuotes
+            fetchedQuotes,
+            fetchedActivities,
         ] = await Promise.all([
           getTechnicians(db),
           getWorkOrderById(db, id),
@@ -102,7 +105,8 @@ export default function WorkOrderDetailPage() {
           getTrainingRecordsByWorkOrderId(db, id),
           getHvacStartupReportsByWorkOrderId(db, id),
           getTimeEntriesByWorkOrder(db, id),
-          getQuotesByWorkOrderId(db, id)
+          getQuotesByWorkOrderId(db, id),
+          getActivitiesByWorkOrderId(db, id),
         ]);
 
         setTechnicians(fetchedTechnicians);
@@ -112,6 +116,7 @@ export default function WorkOrderDetailPage() {
         setHvacReports(fetchedHvacReports);
         setTimeEntries(fetchedTimeEntries);
         setQuotes(fetchedQuotes);
+        setActivities(fetchedActivities);
         
         if (fetchedWorkOrder) {
             setWorkOrder(fetchedWorkOrder);
@@ -121,7 +126,6 @@ export default function WorkOrderDetailPage() {
             } else {
                 setAssignedTechnician(undefined);
             }
-            setActivities(fetchedWorkOrder.activities || []);
             setTempOnArrival(fetchedWorkOrder.tempOnArrival || '');
             setTempOnLeaving(fetchedWorkOrder.tempOnLeaving || '');
             setContactInfo(''); // Reset contact info for each new signature
@@ -333,6 +337,17 @@ export default function WorkOrderDetailPage() {
       setWorkOrder(prev => prev ? ({ ...prev, tempOnArrival, tempOnLeaving }) : null);
     } catch (error) {
       console.error("Failed to update temperatures", error);
+    }
+  };
+  
+  const handleContactInfoUpdate = async () => {
+    if (!workOrderDocRef) return;
+    try {
+        await updateDocumentNonBlocking(workOrderDocRef, { contactInfo });
+        toast({ title: "Contact Info Updated", description: "The customer's name has been saved." });
+        setWorkOrder(prev => prev ? ({...prev, contactInfo }) : null);
+    } catch (error) {
+        console.error("Failed to update contact info", error);
     }
   };
   
@@ -758,6 +773,7 @@ export default function WorkOrderDetailPage() {
                     setTempOnLeaving={setTempOnLeaving}
                     contactInfo={contactInfo}
                     setContactInfo={setContactInfo}
+                    onContactInfoUpdate={handleContactInfoUpdate}
                     onAddActivity={handleAddActivity}
                     isAddingActivity={isAddingActivity}
                     onUpdateActivityStatus={handleUpdateActivityStatus}
@@ -843,4 +859,3 @@ export default function WorkOrderDetailPage() {
     </MainLayout>
   );
 }
-

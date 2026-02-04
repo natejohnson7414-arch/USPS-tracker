@@ -2,14 +2,14 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams, notFound, useSearchParams } from 'next/navigation';
+import { useParams, notFound, useSearchParams, useRouter } from 'next/navigation';
 import { format, isSameDay } from 'date-fns';
 import { useFirestore } from '@/firebase';
 import { getWorkOrderById } from '@/lib/data';
 import type { WorkOrder, Acknowledgement, WorkOrderNote } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Download, Loader2, Printer } from 'lucide-react';
+import { Download, Loader2, Printer, ArrowLeft } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -19,6 +19,7 @@ export default function WorkOrderAcknowledgmentPage() {
     const db = useFirestore();
     const printRef = useRef<HTMLDivElement>(null);
     const searchParams = useSearchParams();
+    const router = useRouter();
 
     const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
     const [filteredAcks, setFilteredAcks] = useState<Acknowledgement[]>([]);
@@ -47,19 +48,16 @@ export default function WorkOrderAcknowledgmentPage() {
                 setWorkOrder(wo);
                 
                 const ackDate = dateParam ? new Date(dateParam) : new Date();
-                // Adjust for timezone offset by creating date in UTC
-                const targetDate = new Date(Date.UTC(ackDate.getFullYear(), ackDate.getMonth(), ackDate.getDate()));
-
-
+                
                 const acknowledgements = (wo.acknowledgements || []).filter(ack => {
-                    const ackDate = new Date(ack.date);
-                    return isSameDay(ackDate, targetDate);
+                    const ackDateObj = new Date(ack.date);
+                    return isSameDay(ackDateObj, ackDate);
                 });
                 setFilteredAcks(acknowledgements);
 
                 const notes = (wo.notes || []).filter(note => {
                     const noteDate = new Date(note.createdAt);
-                     return isSameDay(noteDate, targetDate);
+                     return isSameDay(noteDate, ackDate);
                 });
                 setFilteredNotes(notes);
 
@@ -137,6 +135,12 @@ export default function WorkOrderAcknowledgmentPage() {
 
     return (
         <div className="bg-gray-100 min-h-screen py-8">
+            <div id="action-buttons" className="fixed top-4 left-4 z-50 flex flex-col items-end gap-2 print:hidden">
+                 <Button onClick={() => router.back()} variant="outline">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back
+                </Button>
+            </div>
             <div id="action-buttons" className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-2 print:hidden">
                 <Button onClick={handlePrint}>
                     <Printer className="mr-2 h-4 w-4" />

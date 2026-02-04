@@ -6,7 +6,7 @@ import { useState, useRef, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, HvacStartupReport, FileAttachment } from '@/lib/types';
+import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, HvacStartupReport, FileAttachment, Acknowledgement } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -156,7 +156,6 @@ interface WorkOrderAdminDetailsProps {
   setTempOnLeaving: (value: string) => void;
   contactInfo: string;
   setContactInfo: (value: string) => void;
-  handleContactInfoUpdate: () => void;
   onAddActivity: (activity: Omit<Activity, 'id' | 'createdDate' | 'workOrderId'>) => void;
   isAddingActivity: boolean;
   onUpdateActivityStatus: (activityId: string, status: Activity['status']) => void;
@@ -165,6 +164,7 @@ interface WorkOrderAdminDetailsProps {
   onFilesUploaded: (files: File[]) => void;
   onFileDeleted: (file: FileAttachment) => void;
   isUploadingFiles: boolean;
+  onSignatureDelete: (ack: Acknowledgement) => void;
 }
 
 export function WorkOrderAdminDetails({
@@ -193,7 +193,6 @@ export function WorkOrderAdminDetails({
   tempOnArrival, setTempOnArrival,
   tempOnLeaving, setTempOnLeaving,
   contactInfo, setContactInfo,
-  handleContactInfoUpdate,
   onAddActivity,
   isAddingActivity,
   onUpdateActivityStatus,
@@ -202,6 +201,7 @@ export function WorkOrderAdminDetails({
   onFilesUploaded,
   onFileDeleted,
   isUploadingFiles,
+  onSignatureDelete,
 }: WorkOrderAdminDetailsProps) {
   const { user } = useUser();
 
@@ -214,6 +214,8 @@ export function WorkOrderAdminDetails({
   const [hvacReportToDelete, setHvacReportToDelete] = useState<string | null>(null);
   const [activityToDelete, setActivityToDelete] = useState<Activity | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [ackToDelete, setAckToDelete] = useState<Acknowledgement | null>(null);
+  const [acknowledgementDate, setAcknowledgementDate] = useState<Date | undefined>(new Date());
 
   const combinedActivity = [
     ...workOrder.notes.map(note => ({ ...note, type: 'note', date: note.createdAt || workOrder.createdDate })),
@@ -252,6 +254,7 @@ export function WorkOrderAdminDetails({
   const confirmDeleteTrainingRecord = () => { if (trainingRecordToDelete) { onTrainingRecordDelete(trainingRecordToDelete); setTrainingRecordToDelete(null); } };
   const confirmDeleteHvacReport = () => { if (hvacReportToDelete) { onHvacReportDelete(hvacReportToDelete); setHvacReportToDelete(null); } };
   const confirmDeleteActivity = () => { if (activityToDelete) { onDeleteActivity(activityToDelete.id); setActivityToDelete(null); } };
+  const confirmDeleteSignature = () => { if (ackToDelete) { onSignatureDelete(ackToDelete); setAckToDelete(null); } };
 
   const getLinkUrl = (url: string | undefined) => {
     if (!url) return '#';
@@ -395,24 +398,49 @@ export function WorkOrderAdminDetails({
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle>Customer Sign-off</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Signatures</CardTitle></CardHeader>
             <CardContent>
                 <div className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="customer-name">Customer Name</Label>
-                        <Input id="customer-name" placeholder="Enter printed name" value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} onBlur={handleContactInfoUpdate} />
-                    </div>
-                    {workOrder.customerSignatureUrl ? (
-                        <>
-                            <div className="border bg-muted rounded-md p-4 flex justify-center"><Image src={workOrder.customerSignatureUrl} alt="Customer Signature" width={300} height={150} style={{ objectFit: 'contain' }} /></div>
-                            <p className="text-sm text-muted-foreground text-center">Signed on {workOrder.signatureDate ? format(new Date(workOrder.signatureDate), 'MMM d, yyyy') : 'N/A'}</p>
-                        </>
-                    ) : (
-                        <div className="border-2 border-dashed rounded-md p-4">{workOrder.status !== 'Completed' && <Button type="button" onClick={onSignatureSave} className="w-full">Capture Signature</Button>}</div>
-                    )}
+                  {(workOrder.acknowledgements || []).length > 0 ? (
+                      <div className="space-y-3">
+                          {workOrder.acknowledgements?.map((ack, index) => (
+                              <div key={index} className="flex items-center justify-between p-2 border rounded-md">
+                                  <div>
+                                      <p className="font-medium">{ack.name}</p>
+                                      <p className="text-xs text-muted-foreground">{format(new Date(ack.date), 'PP p')}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="bg-muted p-1 rounded-md">
+                                      <Image src={ack.signatureUrl} alt={`${ack.name}'s signature`} width={120} height={40} style={{ objectFit: 'contain' }} />
+                                    </div>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setAckToDelete(ack)}>
+                                      <Trash2 className="h-4 w-4"/>
+                                    </Button>
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  ) : (
+                      <p className="text-sm text-center text-muted-foreground py-4">No signatures have been captured for this work order yet.</p>
+                  )}
                 </div>
             </CardContent>
           </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Acknowledgment Documents</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col sm:flex-row items-center gap-4">
+                    <DatePicker date={acknowledgementDate} setDate={setAcknowledgementDate} />
+                    <Button asChild>
+                        <Link href={`/work-orders/${workOrder.id}/acknowledgment?date=${acknowledgementDate?.toISOString()}`} target="_blank">
+                            Generate Document
+                        </Link>
+                    </Button>
+                </CardContent>
+            </Card>
+
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -553,6 +581,8 @@ export function WorkOrderAdminDetails({
       <AlertDialog open={!!trainingRecordToDelete} onOpenChange={(open) => !open && setTrainingRecordToDelete(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete this training record.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteTrainingRecord}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       <AlertDialog open={!!hvacReportToDelete} onOpenChange={(open) => !open && setHvacReportToDelete(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete this HVAC Start-up Report.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteHvacReport}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       <AlertDialog open={!!activityToDelete} onOpenChange={(open) => !open && setActivityToDelete(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete this scheduled activity.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteActivity}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+      <AlertDialog open={!!ackToDelete} onOpenChange={(open) => !open && setAckToDelete(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete this signature.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteSignature}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+
 
       <Sheet open={!!photoSheetTarget} onOpenChange={(isOpen) => !isOpen && setPhotoSheetTarget(null)}>
         <SheetContent side="bottom">
