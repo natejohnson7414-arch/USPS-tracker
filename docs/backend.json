@@ -226,6 +226,21 @@
           "type": "array",
           "description": "URLs of photos taken after work was completed.",
           "items": { "type": "string" }
+        },
+        "uploadedFiles": {
+            "type": "array",
+            "description": "Files attached to the work order.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": { "type": "string" },
+                    "url": { "type": "string" },
+                    "type": { "type": "string" },
+                    "size": { "type": "number" },
+                    "uploadedAt": { "type": "string", "format": "date-time" }
+                },
+                "required": ["name", "url", "type", "size", "uploadedAt"]
+            }
         }
       },
       "required": [

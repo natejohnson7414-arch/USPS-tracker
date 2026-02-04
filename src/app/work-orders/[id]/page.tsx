@@ -12,7 +12,7 @@ import { WorkOrderAdminDetails } from '@/components/work-order-admin-details';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Ban, Pencil, Save, Printer, Download, Receipt } from 'lucide-react';
 import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, ActivityHistoryItem, Quote, HvacStartupReport } from '@/lib/types';
+import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, ActivityHistoryItem, Quote, HvacStartupReport, FileAttachment } from '@/lib/types';
 import { doc, collection, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImage, deleteImage } from '@/firebase/storage';
@@ -74,6 +74,7 @@ export default function WorkOrderDetailPage() {
   const [tempOnLeaving, setTempOnLeaving] = useState('');
   const [contactInfo, setContactInfo] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   
   const workOrderDocRef = useMemoFirebase(() => {
     if (!db) return null;
@@ -244,6 +245,66 @@ export default function WorkOrderDetailPage() {
         console.error(`Error deleting ${type} photo:`, error);
         toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete photo." });
         setWorkOrder(prev => prev ? { ...prev, [fieldToUpdate]: currentUrls } : null); // Revert
+    }
+  };
+
+  const handleFilesUploaded = async (files: File[]) => {
+    if (!db || !workOrder || files.length === 0) return;
+    
+    setIsUploadingFiles(true);
+    const toastId = toast({ title: `Uploading ${files.length} file(s)...` });
+
+    try {
+      const uploadPromises = files.map(file => {
+        const path = `work-orders/${workOrder.id}/files/${Date.now()}-${file.name}`;
+        return uploadImage(file, path).then(url => ({
+          name: file.name,
+          url,
+          type: file.type,
+          size: file.size,
+          uploadedAt: new Date().toISOString(),
+        }));
+      });
+
+      const uploadedFiles = await Promise.all(uploadPromises);
+
+      const currentFiles = workOrder.uploadedFiles || [];
+      const newFiles = [...currentFiles, ...uploadedFiles];
+
+      await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), {
+        uploadedFiles: newFiles,
+      });
+
+      setWorkOrder(prev => prev ? { ...prev, uploadedFiles: newFiles } : null);
+      
+      toastId.dismiss();
+      toast({ title: "Files Uploaded", description: `${files.length} file(s) have been added.` });
+
+    } catch (error) {
+      console.error(`Error adding files:`, error);
+      toastId.dismiss();
+      toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload files." });
+    } finally {
+      setIsUploadingFiles(false);
+    }
+  };
+
+  const handleFileDeleted = async (fileToDelete: FileAttachment) => {
+    if (!db || !workOrder) return;
+
+    const currentFiles = workOrder.uploadedFiles || [];
+    const newFiles = currentFiles.filter(file => file.url !== fileToDelete.url);
+
+    setWorkOrder(prev => prev ? { ...prev, uploadedFiles: newFiles } : null); // Optimistic update
+
+    try {
+        await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { uploadedFiles: newFiles });
+        await deleteImage(fileToDelete.url); // This function takes a URL
+        toast({ title: "File Deleted" });
+    } catch(error) {
+        console.error(`Error deleting file:`, error);
+        toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete file." });
+        setWorkOrder(prev => prev ? { ...prev, uploadedFiles: currentFiles } : null); // Revert
     }
   };
 
@@ -685,7 +746,7 @@ export default function WorkOrderDetailPage() {
                     setTempOnLeaving={setTempOnLeaving}
                     contactInfo={contactInfo}
                     setContactInfo={setContactInfo}
-                    onContactInfoUpdate={handleContactInfoUpdate}
+                    handleContactInfoUpdate={handleContactInfoUpdate}
                     onAddActivity={handleAddActivity}
                     isAddingActivity={isAddingActivity}
                     onUpdateActivityStatus={handleUpdateActivityStatus}
@@ -726,12 +787,15 @@ export default function WorkOrderDetailPage() {
                     setTempOnLeaving={setTempOnLeaving}
                     contactInfo={contactInfo}
                     setContactInfo={setContactInfo}
-                    onContactInfoUpdate={handleContactInfoUpdate}
+                    handleContactInfoUpdate={handleContactInfoUpdate}
                     onAddActivity={handleAddActivity}
                     isAddingActivity={isAddingActivity}
                     onUpdateActivityStatus={handleUpdateActivityStatus}
                     onDeleteActivity={handleDeleteActivity}
                     technicians={technicians}
+                    onFilesUploaded={handleFilesUploaded}
+                    onFileDeleted={handleFileDeleted}
+                    isUploadingFiles={isUploadingFiles}
                 />
             )}
         </div>
@@ -763,3 +827,4 @@ export default function WorkOrderDetailPage() {
     </MainLayout>
   );
 }
+

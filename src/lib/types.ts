@@ -1,6 +1,12 @@
 
 
-
+export type FileAttachment = {
+  name: string;
+  url: string;
+  type: string;
+  size: number;
+  uploadedAt: string;
+};
 
 
 export type Technician = {
@@ -90,6 +96,7 @@ export type WorkOrder = {
   signatureDate?: string;
   beforePhotoUrls?: string[];
   afterPhotoUrls?: string[];
+  uploadedFiles?: FileAttachment[];
 };
 
 

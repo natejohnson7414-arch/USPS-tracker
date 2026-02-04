@@ -6,7 +6,7 @@ import { useState, useRef, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, HvacStartupReport } from '@/lib/types';
+import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, HvacStartupReport, FileAttachment } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser } from '@/firebase';
@@ -156,12 +156,15 @@ interface WorkOrderAdminDetailsProps {
   setTempOnLeaving: (value: string) => void;
   contactInfo: string;
   setContactInfo: (value: string) => void;
-  onContactInfoUpdate: () => void;
+  handleContactInfoUpdate: () => void;
   onAddActivity: (activity: Omit<Activity, 'id' | 'createdDate' | 'workOrderId'>) => void;
   isAddingActivity: boolean;
   onUpdateActivityStatus: (activityId: string, status: Activity['status']) => void;
   onDeleteActivity: (activityId: string) => void;
   technicians: Technician[];
+  onFilesUploaded: (files: File[]) => void;
+  onFileDeleted: (file: FileAttachment) => void;
+  isUploadingFiles: boolean;
 }
 
 export function WorkOrderAdminDetails({
@@ -190,12 +193,15 @@ export function WorkOrderAdminDetails({
   tempOnArrival, setTempOnArrival,
   tempOnLeaving, setTempOnLeaving,
   contactInfo, setContactInfo,
-  onContactInfoUpdate,
+  handleContactInfoUpdate,
   onAddActivity,
   isAddingActivity,
   onUpdateActivityStatus,
   onDeleteActivity,
   technicians,
+  onFilesUploaded,
+  onFileDeleted,
+  isUploadingFiles,
 }: WorkOrderAdminDetailsProps) {
   const { user } = useUser();
 
@@ -207,6 +213,7 @@ export function WorkOrderAdminDetails({
   const [trainingRecordToDelete, setTrainingRecordToDelete] = useState<string | null>(null);
   const [hvacReportToDelete, setHvacReportToDelete] = useState<string | null>(null);
   const [activityToDelete, setActivityToDelete] = useState<Activity | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const combinedActivity = [
     ...workOrder.notes.map(note => ({ ...note, type: 'note', date: note.createdAt || workOrder.createdDate })),
@@ -256,7 +263,20 @@ export function WorkOrderAdminDetails({
     return url;
   }
 
-  const allActivityPhotos = workOrder.notes.flatMap(note => note.photoUrls || []).filter(Boolean);
+  const handleFileSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+        onFilesUploaded(Array.from(files));
+    }
+    event.target.value = ''; // Reset input
+  };
+  
+  const getFileIcon = (fileType: string) => {
+    if (fileType.startsWith('image/')) return <ImageIcon className="h-5 w-5 flex-shrink-0 text-blue-500" />;
+    if (fileType.startsWith('video/')) return <Video className="h-5 w-5 flex-shrink-0 text-purple-500" />;
+    if (fileType === 'application/pdf') return <FileText className="h-5 w-5 flex-shrink-0 text-red-500" />;
+    return <File className="h-5 w-5 flex-shrink-0 text-gray-500" />;
+  }
 
   return (
     <>
@@ -380,7 +400,7 @@ export function WorkOrderAdminDetails({
                 <div className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="customer-name">Customer Name</Label>
-                        <Input id="customer-name" placeholder="Enter printed name" value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} onBlur={onContactInfoUpdate} />
+                        <Input id="customer-name" placeholder="Enter printed name" value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} onBlur={handleContactInfoUpdate} />
                     </div>
                     {workOrder.customerSignatureUrl ? (
                         <>
@@ -461,19 +481,41 @@ export function WorkOrderAdminDetails({
                 </CardContent>
             </Card>
              <Card>
-                <CardHeader><CardTitle>Activity Photos</CardTitle></CardHeader>
-                <CardContent>
-                    {allActivityPhotos.length > 0 ? (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                            {allActivityPhotos.map((url, index) => (
-                                <a key={index} href={url} target="_blank" rel="noopener noreferrer" className="relative group aspect-square rounded-lg overflow-hidden border">
-                                    <Image src={url} alt={`Activity photo ${index + 1}`} fill style={{ objectFit: 'cover' }} />
-                                </a>
-                            ))}
-                        </div>
-                    ) : (
-                        <p className="text-sm text-muted-foreground text-center py-4">No photos found in notes.</p>
-                    )}
+                <CardHeader>
+                    <CardTitle>Files</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileSelection}
+                        className="hidden"
+                        multiple
+                    />
+                    <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploadingFiles}>
+                        {isUploadingFiles ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                        Upload Files
+                    </Button>
+                    <div className="space-y-2">
+                        {(workOrder.uploadedFiles || []).length > 0 ? (
+                            workOrder.uploadedFiles?.map(file => (
+                                <div key={file.url} className="flex items-center justify-between p-2 border rounded-md gap-2">
+                                    <a href={file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 flex-1 truncate">
+                                        {getFileIcon(file.type)}
+                                        <div className="truncate">
+                                            <p className="text-sm font-medium truncate">{file.name}</p>
+                                            <p className="text-xs text-muted-foreground">{Math.round(file.size / 1024)} KB</p>
+                                        </div>
+                                    </a>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => onFileDeleted(file)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-sm text-muted-foreground text-center py-4">No files uploaded.</p>
+                        )}
+                    </div>
                 </CardContent>
             </Card>
         </TabsContent>
