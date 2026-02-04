@@ -114,6 +114,26 @@ service cloud.firestore {
       return isSignedIn() && request.resource.data.technicianId == request.auth.uid;
     }
 
+    /**
+     * Checks if a user has permission to update a work order document.
+     */
+    function isAllowedToUpdateWorkOrder() {
+        // Admins can always update.
+        if (isAdmin()) {
+            return true;
+        }
+        // Technicians can update if they are the owner and the order is not completed.
+        if (isOwner(resource.data.assignedTechnicianId) && resource.data.status != 'Completed') {
+            // If the order is in Review, they can only update the work_history.
+            if (resource.data.status == 'Review') {
+                return request.writeFields.size() == 1 && request.writeFields[0] == 'work_history';
+            }
+            // Otherwise (Open, In Progress, On Hold), they can update.
+            return true;
+        }
+        return false;
+    }
+
 
     // --------------------------------------------------------------------------
     // Collection Rules
@@ -196,7 +216,7 @@ service cloud.firestore {
     match /work_orders/{workOrderId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn() && hasRequiredWorkOrderFields();
-      allow update: if isAdmin() || (isOwner(resource.data.assignedTechnicianId) && resource.data.status != 'Review' && resource.data.status != 'Completed');
+      allow update: if isAllowedToUpdateWorkOrder();
       allow delete: if isAdmin() && resource != null;
 
       /**
