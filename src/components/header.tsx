@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -112,12 +113,14 @@ export function Header() {
                     <span>My Timesheet</span>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/users">
-                    <Users className="mr-2 h-4 w-4" />
-                    <span>Users</span>
-                  </Link>
-                </DropdownMenuItem>
+                {role?.name !== 'Technician' && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/users">
+                      <Users className="mr-2 h-4 w-4" />
+                      <span>Users</span>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />
