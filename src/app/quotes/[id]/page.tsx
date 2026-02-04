@@ -216,6 +216,17 @@ export default function QuoteDetailPage() {
                                         <p className="text-sm whitespace-pre-wrap">{quote.description}</p>
                                     </div>
 
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <h3 className="font-medium text-sm text-muted-foreground">Model Number</h3>
+                                            <p className="text-sm">{quote.modelNumber}</p>
+                                        </div>
+                                        <div>
+                                            <h3 className="font-medium text-sm text-muted-foreground">Serial Number</h3>
+                                            <p className="text-sm">{quote.serialNumber}</p>
+                                        </div>
+                                    </div>
+
                                     {quote.estimatedLabor && (
                                     <div>
                                         <h3 className="font-medium text-sm text-muted-foreground">Estimated Labor</h3>
@@ -294,3 +305,5 @@ export default function QuoteDetailPage() {
         </MainLayout>
     );
 }
+
+    

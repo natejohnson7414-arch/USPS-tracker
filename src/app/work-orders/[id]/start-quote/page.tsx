@@ -33,6 +33,8 @@ export default function StartQuotePage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     
     const [description, setDescription] = useState('');
+    const [modelNumber, setModelNumber] = useState('');
+    const [serialNumber, setSerialNumber] = useState('');
     const [estimatedLabor, setEstimatedLabor] = useState('');
     const [materialsNeeded, setMaterialsNeeded] = useState('');
     const [photos, setPhotos] = useState<File[]>([]);
@@ -89,8 +91,8 @@ export default function StartQuotePage() {
         e.preventDefault();
         if (!db || !user || !workOrder) return;
         
-        if (!description) {
-            toast({ title: 'Description is required', variant: 'destructive' });
+        if (!description || !modelNumber || !serialNumber) {
+            toast({ title: 'Description, Model, and Serial Number are required', variant: 'destructive' });
             return;
         }
 
@@ -116,6 +118,8 @@ export default function StartQuotePage() {
                 workSiteId: workOrder.workSiteId,
                 jobName: workOrder.jobName,
                 description,
+                modelNumber,
+                serialNumber,
                 estimatedLabor,
                 materialsNeeded,
                 photos: photoUrls,
@@ -204,7 +208,29 @@ export default function StartQuotePage() {
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
                                     placeholder={workOrder.description || "Describe the necessary work, materials, and any other important details..."}
+                                    required
                                 />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label htmlFor="quote-model">Model Number</Label>
+                                    <Input 
+                                        id="quote-model"
+                                        value={modelNumber}
+                                        onChange={(e) => setModelNumber(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="quote-serial">Serial Number</Label>
+                                    <Input 
+                                        id="quote-serial"
+                                        value={serialNumber}
+                                        onChange={(e) => setSerialNumber(e.target.value)}
+                                        required
+                                    />
+                                </div>
                             </div>
 
                             <div className="space-y-4">
@@ -277,3 +303,5 @@ export default function StartQuotePage() {
         </MainLayout>
     );
 }
+
+    

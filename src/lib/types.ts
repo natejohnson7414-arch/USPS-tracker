@@ -1,6 +1,7 @@
 
 
 
+
 export type Technician = {
   id: string;
   employeeId?: string;
@@ -257,6 +258,8 @@ export type Quote = {
     workSite?: WorkSite;
     jobName?: string; // Denormalized for display
     description: string;
+    modelNumber: string;
+    serialNumber: string;
     estimatedLabor?: string;
     materialsNeeded?: string;
     photos: string[];
@@ -270,3 +273,5 @@ export type Quote = {
     total: number;
     adminNotes?: string;
 };
+
+    
