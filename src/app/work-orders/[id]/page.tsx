@@ -545,10 +545,12 @@ export default function WorkOrderDetailPage() {
               </Link>
             </Button>
              <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={handleDownloadMedia} disabled={isDownloading}>
-                    {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                    Download Media
-                </Button>
+                {!isTechnician && (
+                    <Button variant="outline" onClick={handleDownloadMedia} disabled={isDownloading}>
+                        {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                        Download Media
+                    </Button>
+                )}
                 {!isTechnician && (
                     <Button variant="outline" onClick={() => setIsReportDialogOpen(true)}>
                         <Printer className="mr-2 h-4 w-4" />
@@ -600,7 +602,7 @@ export default function WorkOrderDetailPage() {
                     onTimeEntryDelete={handleTimeEntryDelete}
                     isAddingNote={isAddingNote}
                     isSavingPhotos={isSavingPhotos}
-                    onDirectionsClick={handleDirectionsClick}
+                    onDirectionsClick={() => workOrder.workSite && handleDirectionsClick(workOrder.workSite)}
                     onSignatureSave={() => setIsSignatureDialogOpen(true)}
                     onTempUpdate={handleTempUpdate}
                     tempOnArrival={tempOnArrival}
@@ -609,7 +611,7 @@ export default function WorkOrderDetailPage() {
                     setTempOnLeaving={setTempOnLeaving}
                     contactInfo={contactInfo}
                     setContactInfo={setContactInfo}
-                    onContactInfoUpdate={handleContactInfoUpdate}
+                    onContactInfoUpdate={onContactInfoUpdate}
                     onAddActivity={handleAddActivity}
                     onUpdateActivityStatus={handleUpdateActivityStatus}
                     onDeleteActivity={handleDeleteActivity}
