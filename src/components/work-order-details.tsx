@@ -418,13 +418,13 @@ export function WorkOrderDetails({
                   <p className="text-center text-sm text-muted-foreground py-4">No scheduled activities.</p>
                 )}
               </div>
-              {!isTechnician && (
+              {(isAdmin || (isTechnician && workOrder.status !== 'Completed')) && (
                 <>
                     <Separator />
                     <AddActivityForm 
                         technicians={technicians} 
                         onAddActivity={onAddActivity}
-                        isLoading={false} // This should be wired up if there's a loading state for adding
+                        isLoading={false}
                     />
                 </>
               )}
