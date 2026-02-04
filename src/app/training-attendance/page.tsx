@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { MainLayout } from '@/components/main-layout';
@@ -67,8 +67,7 @@ const checklistItems = {
   item5: 'Ask who does there Maintenance? Recommend we give them a price, if they agree call office we may have you stay on-site and get a list of equipment/with belts and filter counts and sizes.',
 };
 
-
-export default function TrainingAttendancePage() {
+function TrainingAttendancePageContent() {
   const db = useFirestore();
   const { toast } = useToast();
   const searchParams = useSearchParams();
@@ -418,4 +417,19 @@ export default function TrainingAttendancePage() {
         </Dialog>
     </MainLayout>
   );
+}
+
+export default function TrainingAttendancePage() {
+    return (
+        <Suspense fallback={
+            <MainLayout>
+                <div className="flex items-center justify-center h-full">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                    <p className="ml-4">Loading Form...</p>
+                </div>
+            </MainLayout>
+        }>
+            <TrainingAttendancePageContent />
+        </Suspense>
+    );
 }
