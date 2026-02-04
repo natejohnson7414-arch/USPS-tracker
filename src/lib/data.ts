@@ -2,7 +2,7 @@
 
 'use client';
 import type { AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client, TrainingRecord, HvacStartupReport, TimeEntry, Activity, ActivityHistoryItem, Quote } from '@/lib/types';
-import { collection, getDoc, doc, query, where, deleteDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, getDoc, doc, query, where, arrayUnion } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 import { sampleRoles, sampleTechnicians, sampleWorkOrders, sampleWorkSites, sampleClients } from './sample-data';
 import { setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
@@ -267,7 +267,7 @@ export const getTrainingRecordById = async (db: any, id: string): Promise<Traini
 export const deleteTrainingRecord = async (db: any, id: string): Promise<void> => {
     if (!id) return;
     const trainingRecordRef = doc(db, 'training_records', id);
-    await deleteDoc(trainingRecordRef);
+    await deleteDocumentNonBlocking(trainingRecordRef);
 };
 
 
@@ -380,7 +380,7 @@ export const addWorkHistoryItem = async (db: any, workOrderId: string, item: Omi
         id: `hist-${Date.now()}`,
         timestamp: new Date().toISOString(),
     };
-    await updateDoc(workOrderRef, {
+    await updateDocumentNonBlocking(workOrderRef, {
         work_history: arrayUnion(historyItem)
     });
 };
