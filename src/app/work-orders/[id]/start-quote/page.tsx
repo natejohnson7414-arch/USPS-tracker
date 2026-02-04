@@ -20,6 +20,7 @@ import { Loader2, ArrowLeft, Upload, Video, Image as ImageIcon, Trash2 } from 'l
 import { collection, doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { notifyAdminsOfNewQuote } from '@/ai/flows/notify-admins-flow';
+import { generateQuoteNumber } from '@/ai/flows/generate-quote-number-flow';
 
 export default function StartQuotePage() {
     const { id: workOrderId } = useParams();
@@ -99,7 +100,11 @@ export default function StartQuotePage() {
         setIsSubmitting(true);
         
         try {
-            const quoteNumber = `QT-${Date.now()}`;
+            const { quoteNumber, error } = await generateQuoteNumber();
+
+            if (error || !quoteNumber) {
+                throw new Error(error || 'Could not generate quote number.');
+            }
             
             const uploadPromises = [
                 ...photos.map(file => uploadImage(file, `quotes/${quoteNumber}/photos/${file.name}`)),
@@ -156,10 +161,12 @@ export default function StartQuotePage() {
 
             router.push(`/work-orders/${workOrder.id}`);
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error starting quote:", error);
             if (error instanceof Error && !error.message.includes('permission-error')) {
-              toast({ title: 'Failed to start quote', variant: 'destructive' });
+              toast({ title: 'Failed to start quote', description: error.message, variant: 'destructive' });
+            } else {
+                 toast({ title: 'Failed to start quote', variant: 'destructive' });
             }
         } finally {
             setIsSubmitting(false);
