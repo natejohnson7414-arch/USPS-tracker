@@ -298,258 +298,263 @@ export function WorkOrderAdminDetails({
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="media">Media</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
+      <Tabs defaultValue="overview">
+        <TabsList variant="folder">
+          <TabsTrigger value="overview" variant="folder">Overview</TabsTrigger>
+          <TabsTrigger value="media" variant="folder">Media</TabsTrigger>
+          <TabsTrigger value="activity" variant="folder">Activity</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-8">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>Details</CardTitle>
-                <div className="flex items-center gap-2">
-                  {workOrder.checkInOutURL && (
-                    <div className="flex flex-col items-center">
-                      <Button asChild variant="outline" size="icon">
-                        <a href={getLinkUrl(workOrder.checkInOutURL)} target="_blank" rel="noopener noreferrer">
-                          <LinkIcon className="h-4 w-4" />
-                          <span className="sr-only">Check-in</span>
-                        </a>
-                      </Button>
-                      {workOrder.checkInWorkOrderNumber && (
-                        <p className="text-xs text-muted-foreground mt-1 max-w-[60px] truncate" title={workOrder.checkInWorkOrderNumber}>
-                          WO: {workOrder.checkInWorkOrderNumber}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  {workOrder.workSite && (
-                    <Button variant="outline" size="icon" onClick={() => onDirectionsClick(workOrder.workSite!)}>
-                      <Map className="h-4 w-4" />
-                      <span className="sr-only">Get Directions</span>
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                    <span className="text-muted-foreground">Date</span>
-                    <span className="font-medium">{workOrder.createdDate ? format(new Date(workOrder.createdDate), 'MMM d, yyyy') : 'N/A'}</span>
-                </div>
-                <div className="flex justify-between items-start">
-                    <span className="text-muted-foreground">Bill To</span>
-                    <div className="text-right">
-                        <p className="font-medium">{workOrder.client?.name || workOrder.billTo || 'N/A'}</p>
-                        {workOrder.client?.address && <p className="text-xs text-muted-foreground">{workOrder.client.address}</p>}
-                    </div>
-                </div>
-                <div className="flex justify-between">
-                    <span className="text-muted-foreground">PO #</span>
-                    <span className="font-medium">{workOrder.poNumber || 'N/A'}</span>
-                </div>
-                <div className="flex justify-between items-start">
-                    <span className="text-muted-foreground">Contact</span>
-                    <span className="font-medium text-right whitespace-pre-wrap">{workOrder.contactInfo || 'N/A'}</span>
-                </div>
-                <Separator/>
-                <div className="flex justify-between items-start">
-                    <span className="text-muted-foreground">Job Site</span>
-                    <div className="text-right">
-                        <p className="font-medium">{workOrder.workSite?.name || 'N/A'}</p>
-                        {workOrder.workSite?.address && <p className="text-xs text-muted-foreground">{workOrder.workSite.address}</p>}
-                    </div>
-                </div>
-                <div className="flex justify-between">
-                    <span className="text-muted-foreground">Assigned To</span>
-                    {assignedTechnician ? (
-                        <div className="flex items-center gap-2 font-medium">
-                            <span>{assignedTechnician.name}</span>
-                        </div>
-                        ) : (
-                        <span className="font-medium">Unassigned</span>
+        <TabsContent value="overview" className="mt-0">
+          <div className="space-y-8">
+            <Card className="rounded-t-none">
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle>Details</CardTitle>
+                  <div className="flex items-center gap-2">
+                    {workOrder.checkInOutURL && (
+                      <div className="flex flex-col items-center">
+                        <Button asChild variant="outline" size="icon">
+                          <a href={getLinkUrl(workOrder.checkInOutURL)} target="_blank" rel="noopener noreferrer">
+                            <LinkIcon className="h-4 w-4" />
+                            <span className="sr-only">Check-in</span>
+                          </a>
+                        </Button>
+                        {workOrder.checkInWorkOrderNumber && (
+                          <p className="text-xs text-muted-foreground mt-1 max-w-[60px] truncate" title={workOrder.checkInWorkOrderNumber}>
+                            WO: {workOrder.checkInWorkOrderNumber}
+                          </p>
+                        )}
+                      </div>
                     )}
+                    {workOrder.workSite && (
+                      <Button variant="outline" size="icon" onClick={() => onDirectionsClick(workOrder.workSite!)}>
+                        <Map className="h-4 w-4" />
+                        <span className="sr-only">Get Directions</span>
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                 <Separator/>
-                   <div className="flex justify-between">
-                      <span className="text-muted-foreground">Schedule Date</span>
-                      <span className="font-medium">{workOrder.serviceScheduleDate ? format(new Date(workOrder.serviceScheduleDate), 'MMM d, yyyy') : 'N/A'}</span>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                      <span className="text-muted-foreground">Date</span>
+                      <span className="font-medium">{workOrder.createdDate ? format(new Date(workOrder.createdDate), 'MMM d, yyyy') : 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between items-start">
+                      <span className="text-muted-foreground">Bill To</span>
+                      <div className="text-right">
+                          <p className="font-medium">{workOrder.client?.name || workOrder.billTo || 'N/A'}</p>
+                          {workOrder.client?.address && <p className="text-xs text-muted-foreground">{workOrder.client.address}</p>}
+                      </div>
                   </div>
                   <div className="flex justify-between">
-                      <span className="text-muted-foreground">Quoted Amount</span>
-                      <span className="font-medium">{workOrder.quotedAmount ? `$${workOrder.quotedAmount.toFixed(2)}` : 'N/A'}</span>
+                      <span className="text-muted-foreground">PO #</span>
+                      <span className="font-medium">{workOrder.poNumber || 'N/A'}</span>
                   </div>
-                   <div className="flex justify-between">
-                      <span className="text-muted-foreground">Time & Material</span>
-                      <span className="font-medium">{workOrder.timeAndMaterial ? 'Yes' : 'No'}</span>
+                  <div className="flex justify-between items-start">
+                      <span className="text-muted-foreground">Contact</span>
+                      <span className="font-medium text-right whitespace-pre-wrap">{workOrder.contactInfo || 'N/A'}</span>
+                  </div>
+                  <Separator/>
+                  <div className="flex justify-between items-start">
+                      <span className="text-muted-foreground">Job Site</span>
+                      <div className="text-right">
+                          <p className="font-medium">{workOrder.workSite?.name || 'N/A'}</p>
+                          {workOrder.workSite?.address && <p className="text-xs text-muted-foreground">{workOrder.workSite.address}</p>}
+                      </div>
+                  </div>
+                  <div className="flex justify-between">
+                      <span className="text-muted-foreground">Assigned To</span>
+                      {assignedTechnician ? (
+                          <div className="flex items-center gap-2 font-medium">
+                              <span>{assignedTechnician.name}</span>
+                          </div>
+                          ) : (
+                          <span className="font-medium">Unassigned</span>
+                      )}
                   </div>
                    <Separator/>
+                     <div className="flex justify-between">
+                        <span className="text-muted-foreground">Schedule Date</span>
+                        <span className="font-medium">{workOrder.serviceScheduleDate ? format(new Date(workOrder.serviceScheduleDate), 'MMM d, yyyy') : 'N/A'}</span>
+                    </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Customer PO#</span>
-                      <span className="font-medium">{workOrder.customerPO || 'N/A'}</span>
-                  </div>
-                   <div className="flex justify-between">
-                      <span className="text-muted-foreground">Estimator</span>
-                      <span className="font-medium">{workOrder.estimator || 'N/A'}</span>
-                  </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle>Signatures</CardTitle></CardHeader>
-            <CardContent>
-                <div className="space-y-4">
-                  {(workOrder.acknowledgements || []).length > 0 ? (
-                      <div className="space-y-3">
-                          {workOrder.acknowledgements?.map((ack, index) => (
-                              <div key={index} className="flex items-center justify-between p-2 border rounded-md">
-                                  <div>
-                                      <p className="font-medium">{ack.name}</p>
-                                      <p className="text-xs text-muted-foreground">{format(new Date(ack.date), 'PP p')}</p>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <div className="bg-muted p-1 rounded-md">
-                                      <Image src={ack.signatureUrl} alt={`${ack.name}'s signature`} width={120} height={40} style={{ objectFit: 'contain' }} />
+                        <span className="text-muted-foreground">Quoted Amount</span>
+                        <span className="font-medium">{workOrder.quotedAmount ? `$${workOrder.quotedAmount.toFixed(2)}` : 'N/A'}</span>
+                    </div>
+                     <div className="flex justify-between">
+                        <span className="text-muted-foreground">Time & Material</span>
+                        <span className="font-medium">{workOrder.timeAndMaterial ? 'Yes' : 'No'}</span>
+                    </div>
+                     <Separator/>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Customer PO#</span>
+                        <span className="font-medium">{workOrder.customerPO || 'N/A'}</span>
+                    </div>
+                     <div className="flex justify-between">
+                        <span className="text-muted-foreground">Estimator</span>
+                        <span className="font-medium">{workOrder.estimator || 'N/A'}</span>
+                    </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle>Signatures</CardTitle></CardHeader>
+              <CardContent>
+                  <div className="space-y-4">
+                    {(workOrder.acknowledgements || []).length > 0 ? (
+                        <div className="space-y-3">
+                            {workOrder.acknowledgements?.map((ack, index) => (
+                                <div key={index} className="flex items-center justify-between p-2 border rounded-md">
+                                    <div>
+                                        <p className="font-medium">{ack.name}</p>
+                                        <p className="text-xs text-muted-foreground">{format(new Date(ack.date), 'PP p')}</p>
                                     </div>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setAckToDelete(ack)}>
-                                      <Trash2 className="h-4 w-4"/>
-                                    </Button>
-                                  </div>
-                              </div>
-                          ))}
-                      </div>
-                  ) : (
-                      <p className="text-sm text-center text-muted-foreground py-4">No signatures have been captured for this work order yet.</p>
-                  )}
-                </div>
-            </CardContent>
-          </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>Acknowledgment Documents</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col sm:flex-row items-center gap-4">
-                    <DatePicker date={acknowledgementDate} setDate={setAcknowledgementDate} />
-                    <Button asChild>
-                        <Link href={`/work-orders/${workOrder.id}/acknowledgment?date=${acknowledgementDate?.toISOString()}`} target="_blank">
-                            Generate Document
-                        </Link>
-                    </Button>
-                </CardContent>
-            </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2"><ClipboardCheck className="h-5 w-5" />Training Records</CardTitle>
-                <Button asChild variant="outline" size="sm"><Link href={`/training-attendance?workOrderId=${workOrder.id}`}><PlusCircle className="mr-2 h-4 w-4" />Add Training</Link></Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {trainingRecords.length > 0 ? (
-                <ul className="space-y-2">
-                  {trainingRecords.map(record => (
-                    <li key={record.id} className="flex items-center justify-between p-2 rounded-md border gap-2">
-                      <div className='flex-1'>
-                        <p className="font-medium">{record.trainingCourse}</p>
-                        <p className="text-sm text-muted-foreground">{record.date ? format(new Date(record.date), 'MMM d, yyyy') : 'No date'}</p>
-                      </div>
-                      <Button asChild variant="outline" size="sm"><Link href={`/training-attendance/${record.id}`} target="_blank">View</Link></Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setTrainingRecordToDelete(record.id)}><Trash2 className="h-4 w-4" /></Button>
-                    </li>))}
-                </ul>
-              ) : <p className="text-sm text-muted-foreground text-center py-4">No training records for this work order.</p>}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2"><FileCog className="h-5 w-5" />HVAC Start-up Reports</CardTitle>
-                <Button asChild variant="outline" size="sm"><Link href={`/hvac-startup-report?workOrderId=${workOrder.id}`}><PlusCircle className="mr-2 h-4 w-4" />Add Report</Link></Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {hvacReports.length > 0 ? (
-                <ul className="space-y-2">
-                  {hvacReports.map(report => (
-                    <li key={report.id} className="flex items-center justify-between p-2 rounded-md border gap-2">
-                      <div className='flex-1'>
-                        <p className="font-medium">{report.equipmentType || `Report from ${format(new Date(report.date), 'PPP')}`}</p>
-                        <p className="text-sm text-muted-foreground">{report.technician || 'N/A'}</p>
-                      </div>
-                      <Button asChild variant="outline" size="sm"><Link href={`/hvac-startup-report/${report.id}`} target="_blank">View</Link></Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setHvacReportToDelete(report.id)}><Trash2 className="h-4 w-4" /></Button>
-                    </li>))}
-                </ul>
-              ) : <p className="text-sm text-muted-foreground text-center py-4">No HVAC start-up reports for this work order.</p>}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="media" className="space-y-8">
-            <Card>
-                <CardHeader><CardTitle>Job Photos</CardTitle></CardHeader>
-                <CardContent className="space-y-6">
-                    <div>
-                        <h3 className="font-medium mb-2">Before Photos</h3>
-                        {isSavingPhotos && photoSheetTarget === 'before' && <Loader2 className="h-5 w-5 animate-spin mb-2" />}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">{(workOrder.beforePhotoUrls || []).map((url) => (<div key={url} className="relative group aspect-square rounded-lg overflow-hidden border"><Image src={url} alt={`Before photo`} fill style={{ objectFit: 'cover' }} /><div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onBeforePhotoDelete(url)}><X className="h-4 w-4" /></Button></div></div>))}</div>
-                        <Button variant="outline" onClick={() => setPhotoSheetTarget('before')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add Before Photos</Button>
-                    </div>
-                    <Separator />
-                    <div>
-                        <h3 className="font-medium mb-2">After Photos</h3>
-                        {isSavingPhotos && photoSheetTarget === 'after' && <Loader2 className="h-5 w-5 animate-spin mb-2" />}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">{(workOrder.afterPhotoUrls || []).map((url) => (<div key={url} className="relative group aspect-square rounded-lg overflow-hidden border"><Image src={url} alt={`After photo`} fill style={{ objectFit: 'cover' }} /><div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onAfterPhotoDelete(url)}><X className="h-4 w-4" /></Button></div></div>))}</div>
-                        <Button variant="outline" onClick={() => setPhotoSheetTarget('after')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add After Photos</Button>
-                    </div>
-                </CardContent>
-            </Card>
-             <Card>
-                <CardHeader>
-                    <CardTitle>Files</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileSelection}
-                        className="hidden"
-                        multiple
-                    />
-                    <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploadingFiles}>
-                        {isUploadingFiles ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                        Upload Files
-                    </Button>
-                    <div className="space-y-2">
-                        {(workOrder.uploadedFiles || []).length > 0 ? (
-                            workOrder.uploadedFiles?.map(file => (
-                                <div key={file.url} className="flex items-center justify-between p-2 border rounded-md gap-2">
-                                    <a href={file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 flex-1 truncate">
-                                        {getFileIcon(file.type)}
-                                        <div className="truncate">
-                                            <p className="text-sm font-medium truncate">{file.name}</p>
-                                            <p className="text-xs text-muted-foreground">{Math.round(file.size / 1024)} KB</p>
-                                        </div>
-                                    </a>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => onFileDeleted(file)}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                    <div className="flex items-center gap-2">
+                                      <div className="bg-muted p-1 rounded-md">
+                                        <Image src={ack.signatureUrl} alt={`${ack.name}'s signature`} width={120} height={40} style={{ objectFit: 'contain' }} />
+                                      </div>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setAckToDelete(ack)}>
+                                        <Trash2 className="h-4 w-4"/>
+                                      </Button>
+                                    </div>
                                 </div>
-                            ))
-                        ) : (
-                            <p className="text-sm text-muted-foreground text-center py-4">No files uploaded.</p>
-                        )}
-                    </div>
-                </CardContent>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-center text-muted-foreground py-4">No signatures have been captured for this work order yet.</p>
+                    )}
+                  </div>
+              </CardContent>
             </Card>
+
+              <Card>
+                  <CardHeader>
+                      <CardTitle>Acknowledgment Documents</CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex flex-col sm:flex-row items-center gap-4">
+                      <DatePicker date={acknowledgementDate} setDate={setAcknowledgementDate} />
+                      <Button asChild>
+                          <Link href={`/work-orders/${workOrder.id}/acknowledgment?date=${acknowledgementDate?.toISOString()}`} target="_blank">
+                              Generate Document
+                          </Link>
+                      </Button>
+                  </CardContent>
+              </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2"><ClipboardCheck className="h-5 w-5" />Training Records</CardTitle>
+                  <Button asChild variant="outline" size="sm"><Link href={`/training-attendance?workOrderId=${workOrder.id}`}><PlusCircle className="mr-2 h-4 w-4" />Add Training</Link></Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {trainingRecords.length > 0 ? (
+                  <ul className="space-y-2">
+                    {trainingRecords.map(record => (
+                      <li key={record.id} className="flex items-center justify-between p-2 rounded-md border gap-2">
+                        <div className='flex-1'>
+                          <p className="font-medium">{record.trainingCourse}</p>
+                          <p className="text-sm text-muted-foreground">{record.date ? format(new Date(record.date), 'MMM d, yyyy') : 'No date'}</p>
+                        </div>
+                        <Button asChild variant="outline" size="sm"><Link href={`/training-attendance/${record.id}`} target="_blank">View</Link></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setTrainingRecordToDelete(record.id)}><Trash2 className="h-4 w-4" /></Button>
+                      </li>))}
+                  </ul>
+                ) : <p className="text-sm text-muted-foreground text-center py-4">No training records for this work order.</p>}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2"><FileCog className="h-5 w-5" />HVAC Start-up Reports</CardTitle>
+                  <Button asChild variant="outline" size="sm"><Link href={`/hvac-startup-report?workOrderId=${workOrder.id}`}><PlusCircle className="mr-2 h-4 w-4" />Add Report</Link></Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {hvacReports.length > 0 ? (
+                  <ul className="space-y-2">
+                    {hvacReports.map(report => (
+                      <li key={report.id} className="flex items-center justify-between p-2 rounded-md border gap-2">
+                        <div className='flex-1'>
+                          <p className="font-medium">{report.equipmentType || `Report from ${format(new Date(report.date), 'PPP')}`}</p>
+                          <p className="text-sm text-muted-foreground">{report.technician || 'N/A'}</p>
+                        </div>
+                        <Button asChild variant="outline" size="sm"><Link href={`/hvac-startup-report/${report.id}`} target="_blank">View</Link></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setHvacReportToDelete(report.id)}><Trash2 className="h-4 w-4" /></Button>
+                      </li>))}
+                  </ul>
+                ) : <p className="text-sm text-muted-foreground text-center py-4">No HVAC start-up reports for this work order.</p>}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
-        <TabsContent value="activity" className="space-y-8">
-            <Card>
+        <TabsContent value="media" className="mt-0">
+          <div className="space-y-8">
+              <Card className="rounded-t-none">
+                  <CardHeader><CardTitle>Job Photos</CardTitle></CardHeader>
+                  <CardContent className="space-y-6">
+                      <div>
+                          <h3 className="font-medium mb-2">Before Photos</h3>
+                          {isSavingPhotos && photoSheetTarget === 'before' && <Loader2 className="h-5 w-5 animate-spin mb-2" />}
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">{(workOrder.beforePhotoUrls || []).map((url) => (<div key={url} className="relative group aspect-square rounded-lg overflow-hidden border"><Image src={url} alt={`Before photo`} fill style={{ objectFit: 'cover' }} /><div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onBeforePhotoDelete(url)}><X className="h-4 w-4" /></Button></div></div>))}</div>
+                          <Button variant="outline" onClick={() => setPhotoSheetTarget('before')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add Before Photos</Button>
+                      </div>
+                      <Separator />
+                      <div>
+                          <h3 className="font-medium mb-2">After Photos</h3>
+                          {isSavingPhotos && photoSheetTarget === 'after' && <Loader2 className="h-5 w-5 animate-spin mb-2" />}
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">{(workOrder.afterPhotoUrls || []).map((url) => (<div key={url} className="relative group aspect-square rounded-lg overflow-hidden border"><Image src={url} alt={`After photo`} fill style={{ objectFit: 'cover' }} /><div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onAfterPhotoDelete(url)}><X className="h-4 w-4" /></Button></div></div>))}</div>
+                          <Button variant="outline" onClick={() => setPhotoSheetTarget('after')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add After Photos</Button>
+                      </div>
+                  </CardContent>
+              </Card>
+               <Card>
+                  <CardHeader>
+                      <CardTitle>Files</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                      <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileSelection}
+                          className="hidden"
+                          multiple
+                      />
+                      <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploadingFiles}>
+                          {isUploadingFiles ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                          Upload Files
+                      </Button>
+                      <div className="space-y-2">
+                          {(workOrder.uploadedFiles || []).length > 0 ? (
+                              workOrder.uploadedFiles?.map(file => (
+                                  <div key={file.url} className="flex items-center justify-between p-2 border rounded-md gap-2">
+                                      <a href={file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 flex-1 truncate">
+                                          {getFileIcon(file.type)}
+                                          <div className="truncate">
+                                              <p className="text-sm font-medium truncate">{file.name}</p>
+                                              <p className="text-xs text-muted-foreground">{Math.round(file.size / 1024)} KB</p>
+                                          </div>
+                                      </a>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => onFileDeleted(file)}>
+                                          <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                  </div>
+                              ))
+                          ) : (
+                              <p className="text-sm text-muted-foreground text-center py-4">No files uploaded.</p>
+                          )}
+                      </div>
+                  </CardContent>
+              </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="activity" className="mt-0">
+          <div className="space-y-8">
+            <Card className="rounded-t-none">
                 <CardHeader><CardTitle className="flex items-center gap-2"><CalendarClock className="h-5 w-5" /> Scheduled Activities</CardTitle></CardHeader>
                 <CardContent className="space-y-6">
                     <div className="space-y-4">
@@ -573,6 +578,7 @@ export function WorkOrderAdminDetails({
                     </div>
                 </CardContent>
             </Card>
+          </div>
         </TabsContent>
       </Tabs>
       
