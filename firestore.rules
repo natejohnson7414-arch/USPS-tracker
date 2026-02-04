@@ -44,10 +44,10 @@ service cloud.firestore {
     }
 
     /**
-     * Retrieves the authenticated user's profile document.
+     * Retrieves the authenticated user's profile document from the 'technicians' collection.
      */
     function getUserDoc() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return get(/databases/$(database)/documents/technicians/$(request.auth.uid));
     }
 
     /**
