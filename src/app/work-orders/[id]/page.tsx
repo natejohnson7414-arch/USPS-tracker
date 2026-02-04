@@ -12,7 +12,7 @@ import { WorkOrderAdminDetails } from '@/components/work-order-admin-details';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Ban, Pencil, Save, Printer, Download, Receipt } from 'lucide-react';
 import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, ActivityHistoryItem, Quote, HvacStartupReport, FileAttachment } from '@/lib/types';
+import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, ActivityHistoryItem, Quote, HvacStartupReport, FileAttachment, Acknowledgement } from '@/lib/types';
 import { doc, collection, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImage, deleteImage } from '@/firebase/storage';
@@ -124,7 +124,7 @@ export default function WorkOrderDetailPage() {
             setActivities(fetchedWorkOrder.activities || []);
             setTempOnArrival(fetchedWorkOrder.tempOnArrival || '');
             setTempOnLeaving(fetchedWorkOrder.tempOnLeaving || '');
-            setContactInfo(fetchedWorkOrder.contactInfo || '');
+            setContactInfo(''); // Reset contact info for each new signature
         } else {
             setWorkOrder(null);
             notFound();
@@ -336,18 +336,6 @@ export default function WorkOrderDetailPage() {
     }
   };
   
-  const handleContactInfoUpdate = async () => {
-    if (!workOrderDocRef) return;
-    
-    try {
-      await updateDocumentNonBlocking(workOrderDocRef, { contactInfo });
-      toast({ title: "Customer Name Updated", description: "The customer's name has been saved." });
-      setWorkOrder(prev => prev ? ({ ...prev, contactInfo }) : null);
-    } catch (error) {
-      console.error("Failed to update contact info", error);
-    }
-  };
-
   const handleFormSaved = (newId?: string) => {
       if (newId && newId !== id) {
           router.push(`/work-orders/${newId}`);
@@ -359,6 +347,10 @@ export default function WorkOrderDetailPage() {
 
   const handleSignatureSave = async (signatureDataUrl: string) => {
       if(!workOrderDocRef || !workOrder) return;
+      if (!contactInfo) {
+        toast({ title: 'Missing Name', description: "Please enter the signer's name.", variant: 'destructive' });
+        return;
+      }
       const signaturePath = `signatures/${workOrder.id}/${Date.now()}.png`;
       
       try {
@@ -367,22 +359,42 @@ export default function WorkOrderDetailPage() {
             signaturePath
         );
 
-        const sigDate = new Date().toISOString();
+        const newAcknowledgement: Acknowledgement = {
+            name: contactInfo,
+            signatureUrl: signatureUrl,
+            date: new Date().toISOString(),
+        };
         
         await updateDocumentNonBlocking(workOrderDocRef, {
-            customerSignatureUrl: signatureUrl,
-            signatureDate: sigDate,
-            contactInfo: contactInfo // Also save the name
+            acknowledgements: arrayUnion(newAcknowledgement)
         });
         
-        setWorkOrder(prev => prev ? ({ ...prev, customerSignatureUrl: signatureUrl, signatureDate: sigDate, contactInfo }) : null);
+        setWorkOrder(prev => prev ? ({ ...prev, acknowledgements: [...(prev.acknowledgements || []), newAcknowledgement] }) : null);
 
-        toast({ title: "Signature Saved", description: "The customer signature has been saved." });
+        toast({ title: "Signature Saved", description: "The signature has been saved." });
         setIsSignatureDialogOpen(false);
+        setContactInfo(''); // Clear for next signature
       } catch (error) {
         console.error("Error saving signature:", error);
         toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save the signature.' });
       }
+  };
+
+  const handleSignatureDelete = async (ackToDelete: Acknowledgement) => {
+    if (!db || !workOrder || !workOrder.acknowledgements) return;
+
+    const newAcks = workOrder.acknowledgements.filter(ack => ack.signatureUrl !== ackToDelete.signatureUrl);
+    setWorkOrder(prev => prev ? ({ ...prev, acknowledgements: newAcks }) : null); // Optimistic update
+
+    try {
+        await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { acknowledgements: newAcks });
+        await deleteImage(ackToDelete.signatureUrl);
+        toast({ title: "Signature Deleted" });
+    } catch(error) {
+        console.error(`Error deleting signature:`, error);
+        toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete signature." });
+        fetchData(); // Revert on error
+    }
   };
   
    const handleNotePhotoDelete = async (noteId: string, photoUrl: string) => {
@@ -746,7 +758,6 @@ export default function WorkOrderDetailPage() {
                     setTempOnLeaving={setTempOnLeaving}
                     contactInfo={contactInfo}
                     setContactInfo={setContactInfo}
-                    handleContactInfoUpdate={handleContactInfoUpdate}
                     onAddActivity={handleAddActivity}
                     isAddingActivity={isAddingActivity}
                     onUpdateActivityStatus={handleUpdateActivityStatus}
@@ -754,6 +765,7 @@ export default function WorkOrderDetailPage() {
                     technicians={technicians}
                     onMarkForReview={handleMarkForReview}
                     isSubmittingReview={isSubmittingReview}
+                    onSignatureDelete={handleSignatureDelete}
                 />
             ) : (
                  <WorkOrderAdminDetails
@@ -787,7 +799,6 @@ export default function WorkOrderDetailPage() {
                     setTempOnLeaving={setTempOnLeaving}
                     contactInfo={contactInfo}
                     setContactInfo={setContactInfo}
-                    handleContactInfoUpdate={handleContactInfoUpdate}
                     onAddActivity={handleAddActivity}
                     isAddingActivity={isAddingActivity}
                     onUpdateActivityStatus={handleUpdateActivityStatus}
@@ -796,6 +807,7 @@ export default function WorkOrderDetailPage() {
                     onFilesUploaded={handleFilesUploaded}
                     onFileDeleted={handleFileDeleted}
                     isUploadingFiles={isUploadingFiles}
+                    onSignatureDelete={handleSignatureDelete}
                 />
             )}
         </div>
@@ -809,13 +821,17 @@ export default function WorkOrderDetailPage() {
         <Dialog open={isSignatureDialogOpen} onOpenChange={setIsSignatureDialogOpen}>
             <DialogContent className="h-[90vh] w-[90vw] max-w-full flex flex-col">
                 <DialogHeader>
-                    <DialogTitle>Customer Signature</DialogTitle>
-                    <DialogDescription>Please sign in the box below.</DialogDescription>
+                    <DialogTitle>Add Signature</DialogTitle>
+                    <DialogDescription>Please have the customer sign in the box below.</DialogDescription>
                 </DialogHeader>
+                <div className='py-4'>
+                  <Label htmlFor="signer-name">Signer's Name</Label>
+                  <Input id="signer-name" placeholder="Enter printed name" value={contactInfo} onChange={e => setContactInfo(e.target.value)} />
+                </div>
                 <SignaturePad 
                     onSave={handleSignatureSave}
                     onClear={() => {}}
-                    className="flex-1 min-h-0 py-4"
+                    className="flex-1 min-h-0"
                 />
             </DialogContent>
         </Dialog>

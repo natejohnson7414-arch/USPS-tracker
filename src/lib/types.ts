@@ -8,6 +8,12 @@ export type FileAttachment = {
   uploadedAt: string;
 };
 
+export type Acknowledgement = {
+  name: string;
+  signatureUrl: string;
+  date: string;
+};
+
 
 export type Technician = {
   id: string;
@@ -92,8 +98,7 @@ export type WorkOrder = {
   // New fields for report
   tempOnArrival?: string;
   tempOnLeaving?: string;
-  customerSignatureUrl?: string;
-  signatureDate?: string;
+  acknowledgements?: Acknowledgement[];
   beforePhotoUrls?: string[];
   afterPhotoUrls?: string[];
   uploadedFiles?: FileAttachment[];
