@@ -197,6 +197,10 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
                     ...cleanedData,
                     id: jobId,
                 }
+
+                // Remove populated fields that should not be stored in Firestore
+                delete (finalDataForNewDoc as any).client;
+                delete (finalDataForNewDoc as any).workSite;
                 
                 // Set new main doc with new ID and delete old one
                 batch.set(newDocRef, finalDataForNewDoc);
