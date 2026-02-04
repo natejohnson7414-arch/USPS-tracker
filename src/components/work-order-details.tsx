@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useState, useRef, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity } from '@/lib/types';
+import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, HvacStartupReport } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser } from '@/firebase';
@@ -170,6 +171,8 @@ interface WorkOrderDetailsProps {
   isAdmin: boolean;
   trainingRecords: TrainingRecord[];
   onTrainingRecordDelete: (recordId: string) => void;
+  hvacReports: HvacStartupReport[];
+  onHvacReportDelete: (reportId: string) => void;
   timeEntries: TimeEntry[];
   activities: Activity[];
   onNoteAdded: (note: Omit<WorkOrderNote, 'id' | 'photoUrls'>) => void;
@@ -208,6 +211,8 @@ export function WorkOrderDetails({
   isAdmin,
   trainingRecords,
   onTrainingRecordDelete,
+  hvacReports,
+  onHvacReportDelete,
   timeEntries,
   activities,
   onNoteAdded,
@@ -247,6 +252,7 @@ export function WorkOrderDetails({
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
   const [timeEntryToDelete, setTimeEntryToDelete] = useState<string | null>(null);
   const [trainingRecordToDelete, setTrainingRecordToDelete] = useState<string | null>(null);
+  const [hvacReportToDelete, setHvacReportToDelete] = useState<string | null>(null);
   const [activityToDelete, setActivityToDelete] = useState<Activity | null>(null);
   const [isAddTimeOpen, setIsAddTimeOpen] = useState(false);
   const [activityForTimePosting, setActivityForTimePosting] = useState<Activity | null>(null);
@@ -320,6 +326,13 @@ export function WorkOrderDetails({
           onTrainingRecordDelete(trainingRecordToDelete);
           setTrainingRecordToDelete(null);
       }
+  };
+
+  const confirmDeleteHvacReport = () => {
+    if (hvacReportToDelete) {
+        onHvacReportDelete(hvacReportToDelete);
+        setHvacReportToDelete(null);
+    }
   };
     
   const confirmDeleteActivity = () => {
@@ -732,6 +745,47 @@ export function WorkOrderDetails({
             )}
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <FileCog className="h-5 w-5" />
+                  HVAC Start-up Reports
+                </CardTitle>
+                <Button asChild variant="outline" size="sm">
+                    <Link href={`/hvac-startup-report?workOrderId=${workOrder.id}`}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Report
+                    </Link>
+                </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {hvacReports.length > 0 ? (
+              <ul className="space-y-2">
+                {hvacReports.map(report => (
+                  <li key={report.id} className="flex items-center justify-between p-2 rounded-md border gap-2">
+                      <div className='flex-1'>
+                          <p className="font-medium">{report.equipmentType || `Report from ${format(new Date(report.date), 'PPP')}`}</p>
+                          <p className="text-sm text-muted-foreground">
+                              {report.technician || 'N/A'}
+                          </p>
+                      </div>
+                      <Button asChild variant="outline" size="sm">
+                          <Link href={`/hvac-startup-report/${report.id}`} target="_blank">View</Link>
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setHvacReportToDelete(report.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">No HVAC start-up reports for this work order.</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
 
@@ -776,6 +830,21 @@ export function WorkOrderDetails({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDeleteTrainingRecord}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!hvacReportToDelete} onOpenChange={(open) => !open && setHvacReportToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this HVAC Start-up Report.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteHvacReport}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

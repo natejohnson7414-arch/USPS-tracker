@@ -1,8 +1,9 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
 import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,7 @@ import { collection, query, where } from 'firebase/firestore';
 import type { HvacStartupReport, WorkOrder, Technician } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { getWorkOrderById } from '@/lib/data';
 
 const SectionTitle = ({ children }: { children: React.ReactNode }) => (
     <h3 className="font-bold bg-gray-100 p-2 border-b border-t">{children}</h3>
@@ -52,21 +54,37 @@ export default function HvacStartupReportPage() {
   const db = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const woIdFromQuery = searchParams.get('workOrderId');
   const [isSaving, setIsSaving] = useState(false);
 
   const [formState, setFormState] = useState<Partial<HvacStartupReport>>({
     date: new Date().toISOString(),
   });
 
-  const workOrdersQuery = useMemoFirebase(() => db ? query(collection(db, 'work_orders'), where("status", "==", "In Progress")) : null, [db]);
+  const workOrdersQuery = useMemoFirebase(() => db ? query(collection(db, 'work_orders'), where("status", "!=", "Completed")) : null, [db]);
   const { data: workOrders } = useCollection<WorkOrder>(workOrdersQuery);
 
   const techniciansQuery = useMemoFirebase(() => db ? query(collection(db, 'technicians')) : null, [db]);
   const { data: technicians } = useCollection<Technician>(techniciansQuery);
-
+  
   const handleInputChange = (field: keyof HvacStartupReport, value: string) => {
     setFormState(prev => ({ ...prev, [field]: value }));
   };
+  
+  useEffect(() => {
+    if (user?.uid) {
+        handleInputChange('technicianId', user.uid);
+    }
+    if (woIdFromQuery && db) {
+        handleInputChange('workOrderId', woIdFromQuery);
+        getWorkOrderById(db, woIdFromQuery).then(wo => {
+            if (wo && wo.workSite) {
+                handleInputChange('site', wo.workSite.name);
+            }
+        });
+    }
+  }, [woIdFromQuery, db, user]);
   
   const handleGroupedInputChange = (baseField: string, index: number, value: string) => {
     const fieldName = `${baseField}_S${index + 1}` as keyof HvacStartupReport;
@@ -85,6 +103,7 @@ export default function HvacStartupReportPage() {
   const resetForm = () => {
     setFormState({
         date: new Date().toISOString(),
+        technicianId: user?.uid,
     })
   }
 
@@ -141,7 +160,7 @@ export default function HvacStartupReportPage() {
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-b pb-4">
                     <div className="space-y-1">
                         <label className="text-sm font-medium">Site/Work Order</label>
-                         <Select onValueChange={(val) => handleInputChange('workOrderId', val)} value={formState.workOrderId} disabled={isSaving}>
+                         <Select onValueChange={(val) => handleInputChange('workOrderId', val)} value={formState.workOrderId} disabled={isSaving || !!woIdFromQuery}>
                             <SelectTrigger className="h-8">
                                 <SelectValue placeholder="Select a work order" />
                             </SelectTrigger>

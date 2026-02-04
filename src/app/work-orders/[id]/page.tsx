@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, FormEvent } from 'react';
-import { getTechnicians, getWorkOrderById, getWorkSites, getClients, getTrainingRecordsByWorkOrderId, getTimeEntriesByWorkOrder, getTechnicianById, deleteTrainingRecord, updateWorkOrderStatus, addWorkHistoryItem, getQuotesByWorkOrderId } from '@/lib/data';
+import { getTechnicians, getWorkOrderById, getWorkSites, getClients, getTrainingRecordsByWorkOrderId, getTimeEntriesByWorkOrder, getTechnicianById, deleteTrainingRecord, updateWorkOrderStatus, addWorkHistoryItem, getQuotesByWorkOrderId, getHvacStartupReportsByWorkOrderId, deleteHvacStartupReport } from '@/lib/data';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
@@ -11,7 +11,7 @@ import { WorkOrderDetails } from '@/components/work-order-details';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Ban, Pencil, Save, Printer, Download, Receipt } from 'lucide-react';
 import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, ActivityHistoryItem, Quote } from '@/lib/types';
+import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, ActivityHistoryItem, Quote, HvacStartupReport } from '@/lib/types';
 import { doc, collection, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImage, deleteImage } from '@/firebase/storage';
@@ -54,6 +54,7 @@ export default function WorkOrderDetailPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
   const [trainingRecords, setTrainingRecords] = useState<TrainingRecord[]>([]);
+  const [hvacReports, setHvacReports] = useState<HvacStartupReport[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -87,6 +88,7 @@ export default function WorkOrderDetailPage() {
             fetchedWorkSites, 
             fetchedClients,
             fetchedTrainingRecords,
+            fetchedHvacReports,
             fetchedTimeEntries,
             fetchedQuotes
         ] = await Promise.all([
@@ -95,6 +97,7 @@ export default function WorkOrderDetailPage() {
           getWorkSites(db),
           getClients(db),
           getTrainingRecordsByWorkOrderId(db, id),
+          getHvacStartupReportsByWorkOrderId(db, id),
           getTimeEntriesByWorkOrder(db, id),
           getQuotesByWorkOrderId(db, id)
         ]);
@@ -103,6 +106,7 @@ export default function WorkOrderDetailPage() {
         setWorkSites(fetchedWorkSites);
         setClients(fetchedClients);
         setTrainingRecords(fetchedTrainingRecords);
+        setHvacReports(fetchedHvacReports);
         setTimeEntries(fetchedTimeEntries);
         setQuotes(fetchedQuotes);
         
@@ -408,6 +412,22 @@ export default function WorkOrderDetailPage() {
         });
   }
 
+  const handleHvacReportDelete = (reportId: string) => {
+    if (!db) return;
+    // Optimistic UI update
+    setHvacReports(prev => prev.filter(r => r.id !== reportId));
+    
+    deleteHvacStartupReport(db, reportId)
+        .then(() => {
+            toast({ title: 'HVAC Start-Up Report Deleted' });
+        })
+        .catch(error => {
+            console.error("Error deleting HVAC report:", error);
+            toast({ title: "Deletion Failed", variant: 'destructive' });
+            fetchData(); // Re-fetch to revert optimistic update
+        });
+  }
+
   const handleAddActivity = async (newActivityData: Omit<Activity, 'id' | 'createdDate' | 'workOrderId'>) => {
     if (!db || !user || !workOrder) return;
     
@@ -633,6 +653,8 @@ export default function WorkOrderDetailPage() {
                     isAdmin={isAdmin}
                     trainingRecords={trainingRecords}
                     onTrainingRecordDelete={handleTrainingRecordDelete}
+                    hvacReports={hvacReports}
+                    onHvacReportDelete={handleHvacReportDelete}
                     timeEntries={timeEntries}
                     activities={activities}
                     onNoteAdded={handleNoteAdded}

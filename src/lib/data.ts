@@ -270,6 +270,19 @@ export const deleteTrainingRecord = async (db: any, id: string): Promise<void> =
     await deleteDocumentNonBlocking(trainingRecordRef);
 };
 
+export const getHvacStartupReportsByWorkOrderId = async (db: any, workOrderId: string): Promise<HvacStartupReport[]> => {
+    if (!db || !workOrderId) return [];
+    const reportsCol = collection(db, 'hvac_startup_reports');
+    const q = query(reportsCol, where("workOrderId", "==", workOrderId));
+    const snapshot = await getCollectionNonBlocking(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HvacStartupReport));
+};
+
+export const deleteHvacStartupReport = async (db: any, id: string): Promise<void> => {
+    if (!id) return;
+    const reportRef = doc(db, 'hvac_startup_reports', id);
+    await deleteDocumentNonBlocking(reportRef);
+};
 
 export const getHvacStartupReportById = async (db: any, id: string): Promise<HvacStartupReport | undefined> => {
     if (!id) return undefined;
