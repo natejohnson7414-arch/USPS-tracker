@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -13,16 +12,51 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LogOut, User, Users, Clock, Loader2 } from 'lucide-react';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useUser, useFirestore } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { Sidebar } from './sidebar';
 import { useTechnician } from '@/hooks/use-technician';
+import { PrimaryNav } from './primary-nav';
+import { useState, useEffect } from 'react';
+import type { Technician, WorkSite, Client } from '@/lib/types';
+import { getTechnicians, getWorkSites, getClients } from '@/lib/data';
 
 
 export function Header() {
   const { user } = useUser();
   const { technician, role, isLoading } = useTechnician();
   const auth = useAuth();
+  const db = useFirestore();
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [workSites, setWorkSites] = useState<WorkSite[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+
+  const handleAddWorkSite = (newSite: WorkSite) => {
+    setWorkSites(prev => [newSite, ...prev]);
+  };
+
+  useEffect(() => {
+    const fetchCoreData = async () => {
+      if (!db) return;
+       try {
+        const [fetchedTechnicians, fetchedWorkSites, fetchedClients] = await Promise.all([
+          getTechnicians(db),
+          getWorkSites(db),
+          getClients(db),
+        ]);
+        setTechnicians(fetchedTechnicians);
+        setWorkSites(fetchedWorkSites);
+        setClients(fetchedClients);
+      } catch (error) {
+        console.error("Failed to fetch header data:", error);
+      }
+    };
+    
+    if(db) {
+        fetchCoreData();
+    }
+  }, [db]);
+
 
   const handleLogout = async () => {
     if (auth) {
@@ -41,6 +75,14 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-card shadow-sm">
       <div className="container flex h-16 items-center">
         <Sidebar />
+         <div className="ml-6">
+          <PrimaryNav 
+            technicians={technicians}
+            workSites={workSites}
+            clients={clients}
+            onWorkSiteAdded={handleAddWorkSite}
+          />
+        </div>
         {user && (
           <div className="ml-auto">
             <DropdownMenu>

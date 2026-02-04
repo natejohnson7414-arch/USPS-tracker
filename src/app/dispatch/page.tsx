@@ -33,7 +33,6 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
-import { PrimaryNav } from '@/components/primary-nav';
 
 const NON_PRODUCTIVE_WO_ID = '24-0001';
 
@@ -608,10 +607,6 @@ export default function DispatchBoardPage() {
         );
     };
 
-    const handleAddWorkSite = (newSite: WorkSite) => {
-        setWorkSites(prev => [newSite, ...prev]);
-    };
-
     if (isLoading || isRoleLoading) {
         return (
             <MainLayout>
@@ -625,12 +620,6 @@ export default function DispatchBoardPage() {
 
     return (
         <MainLayout>
-            <PrimaryNav
-                technicians={technicians}
-                workSites={workSites}
-                clients={clients}
-                onWorkSiteAdded={handleAddWorkSite}
-            />
             <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                 <div className="container mx-auto py-8">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
