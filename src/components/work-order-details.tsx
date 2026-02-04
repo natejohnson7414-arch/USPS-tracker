@@ -36,7 +36,7 @@ const AddActivityForm = ({ technicians, onAddActivity, isLoading, isTechnician, 
 }) => {
     const [description, setDescription] = useState('');
     // For admins, this is the controlled state. For techs, it's just for display.
-    const [selectedTechnicianId, setSelectedTechnicianId] = useState<string | undefined>();
+    const [selectedTechnicianId, setSelectedTechnicianId] = useState<string | undefined>(isTechnician ? currentUserId : undefined);
     const [scheduledDate, setScheduledDate] = useState<Date | undefined>(new Date());
     
     // The technician ID to display. For techs, it's their own ID. For admins, it's what they selected.
@@ -188,6 +188,8 @@ interface WorkOrderDetailsProps {
   onUpdateActivityStatus: (activityId: string, status: Activity['status']) => void;
   onDeleteActivity: (activityId: string) => void;
   technicians: Technician[];
+  onMarkForReview: () => void;
+  isSubmittingReview: boolean;
 }
 
 export function WorkOrderDetails({
@@ -220,7 +222,9 @@ export function WorkOrderDetails({
   isAddingActivity,
   onUpdateActivityStatus,
   onDeleteActivity,
-  technicians
+  technicians,
+  onMarkForReview,
+  isSubmittingReview,
 }: WorkOrderDetailsProps) {
   const db = useFirestore();
   const { user } = useUser();
@@ -333,6 +337,8 @@ export function WorkOrderDetails({
     setActivityForTimePosting(activity);
     setIsAddTimeOpen(true);
   };
+  
+  const canCompleteWorkOrder = isTechnician && (workOrder.status === 'In Progress' || workOrder.status === 'Open');
 
   return (
     <>
@@ -349,7 +355,15 @@ export function WorkOrderDetails({
                       Job # {workOrder.id}
                   </CardDescription>
               </div>
-              <StatusBadge status={workOrder.status} />
+              <div className="flex flex-col items-end gap-2">
+                <StatusBadge status={workOrder.status} />
+                {canCompleteWorkOrder && (
+                  <Button onClick={onMarkForReview} variant="secondary" disabled={isSubmittingReview}>
+                    {isSubmittingReview && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Submit for Review
+                  </Button>
+                )}
+              </div>
             </div>
              {isTechnician && workOrder.workSite && (
                 <div className="flex justify-between items-center pt-4">
@@ -434,7 +448,7 @@ export function WorkOrderDetails({
                   <p className="text-center text-sm text-muted-foreground py-4">No scheduled activities.</p>
                 )}
               </div>
-              {(isAdmin || (isTechnician && workOrder.status !== 'Completed')) && (
+              {(isAdmin || (isTechnician && workOrder.status !== 'Completed' && workOrder.status !== 'Review')) && (
                 <>
                     <Separator />
                     <AddActivityForm 

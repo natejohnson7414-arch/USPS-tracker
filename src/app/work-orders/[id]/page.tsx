@@ -65,6 +65,7 @@ export default function WorkOrderDetailPage() {
   const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [isAddingActivity, setIsAddingActivity] = useState(false);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   
   const [tempOnArrival, setTempOnArrival] = useState('');
   const [tempOnLeaving, setTempOnLeaving] = useState('');
@@ -529,6 +530,38 @@ export default function WorkOrderDetailPage() {
     setIsDownloading(false);
 };
 
+  const handleMarkForReview = async () => {
+    if (!db || !workOrder || !user) return;
+    setIsSubmittingReview(true);
+    const originalStatus = workOrder.status;
+    setWorkOrder(prev => prev ? { ...prev, status: 'Review' } : null);
+
+    const workOrderRef = doc(db, 'work_orders', workOrder.id);
+    try {
+      await updateDocumentNonBlocking(workOrderRef, { status: 'Review' });
+      
+      const technician = await getTechnicianById(db, user.uid);
+      const historyItem: Omit<ActivityHistoryItem, 'id' | 'timestamp'> = {
+          type: 'status_change',
+          text: `Status changed to Review`,
+          authorId: user.uid,
+          authorName: technician?.name || user.email!,
+      };
+      await addWorkHistoryItem(db, workOrder.id, historyItem);
+
+      toast({ title: "Work Order Submitted for Review" });
+      fetchData(); // to get latest history
+    } catch (error) {
+      console.error("Error setting work order to review:", error);
+      // Revert optimistic update
+      setWorkOrder(prev => prev ? { ...prev, status: originalStatus } : null);
+      if (error instanceof Error && !error.message.includes('permission-error')) {
+        toast({ title: 'Update Failed', variant: 'destructive' });
+      }
+    } finally {
+        setIsSubmittingReview(false);
+    }
+  };
 
   if (isLoading || !workOrder) {
     return (
@@ -600,7 +633,7 @@ export default function WorkOrderDetailPage() {
                     onTrainingRecordDelete={handleTrainingRecordDelete}
                     timeEntries={timeEntries}
                     activities={activities}
-                    onNoteAdded={handleNoteAdded}
+                    onNoteAdded={onNoteAdded}
                     onTimeAdded={handleTimeAdded}
                     onNotePhotoDelete={handleNotePhotoDelete}
                     onNoteDelete={handleNoteDelete}
@@ -626,6 +659,8 @@ export default function WorkOrderDetailPage() {
                     onUpdateActivityStatus={handleUpdateActivityStatus}
                     onDeleteActivity={handleDeleteActivity}
                     technicians={technicians}
+                    onMarkForReview={handleMarkForReview}
+                    isSubmittingReview={isSubmittingReview}
                 />
             )}
         </div>
