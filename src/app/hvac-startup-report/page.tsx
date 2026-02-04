@@ -1,7 +1,6 @@
-
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { MainLayout } from '@/components/main-layout';
@@ -49,8 +48,7 @@ const GroupedLabeledInput = ({ label, values, onChange, labels, colSpan = 'sm:co
     </div>
 );
 
-
-export default function HvacStartupReportPage() {
+function HvacStartupReportPageContent() {
   const db = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
@@ -328,4 +326,20 @@ export default function HvacStartupReportPage() {
       </div>
     </MainLayout>
   );
+}
+
+
+export default function HvacStartupReportPage() {
+    return (
+        <Suspense fallback={
+            <MainLayout>
+                <div className="flex items-center justify-center h-full">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                    <p className="ml-4">Loading Form...</p>
+                </div>
+            </MainLayout>
+        }>
+            <HvacStartupReportPageContent />
+        </Suspense>
+    );
 }
