@@ -4,8 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
 import { useFirestore } from '@/firebase';
-import { getAllActivitiesWithDetails, getTechnicians, getIncompleteWorkOrders, updateWorkOrderStatus } from '@/lib/data';
-import type { Activity, Technician, WorkOrder } from '@/lib/types';
+import { getAllActivitiesWithDetails, getTechnicians, getIncompleteWorkOrders, updateWorkOrderStatus, getWorkSites, getClients } from '@/lib/data';
+import type { Activity, Technician, WorkOrder, WorkSite, Client } from '@/lib/types';
 import { startOfWeek, addDays, format, isSameDay, subDays, addWeeks, subWeeks, isToday, endOfMonth, eachDayOfInterval, getMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight, Loader2, Search, Coffee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
+import { PrimaryNav } from '@/components/primary-nav';
 
 const NON_PRODUCTIVE_WO_ID = '24-0001';
 
@@ -291,6 +292,8 @@ export default function DispatchBoardPage() {
     const [activities, setActivities] = useState<Activity[]>([]);
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+    const [workSites, setWorkSites] = useState<WorkSite[]>([]);
+    const [clients, setClients] = useState<Client[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [currentDate, setCurrentDate] = useState(new Date());
     const [searchTerm, setSearchTerm] = useState('');
@@ -330,12 +333,16 @@ export default function DispatchBoardPage() {
             try {
                 const activitiesPromise = getAllActivitiesWithDetails(db);
                 const techniciansPromise = getTechnicians(db);
+                const workSitesPromise = getWorkSites(db);
+                const clientsPromise = getClients(db);
                 
                 if (role?.name !== 'Technician') {
                     const workOrdersPromise = getIncompleteWorkOrders(db);
-                    const [fetchedActivities, fetchedTechnicians, fetchedWorkOrders] = await Promise.all([activitiesPromise, techniciansPromise, workOrdersPromise]);
+                    const [fetchedActivities, fetchedTechnicians, fetchedWorkOrders, fetchedWorkSites, fetchedClients] = await Promise.all([activitiesPromise, techniciansPromise, workOrdersPromise, workSitesPromise, clientsPromise]);
                     setActivities(fetchedActivities);
                     setTechnicians(fetchedTechnicians);
+                    setWorkSites(fetchedWorkSites);
+                    setClients(fetchedClients);
                     
                     const sortedWorkOrders = fetchedWorkOrders.sort((a, b) => {
                         if (a.id === NON_PRODUCTIVE_WO_ID) return -1;
@@ -345,9 +352,11 @@ export default function DispatchBoardPage() {
 
                     setWorkOrders(sortedWorkOrders);
                 } else {
-                    const [fetchedActivities, fetchedTechnicians] = await Promise.all([activitiesPromise, techniciansPromise]);
+                    const [fetchedActivities, fetchedTechnicians, fetchedWorkSites, fetchedClients] = await Promise.all([activitiesPromise, techniciansPromise, workSitesPromise, clientsPromise]);
                     setActivities(fetchedActivities);
                     setTechnicians(fetchedTechnicians);
+                    setWorkSites(fetchedWorkSites);
+                    setClients(fetchedClients);
                     setWorkOrders([]);
                 }
             } catch (err) {
@@ -599,6 +608,10 @@ export default function DispatchBoardPage() {
         );
     };
 
+    const handleAddWorkSite = (newSite: WorkSite) => {
+        setWorkSites(prev => [newSite, ...prev]);
+    };
+
     if (isLoading || isRoleLoading) {
         return (
             <MainLayout>
@@ -612,6 +625,12 @@ export default function DispatchBoardPage() {
 
     return (
         <MainLayout>
+            <PrimaryNav
+                technicians={technicians}
+                workSites={workSites}
+                clients={clients}
+                onWorkSiteAdded={handleAddWorkSite}
+            />
             <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                 <div className="container mx-auto py-8">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">

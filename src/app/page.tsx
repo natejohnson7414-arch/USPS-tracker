@@ -8,6 +8,7 @@ import type { WorkOrder, Technician, WorkSite, Client, Role } from '@/lib/types'
 import { useFirestore, useUser, useMemoFirebase, setDocumentNonBlocking, useCollection } from '@/firebase';
 import { collection, query, doc, where } from 'firebase/firestore';
 import { useTechnician } from '@/hooks/use-technician';
+import { PrimaryNav } from '@/components/primary-nav';
 
 export default function DashboardPage() {
   const db = useFirestore();
@@ -56,6 +57,10 @@ export default function DashboardPage() {
   }, [db, statusFilter, assignedToFilter, user, isAuthLoading]);
 
   const { data: workOrders, isLoading: isWorkOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
+
+  const handleAddWorkSite = (newSite: WorkSite) => {
+    setWorkSites(prev => [newSite, ...prev]);
+  };
 
   useEffect(() => {
     const fetchCoreData = async () => {
@@ -138,6 +143,12 @@ export default function DashboardPage() {
 
   return (
     <MainLayout>
+      <PrimaryNav
+        technicians={technicians}
+        workSites={workSites}
+        clients={clients}
+        onWorkSiteAdded={handleAddWorkSite}
+      />
       <DashboardClient 
         initialWorkOrders={workOrders || []} 
         technicians={technicians} 

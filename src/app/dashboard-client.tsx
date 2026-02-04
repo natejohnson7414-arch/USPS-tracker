@@ -1,14 +1,9 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import type { WorkOrder, Technician, WorkSite, Client, Role } from '@/lib/types';
 import { WorkOrderTable } from '@/components/work-order-table';
 import { WorkOrderTableToolbar } from '@/components/work-order-table-toolbar';
-import { useFirestore, useCollection, useUser, useMemoFirebase } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
-import { getTechnicians, getWorkSites as fetchWorkSites, getClients as fetchClients } from '@/lib/data';
-import { useTechnician } from '@/hooks/use-technician';
 
 interface DashboardClientProps {
   initialWorkOrders: WorkOrder[];
@@ -57,10 +52,6 @@ export function DashboardClient({
     });
   }, [workOrders, searchTerm]);
 
-  const handleAddWorkSite = (newSite: WorkSite) => {
-    setWorkSites(prev => [newSite, ...prev]);
-  }
-
   return (
     <div className="container mx-auto py-8">
       <div className="space-y-4">
@@ -72,9 +63,6 @@ export function DashboardClient({
           onAssignedToChange={onAssignedToChange}
           currentAssignedToFilter={assignedToFilter}
           technicians={technicians}
-          workSites={workSites}
-          clients={clients}
-          onWorkSiteAdded={handleAddWorkSite}
           currentUserRole={currentUserRole}
         />
         <WorkOrderTable workOrders={filteredWorkOrders} technicians={technicians} workSites={workSites} />

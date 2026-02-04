@@ -18,8 +18,6 @@ import { useState } from 'react';
 import { useTechnician } from '@/hooks/use-technician';
 
 const navLinks = [
-  { href: '/', label: 'Work Orders', icon: Home },
-  { href: '/dispatch', label: 'Dispatch Board', icon: LayoutDashboard },
   { href: '/quotes', label: 'Quotes', icon: Receipt },
   { href: '/users', label: 'Users', icon: Users },
   { href: '/work-sites', label: 'Work Sites', icon: MapPin },
