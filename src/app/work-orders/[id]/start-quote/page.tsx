@@ -205,7 +205,7 @@ export default function StartQuotePage() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                              <div className="space-y-2">
-                                <Label htmlFor="quote-description">Description of Work to be Quoted</Label>
+                                <Label htmlFor="quote-description">Description of Work to be Quoted<span className="text-destructive"> *</span></Label>
                                 <Textarea 
                                     id="quote-description" 
                                     rows={5}
@@ -218,7 +218,7 @@ export default function StartQuotePage() {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <Label htmlFor="quote-model">Model Number</Label>
+                                    <Label htmlFor="quote-model">Model Number<span className="text-destructive"> *</span></Label>
                                     <Input 
                                         id="quote-model"
                                         value={modelNumber}
@@ -227,7 +227,7 @@ export default function StartQuotePage() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="quote-serial">Serial Number</Label>
+                                    <Label htmlFor="quote-serial">Serial Number<span className="text-destructive"> *</span></Label>
                                     <Input 
                                         id="quote-serial"
                                         value={serialNumber}
@@ -307,4 +307,3 @@ export default function StartQuotePage() {
         </MainLayout>
     );
 }
-
