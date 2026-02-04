@@ -27,10 +27,22 @@ import { DatePicker } from './ui/date-picker';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
-const AddActivityForm = ({ technicians, onAddActivity, isLoading }: { technicians: Technician[], onAddActivity: (activity: any) => void, isLoading: boolean }) => {
+const AddActivityForm = ({ technicians, onAddActivity, isLoading, isTechnician, currentUserId }: { 
+    technicians: Technician[], 
+    onAddActivity: (activity: any) => void, 
+    isLoading: boolean,
+    isTechnician: boolean,
+    currentUserId?: string 
+}) => {
     const [description, setDescription] = useState('');
     const [technicianId, setTechnicianId] = useState<string | undefined>();
     const [scheduledDate, setScheduledDate] = useState<Date | undefined>(new Date());
+
+    useEffect(() => {
+        if (isTechnician && currentUserId) {
+            setTechnicianId(currentUserId);
+        }
+    }, [isTechnician, currentUserId]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -46,7 +58,9 @@ const AddActivityForm = ({ technicians, onAddActivity, isLoading }: { technician
         });
         // Reset form
         setDescription('');
-        setTechnicianId(undefined);
+        if (!isTechnician) {
+            setTechnicianId(undefined);
+        }
         setScheduledDate(new Date());
     };
 
@@ -59,7 +73,7 @@ const AddActivityForm = ({ technicians, onAddActivity, isLoading }: { technician
                 required
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                 <Select value={technicianId} onValueChange={setTechnicianId} required>
+                 <Select value={technicianId} onValueChange={setTechnicianId} required disabled={isTechnician}>
                     <SelectTrigger><SelectValue placeholder="Assign a technician" /></SelectTrigger>
                     <SelectContent>
                         {technicians.map(tech => (
@@ -425,6 +439,8 @@ export function WorkOrderDetails({
                         technicians={technicians} 
                         onAddActivity={onAddActivity}
                         isLoading={false}
+                        isTechnician={isTechnician}
+                        currentUserId={user?.uid}
                     />
                 </>
               )}
