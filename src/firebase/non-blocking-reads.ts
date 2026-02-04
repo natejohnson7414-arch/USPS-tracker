@@ -35,9 +35,20 @@ export function getDocumentNonBlocking(docRef: DocumentReference) {
  * Catches permission errors and emits them globally.
  */
 export function getCollectionNonBlocking(queryOrColRef: Query | CollectionReference) {
-  const path = (queryOrColRef as any).path ?? (queryOrColRef as any)._query.path.canonicalString();
-
   const promise = getDocs(queryOrColRef).catch(error => {
+    let path: string;
+    try {
+        if (queryOrColRef.type === 'collection') {
+            path = (queryOrColRef as CollectionReference).path;
+        } else {
+            // This is the brittle part for Query
+            path = (queryOrColRef as any)._query.path.canonicalString();
+        }
+    } catch (e) {
+        console.warn("Could not determine path for getCollectionNonBlocking query error.");
+        path = "unknown/path";
+    }
+
     errorEmitter.emit(
       'permission-error',
       new FirestorePermissionError({
