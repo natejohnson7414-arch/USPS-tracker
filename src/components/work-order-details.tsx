@@ -6,7 +6,7 @@ import { useState, useRef, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, HvacStartupReport } from '@/lib/types';
+import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, HvacStartupReport, Acknowledgement } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -189,6 +189,7 @@ interface WorkOrderDetailsProps {
   isSavingPhotos: boolean;
   onDirectionsClick: (workSite: WorkSite) => void;
   onSignatureSave: () => void;
+  onSignatureDelete: (ack: Acknowledgement) => void;
   onTempUpdate: () => void;
   tempOnArrival: string;
   setTempOnArrival: (value: string) => void;
@@ -229,6 +230,7 @@ export function WorkOrderDetails({
   isSavingPhotos,
   onDirectionsClick,
   onSignatureSave,
+  onSignatureDelete,
   onTempUpdate,
   tempOnArrival, setTempOnArrival,
   tempOnLeaving, setTempOnLeaving,
@@ -257,6 +259,7 @@ export function WorkOrderDetails({
   const [activityToDelete, setActivityToDelete] = useState<Activity | null>(null);
   const [isAddTimeOpen, setIsAddTimeOpen] = useState(false);
   const [activityForTimePosting, setActivityForTimePosting] = useState<Activity | null>(null);
+  const [ackToDelete, setAckToDelete] = useState<Acknowledgement | null>(null);
 
   // Combine and sort notes and time entries
   const combinedActivity = [
@@ -342,6 +345,8 @@ export function WorkOrderDetails({
         setActivityToDelete(null);
     }
   };
+    
+  const confirmDeleteSignature = () => { if (ackToDelete) { onSignatureDelete(ackToDelete); setAckToDelete(null); } };
 
   const getLinkUrl = (url: string | undefined) => {
     if (!url) return '#';
@@ -576,41 +581,51 @@ export function WorkOrderDetails({
       <div className="space-y-8">
         <Card>
             <CardHeader>
-            <CardTitle>Customer Sign-off</CardTitle>
+              <CardTitle>Signatures</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="customer-name">Customer Name</Label>
-                        <Input
-                            id="customer-name"
-                            placeholder="Enter printed name"
-                            value={contactInfo}
-                            onChange={(e) => setContactInfo(e.target.value)}
-                            onBlur={onContactInfoUpdate}
-                        />
-                    </div>
-                    {workOrder.customerSignatureUrl ? (
-                        <>
-                            <div className="border bg-muted rounded-md p-4 flex justify-center">
-                                <Image src={workOrder.customerSignatureUrl} alt="Customer Signature" width={300} height={150} style={{ objectFit: 'contain' }} />
-                            </div>
-                            <p className="text-sm text-muted-foreground text-center">
-                                Signed on {workOrder.signatureDate ? format(new Date(workOrder.signatureDate), 'MMM d, yyyy') : 'N/A'}
-                            </p>
-                        </>
-                    ) : (
-                        <div className="border-2 border-dashed rounded-md p-4">
-                            {workOrder.status !== 'Completed' && (
-                                <Button type="button" onClick={onSignatureSave} className="w-full">
-                                    Capture Signature
-                                </Button>
-                            )}
+              <div className="space-y-4">
+                {(workOrder.acknowledgements || []).length > 0 ? (
+                  <div className="space-y-3">
+                    {workOrder.acknowledgements?.map((ack, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 border rounded-md">
+                        <div>
+                          <p className="font-medium">{ack.name}</p>
+                          <p className="text-xs text-muted-foreground">{format(new Date(ack.date), 'PP p')}</p>
                         </div>
-                    )}
+                        <div className="flex items-center gap-2">
+                          <div className="bg-muted p-1 rounded-md">
+                            <Image src={ack.signatureUrl} alt={`${ack.name}'s signature`} width={120} height={40} style={{ objectFit: 'contain' }} />
+                          </div>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setAckToDelete(ack)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-center text-muted-foreground py-4">No signatures have been captured.</p>
+                )}
+                <Separator />
+                <div className="space-y-2">
+                  <Label htmlFor="customer-name">Signer's Name</Label>
+                  <Input
+                    id="customer-name"
+                    placeholder="Enter printed name"
+                    value={contactInfo}
+                    onChange={(e) => setContactInfo(e.target.value)}
+                    onBlur={onContactInfoUpdate}
+                  />
                 </div>
+                {workOrder.status !== 'Completed' && (
+                  <Button type="button" onClick={onSignatureSave} className="w-full">
+                    Add Signature
+                  </Button>
+                )}
+              </div>
             </CardContent>
-        </Card>
+          </Card>
       
         <Card>
           <CardHeader>
@@ -767,6 +782,19 @@ export function WorkOrderDetails({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDeleteActivity}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!ackToDelete} onOpenChange={(open) => !open && setAckToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>This will permanently delete this signature.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteSignature}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
