@@ -8,6 +8,7 @@ import { notFound, useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
 import { WorkOrderDetails } from '@/components/work-order-details';
+import { WorkOrderAdminDetails } from '@/components/work-order-admin-details';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Ban, Pencil, Save, Printer, Download, Receipt } from 'lucide-react';
 import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
@@ -53,6 +54,7 @@ export default function WorkOrderDetailPage() {
   const [workSites, setWorkSites] = useState<WorkSite[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
+  const [assignedTechnician, setAssignedTechnician] = useState<Technician | undefined>();
   const [trainingRecords, setTrainingRecords] = useState<TrainingRecord[]>([]);
   const [hvacReports, setHvacReports] = useState<HvacStartupReport[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
@@ -112,6 +114,12 @@ export default function WorkOrderDetailPage() {
         
         if (fetchedWorkOrder) {
             setWorkOrder(fetchedWorkOrder);
+            if (fetchedWorkOrder.assignedTechnicianId) {
+                const tech = await getTechnicianById(db, fetchedWorkOrder.assignedTechnicianId);
+                setAssignedTechnician(tech);
+            } else {
+                setAssignedTechnician(undefined);
+            }
             setActivities(fetchedWorkOrder.activities || []);
             setTempOnArrival(fetchedWorkOrder.tempOnArrival || '');
             setTempOnLeaving(fetchedWorkOrder.tempOnLeaving || '');
@@ -646,7 +654,7 @@ export default function WorkOrderDetailPage() {
                     onFormSaved={handleFormSaved}
                     onCancel={() => setIsEditing(false)}
                  />
-            ) : (
+            ) : isTechnician ? (
                 <WorkOrderDetails
                     workOrder={workOrder}
                     isTechnician={isTechnician}
@@ -677,7 +685,7 @@ export default function WorkOrderDetailPage() {
                     setTempOnLeaving={setTempOnLeaving}
                     contactInfo={contactInfo}
                     setContactInfo={setContactInfo}
-                    onContactInfoUpdate={handleContactInfoUpdate}
+                    onContactInfoUpdate={onContactInfoUpdate}
                     onAddActivity={handleAddActivity}
                     isAddingActivity={isAddingActivity}
                     onUpdateActivityStatus={handleUpdateActivityStatus}
@@ -685,6 +693,45 @@ export default function WorkOrderDetailPage() {
                     technicians={technicians}
                     onMarkForReview={handleMarkForReview}
                     isSubmittingReview={isSubmittingReview}
+                />
+            ) : (
+                 <WorkOrderAdminDetails
+                    workOrder={workOrder}
+                    assignedTechnician={assignedTechnician}
+                    isTechnician={isTechnician}
+                    isAdmin={isAdmin}
+                    trainingRecords={trainingRecords}
+                    onTrainingRecordDelete={handleTrainingRecordDelete}
+                    hvacReports={hvacReports}
+                    onHvacReportDelete={handleHvacReportDelete}
+                    timeEntries={timeEntries}
+                    activities={activities}
+                    onNoteAdded={handleNoteAdded}
+                    onTimeAdded={handleTimeAdded}
+                    onNotePhotoDelete={handleNotePhotoDelete}
+                    onNoteDelete={handleNoteDelete}
+                    onBeforePhotosAdded={(files) => handlePhotosAdded('before', files)}
+                    onAfterPhotosAdded={(files) => handlePhotosAdded('after', files)}
+                    onBeforePhotoDelete={(url) => handlePhotoDeleted('before', url)}
+                    onAfterPhotoDelete={(url) => handlePhotoDeleted('after', url)}
+                    onTimeEntryDelete={handleTimeEntryDelete}
+                    isAddingNote={isAddingNote}
+                    isSavingPhotos={isSavingPhotos}
+                    onDirectionsClick={() => workOrder.workSite && handleDirectionsClick(workOrder.workSite)}
+                    onSignatureSave={() => setIsSignatureDialogOpen(true)}
+                    onTempUpdate={handleTempUpdate}
+                    tempOnArrival={tempOnArrival}
+                    setTempOnArrival={setTempOnArrival}
+                    tempOnLeaving={tempOnLeaving}
+                    setTempOnLeaving={setTempOnLeaving}
+                    contactInfo={contactInfo}
+                    setContactInfo={setContactInfo}
+                    onContactInfoUpdate={onContactInfoUpdate}
+                    onAddActivity={handleAddActivity}
+                    isAddingActivity={isAddingActivity}
+                    onUpdateActivityStatus={handleUpdateActivityStatus}
+                    onDeleteActivity={handleDeleteActivity}
+                    technicians={technicians}
                 />
             )}
         </div>

@@ -12,9 +12,10 @@ interface NoteActivityItemProps {
   note: WorkOrderNote;
   onPhotoDelete: (noteId: string, photoUrl: string) => void;
   onNoteDelete: (noteId: string) => void;
+  showPhotos?: boolean;
 }
 
-export function NoteActivityItem({ note, onPhotoDelete, onNoteDelete }: NoteActivityItemProps) {
+export function NoteActivityItem({ note, onPhotoDelete, onNoteDelete, showPhotos = true }: NoteActivityItemProps) {
   const isValidDate = note.createdAt && !isNaN(new Date(note.createdAt).getTime());
 
   return (
@@ -36,7 +37,7 @@ export function NoteActivityItem({ note, onPhotoDelete, onNoteDelete }: NoteActi
           <span className="sr-only">Delete Note</span>
         </Button>
       </div>
-      {note.photoUrls && note.photoUrls.length > 0 && (
+      {showPhotos && note.photoUrls && note.photoUrls.length > 0 && (
         <div className="grid grid-cols-2 gap-4">
           {note.photoUrls.map((url, index) => (
             <div key={index} className="relative group aspect-video rounded-lg overflow-hidden border">
@@ -59,5 +60,3 @@ export function NoteActivityItem({ note, onPhotoDelete, onNoteDelete }: NoteActi
     </div>
   );
 }
-
-    

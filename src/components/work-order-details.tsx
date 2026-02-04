@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useRef, useEffect, FormEvent } from 'react';
@@ -573,100 +574,6 @@ export function WorkOrderDetails({
       </div>
 
       <div className="space-y-8">
-        {!isTechnician && (
-          <Card>
-              <CardHeader>
-                  <div className="flex justify-between items-center">
-                      <CardTitle>Details</CardTitle>
-                       <div className="flex items-center gap-2">
-                        {workOrder.checkInOutURL && (
-                            <div className="flex flex-col items-center">
-                                <Button asChild variant="outline" size="icon">
-                                    <a href={getLinkUrl(workOrder.checkInOutURL)} target="_blank" rel="noopener noreferrer">
-                                        <LinkIcon className="h-4 w-4" />
-                                        <span className="sr-only">Check-in</span>
-                                    </a>
-                                </Button>
-                                {workOrder.checkInWorkOrderNumber && (
-                                    <p className="text-xs text-muted-foreground mt-1 max-w-[60px] truncate" title={workOrder.checkInWorkOrderNumber}>
-                                        WO: {workOrder.checkInWorkOrderNumber}
-                                    </p>
-                                )}
-                            </div>
-                        )}
-                        {workOrder.workSite && (
-                          <Button variant="outline" size="icon" onClick={() => onDirectionsClick(workOrder.workSite!)}>
-                              <Map className="h-4 w-4" />
-                              <span className="sr-only">Get Directions</span>
-                          </Button>
-                        )}
-                       </div>
-                  </div>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                   <div className="flex justify-between">
-                      <span className="text-muted-foreground">Date</span>
-                      <span className="font-medium">{workOrder.createdDate ? format(new Date(workOrder.createdDate), 'MMM d, yyyy') : 'N/A'}</span>
-                  </div>
-                   <div className="flex justify-between items-start">
-                      <span className="text-muted-foreground">Bill To</span>
-                      <div className="text-right">
-                          <p className="font-medium">{workOrder.client?.name || workOrder.billTo || 'N/A'}</p>
-                          {workOrder.client?.address && <p className="text-xs text-muted-foreground">{workOrder.client.address}</p>}
-                      </div>
-                  </div>
-                  <div className="flex justify-between">
-                      <span className="text-muted-foreground">PO #</span>
-                      <span className="font-medium">{workOrder.poNumber || 'N/A'}</span>
-                  </div>
-                   <div className="flex justify-between items-start">
-                      <span className="text-muted-foreground">Contact</span>
-                      <span className="font-medium text-right whitespace-pre-wrap">{workOrder.contactInfo || 'N/A'}</span>
-                  </div>
-                  <Separator/>
-                   <div className="flex justify-between items-start">
-                      <span className="text-muted-foreground">Job Site</span>
-                      <div className="text-right">
-                          <p className="font-medium">{workOrder.workSite?.name || 'N/A'}</p>
-                          {workOrder.workSite?.address && <p className="text-xs text-muted-foreground">{workOrder.workSite.address}</p>}
-                      </div>
-                  </div>
-                   <div className="flex justify-between">
-                      <span className="text-muted-foreground">Assigned To</span>
-                       {assignedTechnician ? (
-                          <div className="flex items-center gap-2 font-medium">
-                              <span>{assignedTechnician.name}</span>
-                          </div>
-                          ) : (
-                          <span className="font-medium">Unassigned</span>
-                      )}
-                  </div>
-                  <Separator/>
-                   <div className="flex justify-between">
-                      <span className="text-muted-foreground">Schedule Date</span>
-                      <span className="font-medium">{workOrder.serviceScheduleDate ? format(new Date(workOrder.serviceScheduleDate), 'MMM d, yyyy') : 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                      <span className="text-muted-foreground">Quoted Amount</span>
-                      <span className="font-medium">{workOrder.quotedAmount ? `$${workOrder.quotedAmount.toFixed(2)}` : 'N/A'}</span>
-                  </div>
-                   <div className="flex justify-between">
-                      <span className="text-muted-foreground">Time & Material</span>
-                      <span className="font-medium">{workOrder.timeAndMaterial ? 'Yes' : 'No'}</span>
-                  </div>
-                   <Separator/>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Customer PO#</span>
-                      <span className="font-medium">{workOrder.customerPO || 'N/A'}</span>
-                  </div>
-                   <div className="flex justify-between">
-                      <span className="text-muted-foreground">Estimator</span>
-                      <span className="font-medium">{workOrder.estimator || 'N/A'}</span>
-                  </div>
-              </CardContent>
-          </Card>
-        )}
-
         <Card>
             <CardHeader>
             <CardTitle>Customer Sign-off</CardTitle>
