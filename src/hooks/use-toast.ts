@@ -9,7 +9,7 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_REMOVE_DELAY = 1000
 
 type ToasterToast = ToastProps & {
   id: string
@@ -152,6 +152,8 @@ function toast({ ...props }: Toast) {
     })
   const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
 
+  const duration = props.variant === 'destructive' ? Infinity : (props.duration ?? 2000);
+
   dispatch({
     type: "ADD_TOAST",
     toast: {
@@ -161,6 +163,7 @@ function toast({ ...props }: Toast) {
       onOpenChange: (open) => {
         if (!open) dismiss()
       },
+      duration,
     },
   })
 
