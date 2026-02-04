@@ -11,13 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useFirestore, useUser, addDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useUser, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { getWorkOrderById } from '@/lib/data';
 import { uploadImage } from '@/firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import type { WorkOrder, Quote } from '@/lib/types';
 import { Loader2, ArrowLeft, Upload, Video, Image as ImageIcon, Trash2 } from 'lucide-react';
-import { collection } from 'firebase/firestore';
+import { collection, doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { notifyAdminsOfNewQuote } from '@/ai/flows/notify-admins-flow';
 
@@ -134,7 +134,11 @@ export default function StartQuotePage() {
 
             await addDocumentNonBlocking(collection(db, 'quotes'), newQuote);
 
-            toast({ title: 'Quote Started', description: 'Your quote has been submitted for review.' });
+            // Update the work order status to "On Hold"
+            const workOrderRef = doc(db, 'work_orders', workOrder.id);
+            await updateDocumentNonBlocking(workOrderRef, { status: 'On Hold' });
+
+            toast({ title: 'Quote Submitted', description: 'The work order status has been set to "On Hold".' });
             
             // Notify administrators, but don't block the UI
             notifyAdminsOfNewQuote({
@@ -235,7 +239,7 @@ export default function StartQuotePage() {
 
                             <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label>Photos &amp; Videos</Label>
+                                    <Label>Photos & Videos</Label>
                                     <Button type="button" variant="outline" onClick={() => mediaInputRef.current?.click()}>
                                         <Upload className="mr-2 h-4 w-4" /> Upload Media
                                     </Button>
@@ -304,4 +308,3 @@ export default function StartQuotePage() {
     );
 }
 
-    
