@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { CreateWorkOrderDialog } from './create-work-order-dialog';
 import type { Technician, WorkSite, Client } from '@/lib/types';
-import { Home, LayoutDashboard } from 'lucide-react';
+import { Home, LayoutDashboard, Receipt } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTechnician } from '@/hooks/use-technician';
 
@@ -19,6 +19,7 @@ interface PrimaryNavProps {
 export function PrimaryNav({ technicians, workSites, clients, onWorkSiteAdded }: PrimaryNavProps) {
     const pathname = usePathname();
     const { role } = useTechnician();
+    const isTechnician = role?.name === 'Technician';
 
     return (
         <div className="flex items-center gap-4">
@@ -45,8 +46,21 @@ export function PrimaryNav({ technicians, workSites, clients, onWorkSiteAdded }:
                         Dispatch Board
                     </Link>
                 </Button>
+                {!isTechnician && (
+                    <Button asChild className={cn(
+                        "text-white font-semibold",
+                        pathname.startsWith('/quotes') 
+                            ? 'bg-purple-600 hover:bg-purple-700'
+                            : 'bg-purple-500 hover:bg-purple-600'
+                    )}>
+                        <Link href="/quotes">
+                            <Receipt className="mr-2" />
+                            Quotes
+                        </Link>
+                    </Button>
+                )}
             </div>
-            {role?.name !== 'Technician' && (
+            {!isTechnician && (
                 <CreateWorkOrderDialog 
                     technicians={technicians} 
                     workSites={workSites} 
