@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -230,10 +231,7 @@ export function TrainingRecordForm({ record, onFormSaved, onCancel }: TrainingRe
     <form onSubmit={handleSubmit}>
     <Card className="shadow-lg">
         <CardContent className="p-6 sm:p-8">
-        <header className="flex flex-col sm:flex-row justify-between items-start mb-8 gap-4">
-            <div className="relative h-24 w-64">
-            <Image src="https://www.crawford-company.com/hubfs/new-art-o-lite-logo-1.png" alt="Crawford Art-O-Lite Company Logo" fill style={{objectFit:"contain"}} />
-            </div>
+        <header className="flex flex-col sm:flex-row justify-end items-start mb-8 gap-4">
             <div className="text-right text-xs sm:text-sm">
             <p className="font-bold">Heating / Air Conditioning / Plumbing / Piping / Electrical</p>
             <p>1306 Mill Street Rock Island, Illinois 61265</p>

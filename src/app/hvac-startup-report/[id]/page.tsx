@@ -102,14 +102,10 @@ export default function ViewHvacStartupReportPage() {
                 <div className="container mx-auto p-4 sm:p-8" style={{ maxWidth: '8.5in' }}>
                 <Card className="shadow-lg">
                     <CardContent className="p-6 sm:p-8">
-                    <header className="flex justify-between items-start mb-6">
-                        <div className="relative h-16 w-48">
-                            <Image src="https://www.crawford-company.com/hubfs/new-art-o-lite-logo-1.png" alt="Crawford Company Logo" fill style={{ objectFit: "contain" }} />
-                        </div>
+                    <header className="flex justify-center items-center mb-6">
                         <h1 className="text-xl sm:text-2xl font-bold text-center">
                         HVAC START-UP REPORT
                         </h1>
-                        <div className="w-48"></div>
                     </header>
 
                     <main className="space-y-4">

@@ -1,8 +1,9 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -71,6 +72,7 @@ export default function TrainingAttendancePage() {
   const db = useFirestore();
   const { toast } = useToast();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const woIdFromQuery = searchParams.get('workOrderId');
 
   const [isSaving, setIsSaving] = useState(false);
@@ -234,10 +236,7 @@ export default function TrainingAttendancePage() {
         <div className="container mx-auto p-4 sm:p-8" style={{ maxWidth: '8.5in' }}>
           <Card className="shadow-lg">
             <CardContent className="p-6 sm:p-8">
-              <header className="flex flex-col sm:flex-row justify-between items-start mb-8 gap-4">
-                <div className="relative h-24 w-64">
-                  <Image src="https://www.crawford-company.com/hubfs/new-art-o-lite-logo-1.png" alt="Crawford Art-O-Lite Company Logo" fill style={{objectFit:"contain"}} />
-                </div>
+              <header className="flex flex-col sm:flex-row justify-end items-start mb-8 gap-4">
                 <div className="text-right text-xs sm:text-sm">
                   <p className="font-bold">Heating / Air Conditioning / Plumbing / Piping / Electrical</p>
                   <p>1306 Mill Street Rock Island, Illinois 61265</p>
@@ -389,7 +388,10 @@ export default function TrainingAttendancePage() {
                 </div>
 
 
-                 <div className="flex justify-end mt-8">
+                 <div className="flex justify-end gap-2 mt-8">
+                    <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSaving}>
+                        Cancel
+                    </Button>
                     <Button onClick={handleSaveForm} disabled={isSaving}>
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Save Record
