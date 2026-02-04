@@ -3,8 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
-import { useFirestore } from '@/firebase';
-import { getAllActivitiesWithDetails, getTechnicians, getIncompleteWorkOrders, updateWorkOrderStatus, getWorkSites, getClients } from '@/lib/data';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { getAllActivitiesWithDetails, getTechnicians, updateWorkOrderStatus, getWorkSites, getClients } from '@/lib/data';
 import type { Activity, Technician, WorkOrder, WorkSite, Client } from '@/lib/types';
 import { startOfWeek, addDays, format, isSameDay, subDays, addWeeks, subWeeks, isToday, endOfMonth, eachDayOfInterval, getMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight, Loader2, Search, Coffee } from 'lucide-react';
@@ -21,7 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, query, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useTechnician as useRole } from '@/hooks/use-technician';
 import {
@@ -290,10 +290,9 @@ export default function DispatchBoardPage() {
     const { role, isLoading: isRoleLoading } = useRole();
     const [activities, setActivities] = useState<Activity[]>([]);
     const [technicians, setTechnicians] = useState<Technician[]>([]);
-    const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
     const [workSites, setWorkSites] = useState<WorkSite[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isCoreDataLoading, setIsCoreDataLoading] = useState(true);
     const [currentDate, setCurrentDate] = useState(new Date());
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -324,49 +323,47 @@ export default function DispatchBoardPage() {
         useSensor(PointerSensor)
     );
 
+    const incompleteWorkOrdersQuery = useMemoFirebase(() => {
+        if (!db || role?.name === 'Technician') return null;
+        return query(collection(db, 'work_orders'), where("status", "!=", "Completed"));
+    }, [db, role]);
+
+    const { data: fetchedWorkOrders, isLoading: areWorkOrdersLoading } = useCollection<WorkOrder>(incompleteWorkOrdersQuery);
+
+    const workOrders = useMemo(() => {
+        if (!fetchedWorkOrders) return [];
+        return [...fetchedWorkOrders].sort((a, b) => {
+            if (a.id === NON_PRODUCTIVE_WO_ID) return -1;
+            if (b.id === NON_PRODUCTIVE_WO_ID) return 1;
+            return new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime();
+        });
+    }, [fetchedWorkOrders]);
+
     useEffect(() => {
         if (!db || isRoleLoading) return;
         
-        async function fetchData() {
-            setIsLoading(true);
+        async function fetchCoreData() {
+            setIsCoreDataLoading(true);
             try {
                 const activitiesPromise = getAllActivitiesWithDetails(db);
                 const techniciansPromise = getTechnicians(db);
                 const workSitesPromise = getWorkSites(db);
                 const clientsPromise = getClients(db);
                 
-                if (role?.name !== 'Technician') {
-                    const workOrdersPromise = getIncompleteWorkOrders(db);
-                    const [fetchedActivities, fetchedTechnicians, fetchedWorkOrders, fetchedWorkSites, fetchedClients] = await Promise.all([activitiesPromise, techniciansPromise, workOrdersPromise, workSitesPromise, clientsPromise]);
-                    setActivities(fetchedActivities);
-                    setTechnicians(fetchedTechnicians);
-                    setWorkSites(fetchedWorkSites);
-                    setClients(fetchedClients);
-                    
-                    const sortedWorkOrders = fetchedWorkOrders.sort((a, b) => {
-                        if (a.id === NON_PRODUCTIVE_WO_ID) return -1;
-                        if (b.id === NON_PRODUCTIVE_WO_ID) return 1;
-                        return new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime();
-                    });
-
-                    setWorkOrders(sortedWorkOrders);
-                } else {
-                    const [fetchedActivities, fetchedTechnicians, fetchedWorkSites, fetchedClients] = await Promise.all([activitiesPromise, techniciansPromise, workSitesPromise, clientsPromise]);
-                    setActivities(fetchedActivities);
-                    setTechnicians(fetchedTechnicians);
-                    setWorkSites(fetchedWorkSites);
-                    setClients(fetchedClients);
-                    setWorkOrders([]);
-                }
+                const [fetchedActivities, fetchedTechnicians, fetchedWorkSites, fetchedClients] = await Promise.all([activitiesPromise, techniciansPromise, workSitesPromise, clientsPromise]);
+                setActivities(fetchedActivities);
+                setTechnicians(fetchedTechnicians);
+                setWorkSites(fetchedWorkSites);
+                setClients(fetchedClients);
             } catch (err) {
                  console.error("Failed to fetch dispatch data:", err);
             } finally {
-                setIsLoading(false);
+                setIsCoreDataLoading(false);
             }
         }
 
-        fetchData();
-    }, [db, role, isRoleLoading]);
+        fetchCoreData();
+    }, [db, isRoleLoading]);
 
     const techColorMap = useMemo(() => {
         const map = new Map<string, string>();
@@ -553,14 +550,6 @@ export default function DispatchBoardPage() {
             await updateWorkOrderStatus(db, selectedWorkOrder.id);
             
             toast({ title: `${newActivities.length} Activities Scheduled Successfully` });
-            
-            const incompleteOrders = await getIncompleteWorkOrders(db);
-            const sortedOrders = incompleteOrders.sort((a, b) => {
-                if (a.id === NON_PRODUCTIVE_WO_ID) return -1;
-                if (b.id === NON_PRODUCTIVE_WO_ID) return 1;
-                return new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime();
-            });
-            setWorkOrders(sortedOrders);
 
         } catch (error) {
             if (error instanceof Error && !error.message.includes('permission-error')) {
@@ -607,7 +596,9 @@ export default function DispatchBoardPage() {
         );
     };
 
-    if (isLoading || isRoleLoading) {
+    const isLoading = isCoreDataLoading || isRoleLoading || areWorkOrdersLoading;
+
+    if (isLoading) {
         return (
             <MainLayout>
                 <div className="flex items-center justify-center h-full">
