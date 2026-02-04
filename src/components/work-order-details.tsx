@@ -35,32 +35,32 @@ const AddActivityForm = ({ technicians, onAddActivity, isLoading, isTechnician, 
     currentUserId?: string 
 }) => {
     const [description, setDescription] = useState('');
-    const [technicianId, setTechnicianId] = useState<string | undefined>();
+    // For admins, this is the controlled state. For techs, it's just for display.
+    const [selectedTechnicianId, setSelectedTechnicianId] = useState<string | undefined>();
     const [scheduledDate, setScheduledDate] = useState<Date | undefined>(new Date());
-
-    useEffect(() => {
-        if (isTechnician && currentUserId) {
-            setTechnicianId(currentUserId);
-        }
-    }, [isTechnician, currentUserId]);
+    
+    // The technician ID to display. For techs, it's their own ID. For admins, it's what they selected.
+    const displayTechnicianId = isTechnician ? currentUserId : selectedTechnicianId;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!description || !technicianId || !scheduledDate) {
+        
+        // The final technicianId for submission
+        const submissionTechnicianId = isTechnician ? currentUserId : selectedTechnicianId;
+
+        if (!description || !submissionTechnicianId || !scheduledDate) {
             // Basic validation
             return;
         }
         onAddActivity({
             description,
-            technicianId,
+            technicianId: submissionTechnicianId,
             scheduled_date: scheduledDate.toISOString(),
             status: 'scheduled'
         });
         // Reset form
         setDescription('');
-        if (!isTechnician) {
-            setTechnicianId(undefined);
-        }
+        setSelectedTechnicianId(undefined);
         setScheduledDate(new Date());
     };
 
@@ -73,7 +73,7 @@ const AddActivityForm = ({ technicians, onAddActivity, isLoading, isTechnician, 
                 required
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                 <Select value={technicianId} onValueChange={setTechnicianId} required disabled={isTechnician}>
+                 <Select value={displayTechnicianId} onValueChange={setSelectedTechnicianId} required disabled={isTechnician}>
                     <SelectTrigger><SelectValue placeholder="Assign a technician" /></SelectTrigger>
                     <SelectContent>
                         {technicians.map(tech => (
@@ -184,6 +184,7 @@ interface WorkOrderDetailsProps {
   setContactInfo: (value: string) => void;
   onContactInfoUpdate: () => void;
   onAddActivity: (activity: Omit<Activity, 'id' | 'createdDate' | 'workOrderId'>) => void;
+  isAddingActivity: boolean;
   onUpdateActivityStatus: (activityId: string, status: Activity['status']) => void;
   onDeleteActivity: (activityId: string) => void;
   technicians: Technician[];
@@ -216,6 +217,7 @@ export function WorkOrderDetails({
   contactInfo, setContactInfo,
   onContactInfoUpdate,
   onAddActivity,
+  isAddingActivity,
   onUpdateActivityStatus,
   onDeleteActivity,
   technicians
@@ -438,7 +440,7 @@ export function WorkOrderDetails({
                     <AddActivityForm 
                         technicians={technicians} 
                         onAddActivity={onAddActivity}
-                        isLoading={false}
+                        isLoading={isAddingActivity}
                         isTechnician={isTechnician}
                         currentUserId={user?.uid}
                     />

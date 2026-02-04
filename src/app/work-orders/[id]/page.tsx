@@ -64,6 +64,7 @@ export default function WorkOrderDetailPage() {
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [isAddingActivity, setIsAddingActivity] = useState(false);
   
   const [tempOnArrival, setTempOnArrival] = useState('');
   const [tempOnLeaving, setTempOnLeaving] = useState('');
@@ -409,6 +410,8 @@ export default function WorkOrderDetailPage() {
   const handleAddActivity = async (newActivityData: Omit<Activity, 'id' | 'createdDate' | 'workOrderId'>) => {
     if (!db || !user || !workOrder) return;
     
+    setIsAddingActivity(true);
+    
     const activityData = {
         ...newActivityData,
         workOrderId: workOrder.id,
@@ -426,6 +429,8 @@ export default function WorkOrderDetailPage() {
             console.error("Error scheduling activity:", error);
             toast({ title: 'Error', description: 'Failed to schedule activity', variant: 'destructive' });
         }
+    } finally {
+        setIsAddingActivity(false);
     }
   };
 
@@ -617,6 +622,7 @@ export default function WorkOrderDetailPage() {
                     setContactInfo={setContactInfo}
                     onContactInfoUpdate={handleContactInfoUpdate}
                     onAddActivity={handleAddActivity}
+                    isAddingActivity={isAddingActivity}
                     onUpdateActivityStatus={handleUpdateActivityStatus}
                     onDeleteActivity={handleDeleteActivity}
                     technicians={technicians}
