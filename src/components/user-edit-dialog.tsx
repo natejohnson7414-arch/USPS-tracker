@@ -20,9 +20,10 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { useFirestore, setDocumentNonBlocking } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import { Upload, X, Loader2 } from 'lucide-react';
+import { Upload, X, Loader2, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { createUser } from '@/ai/flows/create-user-flow';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 
 interface UserEditDialogProps {
   isOpen: boolean;
@@ -39,7 +40,6 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
   const { toast } = useToast();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [roleId, setRoleId] = useState('');
   const [employeeId, setEmployeeId] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -55,13 +55,11 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
         setRoleId(userRole?.id || '');
         setAvatarUrl(user.avatarUrl || null);
         setEmployeeId(user.employeeId || '');
-        setPassword('');
       } else {
         // Reset for new user
         setName('');
         setEmail('');
         setRoleId('');
-        setPassword('');
         setEmployeeId('');
         setAvatarUrl(avatarOptions[0]?.imageUrl || null);
       }
@@ -91,8 +89,8 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
             toast({ title: "User Updated", description: "The user's profile has been updated."});
 
         } else { // Creating new user
-            if (!name || !email || !password || !roleId) {
-                toast({ title: "Missing Fields", description: "Name, email, password, and role are required.", variant: 'destructive' });
+            if (!name || !email || !roleId) {
+                toast({ title: "Missing Fields", description: "Name, email, and role are required.", variant: 'destructive' });
                 setIsSaving(false);
                 return;
             }
@@ -100,7 +98,6 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
             const result = await createUser({
               name,
               email,
-              password,
               roleId,
               avatarUrl,
               employeeId,
@@ -202,12 +199,14 @@ export function UserEditDialog({ isOpen, setIsOpen, user, roles, onUserSaved }: 
             <Input id="employeeId" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} className="col-span-3" />
           </div>
            {!user && (
-            <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="password" className="text-right">
-                Password
-                </Label>
-                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="col-span-3" />
-            </div>
+            <Alert>
+                <Info className="h-4 w-4" />
+                <AlertTitle>Temporary Password</AlertTitle>
+                <AlertDescription>
+                    New users will be created with the temporary password:{" "}
+                    <span className="font-semibold">ChangeMe1234!</span> They will be required to change it on their first login.
+                </AlertDescription>
+            </Alert>
           )}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="role" className="text-right">

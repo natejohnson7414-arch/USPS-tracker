@@ -2,6 +2,7 @@
 
 
 
+
 export type Technician = {
   id: string;
   employeeId?: string;
@@ -10,6 +11,7 @@ export type Technician = {
   email?: string;
   roleId?: string;
   disabled?: boolean;
+  passwordChangeRequired?: boolean;
 };
 
 export type WorkOrderNote = {

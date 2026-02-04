@@ -7,11 +7,12 @@ import { getTechnicianById, getRoles } from '@/lib/data';
 import type { Technician, Role } from '@/lib/types';
 
 export function useTechnician() {
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const db = useFirestore();
   const [technician, setTechnician] = useState<Technician | null>(null);
   const [role, setRole] = useState<Role | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [passwordChangeRequired, setPasswordChangeRequired] = useState(false);
 
   useEffect(() => {
     // Only proceed if we have a user and a database connection.
@@ -27,6 +28,7 @@ export function useTechnician() {
 
             if (techProfile) {
               setTechnician(techProfile);
+              setPasswordChangeRequired(techProfile.passwordChangeRequired ?? false);
               if (techProfile.roleId) {
                 const userRole = roles.find(r => r.id === techProfile.roleId);
                 setRole(userRole || null);
@@ -36,11 +38,13 @@ export function useTechnician() {
             } else {
               setTechnician(null);
               setRole(null);
+              setPasswordChangeRequired(false);
             }
           } catch (error) {
               console.error("Error fetching technician profile and roles:", error);
               setTechnician(null);
               setRole(null);
+              setPasswordChangeRequired(false);
           } finally {
               setIsLoading(false);
           }
@@ -48,13 +52,14 @@ export function useTechnician() {
       
       fetchTechnicianAndRole();
 
-    } else if (!user) {
-      // If there's no authenticated user, we're not loading and there's no technician.
+    } else if (!isUserLoading && !user) {
+      // If auth is done and there's no user, we're not loading and there's no data.
       setIsLoading(false);
       setTechnician(null);
       setRole(null);
+      setPasswordChangeRequired(false);
     }
-  }, [user, db]);
+  }, [user, db, isUserLoading]);
 
-  return { technician, role, isLoading };
+  return { technician, role, isLoading, passwordChangeRequired };
 }

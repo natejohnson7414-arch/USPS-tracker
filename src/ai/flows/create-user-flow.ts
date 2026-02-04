@@ -30,7 +30,6 @@ if (!getApps().length) {
 const CreateUserInputSchema = z.object({
   name: z.string().describe('The full name of the user.'),
   email: z.string().email().describe('The email address for the new user.'),
-  password: z.string().min(6).describe('The password for the new user (must be at least 6 characters).'),
   roleId: z.string().describe("The ID of the user's role."),
   avatarUrl: z.string().nullable().describe('The URL for the user avatar image.'),
   employeeId: z.string().optional().describe('The employee ID for the user.'),
@@ -54,7 +53,8 @@ export async function createUser(input: CreateUserInput): Promise<CreateUserOutp
   const adminAuth = getAuth();
   const adminDb = getFirestore();
 
-  const { email, password, name, roleId, avatarUrl, employeeId } = input;
+  const { email, name, roleId, avatarUrl, employeeId } = input;
+  const password = 'ChangeMe1234!';
   const [firstName, ...lastNameParts] = name.split(' ');
   const lastName = lastNameParts.join(' ');
 
@@ -84,6 +84,7 @@ export async function createUser(input: CreateUserInput): Promise<CreateUserOutp
       roleId: roleId,
       avatarUrl: avatarUrl || null,
       disabled: false,
+      passwordChangeRequired: true,
     });
 
     return { uid: newUserRecord.uid };

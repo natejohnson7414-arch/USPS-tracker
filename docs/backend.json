@@ -274,6 +274,10 @@
         "disabled": {
             "type": "boolean",
             "description": "Indicates if the technician's account is disabled."
+        },
+        "passwordChangeRequired": {
+          "type": "boolean",
+          "description": "Indicates if the user must change their password on next login."
         }
       },
       "required": [
