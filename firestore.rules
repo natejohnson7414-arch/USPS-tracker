@@ -277,7 +277,7 @@ service cloud.firestore {
      */
     match /quotes/{quoteId} {
       allow read: if isAdmin() || (isTechnician() && resource.data.createdBy_technicianId == request.auth.uid);
-      allow list: if isAdmin();
+      allow list: if isSignedIn();
       allow create: if isTechnician();
       allow update, delete: if isAdmin();
     }
