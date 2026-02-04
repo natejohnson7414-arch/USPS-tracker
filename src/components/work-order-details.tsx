@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useState, useRef, useEffect, FormEvent } from 'react';
@@ -60,7 +58,9 @@ const AddActivityForm = ({ technicians, onAddActivity, isLoading, isTechnician, 
         });
         // Reset form
         setDescription('');
-        setSelectedTechnicianId(undefined);
+        if (!isTechnician) {
+            setSelectedTechnicianId(undefined);
+        }
         setScheduledDate(new Date());
     };
 
@@ -358,7 +358,7 @@ export function WorkOrderDetails({
               <div className="flex flex-col items-end gap-2">
                 <StatusBadge status={workOrder.status} />
                 {canCompleteWorkOrder && (
-                  <Button onClick={onMarkForReview} variant="secondary" disabled={isSubmittingReview}>
+                  <Button onClick={onMarkForReview} disabled={isSubmittingReview}>
                     {isSubmittingReview && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Submit for Review
                   </Button>
