@@ -308,8 +308,8 @@ export default function WorkOrderReportPage() {
                          <div className="grid grid-cols-2 gap-8">
                             {chunk.map((url, index) => (
                                 <div key={index} className="space-y-2">
-                                    <div className="w-full border rounded-lg overflow-hidden">
-                                        {!!url && <img src={proxiedUrl(url)} alt={`Before photo ${pageIndex * photosPerPage + index + 1}`} className="aspect-video object-contain w-full" />}
+                                    <div className="w-full border rounded-lg overflow-hidden" style={{ height: '200px' }}>
+                                        {!!url && <img src={proxiedUrl(url)} alt={`Before photo ${pageIndex * photosPerPage + index + 1}`} className="w-full h-full object-contain" />}
                                     </div>
                                     <p className="text-center text-sm text-gray-500">Before Photo {pageIndex * photosPerPage + index + 1}</p>
                                 </div>
@@ -329,8 +329,8 @@ export default function WorkOrderReportPage() {
                          <div className="grid grid-cols-2 gap-8">
                             {chunk.map((url, index) => (
                                 <div key={index} className="space-y-2">
-                                    <div className="w-full border rounded-lg overflow-hidden">
-                                        {!!url && <img src={proxiedUrl(url)} alt={`After photo ${pageIndex * photosPerPage + index + 1}`} className="aspect-video object-contain w-full" />}
+                                    <div className="w-full border rounded-lg overflow-hidden" style={{ height: '200px' }}>
+                                        {!!url && <img src={proxiedUrl(url)} alt={`After photo ${pageIndex * photosPerPage + index + 1}`} className="w-full h-full object-contain" />}
                                     </div>
                                     <p className="text-center text-sm text-gray-500">After Photo {pageIndex * photosPerPage + index + 1}</p>
                                 </div>
@@ -350,8 +350,8 @@ export default function WorkOrderReportPage() {
                          <div className="grid grid-cols-2 gap-8">
                             {chunk.map((url, index) => (
                                 <div key={index} className="space-y-2">
-                                    <div className="w-full border rounded-lg overflow-hidden">
-                                        {!!url && <img src={proxiedUrl(url)} alt={`Activity photo ${pageIndex * photosPerPage + index + 1}`} className="aspect-video object-contain w-full" />}
+                                    <div className="w-full border rounded-lg overflow-hidden" style={{ height: '200px' }}>
+                                        {!!url && <img src={proxiedUrl(url)} alt={`Activity photo ${pageIndex * photosPerPage + index + 1}`} className="w-full h-full object-contain" />}
                                     </div>
                                     <p className="text-center text-sm text-gray-500">Activity Photo {pageIndex * photosPerPage + index + 1}</p>
                                 </div>
