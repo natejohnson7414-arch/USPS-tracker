@@ -483,11 +483,11 @@ export const getQuotes = async (db: any): Promise<Quote[]> => {
   
   const quotes = await Promise.all(snapshot.docs.map(async doc => {
     const data = doc.data();
-    const client = data.clientId ? await getClientById(db, data.clientId) : undefined;
+    const technician = data.createdBy_technicianId ? await getTechnicianById(db, data.createdBy_technicianId) : undefined;
     return {
       ...data,
       id: doc.id,
-      client,
+      createdBy_technician: technician,
     } as Quote;
   }));
   

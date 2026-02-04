@@ -135,7 +135,7 @@ export default function QuotesPage() {
                             <TableHead>Quote #</TableHead>
                             <TableHead>Date</TableHead>
                             <TableHead>Job Name</TableHead>
-                            <TableHead>Client</TableHead>
+                            <TableHead>Created By</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead className="text-right">Total</TableHead>
                         </TableRow>
@@ -150,7 +150,7 @@ export default function QuotesPage() {
                                 </TableCell>
                                 <TableCell>{format(new Date(quote.createdDate), 'MMM d, yyyy')}</TableCell>
                                 <TableCell>{quote.jobName}</TableCell>
-                                <TableCell>{quote.client?.name || 'N/A'}</TableCell>
+                                <TableCell>{quote.createdBy_technician?.name || 'N/A'}</TableCell>
                                 <TableCell><QuoteStatusBadge status={quote.status} /></TableCell>
                                 <TableCell className="text-right font-mono">
                                     {quote.total.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
