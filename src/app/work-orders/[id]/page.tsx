@@ -273,8 +273,12 @@ export default function WorkOrderDetailPage() {
     }
   };
 
-  const handleFormSaved = () => {
-      fetchData(); // Refetch all data to get the latest state
+  const handleFormSaved = (newId?: string) => {
+      if (newId && newId !== id) {
+          router.push(`/work-orders/${newId}`);
+      } else {
+          fetchData(); // Refetch all data to get the latest state
+      }
       setIsEditing(false);
   }
 

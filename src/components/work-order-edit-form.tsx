@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import type { WorkOrder, Technician, WorkSite, Client } from '@/lib/types';
-import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useFirestore, updateDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { getDoc, getDocs, collection, doc, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,7 @@ interface WorkOrderEditFormProps {
     technicians: Technician[];
     workSites: WorkSite[];
     clients: Client[];
-    onFormSaved: () => void;
+    onFormSaved: (newId?: string) => void;
     onCancel: () => void;
 }
 
@@ -32,6 +33,7 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
     const [isLoading, setIsLoading] = useState(false);
 
     // Initialize state directly from props. This is safe because the form is remounted each time it's opened.
+    const [jobId, setJobId] = useState(workOrder.id);
     const [description, setDescription] = useState(workOrder.description ?? '');
     const [status, setStatus] = useState<WorkOrder['status']>(workOrder.status ?? 'Open');
     const [assignedTechnicianId, setAssignedTechnicianId] = useState<string | undefined>(workOrder.assignedTechnicianId || undefined);
@@ -113,11 +115,10 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
                 break;
         }
 
-        const workOrderRef = doc(db, 'work_orders', workOrder.id);
         const selectedWorkSite = workSites.find(ws => ws.id === workSiteId);
         const selectedClient = clients.find(c => c.id === clientId);
 
-        const cleanedData: Partial<WorkOrder> = {
+        const cleanedData: Omit<WorkOrder, 'id' | 'notes' | 'activities' | 'work_history' | 'beforePhotoUrls' | 'afterPhotoUrls'> = {
             jobName: selectedWorkSite?.name,
             description,
             status,
@@ -151,23 +152,86 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
               (cleanedData as any)[k] = null;
             }
         });
-
-        try {
-            await updateDocumentNonBlocking(workOrderRef, cleanedData);
-            toast({ title: "Work Order Saved", description: "Changes have been saved successfully." });
-            onFormSaved();
-        } catch (error) {
-            console.error("Error saving work order", error);
-            if (error instanceof Error && !error.message.includes('permission-error')) {
-                toast({ title: "Save Failed", description: "Could not save changes.", variant: "destructive" });
+        
+        // Handle Job ID change
+        if (jobId !== workOrder.id) {
+            if (!jobId) {
+                toast({ title: "Job # cannot be empty.", variant: "destructive"});
+                setIsLoading(false);
+                return;
             }
-        } finally {
-            setIsLoading(false);
+    
+            const newDocRef = doc(db, 'work_orders', jobId);
+            const oldDocRef = doc(db, 'work_orders', workOrder.id);
+            
+            try {
+                // 1. Check for duplicate
+                const newDocSnap = await getDoc(newDocRef);
+                if (newDocSnap.exists()) {
+                    toast({ title: "Duplicate Job Number", description: `A work order with Job # "${jobId}" already exists.`, variant: "destructive" });
+                    setIsLoading(false);
+                    return;
+                }
+    
+                // 2. Move subcollections and main doc in a batch
+                const batch = writeBatch(db);
+    
+                // Copy 'updates' subcollection
+                const updatesColRef = collection(oldDocRef, 'updates');
+                const updatesSnap = await getDocs(updatesColRef);
+                updatesSnap.docs.forEach(d => {
+                    batch.set(doc(newDocRef, 'updates', d.id), d.data());
+                    batch.delete(d.ref);
+                });
+    
+                // Copy 'activities' subcollection
+                const activitiesColRef = collection(oldDocRef, 'activities');
+                const activitiesSnap = await getDocs(activitiesColRef);
+                activitiesSnap.docs.forEach(d => {
+                    batch.set(doc(newDocRef, 'activities', d.id), d.data());
+                    batch.delete(d.ref);
+                });
+                
+                const finalDataForNewDoc = {
+                    ...workOrder,
+                    ...cleanedData,
+                    id: jobId,
+                }
+                
+                // Set new main doc with new ID and delete old one
+                batch.set(newDocRef, finalDataForNewDoc);
+                batch.delete(oldDocRef);
+    
+                await batch.commit();
+    
+                toast({ title: "Work Order Saved", description: `Job number has been updated to ${jobId}.` });
+                onFormSaved(jobId);
+    
+            } catch (error) {
+                 if (error instanceof Error && !error.message.includes('permission-error')) {
+                    console.error("Error updating work order ID:", error);
+                    toast({ title: "Save Failed", description: "Could not update the job number.", variant: "destructive" });
+                }
+                setIsLoading(false);
+            }
+    
+        } else { // Job ID did not change, just update
+            try {
+                await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), cleanedData);
+                toast({ title: "Work Order Saved", description: "Changes have been saved successfully." });
+                onFormSaved();
+            } catch (error) {
+                console.error("Error saving work order", error);
+                if (error instanceof Error && !error.message.includes('permission-error')) {
+                    toast({ title: "Save Failed", description: "Could not save changes.", variant: "destructive" });
+                }
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
 
     const isCompleteDisabled = status !== 'Review' && workOrder.status !== 'Completed';
-
 
     return (
         <form onSubmit={handleSubmit}>
@@ -175,10 +239,14 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
                 <div className="lg:col-span-2">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Editing Work Order #{workOrder.id}</CardTitle>
+                            <CardTitle>Editing Work Order</CardTitle>
                         </CardHeader>
-                        <CardContent>
-                             <div className="space-y-2">
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-job-id">Job #</Label>
+                                <Input id="edit-job-id" value={jobId} onChange={(e) => setJobId(e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
                                 <Label htmlFor="edit-description">Job Description</Label>
                                 <Textarea id="edit-description" value={description} onChange={(e) => setDescription(e.target.value)} rows={4}/>
                             </div>
