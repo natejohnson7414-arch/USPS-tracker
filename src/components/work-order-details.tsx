@@ -338,7 +338,8 @@ export function WorkOrderDetails({
     setIsAddTimeOpen(true);
   };
   
-  const canCompleteWorkOrder = isTechnician && (workOrder.status === 'In Progress' || workOrder.status === 'Open');
+  const isCurrentUserAssigned = workOrder.assignedTechnicianId === user?.uid;
+  const canCompleteWorkOrder = isTechnician && isCurrentUserAssigned && (workOrder.status === 'In Progress' || workOrder.status === 'Open');
 
   return (
     <>
@@ -358,7 +359,7 @@ export function WorkOrderDetails({
               <div className="flex flex-col items-end gap-2">
                 <StatusBadge status={workOrder.status} />
                 {canCompleteWorkOrder && (
-                  <Button onClick={onMarkForReview} disabled={isSubmittingReview}>
+                  <Button onClick={onMarkForReview} disabled={isSubmittingReview} className="bg-blue-600 hover:bg-blue-700 text-white">
                     {isSubmittingReview && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Submit for Review
                   </Button>

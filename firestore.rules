@@ -126,7 +126,7 @@ service cloud.firestore {
         if (isOwner(resource.data.assignedTechnicianId) && resource.data.status != 'Completed') {
             // If the order is in Review, they can only update the work_history.
             if (resource.data.status == 'Review') {
-                return request.writeFields.size() == 1 && request.writeFields[0] == 'work_history';
+                return request.writeFields.size() == 1 && 'work_history' in request.writeFields;
             }
             // Otherwise (Open, In Progress, On Hold), they can update.
             return true;

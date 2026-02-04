@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Ban, Pencil, Save, Printer, Download, Receipt } from 'lucide-react';
 import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, ActivityHistoryItem, Quote } from '@/lib/types';
-import { doc, collection } from 'firebase/firestore';
+import { doc, collection, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImage, deleteImage } from '@/firebase/storage';
 import { MapProviderSelection } from '@/components/map-provider-selection';
@@ -426,7 +426,7 @@ export default function WorkOrderDetailPage() {
         await updateWorkOrderStatus(db, workOrder.id);
         fetchData();
     } catch(error) {
-        if (error instanceof Error && !error.message.includes('Missing or insufficient permissions')) {
+        if (error instanceof Error && !error.message.includes('permission-error')) {
             console.error("Error scheduling activity:", error);
             toast({ title: 'Error', description: 'Failed to schedule activity', variant: 'destructive' });
         }
@@ -444,7 +444,7 @@ export default function WorkOrderDetailPage() {
           await updateWorkOrderStatus(db, workOrder.id);
           fetchData();
       } catch(error) {
-        if (error instanceof Error && !error.message.includes('Missing or insufficient permissions')) {
+        if (error instanceof Error && !error.message.includes('permission-error')) {
           console.error("Error updating activity status:", error);
           toast({ title: 'Error', description: 'Failed to update activity status', variant: 'destructive' });
         }
@@ -533,28 +533,30 @@ export default function WorkOrderDetailPage() {
   const handleMarkForReview = async () => {
     if (!db || !workOrder || !user) return;
     setIsSubmittingReview(true);
-    const originalStatus = workOrder.status;
-    setWorkOrder(prev => prev ? { ...prev, status: 'Review' } : null);
 
-    const workOrderRef = doc(db, 'work_orders', workOrder.id);
     try {
-      await updateDocumentNonBlocking(workOrderRef, { status: 'Review' });
-      
       const technician = await getTechnicianById(db, user.uid);
-      const historyItem: Omit<ActivityHistoryItem, 'id' | 'timestamp'> = {
-          type: 'status_change',
+      const historyItem = {
+          id: `hist-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          type: 'status_change' as const,
           text: `Status changed to Review`,
           authorId: user.uid,
           authorName: technician?.name || user.email!,
       };
-      await addWorkHistoryItem(db, workOrder.id, historyItem);
 
+      const workOrderRef = doc(db, 'work_orders', workOrder.id);
+      
+      // Perform as a single atomic update
+      await updateDocumentNonBlocking(workOrderRef, {
+        status: 'Review',
+        work_history: arrayUnion(historyItem)
+      });
+      
       toast({ title: "Work Order Submitted for Review" });
       fetchData(); // to get latest history
     } catch (error) {
       console.error("Error setting work order to review:", error);
-      // Revert optimistic update
-      setWorkOrder(prev => prev ? { ...prev, status: originalStatus } : null);
       if (error instanceof Error && !error.message.includes('permission-error')) {
         toast({ title: 'Update Failed', variant: 'destructive' });
       }
