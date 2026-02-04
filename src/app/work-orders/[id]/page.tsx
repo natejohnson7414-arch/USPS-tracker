@@ -685,7 +685,7 @@ export default function WorkOrderDetailPage() {
                     setTempOnLeaving={setTempOnLeaving}
                     contactInfo={contactInfo}
                     setContactInfo={setContactInfo}
-                    onContactInfoUpdate={onContactInfoUpdate}
+                    onContactInfoUpdate={handleContactInfoUpdate}
                     onAddActivity={handleAddActivity}
                     isAddingActivity={isAddingActivity}
                     onUpdateActivityStatus={handleUpdateActivityStatus}
@@ -726,7 +726,7 @@ export default function WorkOrderDetailPage() {
                     setTempOnLeaving={setTempOnLeaving}
                     contactInfo={contactInfo}
                     setContactInfo={setContactInfo}
-                    onContactInfoUpdate={onContactInfoUpdate}
+                    onContactInfoUpdate={handleContactInfoUpdate}
                     onAddActivity={handleAddActivity}
                     isAddingActivity={isAddingActivity}
                     onUpdateActivityStatus={handleUpdateActivityStatus}
