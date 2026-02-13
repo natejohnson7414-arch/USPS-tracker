@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect, FormEvent } from 'react';
@@ -220,6 +219,7 @@ export function WorkOrderDetails({
   timeEntries,
   activities,
   onNoteAdded,
+  onTimeAdded,
   onNotePhotoDelete,
   onNoteDelete,
   onBeforePhotosAdded,
@@ -853,7 +853,7 @@ export function WorkOrderDetails({
         }}
         workOrderId={workOrder.id}
         activity={activityForTimePosting}
-        onTimeAdded={onNoteAdded}
+        onTimeAdded={onTimeAdded}
       />
       <Sheet open={!!photoSheetTarget} onOpenChange={(isOpen) => !isOpen && setPhotoSheetTarget(null)}>
           <SheetContent side="bottom">
@@ -892,5 +892,3 @@ export function WorkOrderDetails({
     </>
   );
 }
-
-    
