@@ -57,24 +57,15 @@ export default function DashboardPage() {
   const { data: workOrders, isLoading: isWorkOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
 
   useEffect(() => {
-    const fetchCoreData = async () => {
-      if (!db) return;
-       try {
-        const [fetchedTechnicians, fetchedWorkSites, fetchedClients] = await Promise.all([
-          getTechnicians(db),
-          getWorkSites(db),
-          getClients(db),
-        ]);
-        setTechnicians(fetchedTechnicians);
-        setWorkSites(fetchedWorkSites);
-        setClients(fetchedClients);
-      } catch (error) {
-        console.error("Failed to fetch initial dashboard data:", error);
-      }
-    };
-    
     const initializeApp = async () => {
-      if (!db || !user || hasSeeded.current) return;
+      // If we don't have what we need, or if we've already seeded, we can exit.
+      // We also check isAuthLoading to ensure we don't prematurely stop loading.
+      if (!db || !user || hasSeeded.current) {
+        if (!isAuthLoading) {
+            setIsLoading(false);
+        }
+        return;
+      }
       
       setIsLoading(true);
       hasSeeded.current = true; // Prevents this from running multiple times
@@ -105,7 +96,14 @@ export default function DashboardPage() {
         await seedDatabase(db);
         
         // Step 3: Fetch all necessary data for the dashboard
-        await fetchCoreData();
+        const [fetchedTechnicians, fetchedWorkSites, fetchedClients] = await Promise.all([
+          getTechnicians(db),
+          getWorkSites(db),
+          getClients(db),
+        ]);
+        setTechnicians(fetchedTechnicians);
+        setWorkSites(fetchedWorkSites);
+        setClients(fetchedClients);
 
       } catch (error) {
         console.error("Error during app initialization:", error);
@@ -114,12 +112,8 @@ export default function DashboardPage() {
       }
     };
 
-    if(db && user) {
-        initializeApp();
-    } else if (!isAuthLoading) {
-        // If auth is done and there's no user, we're not loading data.
-        setIsLoading(false);
-    }
+    initializeApp();
+
   }, [db, user, isAuthLoading]);
 
 
