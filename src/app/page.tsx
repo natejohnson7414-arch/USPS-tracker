@@ -36,23 +36,34 @@ export default function DashboardPage() {
 
   // Memoize the query to prevent re-creating it on every render
   const workOrdersQuery = useMemoFirebase(() => {
-    if (!db || isAuthLoading || !user) return null;
+    if (!db || isAuthLoading || !user || !currentUserRole) return null;
 
-    let q = query(collection(db, 'work_orders'));
-    const filters = [];
-    if (statusFilter !== 'All') {
-        filters.push(where('status', '==', statusFilter));
-    }
+    const workOrdersCollection = collection(db, 'work_orders');
+    const filters: any[] = [];
+
+    // Filter by technician assignment. For technicians, this defaults to their own ID.
     if (assignedToFilter !== 'All') {
-        filters.push(where('assignedTechnicianId', '==', assignedToFilter));
+      filters.push(where('assignedTechnicianId', '==', assignedToFilter));
+    }
+
+    // Filter by status.
+    if (statusFilter === 'All' && currentUserRole.name === 'Technician') {
+      // For technicians, a filter of "All" means all active work orders.
+      filters.push(where('status', 'in', ['Open', 'In Progress', 'On Hold']));
+    } else if (statusFilter !== 'All') {
+      // For all users when a specific status is selected.
+      filters.push(where('status', '==', statusFilter));
     }
     
+    // Construct the query
     if (filters.length > 0) {
-        q = query(collection(db, 'work_orders'), ...filters);
+      return query(workOrdersCollection, ...filters);
     }
     
-    return q;
-  }, [db, statusFilter, assignedToFilter, user, isAuthLoading]);
+    // For Admins/other roles with "All" selected for status and technician, return all work orders.
+    return query(workOrdersCollection);
+
+  }, [db, statusFilter, assignedToFilter, user, isAuthLoading, currentUserRole]);
 
   const { data: workOrders, isLoading: isWorkOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
   const { data: fetchedTechnicians, isLoading: isTechniciansLoading } = useCollection<RawTechnician>(useMemoFirebase(() => db ? collection(db, 'technicians') : null, [db]));
