@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, HvacStartupReport, Acknowledgement } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -263,6 +263,10 @@ export function WorkOrderDetails({
   const [isAddTimeOpen, setIsAddTimeOpen] = useState(false);
   const [activityForTimePosting, setActivityForTimePosting] = useState<Activity | null>(null);
   const [ackToDelete, setAckToDelete] = useState<Acknowledgement | null>(null);
+
+  const filteredActivities = isTechnician
+    ? activities.filter(activity => isSameDay(new Date(activity.scheduled_date), new Date()))
+    : activities;
 
   // Combine and sort notes and time entries
   const combinedActivity = [
@@ -659,8 +663,8 @@ export function WorkOrderDetails({
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
-                  {activities.length > 0 ? (
-                    activities.map(activity => (
+                  {filteredActivities.length > 0 ? (
+                    filteredActivities.map(activity => (
                       <ActivityItem 
                         key={activity.id} 
                         activity={activity} 
@@ -674,7 +678,7 @@ export function WorkOrderDetails({
                       />
                     ))
                   ) : (
-                    <p className="text-center text-sm text-muted-foreground py-4">No scheduled activities.</p>
+                    <p className="text-center text-sm text-muted-foreground py-4">{isTechnician ? "No activities scheduled for today." : "No scheduled activities."}</p>
                   )}
                 </div>
                 {(isAdmin || (isTechnician && workOrder.status !== 'Completed' && workOrder.status !== 'Review')) && (
@@ -850,3 +854,5 @@ export function WorkOrderDetails({
     </>
   );
 }
+
+    
