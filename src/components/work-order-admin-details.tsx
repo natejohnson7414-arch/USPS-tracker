@@ -163,6 +163,8 @@ interface WorkOrderAdminDetailsProps {
   onFileDeleted: (file: FileAttachment) => void;
   isUploadingFiles: boolean;
   onSignatureDelete: (ack: Acknowledgement) => void;
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
 }
 
 export function WorkOrderAdminDetails({
@@ -201,6 +203,8 @@ export function WorkOrderAdminDetails({
   onFileDeleted,
   isUploadingFiles,
   onSignatureDelete,
+  activeTab,
+  setActiveTab,
 }: WorkOrderAdminDetailsProps) {
   const { user } = useUser();
 
@@ -283,7 +287,7 @@ export function WorkOrderAdminDetails({
           <p className="mt-4 text-lg font-medium">Uploading Media...</p>
         </div>
       )}
-      <Tabs defaultValue="overview">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList variant="folder">
           <TabsTrigger value="overview" variant="folder">Overview</TabsTrigger>
           <TabsTrigger value="media" variant="folder">Media</TabsTrigger>

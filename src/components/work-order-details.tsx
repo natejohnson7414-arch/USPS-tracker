@@ -176,7 +176,7 @@ interface WorkOrderDetailsProps {
   onHvacReportDelete: (reportId: string) => void;
   timeEntries: TimeEntry[];
   activities: Activity[];
-  onTimeAdded: (timeEntry: TimeEntry) => void;
+  onTimeEntriesSaved: () => void;
   onNotePhotoDelete: (noteId: string, photoUrl: string) => void;
   onNoteDelete: (noteId: string) => void;
   onBeforePhotosAdded: (files: File[]) => void;
@@ -205,6 +205,8 @@ interface WorkOrderDetailsProps {
   technicians: Technician[];
   onMarkForReview: () => void;
   isSubmittingReview: boolean;
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
 }
 
 export function WorkOrderDetails({
@@ -217,7 +219,7 @@ export function WorkOrderDetails({
   onHvacReportDelete,
   timeEntries,
   activities,
-  onTimeAdded,
+  onTimeEntriesSaved,
   onNotePhotoDelete,
   onNoteDelete,
   onBeforePhotosAdded,
@@ -243,6 +245,8 @@ export function WorkOrderDetails({
   technicians,
   onMarkForReview,
   isSubmittingReview,
+  activeTab,
+  setActiveTab,
 }: WorkOrderDetailsProps) {
   const db = useFirestore();
   const { user } = useUser();
@@ -445,7 +449,7 @@ export function WorkOrderDetails({
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="overview">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList variant="folder">
           <TabsTrigger value="overview" variant="folder">Overview</TabsTrigger>
           <TabsTrigger value="media" variant="folder">Media</TabsTrigger>
@@ -813,7 +817,7 @@ export function WorkOrderDetails({
         }}
         workOrderId={workOrder.id}
         activity={activityForTimePosting}
-        onTimeAdded={onTimeAdded}
+        onTimeEntriesSaved={onTimeEntriesSaved}
       />
       <Sheet open={!!photoSheetTarget} onOpenChange={(isOpen) => !isOpen && setPhotoSheetTarget(null)}>
           <SheetContent side="bottom">

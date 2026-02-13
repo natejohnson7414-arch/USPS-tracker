@@ -76,6 +76,8 @@ export default function WorkOrderDetailPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   
+  const [activeTab, setActiveTab] = useState('overview');
+
   const workOrderDocRef = useMemoFirebase(() => {
     if (!db) return null;
     return doc(db, 'work_orders', id);
@@ -281,21 +283,23 @@ export default function WorkOrderDetailPage() {
     }
   };
 
-
-  const handleTimeAdded = async (newTimeEntry: TimeEntry) => {
-    setTimeEntries(prev => [newTimeEntry, ...prev]);
-    if (!db || !user || !workOrder) return;
-
-    const technician = await getTechnicianById(db, user.uid);
-    const historyItem: Omit<ActivityHistoryItem, 'id' | 'timestamp'> = {
-        type: 'time_log',
-        text: `Logged ${newTimeEntry.hours.toFixed(2)} hours.`,
-        authorId: user.uid,
-        authorName: technician?.name || user.email!,
+    const handleTimeEntriesSaved = async () => {
+        if (!db || !user || !workOrder) return;
+        try {
+            const technician = await getTechnicianById(db, user.uid);
+            const historyItem: Omit<ActivityHistoryItem, 'id' | 'timestamp'> = {
+                type: 'time_log',
+                text: 'Posted new time entries.',
+                authorId: user.uid,
+                authorName: technician?.name || user.email!,
+            };
+            await addWorkHistoryItem(db, workOrder.id, historyItem);
+            await fetchData();
+            setActiveTab('activity');
+        } catch (e) {
+            console.error("Error logging time entry history:", e);
+        }
     };
-    await addWorkHistoryItem(db, workOrder.id, historyItem);
-    fetchData();
-  };
   
   const handleTempUpdate = async () => {
     if (!workOrderDocRef) return;
@@ -509,7 +513,8 @@ export default function WorkOrderDetailPage() {
         const docRef = await addDocumentNonBlocking(activitiesColRef, activityData);
         toast({ title: 'Activity Scheduled' });
         await updateWorkOrderStatus(db, workOrder.id);
-        fetchData();
+        await fetchData();
+        setActiveTab('activity');
     } catch(error) {
         if (error instanceof Error && !error.message.includes('permission-error')) {
             console.error("Error scheduling activity:", error);
@@ -722,7 +727,7 @@ export default function WorkOrderDetailPage() {
                     onHvacReportDelete={handleHvacReportDelete}
                     timeEntries={timeEntries}
                     activities={activities}
-                    onTimeAdded={handleTimeAdded}
+                    onTimeEntriesSaved={handleTimeEntriesSaved}
                     onNotePhotoDelete={handleNotePhotoDelete}
                     onNoteDelete={handleNoteDelete}
                     onBeforePhotosAdded={(files) => handlePhotosAdded('before', files)}
@@ -751,6 +756,8 @@ export default function WorkOrderDetailPage() {
                     onMarkForReview={handleMarkForReview}
                     isSubmittingReview={isSubmittingReview}
                     onSignatureDelete={handleSignatureDelete}
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
                 />
             ) : (
                  <WorkOrderAdminDetails
@@ -792,6 +799,8 @@ export default function WorkOrderDetailPage() {
                     onFileDeleted={handleFileDeleted}
                     isUploadingFiles={isUploadingFiles}
                     onSignatureDelete={handleSignatureDelete}
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
                 />
             )}
         </div>
