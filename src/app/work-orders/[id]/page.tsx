@@ -63,7 +63,6 @@ export default function WorkOrderDetailPage() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [isAddingNote, setIsAddingNote] = useState(false);
   const [isSavingPhotos, setIsSavingPhotos] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
@@ -150,51 +149,6 @@ export default function WorkOrderDetailPage() {
     if (!workSite.address) return;
     const fullAddress = [workSite.address, workSite.city, workSite.state].filter(Boolean).join(', ');
     setSelectedAddress(fullAddress);
-  };
-
-  const handleNoteAdded = async (newNote: Omit<WorkOrderNote, 'id' | 'photoUrls'>) => {
-    if (!db || !user || !workOrderDocRef || !workOrder) return;
-    const notesColRef = collection(workOrderDocRef, 'updates');
-    setIsAddingNote(true);
-
-    try {
-        const newNoteData = {
-            workOrderId: workOrder.id,
-            notes: newNote.text,
-            createdAt: newNote.createdAt,
-        };
-
-        const docRef = await addDocumentNonBlocking(notesColRef, newNoteData);
-        
-        const technician = await getTechnicianById(db, user.uid);
-        const historyItem: Omit<ActivityHistoryItem, 'id' | 'timestamp'> = {
-            type: 'note',
-            text: `Note added: "${newNote.text.substring(0, 50)}${newNote.text.length > 50 ? '...' : ''}"`,
-            authorId: user.uid,
-            authorName: technician?.name || user.email!,
-        };
-        await addWorkHistoryItem(db, workOrder.id, historyItem);
-
-        const optimisticNote: WorkOrderNote = {
-            id: docRef.id,
-            text: newNote.text,
-            createdAt: newNote.createdAt,
-        };
-        
-        setWorkOrder(prev => {
-            if (!prev) return null;
-            const updatedNotes = [optimisticNote, ...(prev.notes || [])];
-            return { ...prev, notes: updatedNotes };
-        });
-        toast({ title: "Note Added", description: "Your note has been added." });
-        fetchData();
-
-    } catch (error) {
-        console.error("Error adding note:", error);
-        toast({ variant: "destructive", title: "Error", description: "Could not add your note. Please try again." });
-    } finally {
-        setIsAddingNote(false);
-    }
   };
 
   const handlePhotosAdded = async (type: 'before' | 'after' | 'receipts', files: File[]) => {
@@ -768,7 +722,6 @@ export default function WorkOrderDetailPage() {
                     onHvacReportDelete={handleHvacReportDelete}
                     timeEntries={timeEntries}
                     activities={activities}
-                    onNoteAdded={handleNoteAdded}
                     onTimeAdded={handleTimeAdded}
                     onNotePhotoDelete={handleNotePhotoDelete}
                     onNoteDelete={handleNoteDelete}
@@ -779,7 +732,6 @@ export default function WorkOrderDetailPage() {
                     onAfterPhotoDelete={(url) => handlePhotoDeleted('after', url)}
                     onReceiptsAndPackingSlipsPhotoDelete={(url) => handlePhotoDeleted('receipts', url)}
                     onTimeEntryDelete={handleTimeEntryDelete}
-                    isAddingNote={isAddingNote}
                     isSavingPhotos={isSavingPhotos}
                     onDirectionsClick={() => workOrder.workSite && handleDirectionsClick(workOrder.workSite)}
                     onSignatureSave={() => setIsSignatureDialogOpen(true)}
@@ -812,7 +764,6 @@ export default function WorkOrderDetailPage() {
                     onHvacReportDelete={handleHvacReportDelete}
                     timeEntries={timeEntries}
                     activities={activities}
-                    onNoteAdded={handleNoteAdded}
                     onNotePhotoDelete={handleNotePhotoDelete}
                     onNoteDelete={handleNoteDelete}
                     onBeforePhotosAdded={(files) => handlePhotosAdded('before', files)}
@@ -822,7 +773,6 @@ export default function WorkOrderDetailPage() {
                     onAfterPhotoDelete={(url) => handlePhotoDeleted('after', url)}
                     onReceiptsAndPackingSlipsPhotoDelete={(url) => handlePhotoDeleted('receipts', url)}
                     onTimeEntryDelete={handleTimeEntryDelete}
-                    isAddingNote={isAddingNote}
                     isSavingPhotos={isSavingPhotos}
                     onDirectionsClick={() => workOrder.workSite && handleDirectionsClick(workOrder.workSite)}
                     onSignatureSave={() => setIsSignatureDialogOpen(true)}

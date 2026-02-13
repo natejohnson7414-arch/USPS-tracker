@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, FormEvent } from 'react';
@@ -175,7 +176,6 @@ interface WorkOrderDetailsProps {
   onHvacReportDelete: (reportId: string) => void;
   timeEntries: TimeEntry[];
   activities: Activity[];
-  onNoteAdded: (note: Omit<WorkOrderNote, 'id' | 'photoUrls'>) => void;
   onTimeAdded: (timeEntry: TimeEntry) => void;
   onNotePhotoDelete: (noteId: string, photoUrl: string) => void;
   onNoteDelete: (noteId: string) => void;
@@ -186,7 +186,6 @@ interface WorkOrderDetailsProps {
   onAfterPhotoDelete: (photoUrl: string) => void;
   onReceiptsAndPackingSlipsPhotoDelete: (photoUrl: string) => void;
   onTimeEntryDelete: (timeEntryId: string) => void;
-  isAddingNote: boolean;
   isSavingPhotos: boolean;
   onDirectionsClick: (workSite: WorkSite) => void;
   onSignatureSave: () => void;
@@ -218,7 +217,6 @@ export function WorkOrderDetails({
   onHvacReportDelete,
   timeEntries,
   activities,
-  onNoteAdded,
   onTimeAdded,
   onNotePhotoDelete,
   onNoteDelete,
@@ -229,7 +227,6 @@ export function WorkOrderDetails({
   onAfterPhotoDelete,
   onReceiptsAndPackingSlipsPhotoDelete,
   onTimeEntryDelete,
-  isAddingNote,
   isSavingPhotos,
   onDirectionsClick,
   onSignatureSave,
@@ -252,7 +249,6 @@ export function WorkOrderDetails({
 
   const [assignedTechnician, setAssignedTechnician] = useState<Technician | undefined>();
   
-  const [newNote, setNewNote] = useState('');
   const [photoSheetTarget, setPhotoSheetTarget] = useState<'before' | 'after' | 'receipts' | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
@@ -304,18 +300,6 @@ export function WorkOrderDetails({
     event.target.value = '';
   };
   
-
-  const handleAddNote = () => {
-    if (!user || !newNote) return;
-
-    onNoteAdded({
-      text: newNote,
-      createdAt: new Date().toISOString(),
-    });
-    
-    setNewNote('');
-  };
-
   const confirmDeleteNote = () => {
     if (noteToDelete) {
         onNoteDelete(noteToDelete);
@@ -720,21 +704,6 @@ export function WorkOrderDetails({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <Textarea
-                    placeholder="Add a new note or update..."
-                    value={newNote}
-                    onChange={e => setNewNote(e.target.value)}
-                    disabled={isAddingNote}
-                  />
-                  <div className="flex justify-end gap-2">
-                    <Button type="button" onClick={handleAddNote} disabled={isAddingNote || !newNote}>
-                        {isAddingNote && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Add Note
-                    </Button>
-                  </div>
-                </div>
-                <Separator />
                 <div className="space-y-6">
                   {isClient ? combinedActivity.map(activity => {
                       if (activity.type === 'note') {

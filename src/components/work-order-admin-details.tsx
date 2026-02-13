@@ -135,7 +135,6 @@ interface WorkOrderAdminDetailsProps {
   onHvacReportDelete: (reportId: string) => void;
   timeEntries: TimeEntry[];
   activities: Activity[];
-  onNoteAdded: (note: Omit<WorkOrderNote, 'id' | 'photoUrls'>) => void;
   onNotePhotoDelete: (noteId: string, photoUrl: string) => void;
   onNoteDelete: (noteId: string) => void;
   onBeforePhotosAdded: (files: File[]) => void;
@@ -145,7 +144,6 @@ interface WorkOrderAdminDetailsProps {
   onAfterPhotoDelete: (photoUrl: string) => void;
   onReceiptsAndPackingSlipsPhotoDelete: (photoUrl: string) => void;
   onTimeEntryDelete: (timeEntryId: string) => void;
-  isAddingNote: boolean;
   isSavingPhotos: boolean;
   onDirectionsClick: (workSite: WorkSite) => void;
   onSignatureSave: () => void;
@@ -170,6 +168,7 @@ interface WorkOrderAdminDetailsProps {
 export function WorkOrderAdminDetails({
   workOrder,
   assignedTechnician,
+  isTechnician,
   isAdmin,
   trainingRecords,
   onTrainingRecordDelete,
@@ -177,7 +176,6 @@ export function WorkOrderAdminDetails({
   onHvacReportDelete,
   timeEntries,
   activities,
-  onNoteAdded,
   onNotePhotoDelete,
   onNoteDelete,
   onBeforePhotosAdded,
@@ -187,7 +185,6 @@ export function WorkOrderAdminDetails({
   onAfterPhotoDelete,
   onReceiptsAndPackingSlipsPhotoDelete,
   onTimeEntryDelete,
-  isAddingNote,
   isSavingPhotos,
   onDirectionsClick,
   onSignatureSave,
@@ -207,7 +204,6 @@ export function WorkOrderAdminDetails({
 }: WorkOrderAdminDetailsProps) {
   const { user } = useUser();
 
-  const [newNote, setNewNote] = useState('');
   const [photoSheetTarget, setPhotoSheetTarget] = useState<'before' | 'after' | 'receipts' | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
@@ -247,12 +243,6 @@ export function WorkOrderAdminDetails({
     event.target.value = '';
   };
   
-  const handleAddNote = () => {
-    if (!user || !newNote) return;
-    onNoteAdded({ text: newNote, createdAt: new Date().toISOString() });
-    setNewNote('');
-  };
-
   const confirmDeleteNote = () => { if (noteToDelete) { onNoteDelete(noteToDelete); setNoteToDelete(null); } };
   const confirmDeleteTimeEntry = () => { if (timeEntryToDelete) { onTimeEntryDelete(timeEntryToDelete); setTimeEntryToDelete(null); } };
   const confirmDeleteTrainingRecord = () => { if (trainingRecordToDelete) { onTrainingRecordDelete(trainingRecordToDelete); setTrainingRecordToDelete(null); } };
@@ -610,11 +600,6 @@ export function WorkOrderAdminDetails({
             <Card>
                 <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" /> Notes &amp; Time Postings</CardTitle></CardHeader>
                 <CardContent className="space-y-6">
-                    <div className="space-y-4">
-                        <Textarea placeholder="Add a new note or update..." value={newNote} onChange={e => setNewNote(e.target.value)} disabled={isAddingNote} />
-                        <div className="flex justify-end gap-2"><Button type="button" onClick={handleAddNote} disabled={isAddingNote || !newNote}>{isAddingNote && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Add Note</Button></div>
-                    </div>
-                    <Separator />
                     <div className="space-y-6">
                         {isClient ? combinedActivity.map(activity => activity.type === 'note' ? <NoteActivityItem key={`note-${activity.id}`} note={activity} onPhotoDelete={onNotePhotoDelete} onNoteDelete={setNoteToDelete} showPhotos={false} /> : <TimeActivityItem key={`time-${activity.id}`} timeEntry={activity} onTimeEntryDelete={setTimeEntryToDelete} />) : <p className="text-center text-sm text-muted-foreground py-4">Loading activity...</p>}
                         {isClient && combinedActivity.length === 0 && <p className="text-center text-sm text-muted-foreground py-4">No notes or activity yet.</p>}
