@@ -245,6 +245,10 @@
                 },
                 "required": ["name", "url", "type", "size", "uploadedAt"]
             }
+        },
+        "sourcePdfUrl": {
+          "type": "string",
+          "description": "URL of the source 'Small Job Form' PDF used to create this work order, if applicable."
         }
       },
       "required": [

@@ -312,6 +312,14 @@ export function WorkOrderAdminDetails({
                 <div className="flex justify-between items-center">
                   <CardTitle>Details</CardTitle>
                   <div className="flex items-center gap-2">
+                    {workOrder.sourcePdfUrl && (
+                        <Button asChild variant="secondary">
+                            <Link href={workOrder.sourcePdfUrl} target="_blank" rel="noopener noreferrer">
+                                <FileText className="mr-2 h-4 w-4" />
+                                View Source PDF
+                            </Link>
+                        </Button>
+                    )}
                     {workOrder.checkInOutURL && (
                       <div className="flex flex-col items-center">
                         <Button asChild variant="outline" size="icon">

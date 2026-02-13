@@ -27,6 +27,7 @@ import { Loader2, PlusCircle, FileUp, Building } from 'lucide-react';
 import type { Technician, WorkOrder, WorkSite, Client } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
+import { uploadImage } from '@/firebase/storage';
 import { doc, collection } from 'firebase/firestore';
 import { Checkbox } from './ui/checkbox';
 import { extractWorkOrderInfo } from '@/ai/flows/extract-work-order-flow';
@@ -51,6 +52,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  const [sourcePdfFile, setSourcePdfFile] = useState<File | null>(null);
   const [showCreateSitePrompt, setShowCreateSitePrompt] = useState(false);
   const [extractedAddress, setExtractedAddress] = useState<string | null>(null);
   const [extractedCity, setExtractedCity] = useState<string | null>(null);
@@ -114,6 +116,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
     setExtractedCity(null);
     setExtractedState(null);
     setNewSiteName('');
+    setSourcePdfFile(null);
     
     setCheckInType('none');
     setEmcorWorkOrder('');
@@ -127,6 +130,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
     const file = event.target.files?.[0];
     if (!file) return;
 
+    setSourcePdfFile(file);
     resetForm();
     setIsExtracting(true);
     
@@ -304,6 +308,12 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
     }
 
     try {
+      let pdfUrl: string | undefined = undefined;
+      if (sourcePdfFile) {
+          const path = `work-orders/${jobId}/source-form.pdf`;
+          pdfUrl = await uploadImage(sourcePdfFile, path);
+      }
+      
       const workOrderRef = doc(db, 'work_orders', jobId);
 
       const newWorkOrderData = {
@@ -333,6 +343,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
         estimator,
         checkInOutURL: finalCheckInOutURL,
         checkInWorkOrderNumber: finalCheckInWorkOrderNumber,
+        sourcePdfUrl: pdfUrl,
       };
 
       Object.keys(newWorkOrderData).forEach(key => {

@@ -102,6 +102,7 @@ export type WorkOrder = {
   beforePhotoUrls?: string[];
   afterPhotoUrls?: string[];
   uploadedFiles?: FileAttachment[];
+  sourcePdfUrl?: string;
 };
 
 
