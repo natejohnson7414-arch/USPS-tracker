@@ -94,35 +94,17 @@ export function TrainingRecordForm({ record, onFormSaved, onCancel }: TrainingRe
 
   const [workOrderId, setWorkOrderId] = useState<string | undefined>();
   
+  // State for the options in the dropdown
+  const [workOrderOptions, setWorkOrderOptions] = useState<WorkOrder[]>([]);
+
+  // Fetch all work orders
   const workOrdersQuery = useMemoFirebase(() => {
     if (!db || !user || isUserLoading) return null;
     return query(collection(db, 'work_orders'));
   }, [db, user, isUserLoading]);
   const { data: workOrdersFromCollection } = useCollection<WorkOrder>(workOrdersQuery);
 
-  const [associatedWorkOrder, setAssociatedWorkOrder] = useState<WorkOrder | null>(null);
-
-  useEffect(() => {
-    const fetchAssociatedWO = async () => {
-      if (db && record?.workOrderId) {
-        const wo = await getWorkOrderById(db, record.workOrderId);
-        setAssociatedWorkOrder(wo || null);
-      } else {
-        setAssociatedWorkOrder(null);
-      }
-    };
-    fetchAssociatedWO();
-  }, [db, record?.workOrderId]);
-
-  const workOrders = useMemo(() => {
-    const list = workOrdersFromCollection || [];
-    if (associatedWorkOrder && !list.some(wo => wo.id === associatedWorkOrder.id)) {
-      return [associatedWorkOrder, ...list];
-    }
-    return list;
-  }, [workOrdersFromCollection, associatedWorkOrder]);
-
-
+  // Effect to populate the form from the `record` prop
   useEffect(() => {
     if (record) {
       setWorkOrderId(record.workOrderId || undefined);
@@ -137,6 +119,40 @@ export function TrainingRecordForm({ record, onFormSaved, onCancel }: TrainingRe
       setChecklist(record.checklist || Object.keys(checklistItems).reduce((acc, key) => ({ ...acc, [key]: false }), {}));
     }
   }, [record]);
+
+  // Effect to build the final list of work order options for the dropdown
+  useEffect(() => {
+    const buildOptions = async () => {
+      if (!workOrdersFromCollection) {
+        // If the main list isn't loaded yet, but we have a record,
+        // just fetch the single associated WO for now to populate the select.
+        if (db && record?.workOrderId) {
+            const associatedWO = await getWorkOrderById(db, record.workOrderId);
+            if (associatedWO) {
+                setWorkOrderOptions([associatedWO]);
+            }
+        }
+        return;
+      }
+
+      let combinedList = [...workOrdersFromCollection];
+
+      // If there's a record with a workOrderId that is NOT in the main collection list,
+      // fetch it separately and add it. This handles cases like a completed/filtered work order.
+      if (db && record?.workOrderId && !combinedList.some(wo => wo.id === record.workOrderId)) {
+        const associatedWO = await getWorkOrderById(db, record.workOrderId);
+        if (associatedWO) {
+          // Prepend it to the list to ensure it's available
+          combinedList = [associatedWO, ...combinedList];
+        }
+      }
+      
+      setWorkOrderOptions(combinedList);
+    };
+    
+    buildOptions();
+
+  }, [workOrdersFromCollection, record, db]);
 
 
   const handleAddAttendee = () => {
@@ -282,7 +298,7 @@ export function TrainingRecordForm({ record, onFormSaved, onCancel }: TrainingRe
                         <SelectValue placeholder="Select a work order (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                        {workOrders?.map(wo => (
+                        {workOrderOptions?.map(wo => (
                         <SelectItem key={wo.id} value={wo.id}>
                             {wo.id} - {wo.jobName}
                         </SelectItem>
