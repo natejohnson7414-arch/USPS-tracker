@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -28,7 +29,7 @@ const minuteOptions = [0, 15, 30, 45];
 
 export default function TimesheetPage() {
     const db = useFirestore();
-    const { user } = useUser();
+    const { user, isUserLoading } = useUser();
     const { toast } = useToast();
     
     const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
@@ -44,7 +45,10 @@ export default function TimesheetPage() {
     
     const [currentDate, setCurrentDate] = useState(new Date());
 
-    const workOrdersQuery = useMemoFirebase(() => db ? query(collection(db, 'work_orders'), where("status", "!=", "Completed")) : null, [db]);
+    const workOrdersQuery = useMemoFirebase(() => {
+        if (!db || !user || isUserLoading) return null;
+        return query(collection(db, 'work_orders'), where("status", "!=", "Completed"));
+    }, [db, user, isUserLoading]);
     const { data: workOrders } = useCollection<WorkOrder>(workOrdersQuery);
 
     const fetchTimeEntries = async () => {

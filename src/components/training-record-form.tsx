@@ -25,7 +25,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useFirestore, addDocumentNonBlocking, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useUser, addDocumentNonBlocking, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImage } from '@/firebase/storage';
 import { collection, query, doc } from 'firebase/firestore';
@@ -72,6 +72,7 @@ interface TrainingRecordFormProps {
 
 export function TrainingRecordForm({ record, onFormSaved, onCancel }: TrainingRecordFormProps) {
   const db = useFirestore();
+  const { user, isUserLoading } = useUser();
   const { toast } = useToast();
 
   const [isSaving, setIsSaving] = useState(false);
@@ -91,7 +92,10 @@ export function TrainingRecordForm({ record, onFormSaved, onCancel }: TrainingRe
   const [signatureTarget, setSignatureTarget] = useState<{ type: 'trainer' | 'attendee'; index?: number } | null>(null);
 
   const [workOrderId, setWorkOrderId] = useState<string | undefined>();
-  const workOrdersQuery = useMemoFirebase(() => db ? query(collection(db, 'work_orders')) : null, [db]);
+  const workOrdersQuery = useMemoFirebase(() => {
+    if (!db || !user || isUserLoading) return null;
+    return query(collection(db, 'work_orders'));
+  }, [db, user, isUserLoading]);
   const { data: workOrders } = useCollection<WorkOrder>(workOrdersQuery);
 
   useEffect(() => {

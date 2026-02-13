@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
@@ -50,7 +51,7 @@ const GroupedLabeledInput = ({ label, values, onChange, labels, colSpan = 'sm:co
 
 function HvacStartupReportPageContent() {
   const db = useFirestore();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -61,7 +62,10 @@ function HvacStartupReportPageContent() {
     date: new Date().toISOString(),
   });
 
-  const workOrdersQuery = useMemoFirebase(() => db ? query(collection(db, 'work_orders'), where("status", "!=", "Completed")) : null, [db]);
+  const workOrdersQuery = useMemoFirebase(() => {
+    if (!db || isUserLoading || !user) return null;
+    return query(collection(db, 'work_orders'), where("status", "!=", "Completed"));
+  }, [db, user, isUserLoading]);
   const { data: workOrders } = useCollection<WorkOrder>(workOrdersQuery);
 
   const techniciansQuery = useMemoFirebase(() => db ? query(collection(db, 'technicians')) : null, [db]);
