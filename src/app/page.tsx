@@ -1,25 +1,27 @@
 'use client';
 import React, { useEffect, useState, useRef } from 'react';
-import { getTechnicians, seedDatabase, getWorkSites, getClients, getRoles, getTechnicianById } from '@/lib/data';
+import { getTechnicians, getWorkSites, getClients } from '@/lib/data';
 import { DashboardClient } from './dashboard-client';
 import { MainLayout } from '@/components/main-layout';
 import type { WorkOrder, Technician, WorkSite, Client, Role } from '@/lib/types';
-import { useFirestore, useUser, useMemoFirebase, setDocumentNonBlocking, useCollection } from '@/firebase';
-import { collection, query, doc, where } from 'firebase/firestore';
-import { useTechnician } from '@/hooks/use-technician';
+import { useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import { useTechnician as useRoleData } from '@/hooks/use-technician';
+
+// Define a type for the raw technician data from Firestore
+type RawTechnician = Omit<Technician, 'name'> & { firstName: string; lastName: string };
 
 export default function DashboardPage() {
   const db = useFirestore();
   const { user, isUserLoading: isAuthLoading } = useUser();
-  const { role: currentUserRole, isLoading: isRoleLoading } = useTechnician();
+  const { role: currentUserRole, isLoading: isRoleLoading } = useRoleData();
 
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [workSites, setWorkSites] = useState<WorkSite[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  
   const [statusFilter, setStatusFilter] = useState('All');
   const [assignedToFilter, setAssignedToFilter] = useState('All');
-  const hasSeeded = useRef(false);
   const defaultFilterSet = useRef(false);
 
   useEffect(() => {
@@ -33,12 +35,10 @@ export default function DashboardPage() {
   }, [user, currentUserRole]);
 
   // Memoize the query to prevent re-creating it on every render
-  // CRITICAL: We must wait for the user to be authenticated before creating the query.
   const workOrdersQuery = useMemoFirebase(() => {
     if (!db || isAuthLoading || !user) return null;
 
     let q = query(collection(db, 'work_orders'));
-
     const filters = [];
     if (statusFilter !== 'All') {
         filters.push(where('status', '==', statusFilter));
@@ -55,69 +55,29 @@ export default function DashboardPage() {
   }, [db, statusFilter, assignedToFilter, user, isAuthLoading]);
 
   const { data: workOrders, isLoading: isWorkOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
+  const { data: fetchedTechnicians, isLoading: isTechniciansLoading } = useCollection<RawTechnician>(useMemoFirebase(() => db ? collection(db, 'technicians') : null, [db]));
+  const { data: fetchedWorkSites, isLoading: isWorkSitesLoading } = useCollection<WorkSite>(useMemoFirebase(() => db ? collection(db, 'work_sites') : null, [db]));
+  const { data: fetchedClients, isLoading: isClientsLoading } = useCollection<Client>(useMemoFirebase(() => db ? collection(db, 'clients') : null, [db]));
 
   useEffect(() => {
-    const initializeApp = async () => {
-      // If we don't have what we need, or if we've already seeded, we can exit.
-      // We also check isAuthLoading to ensure we don't prematurely stop loading.
-      if (!db || !user || hasSeeded.current) {
-        if (!isAuthLoading) {
-            setIsLoading(false);
-        }
-        return;
+      if (fetchedTechnicians) {
+          const formattedTechnicians: Technician[] = fetchedTechnicians.map(t => ({
+              ...t,
+              name: `${t.firstName} ${t.lastName}`.trim()
+          }));
+          setTechnicians(formattedTechnicians);
       }
-      
-      setIsLoading(true);
-      hasSeeded.current = true; // Prevents this from running multiple times
+  }, [fetchedTechnicians]);
 
-      try {
-        // Step 1: Ensure admin user exists if logged in as admin
-        if (user.email === 'admin@crawford-company.com') {
-          const adminProfile = await getTechnicianById(db, user.uid);
-          if (!adminProfile) {
-            console.log("Admin profile not found, creating one...");
-            const roles = await getRoles(db);
-            const adminRole = roles.find(r => r.name === 'Administrator');
-            if (adminRole) {
-              const adminData = {
-                id: user.uid,
-                firstName: 'Admin',
-                lastName: 'User',
-                email: user.email,
-                roleId: adminRole.id,
-                disabled: false,
-              };
-              await setDocumentNonBlocking(doc(db, 'technicians', user.uid), adminData);
-            }
-          }
-        }
-        
-        // Step 2: Seed database if necessary
-        await seedDatabase(db);
-        
-        // Step 3: Fetch all necessary data for the dashboard
-        const [fetchedTechnicians, fetchedWorkSites, fetchedClients] = await Promise.all([
-          getTechnicians(db),
-          getWorkSites(db),
-          getClients(db),
-        ]);
-        setTechnicians(fetchedTechnicians);
-        setWorkSites(fetchedWorkSites);
-        setClients(fetchedClients);
+  useEffect(() => {
+    if (fetchedWorkSites) setWorkSites(fetchedWorkSites);
+  }, [fetchedWorkSites]);
 
-      } catch (error) {
-        console.error("Error during app initialization:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  useEffect(() => {
+    if (fetchedClients) setClients(fetchedClients);
+  }, [fetchedClients]);
 
-    initializeApp();
-
-  }, [db, user, isAuthLoading]);
-
-
-  const isDataLoading = isAuthLoading || isLoading || isWorkOrdersLoading || isRoleLoading;
+  const isDataLoading = isAuthLoading || isWorkOrdersLoading || isRoleLoading || isTechniciansLoading || isWorkSitesLoading || isClientsLoading;
 
   if (isDataLoading) {
     return (
