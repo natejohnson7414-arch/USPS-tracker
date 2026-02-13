@@ -361,6 +361,12 @@ export function WorkOrderDetails({
 
   return (
     <>
+      {isSavingPhotos && (
+        <div className="fixed inset-0 bg-background/80 z-50 flex flex-col items-center justify-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="mt-4 text-lg font-medium">Uploading Photos...</p>
+        </div>
+      )}
       <Card className="mb-8">
         <CardHeader>
           <div className="flex justify-between items-start">
@@ -573,11 +579,6 @@ export function WorkOrderDetails({
                     <div>
                         <h3 className="font-medium mb-2">Before Photos</h3>
                         <div className="relative">
-                            {isSavingPhotos && photoSheetTarget === 'before' && (
-                                <div className="absolute inset-0 bg-background/80 z-10 flex items-center justify-center rounded-lg min-h-[100px]">
-                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                </div>
-                            )}
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
                                 {(workOrder.beforePhotoUrls || []).map((url) => (
                                     <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
@@ -599,11 +600,6 @@ export function WorkOrderDetails({
                     <div>
                         <h3 className="font-medium mb-2">After Photos</h3>
                         <div className="relative">
-                            {isSavingPhotos && photoSheetTarget === 'after' && (
-                                <div className="absolute inset-0 bg-background/80 z-10 flex items-center justify-center rounded-lg min-h-[100px]">
-                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                </div>
-                            )}
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
                                 {(workOrder.afterPhotoUrls || []).map((url) => (
                                     <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
@@ -628,11 +624,6 @@ export function WorkOrderDetails({
                 <CardHeader><CardTitle className="flex items-center gap-2"><ReceiptText /> Receipts &amp; Packing Slips</CardTitle></CardHeader>
                 <CardContent>
                     <div className="relative">
-                        {isSavingPhotos && photoSheetTarget === 'receipts' && (
-                            <div className="absolute inset-0 bg-background/80 z-10 flex items-center justify-center rounded-lg min-h-[100px]">
-                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                            </div>
-                        )}
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
                             {(workOrder.receiptsAndPackingSlips || []).map((url) => (
                                 <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">

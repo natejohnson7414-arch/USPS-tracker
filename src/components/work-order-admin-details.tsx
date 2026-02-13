@@ -277,6 +277,12 @@ export function WorkOrderAdminDetails({
 
   return (
     <>
+      {(isSavingPhotos || isUploadingFiles) && (
+        <div className="fixed inset-0 bg-background/80 z-50 flex flex-col items-center justify-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="mt-4 text-lg font-medium">Uploading Media...</p>
+        </div>
+      )}
       <Tabs defaultValue="overview">
         <TabsList variant="folder">
           <TabsTrigger value="overview" variant="folder">Overview</TabsTrigger>
@@ -486,11 +492,6 @@ export function WorkOrderAdminDetails({
                       <div>
                           <h3 className="font-medium mb-2">Before Photos</h3>
                            <div className="relative">
-                              {isSavingPhotos && photoSheetTarget === 'before' && (
-                                <div className="absolute inset-0 bg-background/80 z-10 flex items-center justify-center rounded-lg min-h-[100px]">
-                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                </div>
-                              )}
                               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">{(workOrder.beforePhotoUrls || []).map((url) => (<div key={url} className="relative group aspect-square rounded-lg overflow-hidden border"><Image src={url} alt={`Before photo`} fill style={{ objectFit: 'cover' }} /><div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onBeforePhotoDelete(url)}><X className="h-4 w-4" /></Button></div></div>))}</div>
                           </div>
                           <Button variant="outline" onClick={() => setPhotoSheetTarget('before')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add Before Photos</Button>
@@ -499,11 +500,6 @@ export function WorkOrderAdminDetails({
                       <div>
                           <h3 className="font-medium mb-2">After Photos</h3>
                           <div className="relative">
-                            {isSavingPhotos && photoSheetTarget === 'after' && (
-                                <div className="absolute inset-0 bg-background/80 z-10 flex items-center justify-center rounded-lg min-h-[100px]">
-                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                </div>
-                            )}
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">{(workOrder.afterPhotoUrls || []).map((url) => (<div key={url} className="relative group aspect-square rounded-lg overflow-hidden border"><Image src={url} alt={`After photo`} fill style={{ objectFit: 'cover' }} /><div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onAfterPhotoDelete(url)}><X className="h-4 w-4" /></Button></div></div>))}</div>
                           </div>
                           <Button variant="outline" onClick={() => setPhotoSheetTarget('after')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add After Photos</Button>
@@ -514,11 +510,6 @@ export function WorkOrderAdminDetails({
                 <CardHeader><CardTitle className="flex items-center gap-2"><ReceiptText /> Receipts &amp; Packing Slips</CardTitle></CardHeader>
                 <CardContent>
                     <div className="relative">
-                        {isSavingPhotos && photoSheetTarget === 'receipts' && (
-                            <div className="absolute inset-0 bg-background/80 z-10 flex items-center justify-center rounded-lg min-h-[100px]">
-                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                            </div>
-                        )}
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
                             {(workOrder.receiptsAndPackingSlips || []).map((url) => (
                                 <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
@@ -554,11 +545,6 @@ export function WorkOrderAdminDetails({
                           Upload Files
                       </Button>
                       <div className="relative">
-                          {isUploadingFiles && (
-                            <div className="absolute inset-0 bg-background/80 z-10 flex items-center justify-center rounded-lg min-h-[100px]">
-                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                            </div>
-                          )}
                           <div className="space-y-2">
                               {(workOrder.uploadedFiles || []).length > 0 ? (
                                   workOrder.uploadedFiles?.map(file => (
