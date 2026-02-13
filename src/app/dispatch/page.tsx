@@ -140,20 +140,30 @@ function DraggableActivityItem({ activity, techColorMap }: { activity: Activity,
     
     const isNonProductive = activity.workOrderId === NON_PRODUCTIVE_WO_ID;
     
+    const activityContent = (
+        <div className={cn(
+            'p-1.5 text-xs text-white rounded cursor-grab shadow flex items-center', 
+            isNonProductive 
+                ? 'bg-slate-500' // A neutral color
+                : techColorMap.get(activity.technicianId) || 'bg-gray-400'
+        )}>
+             {isNonProductive && <Coffee className="h-3 w-3 mr-1.5 shrink-0" />}
+            <span className="truncate">{activity.technician?.name || 'Unassigned'}</span>
+        </div>
+    );
+
     return (
         <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="w-full touch-none">
             <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        <div className={cn(
-                            'p-1.5 text-xs text-white rounded cursor-grab shadow flex items-center', 
-                            isNonProductive 
-                                ? 'bg-slate-500' // A neutral color
-                                : techColorMap.get(activity.technicianId) || 'bg-gray-400'
-                        )}>
-                             {isNonProductive && <Coffee className="h-3 w-3 mr-1.5 shrink-0" />}
-                            <span className="truncate">{activity.technician?.name || 'Unassigned'}</span>
-                        </div>
+                       {isNonProductive ? (
+                           activityContent
+                       ) : (
+                           <Link href={`/work-orders/${activity.workOrderId}`} className="block">
+                                {activityContent}
+                           </Link>
+                       )}
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs">
                         <p className="font-bold">{activity.parentWorkOrder?.jobName}</p>
