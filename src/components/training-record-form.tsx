@@ -1,7 +1,6 @@
-
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,26 +11,18 @@ import { Separator } from '@/components/ui/separator';
 import { SignaturePad } from '@/components/signature-pad';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useFirestore, useUser, addDocumentNonBlocking, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImage } from '@/firebase/storage';
-import { collection, query, doc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import type { TrainingRecord, Attendee, WorkOrder } from '@/lib/types';
 import { Loader2, PlusCircle, Trash2, Save, Ban } from 'lucide-react';
-import { getWorkOrderById } from '@/lib/data';
 
 const checklistItems = {
   item1: 'Have trainees sign the owners training sign-in sheet.',
@@ -66,14 +57,14 @@ const checklistItems = {
 };
 
 interface TrainingRecordFormProps {
-    record: TrainingRecord | null;
+    record: TrainingRecord;
+    workOrder: WorkOrder | null;
     onFormSaved: () => void;
     onCancel: () => void;
 }
 
-export function TrainingRecordForm({ record, onFormSaved, onCancel }: TrainingRecordFormProps) {
+export function TrainingRecordForm({ record, workOrder, onFormSaved, onCancel }: TrainingRecordFormProps) {
   const db = useFirestore();
-  const { user, isUserLoading } = useUser();
   const { toast } = useToast();
 
   const [isSaving, setIsSaving] = useState(false);
@@ -92,22 +83,9 @@ export function TrainingRecordForm({ record, onFormSaved, onCancel }: TrainingRe
   const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
   const [signatureTarget, setSignatureTarget] = useState<{ type: 'trainer' | 'attendee'; index?: number } | null>(null);
 
-  const [workOrderId, setWorkOrderId] = useState<string | undefined>();
-  
-  // State for the specifically fetched associated work order
-  const [associatedWorkOrder, setAssociatedWorkOrder] = useState<WorkOrder | null>(null);
-
-  // Fetch all work orders for the dropdown
-  const workOrdersQuery = useMemoFirebase(() => {
-    if (!db || !user || isUserLoading) return null;
-    return query(collection(db, 'work_orders'));
-  }, [db, user, isUserLoading]);
-  const { data: workOrdersFromCollection } = useCollection<WorkOrder>(workOrdersQuery);
-
   // Effect to populate the form fields from the `record` prop
   useEffect(() => {
     if (record) {
-      setWorkOrderId(record.workOrderId || undefined);
       setTrainingCourse(record.trainingCourse || '');
       setTrainer(record.trainer || '');
       setDescription(record.description || '');
@@ -119,43 +97,6 @@ export function TrainingRecordForm({ record, onFormSaved, onCancel }: TrainingRe
       setChecklist(record.checklist || Object.keys(checklistItems).reduce((acc, key) => ({ ...acc, [key]: false }), {}));
     }
   }, [record]);
-
-  // Effect to fetch the specific associated work order if it's not in the main list
-  useEffect(() => {
-    // We only need to fetch if we have a record with a workOrderId
-    if (!db || !record?.workOrderId) {
-        setAssociatedWorkOrder(null); // Clear if record changes to one without a WO
-        return;
-    }
-
-    // Check if the currently loaded list already has it.
-    const isAssociatedInList = workOrdersFromCollection?.some(wo => wo.id === record.workOrderId);
-    
-    if (isAssociatedInList) {
-        // It's in the list, no need to keep a separate copy.
-        setAssociatedWorkOrder(null);
-    } else {
-        // It's not in the list (or the list is not loaded yet), so we must fetch it.
-        let isCancelled = false;
-        getWorkOrderById(db, record.workOrderId).then(wo => {
-            if (!isCancelled && wo) {
-                setAssociatedWorkOrder(wo);
-            }
-        });
-        return () => { isCancelled = true; }
-    }
-  }, [record?.workOrderId, workOrdersFromCollection, db]);
-
-  // useMemo to create the final list of options for the dropdown
-  const workOrderOptions = useMemo(() => {
-      const baseOptions = workOrdersFromCollection || [];
-      // If we fetched a specific associated WO and it's not already in the base list, add it.
-      if (associatedWorkOrder && !baseOptions.some(wo => wo.id === associatedWorkOrder.id)) {
-          return [associatedWorkOrder, ...baseOptions];
-      }
-      return baseOptions;
-  }, [workOrdersFromCollection, associatedWorkOrder]);
-
 
   const handleAddAttendee = () => {
     setAttendees([...attendees, { id: `attendee-${Date.now()}`, name: '' }]);
@@ -229,7 +170,7 @@ export function TrainingRecordForm({ record, onFormSaved, onCancel }: TrainingRe
     
     try {
         const trainingRecordData = {
-            workOrderId: workOrderId || null,
+            workOrderId: record.workOrderId || null,
             trainingCourse,
             trainer,
             description,
@@ -245,15 +186,10 @@ export function TrainingRecordForm({ record, onFormSaved, onCancel }: TrainingRe
             checklist,
         };
 
-        if (record) {
-            const recordRef = doc(db, 'training_records', record.id);
-            await updateDocumentNonBlocking(recordRef, trainingRecordData);
-            toast({ title: 'Training Record Updated' });
-        } else {
-            await addDocumentNonBlocking(collection(db, 'training_records'), trainingRecordData);
-            toast({ title: 'Training Record Saved' });
-        }
-
+        const recordRef = doc(db, 'training_records', record.id);
+        await updateDocumentNonBlocking(recordRef, trainingRecordData);
+        toast({ title: 'Training Record Updated' });
+        
         onFormSaved();
 
     } catch (error) {
@@ -295,18 +231,7 @@ export function TrainingRecordForm({ record, onFormSaved, onCancel }: TrainingRe
             <div className="space-y-4">
             <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
                 <label className="font-semibold">Work Order:</label>
-                <Select onValueChange={setWorkOrderId} value={workOrderId} disabled={isSaving}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select a work order (optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {workOrderOptions?.map(wo => (
-                        <SelectItem key={wo.id} value={wo.id}>
-                            {wo.id} - {wo.jobName}
-                        </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                <Input readOnly disabled value={workOrder ? `${workOrder.id} - ${workOrder.jobName}` : (record?.workOrderId || 'N/A')} />
             </div>
             <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
                 <label className="font-semibold">Training Course:</label>
@@ -438,7 +363,7 @@ export function TrainingRecordForm({ record, onFormSaved, onCancel }: TrainingRe
             </Button>
             <Button type="submit" disabled={isSaving}>
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                {record ? 'Save Changes' : 'Save Record'}
+                Save Changes
             </Button>
         </div>
     </div>

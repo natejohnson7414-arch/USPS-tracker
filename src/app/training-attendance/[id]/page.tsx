@@ -181,6 +181,7 @@ export default function ViewTrainingRecordPage() {
             {isEditing ? (
                  <TrainingRecordForm 
                     record={record}
+                    workOrder={workOrder}
                     onFormSaved={handleFormSaved}
                     onCancel={() => setIsEditing(false)}
                  />
@@ -204,7 +205,7 @@ export default function ViewTrainingRecordPage() {
                         <div className="space-y-4">
                         <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
                             <label className="font-semibold">Work Order:</label>
-                            <Input readOnly value={workOrder ? `${workOrder.id} - ${workOrder.jobName}` : 'N/A'} />
+                            <Input readOnly value={workOrder ? `${workOrder.id} - ${workOrder.jobName}` : (record?.workOrderId || 'N/A')} />
                         </div>
                         <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
                             <label className="font-semibold">Training Course:</label>
