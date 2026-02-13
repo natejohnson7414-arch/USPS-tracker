@@ -622,7 +622,7 @@ export function WorkOrderAdminDetails({
         <SheetContent side="bottom">
           <SheetHeader><SheetTitle>Add {photoSheetTarget === 'receipts' ? 'Receipt/Slip' : photoSheetTarget} photos</SheetTitle></SheetHeader>
           <div className="grid gap-4 py-4">
-            <Button type="button" variant="outline" className="justify-start" onClick={() => takePhotoInputRef.current?.click()}><Video className="mr-4 h-5 w-5" />Take Photo(s)</Button>
+            <Button type="button" variant="outline" className="justify-start" onClick={() => takePhotoInputRef.current?.click()}><Camera className="mr-4 h-5 w-5" />Take Photo</Button>
             <Button type="button" variant="outline" className="justify-start" onClick={() => chooseFromLibraryInputRef.current?.click()}><Library className="mr-4 h-5 w-5" />Choose from Library</Button>
           </div>
         </SheetContent>
