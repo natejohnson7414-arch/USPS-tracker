@@ -231,6 +231,11 @@
           "description": "URLs of photos taken after work was completed.",
           "items": { "type": "string" }
         },
+        "receiptsAndPackingSlips": {
+          "type": "array",
+          "description": "URLs of photos of receipts and packing slips.",
+          "items": { "type": "string" }
+        },
         "uploadedFiles": {
             "type": "array",
             "description": "Files attached to the work order.",

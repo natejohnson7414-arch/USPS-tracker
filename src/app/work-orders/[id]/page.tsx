@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useEffect, useState, useMemo, FormEvent } from 'react';
@@ -198,7 +197,7 @@ export default function WorkOrderDetailPage() {
     }
   };
 
-  const handlePhotosAdded = async (type: 'before' | 'after', files: File[]) => {
+  const handlePhotosAdded = async (type: 'before' | 'after' | 'receipts', files: File[]) => {
     if (!db || !workOrder || files.length === 0) return;
     
     setIsSavingPhotos(true);
@@ -210,7 +209,15 @@ export default function WorkOrderDetailPage() {
       );
       const uploadedUrls = await Promise.all(uploadPromises);
 
-      const fieldToUpdate = type === 'before' ? 'beforePhotoUrls' : 'afterPhotoUrls';
+      let fieldToUpdate: 'beforePhotoUrls' | 'afterPhotoUrls' | 'receiptsAndPackingSlips';
+      if (type === 'before') {
+          fieldToUpdate = 'beforePhotoUrls';
+      } else if (type === 'after') {
+          fieldToUpdate = 'afterPhotoUrls';
+      } else {
+          fieldToUpdate = 'receiptsAndPackingSlips';
+      }
+
       const currentUrls = workOrder[fieldToUpdate] || [];
       const newUrls = [...currentUrls, ...uploadedUrls];
 
@@ -232,10 +239,18 @@ export default function WorkOrderDetailPage() {
     }
   };
 
-  const handlePhotoDeleted = async (type: 'before' | 'after', urlToDelete: string) => {
+  const handlePhotoDeleted = async (type: 'before' | 'after' | 'receipts', urlToDelete: string) => {
     if (!db || !workOrder) return;
 
-    const fieldToUpdate = type === 'before' ? 'beforePhotoUrls' : 'afterPhotoUrls';
+    let fieldToUpdate: 'beforePhotoUrls' | 'afterPhotoUrls' | 'receiptsAndPackingSlips';
+    if (type === 'before') {
+        fieldToUpdate = 'beforePhotoUrls';
+    } else if (type === 'after') {
+        fieldToUpdate = 'afterPhotoUrls';
+    } else {
+        fieldToUpdate = 'receiptsAndPackingSlips';
+    }
+
     const currentUrls = workOrder[fieldToUpdate] || [];
     const newUrls = currentUrls.filter(url => url !== urlToDelete);
 
@@ -759,8 +774,10 @@ export default function WorkOrderDetailPage() {
                     onNoteDelete={handleNoteDelete}
                     onBeforePhotosAdded={(files) => handlePhotosAdded('before', files)}
                     onAfterPhotosAdded={(files) => handlePhotosAdded('after', files)}
+                    onReceiptsAndPackingSlipsAdded={(files) => handlePhotosAdded('receipts', files)}
                     onBeforePhotoDelete={(url) => handlePhotoDeleted('before', url)}
                     onAfterPhotoDelete={(url) => handlePhotoDeleted('after', url)}
+                    onReceiptsAndPackingSlipsPhotoDelete={(url) => handlePhotoDeleted('receipts', url)}
                     onTimeEntryDelete={handleTimeEntryDelete}
                     isAddingNote={isAddingNote}
                     isSavingPhotos={isSavingPhotos}
@@ -796,13 +813,14 @@ export default function WorkOrderDetailPage() {
                     timeEntries={timeEntries}
                     activities={activities}
                     onNoteAdded={handleNoteAdded}
-                    onTimeAdded={handleTimeAdded}
                     onNotePhotoDelete={handleNotePhotoDelete}
                     onNoteDelete={handleNoteDelete}
                     onBeforePhotosAdded={(files) => handlePhotosAdded('before', files)}
                     onAfterPhotosAdded={(files) => handlePhotosAdded('after', files)}
+                    onReceiptsAndPackingSlipsAdded={(files) => handlePhotosAdded('receipts', files)}
                     onBeforePhotoDelete={(url) => handlePhotoDeleted('before', url)}
                     onAfterPhotoDelete={(url) => handlePhotoDeleted('after', url)}
+                    onReceiptsAndPackingSlipsPhotoDelete={(url) => handlePhotoDeleted('receipts', url)}
                     onTimeEntryDelete={handleTimeEntryDelete}
                     isAddingNote={isAddingNote}
                     isSavingPhotos={isSavingPhotos}

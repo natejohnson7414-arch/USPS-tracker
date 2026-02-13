@@ -1,5 +1,4 @@
 
-
 export type FileAttachment = {
   name: string;
   url: string;
@@ -101,6 +100,7 @@ export type WorkOrder = {
   acknowledgements?: Acknowledgement[];
   beforePhotoUrls?: string[];
   afterPhotoUrls?: string[];
+  receiptsAndPackingSlips?: string[];
   uploadedFiles?: FileAttachment[];
   sourcePdfUrl?: string;
 };
@@ -288,5 +288,4 @@ export type Quote = {
     total: number;
     adminNotes?: string;
 };
-
     

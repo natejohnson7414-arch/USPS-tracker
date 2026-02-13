@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useRef, useEffect, FormEvent } from 'react';
@@ -14,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, ReceiptText } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser } from '@/firebase';
@@ -182,8 +181,10 @@ interface WorkOrderDetailsProps {
   onNoteDelete: (noteId: string) => void;
   onBeforePhotosAdded: (files: File[]) => void;
   onAfterPhotosAdded: (files: File[]) => void;
+  onReceiptsAndPackingSlipsAdded: (files: File[]) => void;
   onBeforePhotoDelete: (photoUrl: string) => void;
   onAfterPhotoDelete: (photoUrl: string) => void;
+  onReceiptsAndPackingSlipsPhotoDelete: (photoUrl: string) => void;
   onTimeEntryDelete: (timeEntryId: string) => void;
   isAddingNote: boolean;
   isSavingPhotos: boolean;
@@ -218,13 +219,14 @@ export function WorkOrderDetails({
   timeEntries,
   activities,
   onNoteAdded,
-  onTimeAdded,
   onNotePhotoDelete,
   onNoteDelete,
   onBeforePhotosAdded,
   onAfterPhotosAdded,
+  onReceiptsAndPackingSlipsAdded,
   onBeforePhotoDelete,
   onAfterPhotoDelete,
+  onReceiptsAndPackingSlipsPhotoDelete,
   onTimeEntryDelete,
   isAddingNote,
   isSavingPhotos,
@@ -250,7 +252,7 @@ export function WorkOrderDetails({
   const [assignedTechnician, setAssignedTechnician] = useState<Technician | undefined>();
   
   const [newNote, setNewNote] = useState('');
-  const [photoSheetTarget, setPhotoSheetTarget] = useState<'before' | 'after' | null>(null);
+  const [photoSheetTarget, setPhotoSheetTarget] = useState<'before' | 'after' | 'receipts' | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
   const [timeEntryToDelete, setTimeEntryToDelete] = useState<string | null>(null);
@@ -293,6 +295,8 @@ export function WorkOrderDetails({
         onBeforePhotosAdded(fileArray);
       } else if (photoSheetTarget === 'after') {
         onAfterPhotosAdded(fileArray);
+      } else if (photoSheetTarget === 'receipts') {
+        onReceiptsAndPackingSlipsAdded(fileArray);
       }
       setPhotoSheetTarget(null);
     }
@@ -541,9 +545,31 @@ export function WorkOrderDetails({
         </Card>
 
         <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2"><ReceiptText /> Receipts &amp; Packing Slips</CardTitle></CardHeader>
+            <CardContent>
+              {isSavingPhotos && photoSheetTarget === 'receipts' && <Loader2 className="h-5 w-5 animate-spin mb-2" />}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
+                  {(workOrder.receiptsAndPackingSlips || []).map((url) => (
+                      <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
+                          <Image src={url} alt={`Receipt or packing slip`} fill style={{ objectFit: 'cover' }} />
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onReceiptsAndPackingSlipsPhotoDelete(url)}>
+                                  <X className="h-4 w-4" />
+                              </Button>
+                          </div>
+                      </div>
+                  ))}
+              </div>
+              <Button variant="outline" onClick={() => setPhotoSheetTarget('receipts')} disabled={isSavingPhotos}>
+                  <Camera className="mr-2 h-4 w-4" /> Add Photos
+              </Button>
+            </CardContent>
+        </Card>
+
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" /> Notes & Activity
+              <FileText className="h-5 w-5" /> Notes &amp; Activity
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -598,7 +624,7 @@ export function WorkOrderDetails({
                             <Image src={ack.signatureUrl} alt={`${ack.name}'s signature`} width={120} height={40} style={{ objectFit: 'contain' }} />
                           </div>
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setAckToDelete(ack)}>
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4"/>
                           </Button>
                         </div>
                       </div>
@@ -815,7 +841,7 @@ export function WorkOrderDetails({
       <Sheet open={!!photoSheetTarget} onOpenChange={(isOpen) => !isOpen && setPhotoSheetTarget(null)}>
           <SheetContent side="bottom">
             <SheetHeader>
-              <SheetTitle>Add {photoSheetTarget} photos</SheetTitle>
+              <SheetTitle>Add {photoSheetTarget === 'receipts' ? 'Receipt/Slip' : photoSheetTarget} photos</SheetTitle>
             </SheetHeader>
             <div className="grid gap-4 py-4">
               <Button type="button" variant="outline" className="justify-start" onClick={() => takePhotoInputRef.current?.click()}>

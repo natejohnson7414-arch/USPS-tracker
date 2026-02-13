@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useRef, useEffect, FormEvent } from 'react';
@@ -14,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser } from '@/firebase';
@@ -137,13 +136,14 @@ interface WorkOrderAdminDetailsProps {
   timeEntries: TimeEntry[];
   activities: Activity[];
   onNoteAdded: (note: Omit<WorkOrderNote, 'id' | 'photoUrls'>) => void;
-  onTimeAdded: (timeEntry: TimeEntry) => void;
   onNotePhotoDelete: (noteId: string, photoUrl: string) => void;
   onNoteDelete: (noteId: string) => void;
   onBeforePhotosAdded: (files: File[]) => void;
   onAfterPhotosAdded: (files: File[]) => void;
+  onReceiptsAndPackingSlipsAdded: (files: File[]) => void;
   onBeforePhotoDelete: (photoUrl: string) => void;
   onAfterPhotoDelete: (photoUrl: string) => void;
+  onReceiptsAndPackingSlipsPhotoDelete: (photoUrl: string) => void;
   onTimeEntryDelete: (timeEntryId: string) => void;
   isAddingNote: boolean;
   isSavingPhotos: boolean;
@@ -182,8 +182,10 @@ export function WorkOrderAdminDetails({
   onNoteDelete,
   onBeforePhotosAdded,
   onAfterPhotosAdded,
+  onReceiptsAndPackingSlipsAdded,
   onBeforePhotoDelete,
   onAfterPhotoDelete,
+  onReceiptsAndPackingSlipsPhotoDelete,
   onTimeEntryDelete,
   isAddingNote,
   isSavingPhotos,
@@ -206,7 +208,7 @@ export function WorkOrderAdminDetails({
   const { user } = useUser();
 
   const [newNote, setNewNote] = useState('');
-  const [photoSheetTarget, setPhotoSheetTarget] = useState<'before' | 'after' | null>(null);
+  const [photoSheetTarget, setPhotoSheetTarget] = useState<'before' | 'after' | 'receipts' | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
   const [timeEntryToDelete, setTimeEntryToDelete] = useState<string | null>(null);
@@ -237,6 +239,8 @@ export function WorkOrderAdminDetails({
         onBeforePhotosAdded(fileArray);
       } else if (photoSheetTarget === 'after') {
         onAfterPhotosAdded(fileArray);
+      } else if (photoSheetTarget === 'receipts') {
+        onReceiptsAndPackingSlipsAdded(fileArray);
       }
       setPhotoSheetTarget(null);
     }
@@ -392,7 +396,7 @@ export function WorkOrderAdminDetails({
                         <span className="font-medium">{workOrder.quotedAmount ? `$${workOrder.quotedAmount.toFixed(2)}` : 'N/A'}</span>
                     </div>
                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Time & Material</span>
+                        <span className="text-muted-foreground">Time &amp; Material</span>
                         <span className="font-medium">{workOrder.timeAndMaterial ? 'Yes' : 'No'}</span>
                     </div>
                      <Separator/>
@@ -519,6 +523,27 @@ export function WorkOrderAdminDetails({
                       </div>
                   </CardContent>
               </Card>
+              <Card>
+                <CardHeader><CardTitle className="flex items-center gap-2"><ReceiptText /> Receipts &amp; Packing Slips</CardTitle></CardHeader>
+                <CardContent>
+                  {isSavingPhotos && photoSheetTarget === 'receipts' && <Loader2 className="h-5 w-5 animate-spin mb-2" />}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
+                      {(workOrder.receiptsAndPackingSlips || []).map((url) => (
+                          <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
+                              <Image src={url} alt={`Receipt or packing slip`} fill style={{ objectFit: 'cover' }} />
+                              <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onReceiptsAndPackingSlipsPhotoDelete(url)}>
+                                      <X className="h-4 w-4" />
+                                  </Button>
+                              </div>
+                          </div>
+                      ))}
+                  </div>
+                  <Button variant="outline" onClick={() => setPhotoSheetTarget('receipts')} disabled={isSavingPhotos}>
+                      <Camera className="mr-2 h-4 w-4" /> Add Photos
+                  </Button>
+                </CardContent>
+              </Card>
                <Card>
                   <CardHeader>
                       <CardTitle>Files</CardTitle>
@@ -573,7 +598,7 @@ export function WorkOrderAdminDetails({
                 </CardContent>
             </Card>
             <Card>
-                <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" /> Notes & Time Postings</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" /> Notes &amp; Time Postings</CardTitle></CardHeader>
                 <CardContent className="space-y-6">
                     <div className="space-y-4">
                         <Textarea placeholder="Add a new note or update..." value={newNote} onChange={e => setNewNote(e.target.value)} disabled={isAddingNote} />
@@ -600,7 +625,7 @@ export function WorkOrderAdminDetails({
 
       <Sheet open={!!photoSheetTarget} onOpenChange={(isOpen) => !isOpen && setPhotoSheetTarget(null)}>
         <SheetContent side="bottom">
-          <SheetHeader><SheetTitle>Add {photoSheetTarget} photos</SheetTitle></SheetHeader>
+          <SheetHeader><SheetTitle>Add {photoSheetTarget === 'receipts' ? 'Receipt/Slip' : photoSheetTarget} photos</SheetTitle></SheetHeader>
           <div className="grid gap-4 py-4">
             <Button type="button" variant="outline" className="justify-start" onClick={() => takePhotoInputRef.current?.click()}><Video className="mr-4 h-5 w-5" />Take Photo(s)</Button>
             <Button type="button" variant="outline" className="justify-start" onClick={() => chooseFromLibraryInputRef.current?.click()}><Library className="mr-4 h-5 w-5" />Choose from Library</Button>
