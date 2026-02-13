@@ -24,6 +24,7 @@ import { AddTimeDialog } from './add-time-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from './ui/date-picker';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 
 const AddActivityForm = ({ technicians, onAddActivity, isLoading, isTechnician, currentUserId }: { 
@@ -376,366 +377,364 @@ export function WorkOrderDetails({
 
   return (
     <>
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div className="lg:col-span-2 space-y-8">
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-start">
-              <div>
-                  <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                     {workOrder.jobName}
-                  </CardTitle>
-                  <CardDescription>
-                      Job # {workOrder.id}
-                  </CardDescription>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                <StatusBadge status={workOrder.status} />
-                {canCompleteWorkOrder && (
-                  <Button onClick={onMarkForReview} disabled={isSubmittingReview} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                    {isSubmittingReview && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Submit for Review
-                  </Button>
-                )}
-              </div>
+      <Card className="mb-8">
+        <CardHeader>
+          <div className="flex justify-between items-start">
+            <div>
+                <CardTitle className="text-2xl font-bold flex items-center gap-2">
+                   {workOrder.jobName}
+                </CardTitle>
+                <CardDescription>
+                    Job # {workOrder.id}
+                </CardDescription>
             </div>
-             {isTechnician && workOrder.workSite && (
-                <div className="flex justify-between items-center pt-4">
-                    <div>
-                        <p className="font-medium">{workOrder.workSite?.name || 'N/A'}</p>
-                        <p className="text-sm text-muted-foreground">{workOrder.workSite.address}</p>
-                    </div>
-                     <div className="flex items-center gap-2">
-                        {workOrder.checkInOutURL && (
-                            <div className="flex flex-col items-center">
-                                <Button asChild variant="outline" size="icon">
-                                    <a href={getLinkUrl(workOrder.checkInOutURL)} target="_blank" rel="noopener noreferrer">
-                                        <LinkIcon className="h-4 w-4" />
-                                        <span className="sr-only">Check-in</span>
-                                    </a>
-                                </Button>
-                                {workOrder.checkInWorkOrderNumber && (
-                                    <p className="text-xs text-muted-foreground mt-1 max-w-[60px] truncate" title={workOrder.checkInWorkOrderNumber}>
-                                        WO: {workOrder.checkInWorkOrderNumber}
-                                    </p>
-                                )}
-                            </div>
-                        )}
-                        {workOrder.workSite && (
-                          <Button variant="outline" size="icon" onClick={() => onDirectionsClick(workOrder.workSite!)}>
-                              <Map className="h-4 w-4" />
-                              <span className="sr-only">Get Directions</span>
-                          </Button>
-                        )}
-                       </div>
-                </div>
-            )}
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground mt-1">{workOrder.description}</p>
-             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 text-sm">
-                  <div className="space-y-2">
-                      <Label htmlFor="temp-arrival">Temp on Arrival</Label>
-                      <Input 
-                          id="temp-arrival" 
-                          value={tempOnArrival} 
-                          onChange={e => setTempOnArrival(e.target.value)}
-                          onBlur={onTempUpdate}
-                      />
-                  </div>
-                  <div className="space-y-2">
-                      <Label htmlFor="temp-leaving">Temp on Leaving</Label>
-                      <Input 
-                          id="temp-leaving" 
-                          value={tempOnLeaving} 
-                          onChange={e => setTempOnLeaving(e.target.value)}
-                          onBlur={onTempUpdate}
-                      />
-                  </div>
-              </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CalendarClock className="h-5 w-5" /> Scheduled Activities
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                {activities.length > 0 ? (
-                  activities.map(activity => (
-                    <ActivityItem 
-                      key={activity.id} 
-                      activity={activity} 
-                      technicians={technicians}
-                      onUpdateStatus={onUpdateActivityStatus}
-                      isTechnician={isTechnician} 
-                      currentUserId={user?.uid}
-                      onAddTimeClick={() => handleAddTimeClick(activity)}
-                      isAdmin={isAdmin}
-                      onDeleteClick={() => setActivityToDelete(activity)}
-                    />
-                  ))
-                ) : (
-                  <p className="text-center text-sm text-muted-foreground py-4">No scheduled activities.</p>
-                )}
-              </div>
-              {(isAdmin || (isTechnician && workOrder.status !== 'Completed' && workOrder.status !== 'Review')) && (
-                <>
-                    <Separator />
-                    <AddActivityForm 
-                        technicians={technicians} 
-                        onAddActivity={onAddActivity}
-                        isLoading={isAddingActivity}
-                        isTechnician={isTechnician}
-                        currentUserId={user?.uid}
-                    />
-                </>
+            <div className="flex flex-col items-end gap-2">
+              <StatusBadge status={workOrder.status} />
+              {canCompleteWorkOrder && (
+                <Button onClick={onMarkForReview} disabled={isSubmittingReview} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                  {isSubmittingReview && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Submit for Review
+                </Button>
               )}
-            </CardContent>
-          </Card>
-        
-        <Card>
-            <CardHeader>
-                <CardTitle>Job Photos</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-                <div>
-                    <h3 className="font-medium mb-2">Before Photos</h3>
-                    {isSavingPhotos && photoSheetTarget === 'before' && <Loader2 className="h-5 w-5 animate-spin mb-2" />}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
-                        {(workOrder.beforePhotoUrls || []).map((url) => (
-                            <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
-                                <Image src={url} alt={`Before photo`} fill style={{ objectFit: 'cover' }} />
-                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onBeforePhotoDelete(url)}>
-                                        <X className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    <Button variant="outline" onClick={() => setPhotoSheetTarget('before')} disabled={isSavingPhotos}>
-                        <Camera className="mr-2 h-4 w-4" /> Add Before Photos
-                    </Button>
-                </div>
-                <Separator />
-                <div>
-                    <h3 className="font-medium mb-2">After Photos</h3>
-                    {isSavingPhotos && photoSheetTarget === 'after' && <Loader2 className="h-5 w-5 animate-spin mb-2" />}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
-                        {(workOrder.afterPhotoUrls || []).map((url) => (
-                            <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
-                                <Image src={url} alt={`After photo`} fill style={{ objectFit: 'cover' }} />
-                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onAfterPhotoDelete(url)}>
-                                        <X className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    <Button variant="outline" onClick={() => setPhotoSheetTarget('after')} disabled={isSavingPhotos}>
-                        <Camera className="mr-2 h-4 w-4" /> Add After Photos
-                    </Button>
-                </div>
-            </CardContent>
-        </Card>
-
-        <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><ReceiptText /> Receipts &amp; Packing Slips</CardTitle></CardHeader>
-            <CardContent>
-              {isSavingPhotos && photoSheetTarget === 'receipts' && <Loader2 className="h-5 w-5 animate-spin mb-2" />}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
-                  {(workOrder.receiptsAndPackingSlips || []).map((url) => (
-                      <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
-                          <Image src={url} alt={`Receipt or packing slip`} fill style={{ objectFit: 'cover' }} />
-                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onReceiptsAndPackingSlipsPhotoDelete(url)}>
-                                  <X className="h-4 w-4" />
+            </div>
+          </div>
+           {isTechnician && workOrder.workSite && (
+              <div className="flex justify-between items-center pt-4">
+                  <div>
+                      <p className="font-medium">{workOrder.workSite?.name || 'N/A'}</p>
+                      <p className="text-sm text-muted-foreground">{workOrder.workSite.address}</p>
+                  </div>
+                   <div className="flex items-center gap-2">
+                      {workOrder.checkInOutURL && (
+                          <div className="flex flex-col items-center">
+                              <Button asChild variant="outline" size="icon">
+                                  <a href={getLinkUrl(workOrder.checkInOutURL)} target="_blank" rel="noopener noreferrer">
+                                      <LinkIcon className="h-4 w-4" />
+                                      <span className="sr-only">Check-in</span>
+                                  </a>
                               </Button>
+                              {workOrder.checkInWorkOrderNumber && (
+                                  <p className="text-xs text-muted-foreground mt-1 max-w-[60px] truncate" title={workOrder.checkInWorkOrderNumber}>
+                                      WO: {workOrder.checkInWorkOrderNumber}
+                                  </p>
+                              )}
                           </div>
-                      </div>
-                  ))}
+                      )}
+                      {workOrder.workSite && (
+                        <Button variant="outline" size="icon" onClick={() => onDirectionsClick(workOrder.workSite!)}>
+                            <Map className="h-4 w-4" />
+                            <span className="sr-only">Get Directions</span>
+                        </Button>
+                      )}
+                     </div>
               </div>
-              <Button variant="outline" onClick={() => setPhotoSheetTarget('receipts')} disabled={isSavingPhotos}>
-                  <Camera className="mr-2 h-4 w-4" /> Add Photos
-              </Button>
-            </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" /> Notes &amp; Activity
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <Textarea
-                placeholder="Add a new note or update..."
-                value={newNote}
-                onChange={e => setNewNote(e.target.value)}
-                disabled={isAddingNote}
-              />
-              <div className="flex justify-end gap-2">
-                <Button type="button" onClick={handleAddNote} disabled={isAddingNote || !newNote}>
-                    {isAddingNote && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Add Note
-                </Button>
-              </div>
-            </div>
-            <Separator />
-            <div className="space-y-6">
-              {isClient ? combinedActivity.map(activity => {
-                  if (activity.type === 'note') {
-                      return <NoteActivityItem key={`note-${activity.id}`} note={activity} onPhotoDelete={onNotePhotoDelete} onNoteDelete={setNoteToDelete} />
-                  } else {
-                      return <TimeActivityItem key={`time-${activity.id}`} timeEntry={activity} onTimeEntryDelete={setTimeEntryToDelete} />
-                  }
-              }) : <p className="text-center text-sm text-muted-foreground py-4">Loading activity...</p>}
-              {isClient && combinedActivity.length === 0 && (
-                <p className="text-center text-sm text-muted-foreground py-4">No notes or activity yet.</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="space-y-8">
-        <Card>
-            <CardHeader>
-              <CardTitle>Signatures</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {(workOrder.acknowledgements || []).length > 0 ? (
-                  <div className="space-y-3">
-                    {workOrder.acknowledgements?.map((ack, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 border rounded-md">
-                        <div>
-                          <p className="font-medium">{ack.name}</p>
-                          <p className="text-xs text-muted-foreground">{format(new Date(ack.date), 'PP p')}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="bg-muted p-1 rounded-md">
-                            <Image src={ack.signatureUrl} alt={`${ack.name}'s signature`} width={120} height={40} style={{ objectFit: 'contain' }} />
-                          </div>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setAckToDelete(ack)}>
-                            <Trash2 className="h-4 w-4"/>
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-center text-muted-foreground py-4">No signatures have been captured.</p>
-                )}
-                <Separator />
+          )}
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground mt-1">{workOrder.description}</p>
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 text-sm">
                 <div className="space-y-2">
-                  <Label htmlFor="customer-name">Signer's Name</Label>
-                  <Input
-                    id="customer-name"
-                    placeholder="Enter printed name"
-                    value={contactInfo}
-                    onChange={(e) => setContactInfo(e.target.value)}
-                    onBlur={onContactInfoUpdate}
-                  />
+                    <Label htmlFor="temp-arrival">Temp on Arrival</Label>
+                    <Input 
+                        id="temp-arrival" 
+                        value={tempOnArrival} 
+                        onChange={e => setTempOnArrival(e.target.value)}
+                        onBlur={onTempUpdate}
+                    />
                 </div>
-                {workOrder.status !== 'Completed' && (
-                  <Button type="button" onClick={onSignatureSave} className="w-full">
-                    Add Signature
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-      
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <ClipboardCheck className="h-5 w-5" />
-                  Training Records
-                </CardTitle>
-                <Button asChild variant="outline" size="sm">
-                    <Link href={`/training-attendance?workOrderId=${workOrder.id}`}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Training
-                    </Link>
-                </Button>
+                <div className="space-y-2">
+                    <Label htmlFor="temp-leaving">Temp on Leaving</Label>
+                    <Input 
+                        id="temp-leaving" 
+                        value={tempOnLeaving} 
+                        onChange={e => setTempOnLeaving(e.target.value)}
+                        onBlur={onTempUpdate}
+                    />
+                </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            {trainingRecords.length > 0 ? (
-              <ul className="space-y-2">
-                {trainingRecords.map(record => (
-                  <li key={record.id} className="flex items-center justify-between p-2 rounded-md border gap-2">
-                      <div className='flex-1'>
-                          <p className="font-medium">{record.trainingCourse}</p>
-                          <p className="text-sm text-muted-foreground">
-                              {record.date ? format(new Date(record.date), 'MMM d, yyyy') : 'No date'}
-                          </p>
-                      </div>
-                      <Button asChild variant="outline" size="sm">
-                          <Link href={`/training-attendance/${record.id}`} target="_blank">View</Link>
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setTrainingRecordToDelete(record.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">No training records attached to this work order.</p>
-            )}
-          </CardContent>
-        </Card>
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <FileCog className="h-5 w-5" />
-                  HVAC Start-up Reports
-                </CardTitle>
-                <Button asChild variant="outline" size="sm">
-                    <Link href={`/hvac-startup-report?workOrderId=${workOrder.id}`}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Report
-                    </Link>
-                </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {hvacReports.length > 0 ? (
-              <ul className="space-y-2">
-                {hvacReports.map(report => (
-                  <li key={report.id} className="flex items-center justify-between p-2 rounded-md border gap-2">
-                      <div className='flex-1'>
-                          <p className="font-medium">{report.equipmentType || `Report from ${format(new Date(report.date), 'PPP')}`}</p>
-                          <p className="text-sm text-muted-foreground">
-                              {report.technician || 'N/A'}
-                          </p>
+      <Tabs defaultValue="overview">
+        <TabsList variant="folder">
+          <TabsTrigger value="overview" variant="folder">Overview</TabsTrigger>
+          <TabsTrigger value="media" variant="folder">Media</TabsTrigger>
+          <TabsTrigger value="activity" variant="folder">Activity</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="mt-0">
+          <div className="space-y-8">
+            <Card className="rounded-t-none">
+                <CardHeader>
+                  <CardTitle>Signatures</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {(workOrder.acknowledgements || []).length > 0 ? (
+                      <div className="space-y-3">
+                        {workOrder.acknowledgements?.map((ack, index) => (
+                          <div key={index} className="flex items-center justify-between p-2 border rounded-md">
+                            <div>
+                              <p className="font-medium">{ack.name}</p>
+                              <p className="text-xs text-muted-foreground">{format(new Date(ack.date), 'PP p')}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="bg-muted p-1 rounded-md">
+                                <Image src={ack.signatureUrl} alt={`${ack.name}'s signature`} width={120} height={40} style={{ objectFit: 'contain' }} />
+                              </div>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setAckToDelete(ack)}>
+                                <Trash2 className="h-4 w-4"/>
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <Button asChild variant="outline" size="sm">
-                          <Link href={`/hvac-startup-report/${report.id}`} target="_blank">View</Link>
+                    ) : (
+                      <p className="text-sm text-center text-muted-foreground py-4">No signatures have been captured.</p>
+                    )}
+                    <Separator />
+                    <div className="space-y-2">
+                      <Label htmlFor="customer-name">Signer's Name</Label>
+                      <Input
+                        id="customer-name"
+                        placeholder="Enter printed name"
+                        value={contactInfo}
+                        onChange={(e) => setContactInfo(e.target.value)}
+                        onBlur={onContactInfoUpdate}
+                      />
+                    </div>
+                    {workOrder.status !== 'Completed' && (
+                      <Button type="button" onClick={onSignatureSave} className="w-full">
+                        Add Signature
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setHvacReportToDelete(report.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">No HVAC start-up reports for this work order.</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+                    )}
+                  </div>
+                </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2"><ClipboardCheck className="h-5 w-5" />Training Records</CardTitle>
+                    <Button asChild variant="outline" size="sm"><Link href={`/training-attendance?workOrderId=${workOrder.id}`}><PlusCircle className="mr-2 h-4 w-4" />Add Training</Link></Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {trainingRecords.length > 0 ? (
+                  <ul className="space-y-2">
+                    {trainingRecords.map(record => (
+                      <li key={record.id} className="flex items-center justify-between p-2 rounded-md border gap-2">
+                          <div className='flex-1'>
+                              <p className="font-medium">{record.trainingCourse}</p>
+                              <p className="text-sm text-muted-foreground">
+                                  {record.date ? format(new Date(record.date), 'MMM d, yyyy') : 'No date'}
+                              </p>
+                          </div>
+                          <Button asChild variant="outline" size="sm">
+                              <Link href={`/training-attendance/${record.id}`} target="_blank">View</Link>
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setTrainingRecordToDelete(record.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">No training records attached to this work order.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2"><FileCog className="h-5 w-5" />HVAC Start-up Reports</CardTitle>
+                    <Button asChild variant="outline" size="sm"><Link href={`/hvac-startup-report?workOrderId=${workOrder.id}`}><PlusCircle className="mr-2 h-4 w-4" />Add Report</Link></Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {hvacReports.length > 0 ? (
+                  <ul className="space-y-2">
+                    {hvacReports.map(report => (
+                      <li key={report.id} className="flex items-center justify-between p-2 rounded-md border gap-2">
+                          <div className='flex-1'>
+                              <p className="font-medium">{report.equipmentType || `Report from ${format(new Date(report.date), 'PPP')}`}</p>
+                              <p className="text-sm text-muted-foreground">
+                                  {report.technician || 'N/A'}
+                              </p>
+                          </div>
+                          <Button asChild variant="outline" size="sm">
+                              <Link href={`/hvac-startup-report/${report.id}`} target="_blank">View</Link>
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setHvacReportToDelete(report.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">No HVAC start-up reports for this work order.</p>
+                )}
+              </CardContent>
+            </Card>
+
+          </div>
+        </TabsContent>
+
+        <TabsContent value="media" className="mt-0">
+          <div className="space-y-8">
+              <Card className="rounded-t-none">
+                <CardHeader><CardTitle>Job Photos</CardTitle></CardHeader>
+                <CardContent className="space-y-6">
+                    <div>
+                        <h3 className="font-medium mb-2">Before Photos</h3>
+                        {isSavingPhotos && photoSheetTarget === 'before' && <Loader2 className="h-5 w-5 animate-spin mb-2" />}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
+                            {(workOrder.beforePhotoUrls || []).map((url) => (
+                                <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
+                                    <Image src={url} alt={`Before photo`} fill style={{ objectFit: 'cover' }} />
+                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onBeforePhotoDelete(url)}>
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <Button variant="outline" onClick={() => setPhotoSheetTarget('before')} disabled={isSavingPhotos}>
+                            <Camera className="mr-2 h-4 w-4" /> Add Before Photos
+                        </Button>
+                    </div>
+                    <Separator />
+                    <div>
+                        <h3 className="font-medium mb-2">After Photos</h3>
+                        {isSavingPhotos && photoSheetTarget === 'after' && <Loader2 className="h-5 w-5 animate-spin mb-2" />}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
+                            {(workOrder.afterPhotoUrls || []).map((url) => (
+                                <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
+                                    <Image src={url} alt={`After photo`} fill style={{ objectFit: 'cover' }} />
+                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onAfterPhotoDelete(url)}>
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <Button variant="outline" onClick={() => setPhotoSheetTarget('after')} disabled={isSavingPhotos}>
+                            <Camera className="mr-2 h-4 w-4" /> Add After Photos
+                        </Button>
+                    </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader><CardTitle className="flex items-center gap-2"><ReceiptText /> Receipts &amp; Packing Slips</CardTitle></CardHeader>
+                <CardContent>
+                  {isSavingPhotos && photoSheetTarget === 'receipts' && <Loader2 className="h-5 w-5 animate-spin mb-2" />}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
+                      {(workOrder.receiptsAndPackingSlips || []).map((url) => (
+                          <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
+                              <Image src={url} alt={`Receipt or packing slip`} fill style={{ objectFit: 'cover' }} />
+                              <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onReceiptsAndPackingSlipsPhotoDelete(url)}>
+                                      <X className="h-4 w-4" />
+                                  </Button>
+                              </div>
+                          </div>
+                      ))}
+                  </div>
+                  <Button variant="outline" onClick={() => setPhotoSheetTarget('receipts')} disabled={isSavingPhotos}>
+                      <Camera className="mr-2 h-4 w-4" /> Add Photos
+                  </Button>
+                </CardContent>
+              </Card>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="activity" className="mt-0">
+          <div className="space-y-8">
+            <Card className="rounded-t-none">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarClock className="h-5 w-5" /> Scheduled Activities
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  {activities.length > 0 ? (
+                    activities.map(activity => (
+                      <ActivityItem 
+                        key={activity.id} 
+                        activity={activity} 
+                        technicians={technicians}
+                        onUpdateStatus={onUpdateActivityStatus}
+                        isTechnician={isTechnician} 
+                        currentUserId={user?.uid}
+                        onAddTimeClick={() => handleAddTimeClick(activity)}
+                        isAdmin={isAdmin}
+                        onDeleteClick={() => setActivityToDelete(activity)}
+                      />
+                    ))
+                  ) : (
+                    <p className="text-center text-sm text-muted-foreground py-4">No scheduled activities.</p>
+                  )}
+                </div>
+                {(isAdmin || (isTechnician && workOrder.status !== 'Completed' && workOrder.status !== 'Review')) && (
+                  <>
+                      <Separator />
+                      <AddActivityForm 
+                          technicians={technicians} 
+                          onAddActivity={onAddActivity}
+                          isLoading={isAddingActivity}
+                          isTechnician={isTechnician}
+                          currentUserId={user?.uid}
+                      />
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" /> Notes &amp; Activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <Textarea
+                    placeholder="Add a new note or update..."
+                    value={newNote}
+                    onChange={e => setNewNote(e.target.value)}
+                    disabled={isAddingNote}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" onClick={handleAddNote} disabled={isAddingNote || !newNote}>
+                        {isAddingNote && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Add Note
+                    </Button>
+                  </div>
+                </div>
+                <Separator />
+                <div className="space-y-6">
+                  {isClient ? combinedActivity.map(activity => {
+                      if (activity.type === 'note') {
+                          return <NoteActivityItem key={`note-${activity.id}`} note={activity} onPhotoDelete={onNotePhotoDelete} onNoteDelete={setNoteToDelete} />
+                      } else {
+                          return <TimeActivityItem key={`time-${activity.id}`} timeEntry={activity} onTimeEntryDelete={setTimeEntryToDelete} />
+                      }
+                  }) : <p className="text-center text-sm text-muted-foreground py-4">Loading activity...</p>}
+                  {isClient && combinedActivity.length === 0 && (
+                    <p className="text-center text-sm text-muted-foreground py-4">No notes or activity yet.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
+
 
     <AlertDialog open={!!noteToDelete} onOpenChange={(open) => !open && setNoteToDelete(null)}>
         <AlertDialogContent>
@@ -836,7 +835,7 @@ export function WorkOrderDetails({
         }}
         workOrderId={workOrder.id}
         activity={activityForTimePosting}
-        onTimeAdded={onTimeAdded}
+        onTimeAdded={onNoteAdded}
       />
       <Sheet open={!!photoSheetTarget} onOpenChange={(isOpen) => !isOpen && setPhotoSheetTarget(null)}>
           <SheetContent side="bottom">
@@ -875,3 +874,5 @@ export function WorkOrderDetails({
     </>
   );
 }
+
+    

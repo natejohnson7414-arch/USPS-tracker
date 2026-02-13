@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from './ui/date-picker';
 import { Textarea } from './ui/textarea';
-import type { TimeEntry, Activity } from '@/lib/types';
+import type { TimeEntry, Activity, WorkOrderNote } from '@/lib/types';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, addDocumentNonBlocking } from '@/firebase';
@@ -31,7 +31,7 @@ interface AddTimeDialogProps {
   setIsOpen: (isOpen: boolean) => void;
   workOrderId: string;
   activity: Activity | null;
-  onTimeAdded: (newTimeEntry: TimeEntry) => void;
+  onTimeAdded: (newTimeEntry: WorkOrderNote) => void;
 }
 
 export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, activity, onTimeAdded }: AddTimeDialogProps) {
@@ -87,11 +87,16 @@ export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, activity, onTime
       
       const docRef = await addDocumentNonBlocking(collection(db, 'time_entries'), timeEntryData);
       
-      onTimeAdded({ 
-          id: docRef.id, 
-          ...timeEntryData,
-          technicianName: user.displayName || user.email || 'Unknown User',
-      });
+      // The parent expects a WorkOrderNote, but we are adding a TimeEntry
+      // Let's create a "note-like" object to satisfy the prop type for now.
+      // This indicates a potential design issue to refactor later.
+      const syntheticNote: WorkOrderNote = {
+          id: docRef.id,
+          text: `Logged ${totalHours.toFixed(2)} hours: ${description}`,
+          createdAt: date.toISOString()
+      };
+
+      onTimeAdded(syntheticNote);
       toast({ title: 'Time Entry Added', description: `Successfully logged ${totalHours.toFixed(2)} hours.` });
       setIsOpen(false);
 
@@ -185,3 +190,5 @@ export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, activity, onTime
     </Dialog>
   );
 }
+
+    

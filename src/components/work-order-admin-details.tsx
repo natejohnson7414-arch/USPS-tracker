@@ -287,21 +287,6 @@ export function WorkOrderAdminDetails({
 
   return (
     <>
-      <Card className="mb-8">
-        <CardHeader>
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle className="text-2xl font-bold flex items-center gap-2">{workOrder.jobName}</CardTitle>
-              <CardDescription>Job # {workOrder.id}</CardDescription>
-            </div>
-            <StatusBadge status={workOrder.status} />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground mt-1">{workOrder.description}</p>
-        </CardContent>
-      </Card>
-
       <Tabs defaultValue="overview">
         <TabsList variant="folder">
           <TabsTrigger value="overview" variant="folder">Overview</TabsTrigger>
@@ -637,3 +622,5 @@ export function WorkOrderAdminDetails({
     </>
   );
 }
+
+    
