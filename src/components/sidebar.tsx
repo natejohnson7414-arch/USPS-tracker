@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import Link from 'next/link';
@@ -28,10 +26,34 @@ export function Sidebar() {
   const { role } = useTechnician();
   const [isOpen, setIsOpen] = useState(false);
 
-  const filteredNavLinks = role?.name === 'Technician'
+  const isTechnician = role?.name === 'Technician';
+
+  const filteredNavLinks = isTechnician
     ? navLinks.filter(link => !['/users', '/clients', '/work-sites'].includes(link.href))
     : navLinks;
 
+  // For technicians, we don't need the sidebar functionality.
+  // We'll render the logo as a simple link to home.
+  if (isTechnician) {
+    return (
+      <div className="flex items-center gap-4">
+        <Button asChild variant="ghost" size="icon" className="sm:hidden">
+            <Link href="/">
+                <Wrench className="h-6 w-6 text-primary" />
+            </Link>
+        </Button>
+        
+        <Button asChild variant="ghost" className="hidden sm:flex items-center gap-2 font-bold text-lg p-0 h-auto">
+            <Link href="/">
+                <Wrench className="h-6 w-6 text-primary" />
+                <span className="font-headline">USPS WO Tracker</span>
+            </Link>
+        </Button>
+      </div>
+    );
+  }
+
+  // For other roles, render the sidebar with its trigger.
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <div className="flex items-center gap-4">
