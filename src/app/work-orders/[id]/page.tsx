@@ -725,7 +725,7 @@ export default function WorkOrderDetailPage() {
                 </Button>
 
 
-                {!isEditing && !isTechnician && (
+                {!isEditing && !isTechnician && workOrder.id !== '24-0001' && (
                   <Button variant="outline" onClick={() => setIsEditing(true)}>
                     <Pencil className="mr-2 h-4 w-4" /> Edit
                   </Button>

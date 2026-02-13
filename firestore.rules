@@ -216,8 +216,8 @@ service cloud.firestore {
     match /work_orders/{workOrderId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn() && hasRequiredWorkOrderFields();
-      allow update: if isAllowedToUpdateWorkOrder();
-      allow delete: if isAdmin() && resource != null;
+      allow update: if workOrderId != '24-0001' && isAllowedToUpdateWorkOrder();
+      allow delete: if workOrderId != '24-0001' && isAdmin() && resource != null;
 
       /**
        * @description Manages access to updates on a specific work order.
