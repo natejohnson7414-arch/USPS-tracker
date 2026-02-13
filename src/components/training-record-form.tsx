@@ -94,17 +94,17 @@ export function TrainingRecordForm({ record, onFormSaved, onCancel }: TrainingRe
 
   const [workOrderId, setWorkOrderId] = useState<string | undefined>();
   
-  // State for the options in the dropdown
-  const [workOrderOptions, setWorkOrderOptions] = useState<WorkOrder[]>([]);
+  // State for the specifically fetched associated work order
+  const [associatedWorkOrder, setAssociatedWorkOrder] = useState<WorkOrder | null>(null);
 
-  // Fetch all work orders
+  // Fetch all work orders for the dropdown
   const workOrdersQuery = useMemoFirebase(() => {
     if (!db || !user || isUserLoading) return null;
     return query(collection(db, 'work_orders'));
   }, [db, user, isUserLoading]);
   const { data: workOrdersFromCollection } = useCollection<WorkOrder>(workOrdersQuery);
 
-  // Effect to populate the form from the `record` prop
+  // Effect to populate the form fields from the `record` prop
   useEffect(() => {
     if (record) {
       setWorkOrderId(record.workOrderId || undefined);
@@ -120,39 +120,41 @@ export function TrainingRecordForm({ record, onFormSaved, onCancel }: TrainingRe
     }
   }, [record]);
 
-  // Effect to build the final list of work order options for the dropdown
+  // Effect to fetch the specific associated work order if it's not in the main list
   useEffect(() => {
-    const buildOptions = async () => {
-      if (!workOrdersFromCollection) {
-        // If the main list isn't loaded yet, but we have a record,
-        // just fetch the single associated WO for now to populate the select.
-        if (db && record?.workOrderId) {
-            const associatedWO = await getWorkOrderById(db, record.workOrderId);
-            if (associatedWO) {
-                setWorkOrderOptions([associatedWO]);
-            }
-        }
+    // We only need to fetch if we have a record with a workOrderId
+    if (!db || !record?.workOrderId) {
+        setAssociatedWorkOrder(null); // Clear if record changes to one without a WO
         return;
-      }
+    }
 
-      let combinedList = [...workOrdersFromCollection];
-
-      // If there's a record with a workOrderId that is NOT in the main collection list,
-      // fetch it separately and add it. This handles cases like a completed/filtered work order.
-      if (db && record?.workOrderId && !combinedList.some(wo => wo.id === record.workOrderId)) {
-        const associatedWO = await getWorkOrderById(db, record.workOrderId);
-        if (associatedWO) {
-          // Prepend it to the list to ensure it's available
-          combinedList = [associatedWO, ...combinedList];
-        }
-      }
-      
-      setWorkOrderOptions(combinedList);
-    };
+    // Check if the currently loaded list already has it.
+    const isAssociatedInList = workOrdersFromCollection?.some(wo => wo.id === record.workOrderId);
     
-    buildOptions();
+    if (isAssociatedInList) {
+        // It's in the list, no need to keep a separate copy.
+        setAssociatedWorkOrder(null);
+    } else {
+        // It's not in the list (or the list is not loaded yet), so we must fetch it.
+        let isCancelled = false;
+        getWorkOrderById(db, record.workOrderId).then(wo => {
+            if (!isCancelled && wo) {
+                setAssociatedWorkOrder(wo);
+            }
+        });
+        return () => { isCancelled = true; }
+    }
+  }, [record?.workOrderId, workOrdersFromCollection, db]);
 
-  }, [workOrdersFromCollection, record, db]);
+  // useMemo to create the final list of options for the dropdown
+  const workOrderOptions = useMemo(() => {
+      const baseOptions = workOrdersFromCollection || [];
+      // If we fetched a specific associated WO and it's not already in the base list, add it.
+      if (associatedWorkOrder && !baseOptions.some(wo => wo.id === associatedWorkOrder.id)) {
+          return [associatedWorkOrder, ...baseOptions];
+      }
+      return baseOptions;
+  }, [workOrdersFromCollection, associatedWorkOrder]);
 
 
   const handleAddAttendee = () => {
