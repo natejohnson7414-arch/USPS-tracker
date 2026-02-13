@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,7 @@ import { uploadImage } from '@/firebase/storage';
 import { collection, query, doc } from 'firebase/firestore';
 import type { TrainingRecord, Attendee, WorkOrder } from '@/lib/types';
 import { Loader2, PlusCircle, Trash2, Save, Ban } from 'lucide-react';
+import { getWorkOrderById } from '@/lib/data';
 
 const checklistItems = {
   item1: 'Have trainees sign the owners training sign-in sheet.',
@@ -92,11 +93,35 @@ export function TrainingRecordForm({ record, onFormSaved, onCancel }: TrainingRe
   const [signatureTarget, setSignatureTarget] = useState<{ type: 'trainer' | 'attendee'; index?: number } | null>(null);
 
   const [workOrderId, setWorkOrderId] = useState<string | undefined>();
+  
   const workOrdersQuery = useMemoFirebase(() => {
     if (!db || !user || isUserLoading) return null;
     return query(collection(db, 'work_orders'));
   }, [db, user, isUserLoading]);
-  const { data: workOrders } = useCollection<WorkOrder>(workOrdersQuery);
+  const { data: workOrdersFromCollection } = useCollection<WorkOrder>(workOrdersQuery);
+
+  const [associatedWorkOrder, setAssociatedWorkOrder] = useState<WorkOrder | null>(null);
+
+  useEffect(() => {
+    const fetchAssociatedWO = async () => {
+      if (db && record?.workOrderId) {
+        const wo = await getWorkOrderById(db, record.workOrderId);
+        setAssociatedWorkOrder(wo || null);
+      } else {
+        setAssociatedWorkOrder(null);
+      }
+    };
+    fetchAssociatedWO();
+  }, [db, record?.workOrderId]);
+
+  const workOrders = useMemo(() => {
+    const list = workOrdersFromCollection || [];
+    if (associatedWorkOrder && !list.some(wo => wo.id === associatedWorkOrder.id)) {
+      return [associatedWorkOrder, ...list];
+    }
+    return list;
+  }, [workOrdersFromCollection, associatedWorkOrder]);
+
 
   useEffect(() => {
     if (record) {

@@ -27,7 +27,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useFirestore, addDocumentNonBlocking, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, addDocumentNonBlocking, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImage } from '@/firebase/storage';
 import { collection, query } from 'firebase/firestore';
@@ -69,6 +69,7 @@ const checklistItems = {
 
 function TrainingAttendancePageContent() {
   const db = useFirestore();
+  const { user, isUserLoading } = useUser();
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -91,7 +92,10 @@ function TrainingAttendancePageContent() {
   const [signatureTarget, setSignatureTarget] = useState<{ type: 'trainer' | 'attendee'; index?: number } | null>(null);
 
   const [workOrderId, setWorkOrderId] = useState<string | undefined>();
-  const workOrdersQuery = useMemoFirebase(() => db ? query(collection(db, 'work_orders')) : null, [db]);
+  const workOrdersQuery = useMemoFirebase(() => {
+    if (!db || !user || isUserLoading) return null;
+    return query(collection(db, 'work_orders'));
+  }, [db, user, isUserLoading]);
   const { data: workOrders } = useCollection<WorkOrder>(workOrdersQuery);
 
   useEffect(() => {
