@@ -1,6 +1,5 @@
 'use client';
 import React, { useEffect, useState, useRef } from 'react';
-import { getTechnicians, getWorkSites, getClients } from '@/lib/data';
 import { DashboardClient } from './dashboard-client';
 import { MainLayout } from '@/components/main-layout';
 import type { WorkOrder, Technician, WorkSite, Client, Role } from '@/lib/types';
@@ -66,9 +65,22 @@ export default function DashboardPage() {
   }, [db, statusFilter, assignedToFilter, user, isAuthLoading, currentUserRole]);
 
   const { data: workOrders, isLoading: isWorkOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
-  const { data: fetchedTechnicians, isLoading: isTechniciansLoading } = useCollection<RawTechnician>(useMemoFirebase(() => db ? collection(db, 'technicians') : null, [db]));
-  const { data: fetchedWorkSites, isLoading: isWorkSitesLoading } = useCollection<WorkSite>(useMemoFirebase(() => db ? collection(db, 'work_sites') : null, [db]));
-  const { data: fetchedClients, isLoading: isClientsLoading } = useCollection<Client>(useMemoFirebase(() => db ? collection(db, 'clients') : null, [db]));
+  
+  const { data: fetchedTechnicians, isLoading: isTechniciansLoading } = useCollection<RawTechnician>(useMemoFirebase(() => {
+      if (!db || isAuthLoading || !user) return null;
+      return collection(db, 'technicians');
+  }, [db, isAuthLoading, user]));
+  
+  const { data: fetchedWorkSites, isLoading: isWorkSitesLoading } = useCollection<WorkSite>(useMemoFirebase(() => {
+      if (!db || isAuthLoading || !user) return null;
+      return collection(db, 'work_sites');
+  }, [db, isAuthLoading, user]));
+
+  const { data: fetchedClients, isLoading: isClientsLoading } = useCollection<Client>(useMemoFirebase(() => {
+      if (!db || isAuthLoading || !user) return null;
+      return collection(db, 'clients');
+  }, [db, isAuthLoading, user]));
+
 
   useEffect(() => {
       if (fetchedTechnicians) {
