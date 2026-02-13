@@ -8,8 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import type { WorkSite } from '@/lib/types';
-import { useFirestore, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import { useFirestore, addDocumentNonBlocking } from '@/firebase';
+import { collection, doc, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
@@ -59,7 +59,7 @@ export function WorkSiteForm({ site, onFormSaved, onCancel }: WorkSiteFormProps)
         }
     }, [site]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if(!db) {
             toast({ title: "Error", description: "Database not available", variant: 'destructive' });
@@ -87,30 +87,44 @@ export function WorkSiteForm({ site, onFormSaved, onCancel }: WorkSiteFormProps)
             notes
         };
         
-        let promise;
-        if (site) {
-             promise = setDocumentNonBlocking(doc(db, 'work_sites', site.id), siteData, { merge: true });
-        } else {
-             promise = addDocumentNonBlocking(collection(db, 'work_sites'), siteData);
-        }
+        try {
+            if (site) { // Editing existing site
+                const siteRef = doc(db, 'work_sites', site.id);
+                const batch = writeBatch(db);
+                
+                // 1. Update the work site document itself
+                batch.update(siteRef, siteData);
 
-        promise
-          .then(() => {
-                const action = site ? "updated" : "created";
-                toast({ title: `Work Site ${action}`, description: `Successfully ${action} "${name}".`});
-                onFormSaved();
-            })
-          .catch((error) => {
-                // The global error emitter will catch permission errors.
-                // We can show a generic toast for other potential issues.
-                if (!error.message.includes('permission-error')) { 
-                    toast({ title: "Error", description: `Could not ${site ? 'update' : 'create'} work site. Please try again.`, variant: 'destructive' });
+                // 2. If the name changed, find and update related work orders
+                if (site.name !== name) {
+                    const workOrdersQuery = query(collection(db, 'work_orders'), where("workSiteId", "==", site.id));
+                    const workOrdersSnapshot = await getDocs(workOrdersQuery);
+                    
+                    workOrdersSnapshot.forEach(workOrderDoc => {
+                        const workOrderRef = doc(db, 'work_orders', workOrderDoc.id);
+                        batch.update(workOrderRef, { jobName: name });
+                    });
                 }
+                
+                // 3. Commit the batch
+                await batch.commit();
+                toast({ title: "Work Site Updated", description: `Successfully updated "${name}" and related work orders.`});
+
+            } else { // Creating new site
+                await addDocumentNonBlocking(collection(db, 'work_sites'), siteData);
+                toast({ title: "Work Site Created", description: `Successfully created "${name}".`});
+            }
+            
+            onFormSaved();
+
+        } catch (error) {
+            if (error instanceof Error && !error.message.includes('permission-error')) {
                 console.error("Error saving work site:", error);
-            })
-          .finally(() => {
-                setIsLoading(false);
-            });
+                toast({ title: "Error", description: `Could not ${site ? 'update' : 'create'} work site. Please try again.`, variant: 'destructive' });
+            }
+        } finally {
+            setIsLoading(false);
+        }
     };
 
 
