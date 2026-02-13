@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -316,7 +317,18 @@ export default function DispatchBoardPage() {
     const [isMultiSelect, setIsMultiSelect] = useState(false);
     const [selectedTechIds, setSelectedTechIds] = useState<string[]>([]);
 
-    const [view, setView] = useState<'week' | 'day' | 'two-week' | 'month'>('week');
+    const [view, setView] = useState<'week' | 'day' | 'two-week' | 'month' | null>(null);
+
+    useEffect(() => {
+        if (!isRoleLoading && view === null) {
+            if (role?.name === 'Technician') {
+                setView('month');
+            } else {
+                setView('week');
+            }
+        }
+    }, [isRoleLoading, role, view]);
+
 
     const sensors = useSensors(
         useSensor(MouseSensor, {
@@ -384,6 +396,7 @@ export default function DispatchBoardPage() {
     }, [technicians]);
     
     const calendarDays = useMemo(() => {
+        if (!view) return [];
         const weekStartsOn = 1; // Monday
         let start;
         switch (view) {
@@ -405,6 +418,7 @@ export default function DispatchBoardPage() {
     }, [currentDate, view]);
     
     const handlePrev = () => {
+        if (!view) return;
         switch (view) {
             case 'day':
                 setCurrentDate(subDays(currentDate, 1));
@@ -419,6 +433,7 @@ export default function DispatchBoardPage() {
         }
     }
     const handleNext = () => {
+        if (!view) return;
         switch (view) {
             case 'day':
                 setCurrentDate(addDays(currentDate, 1));
@@ -574,6 +589,7 @@ export default function DispatchBoardPage() {
     }
 
     const headerDateDisplay = useMemo(() => {
+        if (!view) return '';
         const weekStartsOn = 1; // Monday
         if (view === 'day') {
             return format(currentDate, 'MMMM d, yyyy');
@@ -606,7 +622,7 @@ export default function DispatchBoardPage() {
         );
     };
 
-    const isLoading = isCoreDataLoading || isRoleLoading || areWorkOrdersLoading;
+    const isLoading = isCoreDataLoading || isRoleLoading || areWorkOrdersLoading || view === null;
 
     if (isLoading) {
         return (
@@ -626,7 +642,7 @@ export default function DispatchBoardPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                         <h1 className="text-3xl font-bold tracking-tight">Dispatch Board</h1>
                         <div className="flex items-center gap-2">
-                             <Select value={view} onValueChange={(v) => setView(v as any)}>
+                             <Select value={view!} onValueChange={(v) => setView(v as any)}>
                                 <SelectTrigger className="w-[130px]">
                                     <SelectValue />
                                 </SelectTrigger>
@@ -666,7 +682,7 @@ export default function DispatchBoardPage() {
                                                 day={day}
                                                 dayActivities={dayActivities}
                                                 techColorMap={techColorMap}
-                                                view={view}
+                                                view={view!}
                                                 index={index}
                                                 totalDays={7}
                                             />
@@ -685,7 +701,7 @@ export default function DispatchBoardPage() {
                                                 day={day}
                                                 dayActivities={dayActivities}
                                                 techColorMap={techColorMap}
-                                                view={view}
+                                                view={view!}
                                                 index={index + 7}
                                                 totalDays={14}
                                             />
@@ -711,7 +727,7 @@ export default function DispatchBoardPage() {
                                             day={day}
                                             dayActivities={dayActivities}
                                             techColorMap={techColorMap}
-                                            view={view}
+                                            view={view!}
                                             index={index}
                                             totalDays={calendarDays.length}
                                             monthParity={monthParity}
@@ -820,3 +836,4 @@ export default function DispatchBoardPage() {
         </MainLayout>
     );
 }
+
