@@ -495,15 +495,27 @@ export function WorkOrderAdminDetails({
                   <CardContent className="space-y-6">
                       <div>
                           <h3 className="font-medium mb-2">Before Photos</h3>
-                          {isSavingPhotos && photoSheetTarget === 'before' && <Loader2 className="h-5 w-5 animate-spin mb-2" />}
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">{(workOrder.beforePhotoUrls || []).map((url) => (<div key={url} className="relative group aspect-square rounded-lg overflow-hidden border"><Image src={url} alt={`Before photo`} fill style={{ objectFit: 'cover' }} /><div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onBeforePhotoDelete(url)}><X className="h-4 w-4" /></Button></div></div>))}</div>
+                           <div className="relative">
+                              {isSavingPhotos && photoSheetTarget === 'before' && (
+                                <div className="absolute inset-0 bg-background/80 z-10 flex items-center justify-center rounded-lg min-h-[100px]">
+                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                </div>
+                              )}
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">{(workOrder.beforePhotoUrls || []).map((url) => (<div key={url} className="relative group aspect-square rounded-lg overflow-hidden border"><Image src={url} alt={`Before photo`} fill style={{ objectFit: 'cover' }} /><div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onBeforePhotoDelete(url)}><X className="h-4 w-4" /></Button></div></div>))}</div>
+                          </div>
                           <Button variant="outline" onClick={() => setPhotoSheetTarget('before')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add Before Photos</Button>
                       </div>
                       <Separator />
                       <div>
                           <h3 className="font-medium mb-2">After Photos</h3>
-                          {isSavingPhotos && photoSheetTarget === 'after' && <Loader2 className="h-5 w-5 animate-spin mb-2" />}
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">{(workOrder.afterPhotoUrls || []).map((url) => (<div key={url} className="relative group aspect-square rounded-lg overflow-hidden border"><Image src={url} alt={`After photo`} fill style={{ objectFit: 'cover' }} /><div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onAfterPhotoDelete(url)}><X className="h-4 w-4" /></Button></div></div>))}</div>
+                          <div className="relative">
+                            {isSavingPhotos && photoSheetTarget === 'after' && (
+                                <div className="absolute inset-0 bg-background/80 z-10 flex items-center justify-center rounded-lg min-h-[100px]">
+                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                </div>
+                            )}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">{(workOrder.afterPhotoUrls || []).map((url) => (<div key={url} className="relative group aspect-square rounded-lg overflow-hidden border"><Image src={url} alt={`After photo`} fill style={{ objectFit: 'cover' }} /><div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onAfterPhotoDelete(url)}><X className="h-4 w-4" /></Button></div></div>))}</div>
+                          </div>
                           <Button variant="outline" onClick={() => setPhotoSheetTarget('after')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add After Photos</Button>
                       </div>
                   </CardContent>
@@ -511,19 +523,25 @@ export function WorkOrderAdminDetails({
               <Card>
                 <CardHeader><CardTitle className="flex items-center gap-2"><ReceiptText /> Receipts &amp; Packing Slips</CardTitle></CardHeader>
                 <CardContent>
-                  {isSavingPhotos && photoSheetTarget === 'receipts' && <Loader2 className="h-5 w-5 animate-spin mb-2" />}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
-                      {(workOrder.receiptsAndPackingSlips || []).map((url) => (
-                          <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
-                              <Image src={url} alt={`Receipt or packing slip`} fill style={{ objectFit: 'cover' }} />
-                              <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onReceiptsAndPackingSlipsPhotoDelete(url)}>
-                                      <X className="h-4 w-4" />
-                                  </Button>
-                              </div>
-                          </div>
-                      ))}
-                  </div>
+                    <div className="relative">
+                        {isSavingPhotos && photoSheetTarget === 'receipts' && (
+                            <div className="absolute inset-0 bg-background/80 z-10 flex items-center justify-center rounded-lg min-h-[100px]">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            </div>
+                        )}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
+                            {(workOrder.receiptsAndPackingSlips || []).map((url) => (
+                                <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
+                                    <Image src={url} alt={`Receipt or packing slip`} fill style={{ objectFit: 'cover' }} />
+                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onReceiptsAndPackingSlipsPhotoDelete(url)}>
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                   <Button variant="outline" onClick={() => setPhotoSheetTarget('receipts')} disabled={isSavingPhotos}>
                       <Camera className="mr-2 h-4 w-4" /> Add Photos
                   </Button>
@@ -542,28 +560,35 @@ export function WorkOrderAdminDetails({
                           multiple
                       />
                       <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploadingFiles}>
-                          {isUploadingFiles ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                          <Upload className="mr-2 h-4 w-4" />
                           Upload Files
                       </Button>
-                      <div className="space-y-2">
-                          {(workOrder.uploadedFiles || []).length > 0 ? (
-                              workOrder.uploadedFiles?.map(file => (
-                                  <div key={file.url} className="flex items-center justify-between p-2 border rounded-md gap-2">
-                                      <a href={file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 flex-1 truncate">
-                                          {getFileIcon(file.type)}
-                                          <div className="truncate">
-                                              <p className="text-sm font-medium truncate">{file.name}</p>
-                                              <p className="text-xs text-muted-foreground">{Math.round(file.size / 1024)} KB</p>
-                                          </div>
-                                      </a>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => onFileDeleted(file)}>
-                                          <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                  </div>
-                              ))
-                          ) : (
-                              <p className="text-sm text-muted-foreground text-center py-4">No files uploaded.</p>
+                      <div className="relative">
+                          {isUploadingFiles && (
+                            <div className="absolute inset-0 bg-background/80 z-10 flex items-center justify-center rounded-lg min-h-[100px]">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            </div>
                           )}
+                          <div className="space-y-2">
+                              {(workOrder.uploadedFiles || []).length > 0 ? (
+                                  workOrder.uploadedFiles?.map(file => (
+                                      <div key={file.url} className="flex items-center justify-between p-2 border rounded-md gap-2">
+                                          <a href={file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 flex-1 truncate">
+                                              {getFileIcon(file.type)}
+                                              <div className="truncate">
+                                                  <p className="text-sm font-medium truncate">{file.name}</p>
+                                                  <p className="text-xs text-muted-foreground">{Math.round(file.size / 1024)} KB</p>
+                                              </div>
+                                          </a>
+                                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => onFileDeleted(file)}>
+                                              <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                      </div>
+                                  ))
+                              ) : (
+                                  <p className="text-sm text-muted-foreground text-center py-4">No files uploaded.</p>
+                              )}
+                          </div>
                       </div>
                   </CardContent>
               </Card>
@@ -622,5 +647,3 @@ export function WorkOrderAdminDetails({
     </>
   );
 }
-
-    
