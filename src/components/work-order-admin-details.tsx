@@ -455,7 +455,7 @@ export function WorkOrderAdminDetails({
                           <p className="font-medium">{record.trainingCourse}</p>
                           <p className="text-sm text-muted-foreground">{record.date ? format(new Date(record.date), 'MMM d, yyyy') : 'No date'}</p>
                         </div>
-                        <Button asChild variant="outline" size="sm"><Link href={`/training-attendance/${record.id}`} target="_blank">View</Link></Button>
+                        <Button asChild variant="outline" size="sm"><Link href={`/training-attendance/${record.id}`}>View</Link></Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setTrainingRecordToDelete(record.id)}><Trash2 className="h-4 w-4" /></Button>
                       </li>))}
                   </ul>
@@ -478,7 +478,7 @@ export function WorkOrderAdminDetails({
                           <p className="font-medium">{report.equipmentType || `Report from ${format(new Date(report.date), 'PPP')}`}</p>
                           <p className="text-sm text-muted-foreground">{report.technician || 'N/A'}</p>
                         </div>
-                        <Button asChild variant="outline" size="sm"><Link href={`/hvac-startup-report/${report.id}`} target="_blank">View</Link></Button>
+                        <Button asChild variant="outline" size="sm"><Link href={`/hvac-startup-report/${report.id}`}>View</Link></Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setHvacReportToDelete(report.id)}><Trash2 className="h-4 w-4" /></Button>
                       </li>))}
                   </ul>

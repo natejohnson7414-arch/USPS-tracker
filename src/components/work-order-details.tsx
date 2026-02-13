@@ -531,7 +531,7 @@ export function WorkOrderDetails({
                               </p>
                           </div>
                           <Button asChild variant="outline" size="sm">
-                              <Link href={`/training-attendance/${record.id}`} target="_blank">View</Link>
+                              <Link href={`/training-attendance/${record.id}`}>View</Link>
                           </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setTrainingRecordToDelete(record.id)}>
                             <Trash2 className="h-4 w-4" />
@@ -564,7 +564,7 @@ export function WorkOrderDetails({
                               </p>
                           </div>
                           <Button asChild variant="outline" size="sm">
-                              <Link href={`/hvac-startup-report/${report.id}`} target="_blank">View</Link>
+                              <Link href={`/hvac-startup-report/${report.id}`}>View</Link>
                           </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setHvacReportToDelete(report.id)}>
                             <Trash2 className="h-4 w-4" />
