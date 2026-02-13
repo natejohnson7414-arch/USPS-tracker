@@ -1,10 +1,11 @@
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { List, PlusCircle, MoreHorizontal, Ban } from 'lucide-react';
+import { List, PlusCircle, MoreHorizontal, Ban, Search } from 'lucide-react';
 import { WorkSiteForm } from '@/components/work-site-form';
 import type { WorkSite } from '@/lib/types';
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
@@ -26,6 +27,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useTechnician } from '@/hooks/use-technician';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 function WorkSiteItem({ site, onEdit, onDelete }: { site: WorkSite, onEdit: () => void, onDelete: () => void }) {
     return (
@@ -64,6 +73,8 @@ export default function WorkSitesPage() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingSite, setEditingSite] = useState<WorkSite | null>(null);
     const [deletingSite, setDeletingSite] = useState<WorkSite | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [sortBy, setSortBy] = useState('name');
     
     const workSitesQuery = useMemoFirebase(() => {
         if (!db) return null;
@@ -71,6 +82,29 @@ export default function WorkSitesPage() {
     }, [db]);
 
     const { data: workSites, isLoading: areSitesLoading } = useCollection<WorkSite>(workSitesQuery);
+    
+    const filteredAndSortedSites = useMemo(() => {
+        if (!workSites) return [];
+
+        const lowercasedSearchTerm = searchTerm.toLowerCase();
+        
+        const filtered = workSites.filter(site =>
+            (site.name?.toLowerCase().includes(lowercasedSearchTerm) || '') ||
+            (site.address?.toLowerCase().includes(lowercasedSearchTerm) || '') ||
+            (site.city?.toLowerCase().includes(lowercasedSearchTerm) || '') ||
+            (site.state?.toLowerCase().includes(lowercasedSearchTerm) || '')
+        );
+
+        return filtered.sort((a, b) => {
+            const fieldA = (a[sortBy as keyof WorkSite] as string | undefined)?.toLowerCase() || '';
+            const fieldB = (b[sortBy as keyof WorkSite] as string | undefined)?.toLowerCase() || '';
+            if (fieldA < fieldB) return -1;
+            if (fieldA > fieldB) return 1;
+            return 0;
+        });
+
+    }, [workSites, searchTerm, sortBy]);
+
 
     const handleFormSaved = () => {
         // The useCollection hook will update the list automatically
@@ -159,33 +193,56 @@ export default function WorkSitesPage() {
                 />
             </div>
         ) : (
-             <Card>
-                <CardHeader>
-                    <CardTitle>All Work Sites</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                    {areSitesLoading ? (
-                         <div className="p-6 text-center text-muted-foreground">Loading sites...</div>
-                    ) : workSites && workSites.length > 0 ? (
-                        <div>
-                            {workSites.map(site => (
-                                <WorkSiteItem 
-                                    key={site.id} 
-                                    site={site} 
-                                    onEdit={() => handleEdit(site)}
-                                    onDelete={() => handleDelete(site)}
-                                />)
-                            )}
-                        </div>
-                    ) : (
-                         <div className="p-6 text-center text-muted-foreground">
-                            <List className="mx-auto h-12 w-12" />
-                            <p className="mt-4">No work sites found.</p>
-                            <p className="text-sm mt-2">Get started by adding a new work site.</p>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+            <>
+                <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                    <div className="relative w-full sm:w-auto">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search by name, address..."
+                            className="pl-8 sm:w-[300px]"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <Select value={sortBy} onValueChange={setSortBy}>
+                        <SelectTrigger className="w-full sm:w-[180px]">
+                            <SelectValue placeholder="Sort by" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="name">Sort by Name</SelectItem>
+                            <SelectItem value="city">Sort by City</SelectItem>
+                            <SelectItem value="state">Sort by State</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>All Work Sites</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        {areSitesLoading ? (
+                             <div className="p-6 text-center text-muted-foreground">Loading sites...</div>
+                        ) : filteredAndSortedSites && filteredAndSortedSites.length > 0 ? (
+                            <div>
+                                {filteredAndSortedSites.map(site => (
+                                    <WorkSiteItem 
+                                        key={site.id} 
+                                        site={site} 
+                                        onEdit={() => handleEdit(site)}
+                                        onDelete={() => handleDelete(site)}
+                                    />)
+                                )}
+                            </div>
+                        ) : (
+                             <div className="p-6 text-center text-muted-foreground">
+                                <List className="mx-auto h-12 w-12" />
+                                <p className="mt-4">No work sites found.</p>
+                                <p className="text-sm mt-2">Get started by adding a new work site, or try adjusting your search.</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </>
         )}
       </div>
 
