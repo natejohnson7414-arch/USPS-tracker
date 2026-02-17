@@ -113,20 +113,38 @@ export default function ViewTrainingRecordPage() {
 
         setIsDownloading(true);
         try {
-            const canvas = await html2canvas(content, { 
-                scale: 2, 
-                useCORS: true, 
-                allowTaint: true,
-                logging: false
-            });
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF({
-                orientation: 'portrait',
-                unit: 'pt',
-                format: [canvas.width, canvas.height]
-            });
-            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-            pdf.save(`Training-Record-${record.workOrderId || record.id}.pdf`);
+            const pages = content.querySelectorAll('.pdf-page') as NodeListOf<HTMLElement>;
+            let pdf: jsPDF | null = null;
+
+            for (let i = 0; i < pages.length; i++) {
+                const page = pages[i];
+                const canvas = await html2canvas(page, { 
+                    scale: 2, 
+                    useCORS: true, 
+                    allowTaint: true,
+                    logging: false
+                });
+                
+                const imgData = canvas.toDataURL('image/png');
+                const pdfWidth = canvas.width;
+                const pdfHeight = canvas.height;
+
+                if (i === 0) {
+                    pdf = new jsPDF({
+                        orientation: pdfWidth > pdfHeight ? 'l' : 'p',
+                        unit: 'pt',
+                        format: [pdfWidth, pdfHeight]
+                    });
+                } else {
+                    pdf!.addPage([pdfWidth, pdfHeight], pdfWidth > pdfHeight ? 'l' : 'p');
+                }
+                
+                pdf!.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            }
+
+            if (pdf) {
+                pdf.save(`Training-Record-${record.workOrderId || record.id}.pdf`);
+            }
         } catch (e) {
             console.error("Error generating PDF:", e);
             toast({ title: "Failed to generate PDF", variant: "destructive" });
@@ -165,9 +183,9 @@ export default function ViewTrainingRecordPage() {
 
 
     const ChecklistItem = ({ id, label, level = 0, subItem = false }: {id: string, label: string, level?: number, subItem?: boolean}) => (
-        <div className="flex items-start gap-3" style={{ marginLeft: `${level * 1.5}rem` }}>
-           {!subItem && <Checkbox id={id} checked={record?.checklist?.[id] || false} disabled className="mt-1" />}
-           <label htmlFor={id} className="text-sm font-medium leading-normal flex-1">{label}</label>
+        <div className="flex items-start gap-2 py-0.5" style={{ marginLeft: `${level * 1.25}rem` }}>
+           {!subItem && <Checkbox id={id} checked={record?.checklist?.[id] || false} disabled className="mt-0.5 h-3.5 w-3.5" />}
+           <label htmlFor={id} className="text-xs font-medium leading-tight flex-1">{label}</label>
         </div>
      );
 
@@ -196,9 +214,9 @@ export default function ViewTrainingRecordPage() {
 
   return (
     <MainLayout>
-      <div className="bg-white text-black min-h-screen">
-        <div className="container mx-auto p-4 sm:p-8" style={{ maxWidth: '8.5in' }}>
-            <div className="mb-6 flex justify-between items-center gap-4 print:hidden">
+      <div className="bg-gray-100 min-h-screen py-8">
+        <div className="container mx-auto" style={{ maxWidth: '9in' }}>
+            <div className="mb-6 flex justify-between items-center gap-4 px-4 sm:px-0 print:hidden">
                 <Button variant="outline" asChild>
                     <a href={record.workOrderId ? `/work-orders/${record.workOrderId}` : '/'} className="flex items-center gap-2">
                         <ArrowLeft className="h-4 w-4" />
@@ -232,147 +250,153 @@ export default function ViewTrainingRecordPage() {
                     onCancel={() => setIsEditing(false)}
                  />
             ) : (
-                <Card className="shadow-lg border-none" ref={printRef}>
-                    <CardContent className="p-6 sm:p-8">
-                    <header className="flex flex-col sm:flex-row justify-end items-start mb-8 gap-4">
-                        <div className="text-right text-xs sm:text-sm">
-                        <p className="font-bold">Heating / Air Conditioning / Plumbing / Piping / Electrical</p>
-                        <p>1306 Mill Street Rock Island, Illinois 61265</p>
-                        <p>Phone: (309) 788-4573 Fax: (309) 788-4691</p>
-                        <p>www.Crawford-Company.Com</p>
-                        </div>
-                    </header>
-
-                    <main>
-                        <h1 className="text-xl sm:text-2xl font-bold text-center border-b-2 border-black pb-2 mb-6">
-                        Training Attendance Record
-                        </h1>
-
-                        <div className="space-y-4">
-                        <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
-                            <label className="font-semibold">Work Order:</label>
-                            <Input readOnly value={workOrder ? `${workOrder.id} - ${workOrder.jobName}` : (record?.workOrderId || 'N/A')} />
-                        </div>
-                        <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
-                            <label className="font-semibold">Training Course:</label>
-                            <Input readOnly value={record.trainingCourse} />
-                        </div>
-                        <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
-                            <label className="font-semibold">Trainer:</label>
-                            <Input readOnly value={record.trainer} />
-                        </div>
-                        <div className="grid sm:grid-cols-[150px_1fr] items-start gap-2">
-                            <label className="font-semibold">Description of Course (Include A List Of Belts & Filters):</label>
-                            <Textarea rows={4} readOnly value={record.description} />
-                        </div>
-                        
-                        <Separator className="my-6" />
-
-                        <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
-                            <label className="font-semibold">BAS User Name:</label>
-                            <Input readOnly value={record.basUserName} />
-                        </div>
-                        <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
-                            <label className="font-semibold">BAS Password:</label>
-                            <Input readOnly type="password" value={record.basPassword || ''} />
-                        </div>
-                        <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
-                            <label className="font-semibold">Date:</label>
-                            <Input readOnly value={record.date ? new Date(record.date).toLocaleDateString() : ''} />
-                        </div>
-                        <div className="grid sm:grid-cols-[150px_1fr] items-center gap-2">
-                            <label className="font-semibold">Trainer Signature:</label>
-                            <div className="border rounded-md p-2 h-20 flex items-center justify-center">
-                            {record.trainerSignatureUrl ? (
-                                <img src={proxiedUrl(record.trainerSignatureUrl)} alt="Trainer Signature" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
-                            ) : (
-                                <span className="text-muted-foreground text-sm">Not Signed</span>
-                            )}
+                <div className="space-y-8" ref={printRef}>
+                    {/* PAGE 1: RECORD INFO & ATTENDEES */}
+                    <div className="pdf-page bg-white text-black p-8 shadow-lg mx-auto" style={{ width: '8.5in', height: '11in' }}>
+                        <header className="flex justify-end items-start mb-6">
+                            <div className="text-right text-[10px] leading-tight">
+                                <p className="font-bold">Heating / Air Conditioning / Plumbing / Piping / Electrical</p>
+                                <p>1306 Mill Street Rock Island, Illinois 61265</p>
+                                <p>Phone: (309) 788-4573 Fax: (309) 788-4691</p>
+                                <p>www.Crawford-Company.Com</p>
                             </div>
-                        </div>
-                        </div>
+                        </header>
 
-                        <div className="mt-8">
-                        <div className="grid grid-cols-2 border-2 border-black">
-                            <div className="p-2 font-bold text-center border-b-2 border-r-2 border-black">Attendees Name</div>
-                            <div className="p-2 font-bold text-center border-b-2 border-black">Signature</div>
-                            
-                            {record.attendees.map((attendee) => (
-                            <React.Fragment key={attendee.id}>
-                                <div className="border-r-2 border-black flex items-center">
-                                <Input 
-                                    className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0" 
-                                    readOnly
-                                    value={attendee.name}
-                                />
+                        <main>
+                            <h1 className="text-xl font-bold text-center border-b-2 border-black pb-2 mb-6">
+                                Training Attendance Record
+                            </h1>
+
+                            <div className="space-y-3 text-sm">
+                                <div className="grid grid-cols-[140px_1fr] items-center gap-2">
+                                    <label className="font-semibold">Work Order:</label>
+                                    <Input readOnly className="h-8 text-sm" value={workOrder ? `${workOrder.id} - ${workOrder.jobName}` : (record?.workOrderId || 'N/A')} />
                                 </div>
-                                <div 
-                                className="p-2 h-20 flex items-center justify-center"
-                                >
-                                {attendee.signatureUrl ? (
-                                        <img src={proxiedUrl(attendee.signatureUrl)} alt={`Attendee ${attendee.name} Signature`} style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
-                                    ) : (
-                                        <span className="text-muted-foreground text-sm">Not Signed</span>
+                                <div className="grid grid-cols-[140px_1fr] items-center gap-2">
+                                    <label className="font-semibold">Training Course:</label>
+                                    <Input readOnly className="h-8 text-sm" value={record.trainingCourse} />
+                                </div>
+                                <div className="grid grid-cols-[140px_1fr] items-center gap-2">
+                                    <label className="font-semibold">Trainer:</label>
+                                    <Input readOnly className="h-8 text-sm" value={record.trainer} />
+                                </div>
+                                <div className="grid grid-cols-[140px_1fr] items-start gap-2">
+                                    <label className="font-semibold leading-tight">Description of Course (Include Belts & Filters):</label>
+                                    <Textarea rows={3} readOnly className="text-sm resize-none" value={record.description} />
+                                </div>
+                                
+                                <Separator className="my-2" />
+
+                                <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+                                    <div className="grid grid-cols-[100px_1fr] items-center gap-2">
+                                        <label className="font-semibold">BAS User:</label>
+                                        <Input readOnly className="h-8 text-sm" value={record.basUserName} />
+                                    </div>
+                                    <div className="grid grid-cols-[100px_1fr] items-center gap-2">
+                                        <label className="font-semibold">BAS Pass:</label>
+                                        <Input readOnly className="h-8 text-sm" type="password" value={record.basPassword || ''} />
+                                    </div>
+                                    <div className="grid grid-cols-[100px_1fr] items-center gap-2">
+                                        <label className="font-semibold">Date:</label>
+                                        <Input readOnly className="h-8 text-sm" value={record.date ? new Date(record.date).toLocaleDateString() : ''} />
+                                    </div>
+                                    <div className="grid grid-cols-[100px_1fr] items-center gap-2">
+                                        <label className="font-semibold leading-tight">Trainer Signature:</label>
+                                        <div className="border rounded-md p-1 h-10 flex items-center justify-center bg-gray-50">
+                                            {record.trainerSignatureUrl ? (
+                                                <img src={proxiedUrl(record.trainerSignatureUrl)} alt="Trainer Signature" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+                                            ) : (
+                                                <span className="text-muted-foreground text-[10px]">Not Signed</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-6">
+                                <div className="grid grid-cols-2 border-2 border-black">
+                                    <div className="p-1.5 font-bold text-center border-b-2 border-r-2 border-black text-xs">Attendees Name</div>
+                                    <div className="p-1.5 font-bold text-center border-b-2 border-black text-xs">Signature</div>
+                                    
+                                    {record.attendees.map((attendee) => (
+                                        <React.Fragment key={attendee.id}>
+                                            <div className="border-r-2 border-black flex items-center px-2 py-1">
+                                                <span className="text-sm truncate">{attendee.name}</span>
+                                            </div>
+                                            <div className="p-1 h-14 flex items-center justify-center">
+                                                {attendee.signatureUrl ? (
+                                                    <img src={proxiedUrl(attendee.signatureUrl)} alt={`Attendee ${attendee.name} Signature`} style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+                                                ) : (
+                                                    <span className="text-muted-foreground text-[10px]">Not Signed</span>
+                                                )}
+                                            </div>
+                                        </React.Fragment>
+                                    ))}
+                                    {(record.attendees || []).length === 0 && (
+                                        <>
+                                            <div className="border-r-2 border-black p-4 text-center text-muted-foreground text-xs italic">No attendees recorded</div>
+                                            <div className="p-4"></div>
+                                        </>
                                     )}
                                 </div>
-                            </React.Fragment>
-                            ))}
-                            {record.attendees.length === 0 && (
-                                <>
-                                <div className="border-r-2 border-black p-2 text-center text-muted-foreground">No attendees</div>
-                                <div className="p-2"></div>
-                                </>
-                            )}
-                        </div>
-                        </div>
-
-                        <Separator className="my-8" />
-                        
-                        <div className="space-y-4">
-                            <h2 className="text-xl font-bold text-center">Owners Training Check List</h2>
-                            <ChecklistItem id="item1" label={checklistItems.item1} />
-                            <ChecklistItem id="item2" label={checklistItems.item2} />
-                            
-                            <ChecklistItem id="item3" label={checklistItems.item3} />
-                            <ChecklistItem id="item3i" label={`i. ${checklistItems.item3i}`} level={1} subItem={true} />
-                            <ChecklistItem id="item3ii" label={`ii. ${checklistItems.item3ii}`} level={1} subItem={true} />
-                            <ChecklistItem id="item3iii" label={`iii. ${checklistItems.item3iii}`} level={1} subItem={true} />
-                            <ChecklistItem id="item3iv" label={`iv. ${checklistItems.item3iv}`} level={1} subItem={true} />
-                            <ChecklistItem id="item3v" label={`v. ${checklistItems.item3v}`} level={1} subItem={true} />
-
-                            <ChecklistItem id="item4" label={checklistItems.item4} />
-                            <div style={{ marginLeft: `1.5rem` }} className="space-y-4">
-                                <ChecklistItem id="item4a" label={`a. ${checklistItems.item4a}`} />
-                                <ChecklistItem id="item4ai" label={`i. ${checklistItems.item4ai}`} level={1} subItem={true} />
-                                <ChecklistItem id="item4aii" label={`ii. ${checklistItems.item4aii}`} level={1} subItem={true} />
-
-                                <ChecklistItem id="item4b" label={`b. ${checklistItems.item4b}`} />
-                                <ChecklistItem id="item4bi" label={`i. ${checklistItems.item4bi}`} level={1} subItem={true} />
-                                <ChecklistItem id="item4bii" label={`ii. ${checklistItems.item4bii}`} level={1} subItem={true} />
-                                
-                                <ChecklistItem id="item4c" label={`c. ${checklistItems.item4c}`} />
-                                <ChecklistItem id="item4ci" label={`i. ${checklistItems.item4ci}`} level={1} subItem={true} />
-                                <ChecklistItem id="item4cii" label={`ii. ${checklistItems.item4cii}`} level={1} subItem={true} />
-
-                                <ChecklistItem id="item4d" label={`d. ${checklistItems.item4d}`} />
-                                <ChecklistItem id="item4di" label={`i. ${checklistItems.item4di}`} level={1} subItem={true} />
-                                <ChecklistItem id="item4dii" label={`ii. ${checklistItems.item4dii}`} level={1} subItem={true} />
-                                
-                                <ChecklistItem id="item4e" label={`e. ${checklistItems.item4e}`} />
-                                <ChecklistItem id="item4ei" label={`i. ${checklistItems.item4ei}`} level={1} subItem={true} />
-
-                                <ChecklistItem id="item4f" label={`f. ${checklistItems.item4f}`} />
-                                <ChecklistItem id="item4g" label={`g. ${checklistItems.item4g}`} />
-                                <ChecklistItem id="item4gi" label={`i. ${checklistItems.item4gi}`} level={1} subItem={true} />
-
-                                <ChecklistItem id="item4h" label={`h. ${checklistItems.item4h}`} />
-                                <ChecklistItem id="item4i" label={`i. ${checklistItems.item4i}`} />
                             </div>
-                            <ChecklistItem id="item5" label={checklistItems.item5} />
-                        </div>
-                    </main>
-                    </CardContent>
-                </Card>
+                        </main>
+                    </div>
+
+                    {/* PAGE 2: CHECKLIST */}
+                    <div className="pdf-page bg-white text-black p-8 shadow-lg mx-auto" style={{ width: '8.5in', height: '11in' }}>
+                        <main className="h-full flex flex-col">
+                            <h2 className="text-lg font-bold text-center border-b border-black pb-2 mb-4">Owners Training Check List</h2>
+                            
+                            <div className="flex-1 space-y-1">
+                                <ChecklistItem id="item1" label={checklistItems.item1} />
+                                <ChecklistItem id="item2" label={checklistItems.item2} />
+                                
+                                <ChecklistItem id="item3" label={checklistItems.item3} />
+                                <ChecklistItem id="item3i" label={`i. ${checklistItems.item3i}`} level={1} subItem={true} />
+                                <ChecklistItem id="item3ii" label={`ii. ${checklistItems.item3ii}`} level={1} subItem={true} />
+                                <ChecklistItem id="item3iii" label={`iii. ${checklistItems.item3iii}`} level={1} subItem={true} />
+                                <ChecklistItem id="item3iv" label={`iv. ${checklistItems.item3iv}`} level={1} subItem={true} />
+                                <ChecklistItem id="item3v" label={`v. ${checklistItems.item3v}`} level={1} subItem={true} />
+
+                                <ChecklistItem id="item4" label={checklistItems.item4} />
+                                <div style={{ marginLeft: `1.25rem` }} className="space-y-1">
+                                    <ChecklistItem id="item4a" label={`a. ${checklistItems.item4a}`} />
+                                    <ChecklistItem id="item4ai" label={`i. ${checklistItems.item4ai}`} level={1} subItem={true} />
+                                    <ChecklistItem id="item4aii" label={`ii. ${checklistItems.item4aii}`} level={1} subItem={true} />
+
+                                    <ChecklistItem id="item4b" label={`b. ${checklistItems.item4b}`} />
+                                    <ChecklistItem id="item4bi" label={`i. ${checklistItems.item4bi}`} level={1} subItem={true} />
+                                    <ChecklistItem id="item4bii" label={`ii. ${checklistItems.item4bii}`} level={1} subItem={true} />
+                                    
+                                    <ChecklistItem id="item4c" label={`c. ${checklistItems.item4c}`} />
+                                    <ChecklistItem id="item4ci" label={`i. ${checklistItems.item4ci}`} level={1} subItem={true} />
+                                    <ChecklistItem id="item4cii" label={`ii. ${checklistItems.item4cii}`} level={1} subItem={true} />
+
+                                    <ChecklistItem id="item4d" label={`d. ${checklistItems.item4d}`} />
+                                    <ChecklistItem id="item4di" label={`i. ${checklistItems.item4di}`} level={1} subItem={true} />
+                                    <ChecklistItem id="item4dii" label={`ii. ${checklistItems.item4dii}`} level={1} subItem={true} />
+                                    
+                                    <ChecklistItem id="item4e" label={`e. ${checklistItems.item4e}`} />
+                                    <ChecklistItem id="item4ei" label={`i. ${checklistItems.item4ei}`} level={1} subItem={true} />
+
+                                    <ChecklistItem id="item4f" label={`f. ${checklistItems.item4f}`} />
+                                    <ChecklistItem id="item4g" label={`g. ${checklistItems.item4g}`} />
+                                    <ChecklistItem id="item4gi" label={`i. ${checklistItems.item4gi}`} level={1} subItem={true} />
+
+                                    <ChecklistItem id="item4h" label={`h. ${checklistItems.item4h}`} />
+                                    <ChecklistItem id="item4i" label={`i. ${checklistItems.item4i}`} />
+                                </div>
+                                <ChecklistItem id="item5" label={checklistItems.item5} />
+                            </div>
+                            
+                            <footer className="mt-auto pt-4 border-t border-gray-200 text-[9px] text-gray-400 flex justify-between">
+                                <span>Training Record - WO# {workOrder?.id || record.workOrderId}</span>
+                                <span>Page 2 of 2</span>
+                            </footer>
+                        </main>
+                    </div>
+                </div>
             )}
         </div>
       </div>
