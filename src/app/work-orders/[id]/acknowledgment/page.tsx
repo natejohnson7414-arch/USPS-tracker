@@ -82,15 +82,38 @@ export default function WorkOrderAcknowledgmentPage() {
         setIsDownloading(true);
     
         try {
-            const canvas = await html2canvas(content, { scale: 2, useCORS: true, allowTaint: true });
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF({
-                orientation: 'portrait',
-                unit: 'pt',
-                format: [canvas.width, canvas.height]
-            });
-            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-            pdf.save(`Acknowledgment-${workOrder.id}-${format(acknowledgmentDate, 'yyyy-MM-dd')}.pdf`);
+            const pages = content.querySelectorAll('.pdf-page') as NodeListOf<HTMLElement>;
+            let pdf: jsPDF | null = null;
+
+            for (let i = 0; i < pages.length; i++) {
+                const page = pages[i];
+                const canvas = await html2canvas(page, { 
+                    scale: 2, 
+                    useCORS: true, 
+                    allowTaint: true,
+                    logging: false
+                });
+                
+                const imgData = canvas.toDataURL('image/png');
+                const pdfWidth = canvas.width;
+                const pdfHeight = canvas.height;
+
+                if (i === 0) {
+                    pdf = new jsPDF({
+                        orientation: pdfWidth > pdfHeight ? 'l' : 'p',
+                        unit: 'pt',
+                        format: [pdfWidth, pdfHeight]
+                    });
+                } else {
+                    pdf!.addPage([pdfWidth, pdfHeight], pdfWidth > pdfHeight ? 'l' : 'p');
+                }
+                
+                pdf!.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            }
+
+            if (pdf) {
+                pdf.save(`Acknowledgment-${workOrder.id}-${format(acknowledgmentDate, 'yyyy-MM-dd')}.pdf`);
+            }
     
         } catch (e) {
             console.error("Error generating PDF:", e);
@@ -132,6 +155,11 @@ export default function WorkOrderAcknowledgmentPage() {
         notFound();
     }
 
+    const photosPerPage = 6;
+    const photoChunks = Array.from({ length: Math.ceil(filteredPhotos.length / photosPerPage) }, (_, i) =>
+        filteredPhotos.slice(i * photosPerPage, i * photosPerPage + photosPerPage)
+    );
+
     return (
         <div className="bg-gray-100 min-h-screen py-8">
             <div id="action-buttons" className="fixed top-4 left-4 z-50 flex flex-col items-end gap-2 print:hidden">
@@ -151,74 +179,82 @@ export default function WorkOrderAcknowledgmentPage() {
                 </Button>
             </div>
 
-            <div className="bg-white text-black font-sans mx-auto p-8" style={{ width: '8.5in', minHeight: '11in' }} ref={printRef}>
-                <header className="text-center mb-8">
-                    <h1 className="text-2xl font-bold">Daily Work Acknowledgment</h1>
-                    <p className="text-lg">{format(acknowledgmentDate, 'PPPP')}</p>
-                </header>
+            <div className="mx-auto" style={{ width: '8.5in' }} ref={printRef}>
+                <div className="pdf-page bg-white text-black font-sans p-8 mb-8" style={{ minHeight: '11in' }}>
+                    <header className="text-center mb-8">
+                        <h1 className="text-2xl font-bold">Daily Work Acknowledgment</h1>
+                        <p className="text-lg">{format(acknowledgmentDate, 'PPPP')}</p>
+                    </header>
 
-                <section className="mb-8">
-                    <h2 className="text-xl font-semibold border-b pb-2 mb-4">Work Order Details</h2>
-                    <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-                        <div className="font-bold">Job #:</div><div>{workOrder.id}</div>
-                        <div className="font-bold">Job Name:</div><div>{workOrder.jobName}</div>
-                        <div className="font-bold">Job Site:</div><div>{workOrder.workSite?.name || 'N/A'}</div>
-                        <div className="font-bold">Address:</div><div>{workOrder.workSite?.address || 'N/A'}</div>
-                    </div>
-                </section>
+                    <section className="mb-8">
+                        <h2 className="text-xl font-semibold border-b pb-2 mb-4">Work Order Details</h2>
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+                            <div className="font-bold">Job #:</div><div>{workOrder.id}</div>
+                            <div className="font-bold">Job Name:</div><div>{workOrder.jobName}</div>
+                            <div className="font-bold">Job Site:</div><div>{workOrder.workSite?.name || 'N/A'}</div>
+                            <div className="font-bold">Address:</div><div>{workOrder.workSite?.address || 'N/A'}</div>
+                        </div>
+                    </section>
 
-                <section className="mb-8">
-                    <h2 className="text-xl font-semibold border-b pb-2 mb-4">Signatures</h2>
-                    <div className="space-y-4">
-                        {workOrder.customerSignatureUrl ? (
-                            <div className="grid grid-cols-3 gap-4 items-center">
-                                <div className="font-medium">{workOrder.contactInfo || 'Customer Signature'}</div>
-                                <div className="bg-gray-100 p-2 rounded-md col-span-2">
-                                    <img src={proxiedUrl(workOrder.customerSignatureUrl)} alt={`Signature`} className="max-h-16 mx-auto" />
-                                </div>
-                            </div>
-                        ) : filteredAcks.length > 0 ? (
-                            filteredAcks.map((ack, index) => (
-                                <div key={index} className="grid grid-cols-3 gap-4 items-center">
-                                    <div className="font-medium">{ack.name}</div>
+                    <section className="mb-8">
+                        <h2 className="text-xl font-semibold border-b pb-2 mb-4">Signatures</h2>
+                        <div className="space-y-4">
+                            {workOrder.customerSignatureUrl ? (
+                                <div className="grid grid-cols-3 gap-4 items-center">
+                                    <div className="font-medium">{workOrder.contactInfo || 'Customer Signature'}</div>
                                     <div className="bg-gray-100 p-2 rounded-md col-span-2">
-                                        <img src={proxiedUrl(ack.signatureUrl)} alt={`${ack.name}'s signature`} className="max-h-16 mx-auto" />
+                                        <img src={proxiedUrl(workOrder.customerSignatureUrl)} alt={`Signature`} className="max-h-16 mx-auto" />
                                     </div>
                                 </div>
-                            ))
+                            ) : filteredAcks.length > 0 ? (
+                                filteredAcks.map((ack, index) => (
+                                    <div key={index} className="grid grid-cols-3 gap-4 items-center">
+                                        <div className="font-medium">{ack.name}</div>
+                                        <div className="bg-gray-100 p-2 rounded-md col-span-2">
+                                            <img src={proxiedUrl(ack.signatureUrl)} alt={`${ack.name}'s signature`} className="max-h-16 mx-auto" />
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-gray-500">No signatures available.</p>
+                            )}
+                        </div>
+                    </section>
+                    
+                    <section className="mb-8">
+                        <h2 className="text-xl font-semibold border-b pb-2 mb-4">Notes</h2>
+                         {filteredNotes.length > 0 ? (
+                            <ul className="list-disc pl-5 space-y-2">
+                                {filteredNotes.map((note) => (
+                                    <li key={note.id} className="text-sm">{note.text}</li>
+                                ))}
+                            </ul>
                         ) : (
-                            <p className="text-gray-500">No signatures available.</p>
+                            <p className="text-gray-500">No notes for this date.</p>
                         )}
-                    </div>
-                </section>
-                
-                <section className="mb-8">
-                    <h2 className="text-xl font-semibold border-b pb-2 mb-4">Notes</h2>
-                     {filteredNotes.length > 0 ? (
-                        <ul className="list-disc pl-5 space-y-2">
-                            {filteredNotes.map((note) => (
-                                <li key={note.id} className="text-sm">{note.text}</li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="text-gray-500">No notes for this date.</p>
-                    )}
-                </section>
-                
-                <section className="break-before-page">
-                    <h2 className="text-xl font-semibold border-b pb-2 mb-4">Photos from Notes</h2>
-                     {filteredPhotos.length > 0 ? (
+                    </section>
+                </div>
+
+                {photoChunks.map((chunk, pageIndex) => (
+                    <div key={pageIndex} className="pdf-page bg-white text-black font-sans p-8 mb-8" style={{ minHeight: '11in' }}>
+                        <header className="flex justify-between items-center mb-8">
+                            <h2 className="text-xl font-semibold">Photos from Notes {photoChunks.length > 1 ? `(Page ${pageIndex + 1})` : ''}</h2>
+                            <p className="text-sm text-gray-500">Job # {workOrder.id} - {format(acknowledgmentDate, 'yyyy-MM-dd')}</p>
+                        </header>
                         <div className="grid grid-cols-2 gap-4">
-                            {filteredPhotos.map((url, index) => (
-                                <div key={index} className="border p-2 rounded-md flex items-center justify-center bg-gray-50" style={{ height: '280px' }}>
-                                    <img src={proxiedUrl(url)} alt={`Daily photo ${index + 1}`} className="max-w-full max-h-full object-contain" />
+                            {chunk.map((url, index) => (
+                                <div key={index} className="border p-2 rounded-md flex flex-col items-center justify-center bg-gray-50" style={{ height: '280px' }}>
+                                    <img 
+                                        src={proxiedUrl(url)} 
+                                        alt={`Daily photo ${pageIndex * photosPerPage + index + 1}`} 
+                                        className="max-w-full max-h-[240px] object-contain" 
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-2">Photo {pageIndex * photosPerPage + index + 1}</p>
                                 </div>
                             ))}
                         </div>
-                    ) : (
-                        <p className="text-gray-500">No photos associated with notes for this date.</p>
-                    )}
-                </section>
+                    </div>
+                ))}
             </div>
         </div>
     );
