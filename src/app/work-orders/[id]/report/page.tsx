@@ -182,7 +182,15 @@ export default function WorkOrderReportPage() {
 
     const proxiedUrl = (url: string) => `/api/image-proxy?url=${encodeURIComponent(url)}`;
     
-    const signatureDate = workOrder.signatureDate ? format(new Date(workOrder.signatureDate), 'MM/dd/yyyy') : ' ';
+    // Fallback logic for signatures: check the single field first, then the latest legacy acknowledgement.
+    const latestAck = workOrder.acknowledgements && workOrder.acknowledgements.length > 0 
+        ? workOrder.acknowledgements[workOrder.acknowledgements.length - 1] 
+        : null;
+
+    const displaySignatureUrl = workOrder.customerSignatureUrl || latestAck?.signatureUrl;
+    const displayName = workOrder.customerSignatureUrl ? (workOrder.contactInfo || '') : (latestAck?.name || '');
+    const rawDate = workOrder.customerSignatureUrl ? workOrder.signatureDate : latestAck?.date;
+    const displayDateStr = rawDate ? format(new Date(rawDate), 'MM/dd/yyyy') : ' ';
     
     const beforePhotos = workOrder.beforePhotoUrls || [];
     const afterPhotos = workOrder.afterPhotoUrls || [];
@@ -221,7 +229,7 @@ export default function WorkOrderReportPage() {
                 <header className="flex justify-between items-start mb-8">
                     <div>
                         <h2 className="font-bold text-lg">Facilities Office</h2>
-                        <p className="mt-4">Date: <span className="font-medium underline decoration-dotted">{signatureDate}</span></p>
+                        <p className="mt-4">Date: <span className="font-medium underline decoration-dotted">{displayDateStr}</span></p>
                         <p className="mt-2">Facilities HUB Project Manager:</p>
                     </div>
                     <div>
@@ -272,19 +280,19 @@ export default function WorkOrderReportPage() {
                     <div className="space-y-[-2px] mt-2">
                         <div className="flex items-stretch">
                             <div className="w-1/3 flex items-center pr-4 text-sm"><p>Name:</p></div>
-                            <div className="w-2/3 border-2 border-black p-2 text-sm font-medium -ml-px -mt-px min-h-[2rem] flex items-center">{workOrder.contactInfo || ''}</div>
+                            <div className="w-2/3 border-2 border-black p-2 text-sm font-medium -ml-px -mt-px min-h-[2rem] flex items-center">{displayName}</div>
                         </div>
                         <div className="flex items-stretch">
                             <div className="w-1/3 flex items-center pr-4 text-sm"><p>Signature:</p></div>
                             <div className="w-2/3 border-2 border-black p-2 -ml-px -mt-px min-h-[3rem] flex items-center">
-                                {!!workOrder.customerSignatureUrl && (
-                                    <img src={proxiedUrl(workOrder.customerSignatureUrl)} alt="Customer Signature" style={{ objectFit: 'contain', maxHeight: '100%', maxWidth: '150px' }} />
+                                {!!displaySignatureUrl && (
+                                    <img src={proxiedUrl(displaySignatureUrl)} alt="Customer Signature" style={{ objectFit: 'contain', maxHeight: '100%', maxWidth: '150px' }} />
                                 )}
                             </div>
                         </div>
                         <div className="flex items-stretch">
                             <div className="w-1/3 flex items-center pr-4 text-sm"><p>Date:</p></div>
-                            <div className="w-2/3 border-2 border-black p-2 text-sm font-medium -ml-px -mt-px min-h-[2rem] flex items-center">{signatureDate}</div>
+                            <div className="w-2/3 border-2 border-black p-2 text-sm font-medium -ml-px -mt-px min-h-[2rem] flex items-center">{displayDateStr}</div>
                         </div>
                         <div className="flex items-stretch">
                             <div className="w-1/3 flex items-start pt-2 pr-4 text-sm"><p>Comments:</p></div>
