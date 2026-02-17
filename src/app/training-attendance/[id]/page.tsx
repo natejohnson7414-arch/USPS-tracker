@@ -3,8 +3,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -63,6 +61,12 @@ const checklistItems = {
   item4i: 'Recommend a simple daily inspection. Consisting of simply taking a minute or two to walk through a mechanical room or facility and listening to the equipment and look for anything such as water on floor or anything out of normal.',
   item5: 'Ask who does there Maintenance? Recommend we give them a price, if they agree call office we may have you stay on-site and get a list of equipment/with belts and filter counts and sizes.',
 };
+
+const ValueBox = ({ value, className, multiline }: { value?: string, className?: string, multiline?: boolean }) => (
+    <div className={`px-3 py-1.5 text-sm border rounded-md bg-white flex items-center ${multiline ? 'min-h-[4.5rem] items-start whitespace-pre-wrap' : 'min-h-8'} ${className}`}>
+        {value || ''}
+    </div>
+);
 
 export default function ViewTrainingRecordPage() {
     const db = useFirestore();
@@ -270,19 +274,19 @@ export default function ViewTrainingRecordPage() {
                             <div className="space-y-3 text-sm">
                                 <div className="grid grid-cols-[140px_1fr] items-center gap-2">
                                     <label className="font-semibold">Work Order:</label>
-                                    <Input readOnly className="h-8 text-sm" value={workOrder ? `${workOrder.id} - ${workOrder.jobName}` : (record?.workOrderId || 'N/A')} />
+                                    <ValueBox value={workOrder ? `${workOrder.id} - ${workOrder.jobName}` : (record?.workOrderId || 'N/A')} />
                                 </div>
                                 <div className="grid grid-cols-[140px_1fr] items-center gap-2">
                                     <label className="font-semibold">Training Course:</label>
-                                    <Input readOnly className="h-8 text-sm" value={record.trainingCourse} />
+                                    <ValueBox value={record.trainingCourse} />
                                 </div>
                                 <div className="grid grid-cols-[140px_1fr] items-center gap-2">
                                     <label className="font-semibold">Trainer:</label>
-                                    <Input readOnly className="h-8 text-sm" value={record.trainer} />
+                                    <ValueBox value={record.trainer} />
                                 </div>
                                 <div className="grid grid-cols-[140px_1fr] items-start gap-2">
                                     <label className="font-semibold leading-tight">Description of Course (Include Belts & Filters):</label>
-                                    <Textarea rows={3} readOnly className="text-sm resize-none" value={record.description} />
+                                    <ValueBox value={record.description} multiline />
                                 </div>
                                 
                                 <Separator className="my-2" />
@@ -290,15 +294,15 @@ export default function ViewTrainingRecordPage() {
                                 <div className="grid grid-cols-2 gap-x-8 gap-y-3">
                                     <div className="grid grid-cols-[100px_1fr] items-center gap-2">
                                         <label className="font-semibold">BAS User:</label>
-                                        <Input readOnly className="h-8 text-sm" value={record.basUserName} />
+                                        <ValueBox value={record.basUserName} />
                                     </div>
                                     <div className="grid grid-cols-[100px_1fr] items-center gap-2">
                                         <label className="font-semibold">BAS Pass:</label>
-                                        <Input readOnly className="h-8 text-sm" type="password" value={record.basPassword || ''} />
+                                        <ValueBox value={record.basPassword ? '********' : ''} />
                                     </div>
                                     <div className="grid grid-cols-[100px_1fr] items-center gap-2">
                                         <label className="font-semibold">Date:</label>
-                                        <Input readOnly className="h-8 text-sm" value={record.date ? new Date(record.date).toLocaleDateString() : ''} />
+                                        <ValueBox value={record.date ? new Date(record.date).toLocaleDateString() : ''} />
                                     </div>
                                     <div className="grid grid-cols-[100px_1fr] items-center gap-2">
                                         <label className="font-semibold leading-tight">Trainer Signature:</label>

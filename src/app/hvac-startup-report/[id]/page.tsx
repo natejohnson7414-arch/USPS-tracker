@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { notFound, useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useFirestore, deleteDocumentNonBlocking } from '@/firebase';
 import type { HvacStartupReport, WorkOrder, Technician } from '@/lib/types';
@@ -24,10 +23,16 @@ const SectionTitle = ({ children }: { children: React.ReactNode }) => (
     <h3 className="font-bold bg-gray-100 p-2 border-b border-t">{children}</h3>
 );
 
+const ValueBox = ({ value, className }: { value?: string, className?: string }) => (
+    <div className={`min-h-8 px-3 py-1.5 text-sm border rounded-md bg-white flex items-center ${className}`}>
+        {value || ''}
+    </div>
+);
+
 const LabeledInput = ({ label, value, colSpan = 'sm:col-span-1' }: { label: string, value?: string, colSpan?: string }) => (
     <div className={`grid grid-cols-[1fr_2fr] sm:grid-cols-1 gap-1 ${colSpan}`}>
         <label className="text-sm text-muted-foreground sm:text-xs">{label}</label>
-        <Input readOnly value={value || ''} className="h-8" />
+        <ValueBox value={value} />
     </div>
 );
 
@@ -38,7 +43,7 @@ const GroupedLabeledInput = ({ label, values, labels, colSpan = 'sm:col-span-1' 
             {values.map((v, i) => (
                 <div key={i}>
                     <p className="text-xs text-center text-muted-foreground">{labels[i]}</p>
-                    <Input readOnly value={v || ''} className="h-8 text-center" />
+                    <ValueBox value={v} className="justify-center" />
                 </div>
             ))}
         </div>
