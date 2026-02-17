@@ -218,7 +218,6 @@ export function WorkOrderAdminDetails({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDeletingSignature, setIsDeletingSignature] = useState(false);
   const [ackToDelete, setAckToDelete] = useState<Acknowledgement | null>(null);
-  const [acknowledgementDate, setAcknowledgementDate] = useState<Date | undefined>(new Date());
 
   const combinedActivity = [
     ...workOrder.notes.map(note => ({ ...note, type: 'note', date: note.createdAt || workOrder.createdDate })),
@@ -447,20 +446,6 @@ export function WorkOrderAdminDetails({
                   </div>
               </CardContent>
             </Card>
-
-              <Card>
-                  <CardHeader>
-                      <CardTitle>Acknowledgment Documents</CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex flex-col sm:flex-row items-center gap-4">
-                      <DatePicker date={acknowledgementDate} setDate={setAcknowledgementDate} />
-                      <Button asChild>
-                          <Link href={`/work-orders/${workOrder.id}/acknowledgment?date=${acknowledgementDate?.toISOString()}`} target="_blank">
-                              Generate Document
-                          </Link>
-                      </Button>
-                  </CardContent>
-              </Card>
 
             <Card>
               <CardHeader>
