@@ -126,7 +126,7 @@ export default function ViewTrainingRecordPage() {
                 format: [canvas.width, canvas.height]
             });
             pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-            pdf.save(`Training-Record-${record.id}.pdf`);
+            pdf.save(`Training-Record-${record.workOrderId || record.id}.pdf`);
         } catch (e) {
             console.error("Error generating PDF:", e);
             toast({ title: "Failed to generate PDF", variant: "destructive" });

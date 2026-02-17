@@ -114,7 +114,7 @@ export default function ViewHvacStartupReportPage() {
                 format: [canvas.width, canvas.height]
             });
             pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-            pdf.save(`HVAC-Report-${report.id}.pdf`);
+            pdf.save(`HVAC-Report-${report.workOrderId || report.id}.pdf`);
         } catch (e) {
             console.error("Error generating PDF:", e);
             toast({ title: "Failed to generate PDF", variant: "destructive" });
