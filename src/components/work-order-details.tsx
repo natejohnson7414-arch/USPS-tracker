@@ -189,7 +189,7 @@ interface WorkOrderDetailsProps {
   isSavingPhotos: boolean;
   onDirectionsClick: (workSite: WorkSite) => void;
   onSignatureSave: () => void;
-  onSignatureDelete: (ack: Acknowledgement) => void;
+  onSignatureDelete: (ack?: Acknowledgement) => void;
   onTempUpdate: () => void;
   tempOnArrival: string;
   setTempOnArrival: (value: string) => void;
@@ -463,11 +463,12 @@ export function WorkOrderDetails({
           <div className="space-y-8">
             <Card className="rounded-t-none">
                 <CardHeader>
-                  <CardTitle>Work Order Signature</CardTitle>
+                  <CardTitle>Work Order Sign-off</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {workOrder.customerSignatureUrl ? (
+                    {/* Display Primary Signature */}
+                    {workOrder.customerSignatureUrl && (
                       <div className="flex items-center justify-between p-3 border rounded-md">
                         <div>
                           <p className="font-medium">{workOrder.contactInfo || 'Signed'}</p>
@@ -477,13 +478,39 @@ export function WorkOrderDetails({
                           <div className="bg-muted p-1 rounded-md">
                             <Image src={workOrder.customerSignatureUrl} alt="Signature" width={120} height={40} style={{ objectFit: 'contain' }} />
                           </div>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setIsDeletingSignature(true)}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => { setAckToDelete(undefined); setIsDeletingSignature(true); }}>
                             <Trash2 className="h-4 w-4"/>
                           </Button>
                         </div>
                       </div>
-                    ) : (
-                      <div className="space-y-4">
+                    )}
+
+                    {/* Display Legacy Signatures */}
+                    {workOrder.acknowledgements && workOrder.acknowledgements.length > 0 && (
+                        <div className="space-y-3">
+                            <p className="text-sm font-semibold text-muted-foreground">Previous Signatures</p>
+                            {workOrder.acknowledgements.map((ack, index) => (
+                                <div key={index} className="flex items-center justify-between p-3 border rounded-md bg-muted/30">
+                                    <div>
+                                        <p className="font-medium">{ack.name}</p>
+                                        <p className="text-xs text-muted-foreground">{ack.date ? format(new Date(ack.date), 'PP p') : ''}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="bg-white p-1 rounded-md border">
+                                            <Image src={ack.signatureUrl} alt={`Signature ${index}`} width={100} height={35} style={{ objectFit: 'contain' }} />
+                                        </div>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => { setAckToDelete(ack); setIsDeletingSignature(true); }}>
+                                            <Trash2 className="h-4 w-4"/>
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Add Button if no primary signature */}
+                    {!workOrder.customerSignatureUrl && (
+                      <div className="space-y-4 pt-2">
                         <div className="space-y-2">
                           <Label htmlFor="customer-name">Signer's Name</Label>
                           <Input
@@ -496,7 +523,7 @@ export function WorkOrderDetails({
                         </div>
                         {workOrder.status !== 'Completed' && (
                           <Button type="button" onClick={onSignatureSave} className="w-full">
-                            Add Signature
+                            <PlusCircle className="mr-2 h-4 w-4" /> Add Signature
                           </Button>
                         )}
                       </div>
@@ -798,11 +825,15 @@ export function WorkOrderDetails({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Signature?</AlertDialogTitle>
-            <AlertDialogDescription>This will permanently remove the signature from this work order.</AlertDialogDescription>
+            <AlertDialogDescription>
+                {ackToDelete 
+                    ? `This will permanently remove the signature from "${ackToDelete.name}".`
+                    : "This will permanently remove the signature from this work order."}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { onSignatureDelete(); setIsDeletingSignature(false); }}>Delete</AlertDialogAction>
+            <AlertDialogAction onClick={() => { onSignatureDelete(ackToDelete || undefined); setIsDeletingSignature(false); }}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

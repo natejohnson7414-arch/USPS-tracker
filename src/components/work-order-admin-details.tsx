@@ -93,7 +93,7 @@ const ActivityItem = ({ activity, onUpdateStatus, technicians, onDeleteClick }: 
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                      {assignedTechnician && (
                         <div className="flex items-center gap-2">
-                             <Avatar className="h-66 w-6">
+                             <Avatar className="h-6 w-6">
                                 <AvatarImage src={assignedTechnician.avatarUrl} alt={assignedTechnician.name} />
                                 <AvatarFallback>{assignedTechnician.name.charAt(0)}</AvatarFallback>
                             </Avatar>
@@ -162,7 +162,7 @@ interface WorkOrderAdminDetailsProps {
   onFilesUploaded: (files: File[]) => void;
   onFileDeleted: (file: FileAttachment) => void;
   isUploadingFiles: boolean;
-  onSignatureDelete: (ack: Acknowledgement) => void;
+  onSignatureDelete: (ack?: Acknowledgement) => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
 }
@@ -217,6 +217,7 @@ export function WorkOrderAdminDetails({
   const [activityToDelete, setActivityToDelete] = useState<Activity | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDeletingSignature, setIsDeletingSignature] = useState(false);
+  const [ackToDelete, setAckToDelete] = useState<Acknowledgement | null>(null);
   const [acknowledgementDate, setAcknowledgementDate] = useState<Date | undefined>(new Date());
 
   const combinedActivity = [
@@ -394,11 +395,13 @@ export function WorkOrderAdminDetails({
                     </div>
               </CardContent>
             </Card>
+            
             <Card>
-              <CardHeader><CardTitle>Work Order Signature</CardTitle></CardHeader>
+              <CardHeader><CardTitle>Work Order Sign-off</CardTitle></CardHeader>
               <CardContent>
                   <div className="space-y-4">
-                    {workOrder.customerSignatureUrl ? (
+                    {/* Primary Signature */}
+                    {workOrder.customerSignatureUrl && (
                         <div className="flex items-center justify-between p-3 border rounded-md">
                             <div>
                                 <p className="font-medium">{workOrder.contactInfo || 'Signed'}</p>
@@ -408,13 +411,38 @@ export function WorkOrderAdminDetails({
                               <div className="bg-muted p-1 rounded-md">
                                 <Image src={workOrder.customerSignatureUrl} alt="Signature" width={120} height={40} style={{ objectFit: 'contain' }} />
                               </div>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setIsDeletingSignature(true)}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => { setAckToDelete(undefined); setIsDeletingSignature(true); }}>
                                 <Trash2 className="h-4 w-4"/>
                               </Button>
                             </div>
                         </div>
-                    ) : (
-                        <p className="text-sm text-center text-muted-foreground py-4">No signature captured.</p>
+                    )}
+
+                    {/* Legacy Signatures */}
+                    {workOrder.acknowledgements && workOrder.acknowledgements.length > 0 && (
+                        <div className="space-y-3">
+                            <p className="text-sm font-semibold text-muted-foreground">Previous Signatures</p>
+                            {workOrder.acknowledgements.map((ack, index) => (
+                                <div key={index} className="flex items-center justify-between p-3 border rounded-md bg-muted/30">
+                                    <div>
+                                        <p className="font-medium">{ack.name}</p>
+                                        <p className="text-xs text-muted-foreground">{ack.date ? format(new Date(ack.date), 'PP p') : ''}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="bg-white p-1 rounded-md border">
+                                            <Image src={ack.signatureUrl} alt={`Signature ${index}`} width={100} height={35} style={{ objectFit: 'contain' }} />
+                                        </div>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => { setAckToDelete(ack); setIsDeletingSignature(true); }}>
+                                            <Trash2 className="h-4 w-4"/>
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {!workOrder.customerSignatureUrl && (!workOrder.acknowledgements || workOrder.acknowledgements.length === 0) && (
+                        <p className="text-sm text-center text-muted-foreground py-4">No signatures captured.</p>
                     )}
                   </div>
               </CardContent>
@@ -604,11 +632,15 @@ export function WorkOrderAdminDetails({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Signature?</AlertDialogTitle>
-            <AlertDialogDescription>This will permanently remove the signature from this work order.</AlertDialogDescription>
+            <AlertDialogDescription>
+                {ackToDelete 
+                    ? `This will permanently remove the signature from "${ackToDelete.name}".`
+                    : "This will permanently remove the signature from this work order."}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { onSignatureDelete(); setIsDeletingSignature(false); }}>Delete</AlertDialogAction>
+            <AlertDialogAction onClick={() => { onSignatureDelete(ackToDelete || undefined); setIsDeletingSignature(false); }}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

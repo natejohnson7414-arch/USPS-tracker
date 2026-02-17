@@ -365,24 +365,40 @@ export default function WorkOrderDetailPage() {
       }
   };
 
-  const handleSignatureDelete = async () => {
+  const handleSignatureDelete = async (ack?: Acknowledgement) => {
     if (!db || !workOrder) return;
 
-    const oldUrl = workOrder.customerSignatureUrl;
-    
-    setWorkOrder(prev => prev ? ({ ...prev, customerSignatureUrl: undefined, signatureDate: undefined }) : null); // Optimistic update
-
-    try {
-        await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { 
-            customerSignatureUrl: null, 
-            signatureDate: null 
-        });
-        if (oldUrl) await deleteImage(oldUrl);
-        toast({ title: "Signature Deleted" });
-    } catch(error) {
-        console.error(`Error deleting signature:`, error);
-        toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete signature." });
-        fetchData(); // Revert on error
+    if (!ack) {
+        // Handle single field deletion
+        const oldUrl = workOrder.customerSignatureUrl;
+        setWorkOrder(prev => prev ? ({ ...prev, customerSignatureUrl: undefined, signatureDate: undefined }) : null);
+        try {
+            await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { 
+                customerSignatureUrl: null, 
+                signatureDate: null 
+            });
+            if (oldUrl) await deleteImage(oldUrl);
+            toast({ title: "Signature Deleted" });
+        } catch(error) {
+            console.error(`Error deleting signature:`, error);
+            toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete signature." });
+            fetchData(); // Revert
+        }
+    } else {
+        // Handle array element deletion (legacy signatures)
+        const updatedAcks = (workOrder.acknowledgements || []).filter(a => a.signatureUrl !== ack.signatureUrl);
+        setWorkOrder(prev => prev ? ({ ...prev, acknowledgements: updatedAcks }) : null);
+        try {
+            await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { 
+                acknowledgements: updatedAcks 
+            });
+            await deleteImage(ack.signatureUrl);
+            toast({ title: "Legacy Signature Deleted" });
+        } catch(error) {
+            console.error(`Error deleting legacy signature:`, error);
+            toast({ variant: "destructive", title: "Delete Failed" });
+            fetchData(); // Revert
+        }
     }
   };
   
