@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -211,8 +210,8 @@ export default function WorkOrderAcknowledgmentPage() {
                      {filteredPhotos.length > 0 ? (
                         <div className="grid grid-cols-2 gap-4">
                             {filteredPhotos.map((url, index) => (
-                                <div key={index} className="border p-2 rounded-md">
-                                    <img src={proxiedUrl(url)} alt={`Daily photo ${index + 1}`} className="w-full h-auto" />
+                                <div key={index} className="border p-2 rounded-md flex items-center justify-center bg-gray-50" style={{ height: '280px' }}>
+                                    <img src={proxiedUrl(url)} alt={`Daily photo ${index + 1}`} className="max-w-full max-h-full object-contain" />
                                 </div>
                             ))}
                         </div>
