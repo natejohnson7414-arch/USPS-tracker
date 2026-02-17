@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect, FormEvent } from 'react';
@@ -13,7 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText, Download } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser } from '@/firebase';
@@ -463,8 +462,15 @@ export function WorkOrderAdminDetails({
                           <p className="font-medium">{record.trainingCourse}</p>
                           <p className="text-sm text-muted-foreground">{record.date ? format(new Date(record.date), 'MMM d, yyyy') : 'No date'}</p>
                         </div>
-                        <Button asChild variant="outline" size="sm"><Link href={`/training-attendance/${record.id}`}>View</Link></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setTrainingRecordToDelete(record.id)}><Trash2 className="h-4 w-4" /></Button>
+                        <div className="flex items-center gap-2">
+                            <Button asChild variant="outline" size="sm" className="hidden sm:flex">
+                                <Link href={`/training-attendance/${record.id}?action=download`}>
+                                    <Download className="h-4 w-4" />
+                                </Link>
+                            </Button>
+                            <Button asChild variant="outline" size="sm"><Link href={`/training-attendance/${record.id}`}>View</Link></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setTrainingRecordToDelete(record.id)}><Trash2 className="h-4 w-4" /></Button>
+                        </div>
                       </li>))}
                   </ul>
                 ) : <p className="text-sm text-muted-foreground text-center py-4">No training records for this work order.</p>}
@@ -486,8 +492,15 @@ export function WorkOrderAdminDetails({
                           <p className="font-medium">{report.equipmentType || `Report from ${format(new Date(report.date), 'PPP')}`}</p>
                           <p className="text-sm text-muted-foreground">{report.technician || 'N/A'}</p>
                         </div>
-                        <Button asChild variant="outline" size="sm"><Link href={`/hvac-startup-report/${report.id}`}>View</Link></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setHvacReportToDelete(report.id)}><Trash2 className="h-4 w-4" /></Button>
+                        <div className="flex items-center gap-2">
+                            <Button asChild variant="outline" size="sm" className="hidden sm:flex">
+                                <Link href={`/hvac-startup-report/${report.id}?action=download`}>
+                                    <Download className="h-4 w-4" />
+                                </Link>
+                            </Button>
+                            <Button asChild variant="outline" size="sm"><Link href={`/hvac-startup-report/${report.id}`}>View</Link></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setHvacReportToDelete(report.id)}><Trash2 className="h-4 w-4" /></Button>
+                        </div>
                       </li>))}
                   </ul>
                 ) : <p className="text-sm text-muted-foreground text-center py-4">No HVAC start-up reports for this work order.</p>}

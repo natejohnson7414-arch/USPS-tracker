@@ -1,8 +1,6 @@
-
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,8 +10,8 @@ import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useFirestore, useUser, deleteDocumentNonBlocking } from '@/firebase';
 import type { TrainingRecord, WorkOrder } from '@/lib/types';
-import { Loader2, Trash2, Pencil, ArrowLeft } from 'lucide-react';
-import { notFound, useParams, useRouter } from 'next/navigation';
+import { Loader2, Trash2, Pencil, ArrowLeft, Printer, Download } from 'lucide-react';
+import { notFound, useParams, useRouter, useSearchParams } from 'next/navigation';
 import { getTrainingRecordById, getWorkOrderById } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TrainingRecordForm } from '@/components/training-record-form';
@@ -29,7 +27,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { doc } from 'firebase/firestore';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
+const proxiedUrl = (url: string) => `/api/image-proxy?url=${encodeURIComponent(url)}`;
 
 const checklistItems = {
   item1: 'Have trainees sign the owners training sign-in sheet.',
@@ -68,6 +69,7 @@ export default function ViewTrainingRecordPage() {
     const { user } = useUser();
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { toast } = useToast();
     const id = params.id as string;
 
@@ -76,6 +78,8 @@ export default function ViewTrainingRecordPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
+    const printRef = useRef<HTMLDivElement>(null);
 
     const fetchRecord = async () => {
         if (!db || !id || !user) return;
@@ -103,6 +107,41 @@ export default function ViewTrainingRecordPage() {
         fetchRecord();
     }, [db, id, user])
     
+    const handleDownload = useCallback(async () => {
+        const content = printRef.current;
+        if (!content || !record) return;
+
+        setIsDownloading(true);
+        try {
+            const canvas = await html2canvas(content, { 
+                scale: 2, 
+                useCORS: true, 
+                allowTaint: true,
+                logging: false
+            });
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'pt',
+                format: [canvas.width, canvas.height]
+            });
+            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+            pdf.save(`Training-Record-${record.id}.pdf`);
+        } catch (e) {
+            console.error("Error generating PDF:", e);
+            toast({ title: "Failed to generate PDF", variant: "destructive" });
+        } finally {
+            setIsDownloading(false);
+        }
+    }, [record, toast]);
+
+    useEffect(() => {
+        if (!isLoading && record && searchParams.get('action') === 'download') {
+            const timer = setTimeout(() => handleDownload(), 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [isLoading, record, searchParams, handleDownload]);
+
     const handleFormSaved = () => {
         fetchRecord();
         setIsEditing(false);
@@ -159,15 +198,22 @@ export default function ViewTrainingRecordPage() {
     <MainLayout>
       <div className="bg-white text-black min-h-screen">
         <div className="container mx-auto p-4 sm:p-8" style={{ maxWidth: '8.5in' }}>
-            <div className="mb-6 flex justify-between items-center gap-4">
+            <div className="mb-6 flex justify-between items-center gap-4 print:hidden">
                 <Button variant="outline" asChild>
-                    <a href={record.workOrderId ? `/work-orders/${record.workOrderId}` : '/training-attendance'} className="flex items-center gap-2">
+                    <a href={record.workOrderId ? `/work-orders/${record.workOrderId}` : '/'} className="flex items-center gap-2">
                         <ArrowLeft className="h-4 w-4" />
                         Back
                     </a>
                 </Button>
                 {!isEditing && (
                     <div className="flex items-center gap-2">
+                        <Button variant="outline" onClick={() => window.print()} className="hidden sm:flex">
+                            <Printer className="mr-2 h-4 w-4" /> Print
+                        </Button>
+                        <Button variant="outline" onClick={handleDownload} disabled={isDownloading}>
+                            {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                            Download PDF
+                        </Button>
                          <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
                             <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </Button>
@@ -186,7 +232,7 @@ export default function ViewTrainingRecordPage() {
                     onCancel={() => setIsEditing(false)}
                  />
             ) : (
-                <Card className="shadow-lg">
+                <Card className="shadow-lg border-none" ref={printRef}>
                     <CardContent className="p-6 sm:p-8">
                     <header className="flex flex-col sm:flex-row justify-end items-start mb-8 gap-4">
                         <div className="text-right text-xs sm:text-sm">
@@ -238,7 +284,7 @@ export default function ViewTrainingRecordPage() {
                             <label className="font-semibold">Trainer Signature:</label>
                             <div className="border rounded-md p-2 h-20 flex items-center justify-center">
                             {record.trainerSignatureUrl ? (
-                                <Image src={record.trainerSignatureUrl} alt="Trainer Signature" width={150} height={50} style={{ objectFit: 'contain' }} />
+                                <img src={proxiedUrl(record.trainerSignatureUrl)} alt="Trainer Signature" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
                             ) : (
                                 <span className="text-muted-foreground text-sm">Not Signed</span>
                             )}
@@ -264,7 +310,7 @@ export default function ViewTrainingRecordPage() {
                                 className="p-2 h-20 flex items-center justify-center"
                                 >
                                 {attendee.signatureUrl ? (
-                                        <Image src={attendee.signatureUrl} alt={`Attendee ${attendee.name} Signature`} width={150} height={50} style={{ objectFit: 'contain' }} />
+                                        <img src={proxiedUrl(attendee.signatureUrl)} alt={`Attendee ${attendee.name} Signature`} style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
                                     ) : (
                                         <span className="text-muted-foreground text-sm">Not Signed</span>
                                     )}

@@ -1,21 +1,23 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { notFound, useParams, useRouter } from 'next/navigation';
+import { notFound, useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useFirestore, deleteDocumentNonBlocking } from '@/firebase';
 import type { HvacStartupReport, WorkOrder, Technician } from '@/lib/types';
 import { getHvacStartupReportById, getWorkOrderById, getTechnicianById, getTechnicians } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Pencil, Trash2, Printer, Download, Loader2 } from 'lucide-react';
 import { HvacStartupReportForm } from '@/components/hvac-startup-report-form';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { doc } from 'firebase/firestore';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 
 const SectionTitle = ({ children }: { children: React.ReactNode }) => (
@@ -48,6 +50,7 @@ export default function ViewHvacStartupReportPage() {
     const db = useFirestore();
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { toast } = useToast();
     const id = params.id as string;
 
@@ -58,6 +61,8 @@ export default function ViewHvacStartupReportPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
+    const printRef = useRef<HTMLDivElement>(null);
 
     const fetchReport = async () => {
         if (!db || !id) return;
@@ -89,6 +94,41 @@ export default function ViewHvacStartupReportPage() {
     useEffect(() => {
         fetchReport();
     }, [db, id])
+
+    const handleDownload = useCallback(async () => {
+        const content = printRef.current;
+        if (!content || !report) return;
+
+        setIsDownloading(true);
+        try {
+            const canvas = await html2canvas(content, { 
+                scale: 2, 
+                useCORS: true, 
+                allowTaint: true,
+                logging: false
+            });
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'pt',
+                format: [canvas.width, canvas.height]
+            });
+            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+            pdf.save(`HVAC-Report-${report.id}.pdf`);
+        } catch (e) {
+            console.error("Error generating PDF:", e);
+            toast({ title: "Failed to generate PDF", variant: "destructive" });
+        } finally {
+            setIsDownloading(false);
+        }
+    }, [report, toast]);
+
+    useEffect(() => {
+        if (!isLoading && report && searchParams.get('action') === 'download') {
+            const timer = setTimeout(() => handleDownload(), 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [isLoading, report, searchParams, handleDownload]);
 
     const handleFormSaved = () => {
         fetchReport();
@@ -138,7 +178,7 @@ export default function ViewHvacStartupReportPage() {
         <MainLayout>
             <div className="bg-white text-black min-h-screen">
                 <div className="container mx-auto p-4 sm:p-8" style={{ maxWidth: '8.5in' }}>
-                    <div className="mb-6 flex justify-between items-center gap-4">
+                    <div className="mb-6 flex justify-between items-center gap-4 print:hidden">
                         <Button variant="outline" asChild>
                             <a href={report.workOrderId ? `/work-orders/${report.workOrderId}` : '/'} className="flex items-center gap-2">
                                 <ArrowLeft className="h-4 w-4" />
@@ -147,6 +187,13 @@ export default function ViewHvacStartupReportPage() {
                         </Button>
                         {!isEditing && (
                             <div className="flex items-center gap-2">
+                                <Button variant="outline" onClick={() => window.print()} className="hidden sm:flex">
+                                    <Printer className="mr-2 h-4 w-4" /> Print
+                                </Button>
+                                <Button variant="outline" onClick={handleDownload} disabled={isDownloading}>
+                                    {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                                    Download PDF
+                                </Button>
                                 <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
                                     <Trash2 className="mr-2 h-4 w-4" /> Delete
                                 </Button>
@@ -166,7 +213,7 @@ export default function ViewHvacStartupReportPage() {
                         onCancel={() => setIsEditing(false)}
                     />
                 ) : (
-                    <Card className="shadow-lg">
+                    <Card className="shadow-lg border-none" ref={printRef}>
                         <CardContent className="p-6 sm:p-8">
                         <header className="flex justify-center items-center mb-6">
                             <h1 className="text-xl sm:text-2xl font-bold text-center">
