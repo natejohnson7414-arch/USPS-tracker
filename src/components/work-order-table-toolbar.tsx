@@ -22,7 +22,7 @@ interface WorkOrderTableToolbarProps {
   currentUserRole: Role | null;
 }
 
-const statuses = ['All', 'Open', 'In Progress', 'On Hold', 'Completed'];
+const statuses = ['All', 'Open', 'In Progress', 'On Hold', 'Review', 'Completed'];
 
 export function WorkOrderTableToolbar({
   onSearchChange,
