@@ -98,6 +98,8 @@ export type WorkOrder = {
   tempOnArrival?: string;
   tempOnLeaving?: string;
   acknowledgements?: Acknowledgement[];
+  customerSignatureUrl?: string;
+  signatureDate?: string;
   beforePhotoUrls?: string[];
   afterPhotoUrls?: string[];
   receiptsAndPackingSlips?: string[];
@@ -288,4 +290,3 @@ export type Quote = {
     total: number;
     adminNotes?: string;
 };
-    

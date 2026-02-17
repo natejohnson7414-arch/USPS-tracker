@@ -170,20 +170,27 @@ export default function WorkOrderAcknowledgmentPage() {
 
                 <section className="mb-8">
                     <h2 className="text-xl font-semibold border-b pb-2 mb-4">Signatures</h2>
-                    {filteredAcks.length > 0 ? (
-                        <div className="space-y-4">
-                            {filteredAcks.map((ack, index) => (
+                    <div className="space-y-4">
+                        {workOrder.customerSignatureUrl ? (
+                            <div className="grid grid-cols-3 gap-4 items-center">
+                                <div className="font-medium">{workOrder.contactInfo || 'Customer Signature'}</div>
+                                <div className="bg-gray-100 p-2 rounded-md col-span-2">
+                                    <img src={proxiedUrl(workOrder.customerSignatureUrl)} alt={`Signature`} className="max-h-16 mx-auto" />
+                                </div>
+                            </div>
+                        ) : filteredAcks.length > 0 ? (
+                            filteredAcks.map((ack, index) => (
                                 <div key={index} className="grid grid-cols-3 gap-4 items-center">
                                     <div className="font-medium">{ack.name}</div>
                                     <div className="bg-gray-100 p-2 rounded-md col-span-2">
                                         <img src={proxiedUrl(ack.signatureUrl)} alt={`${ack.name}'s signature`} className="max-h-16 mx-auto" />
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <p className="text-gray-500">No signatures for this date.</p>
-                    )}
+                            ))
+                        ) : (
+                            <p className="text-gray-500">No signatures available.</p>
+                        )}
+                    </div>
                 </section>
                 
                 <section className="mb-8">

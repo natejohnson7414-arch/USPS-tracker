@@ -263,6 +263,7 @@ export function WorkOrderDetails({
   const [isAddTimeOpen, setIsAddTimeOpen] = useState(false);
   const [activityForTimePosting, setActivityForTimePosting] = useState<Activity | null>(null);
   const [ackToDelete, setAckToDelete] = useState<Acknowledgement | null>(null);
+  const [isDeletingSignature, setIsDeletingSignature] = useState(false);
 
   const filteredActivities = isTechnician
     ? activities.filter(activity => isSameDay(new Date(activity.scheduled_date), new Date()))
@@ -343,8 +344,6 @@ export function WorkOrderDetails({
     }
   };
     
-  const confirmDeleteSignature = () => { if (ackToDelete) { onSignatureDelete(ackToDelete); setAckToDelete(null); } };
-
   const getLinkUrl = (url: string | undefined) => {
     if (!url) return '#';
     if (url.startsWith('http')) {
@@ -464,47 +463,43 @@ export function WorkOrderDetails({
           <div className="space-y-8">
             <Card className="rounded-t-none">
                 <CardHeader>
-                  <CardTitle>Signatures</CardTitle>
+                  <CardTitle>Work Order Signature</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {(workOrder.acknowledgements || []).length > 0 ? (
-                      <div className="space-y-3">
-                        {workOrder.acknowledgements?.map((ack, index) => (
-                          <div key={index} className="flex items-center justify-between p-2 border rounded-md">
-                            <div>
-                              <p className="font-medium">{ack.name}</p>
-                              <p className="text-xs text-muted-foreground">{format(new Date(ack.date), 'PP p')}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="bg-muted p-1 rounded-md">
-                                <Image src={ack.signatureUrl} alt={`${ack.name}'s signature`} width={120} height={40} style={{ objectFit: 'contain' }} />
-                              </div>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setAckToDelete(ack)}>
-                                <Trash2 className="h-4 w-4"/>
-                              </Button>
-                            </div>
+                    {workOrder.customerSignatureUrl ? (
+                      <div className="flex items-center justify-between p-3 border rounded-md">
+                        <div>
+                          <p className="font-medium">{workOrder.contactInfo || 'Signed'}</p>
+                          <p className="text-xs text-muted-foreground">{workOrder.signatureDate ? format(new Date(workOrder.signatureDate), 'PP p') : ''}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="bg-muted p-1 rounded-md">
+                            <Image src={workOrder.customerSignatureUrl} alt="Signature" width={120} height={40} style={{ objectFit: 'contain' }} />
                           </div>
-                        ))}
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setIsDeletingSignature(true)}>
+                            <Trash2 className="h-4 w-4"/>
+                          </Button>
+                        </div>
                       </div>
                     ) : (
-                      <p className="text-sm text-center text-muted-foreground py-4">No signatures have been captured.</p>
-                    )}
-                    <Separator />
-                    <div className="space-y-2">
-                      <Label htmlFor="customer-name">Signer's Name</Label>
-                      <Input
-                        id="customer-name"
-                        placeholder="Enter printed name"
-                        value={contactInfo}
-                        onChange={(e) => setContactInfo(e.target.value)}
-                        onBlur={onContactInfoUpdate}
-                      />
-                    </div>
-                    {workOrder.status !== 'Completed' && (
-                      <Button type="button" onClick={onSignatureSave} className="w-full">
-                        Add Signature
-                      </Button>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="customer-name">Signer's Name</Label>
+                          <Input
+                            id="customer-name"
+                            placeholder="Enter printed name"
+                            value={contactInfo}
+                            onChange={(e) => setContactInfo(e.target.value)}
+                            onBlur={onContactInfoUpdate}
+                          />
+                        </div>
+                        {workOrder.status !== 'Completed' && (
+                          <Button type="button" onClick={onSignatureSave} className="w-full">
+                            Add Signature
+                          </Button>
+                        )}
+                      </div>
                     )}
                   </div>
                 </CardContent>
@@ -698,9 +693,11 @@ export function WorkOrderDetails({
 
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" /> Notes &amp; Activity
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" /> Notes &amp; Activity
+                  </CardTitle>
+                </div>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-6">
@@ -797,15 +794,15 @@ export function WorkOrderDetails({
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={!!ackToDelete} onOpenChange={(open) => !open && setAckToDelete(null)}>
+      <AlertDialog open={isDeletingSignature} onOpenChange={setIsDeletingSignature}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>This will permanently delete this signature.</AlertDialogDescription>
+            <AlertDialogTitle>Delete Signature?</AlertDialogTitle>
+            <AlertDialogDescription>This will permanently remove the signature from this work order.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteSignature}>Delete</AlertDialogAction>
+            <AlertDialogAction onClick={() => { onSignatureDelete(); setIsDeletingSignature(false); }}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -854,5 +851,3 @@ export function WorkOrderDetails({
     </>
   );
 }
-
-    

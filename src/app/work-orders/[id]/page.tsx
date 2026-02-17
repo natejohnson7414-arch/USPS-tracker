@@ -128,7 +128,7 @@ export default function WorkOrderDetailPage() {
             }
             setTempOnArrival(fetchedWorkOrder.tempOnArrival || '');
             setTempOnLeaving(fetchedWorkOrder.tempOnLeaving || '');
-            setContactInfo(''); // Reset contact info for each new signature
+            setContactInfo(fetchedWorkOrder.contactInfo || '');
         } else {
             setWorkOrder(null);
             notFound();
@@ -347,36 +347,37 @@ export default function WorkOrderDetailPage() {
             signaturePath
         );
 
-        const newAcknowledgement: Acknowledgement = {
-            name: contactInfo,
-            signatureUrl: signatureUrl,
-            date: new Date().toISOString(),
-        };
+        const signatureDate = new Date().toISOString();
         
         await updateDocumentNonBlocking(workOrderDocRef, {
-            acknowledgements: arrayUnion(newAcknowledgement)
+            customerSignatureUrl: signatureUrl,
+            signatureDate: signatureDate,
+            contactInfo: contactInfo
         });
         
-        setWorkOrder(prev => prev ? ({ ...prev, acknowledgements: [...(prev.acknowledgements || []), newAcknowledgement] }) : null);
+        setWorkOrder(prev => prev ? ({ ...prev, customerSignatureUrl: signatureUrl, signatureDate: signatureDate, contactInfo: contactInfo }) : null);
 
         toast({ title: "Signature Saved", description: "The signature has been saved." });
         setIsSignatureDialogOpen(false);
-        setContactInfo(''); // Clear for next signature
       } catch (error) {
         console.error("Error saving signature:", error);
         toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save the signature.' });
       }
   };
 
-  const handleSignatureDelete = async (ackToDelete: Acknowledgement) => {
-    if (!db || !workOrder || !workOrder.acknowledgements) return;
+  const handleSignatureDelete = async () => {
+    if (!db || !workOrder) return;
 
-    const newAcks = workOrder.acknowledgements.filter(ack => ack.signatureUrl !== ackToDelete.signatureUrl);
-    setWorkOrder(prev => prev ? ({ ...prev, acknowledgements: newAcks }) : null); // Optimistic update
+    const oldUrl = workOrder.customerSignatureUrl;
+    
+    setWorkOrder(prev => prev ? ({ ...prev, customerSignatureUrl: undefined, signatureDate: undefined }) : null); // Optimistic update
 
     try {
-        await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { acknowledgements: newAcks });
-        await deleteImage(ackToDelete.signatureUrl);
+        await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { 
+            customerSignatureUrl: null, 
+            signatureDate: null 
+        });
+        if (oldUrl) await deleteImage(oldUrl);
         toast({ title: "Signature Deleted" });
     } catch(error) {
         console.error(`Error deleting signature:`, error);
