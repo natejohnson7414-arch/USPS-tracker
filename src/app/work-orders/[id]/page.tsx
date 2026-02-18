@@ -9,7 +9,7 @@ import { MainLayout } from '@/components/main-layout';
 import { WorkOrderDetails } from '@/components/work-order-details';
 import { WorkOrderAdminDetails } from '@/components/work-order-admin-details';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Ban, Pencil, Save, Printer, Download, Receipt } from 'lucide-react';
+import { ArrowLeft, Ban, Pencil, Save, Printer, Download, Receipt, CheckCircle2 } from 'lucide-react';
 import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, ActivityHistoryItem, Quote, HvacStartupReport, FileAttachment, Acknowledgement } from '@/lib/types';
 import { doc, collection, arrayUnion } from 'firebase/firestore';
@@ -69,6 +69,7 @@ export default function WorkOrderDetailPage() {
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [isAddingActivity, setIsAddingActivity] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
   
   const [tempOnArrival, setTempOnArrival] = useState('');
   const [tempOnLeaving, setTempOnLeaving] = useState('');
@@ -672,6 +673,40 @@ export default function WorkOrderDetailPage() {
     }
   };
 
+  const handleCompleteWorkOrder = async () => {
+    if (!db || !workOrder || !user) return;
+    setIsCompleting(true);
+
+    try {
+      const technician = await getTechnicianById(db, user.uid);
+      const historyItem = {
+          id: `hist-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          type: 'status_change' as const,
+          text: `Status changed to Completed`,
+          authorId: user.uid,
+          authorName: technician?.name || user.email!,
+      };
+
+      const workOrderRef = doc(db, 'work_orders', workOrder.id);
+      
+      await updateDocumentNonBlocking(workOrderRef, {
+        status: 'Completed',
+        work_history: arrayUnion(historyItem)
+      });
+      
+      toast({ title: "Work Order Completed" });
+      fetchData(); 
+    } catch (error) {
+      console.error("Error completing work order:", error);
+      if (error instanceof Error && !error.message.includes('permission-error')) {
+        toast({ title: 'Update Failed', variant: 'destructive' });
+      }
+    } finally {
+        setIsCompleting(false);
+    }
+  };
+
   if (isLoading || !workOrder) {
     return (
       <MainLayout>
@@ -696,6 +731,16 @@ export default function WorkOrderDetailPage() {
               </Link>
             </Button>
              <div className="flex items-center gap-2">
+                {workOrder.status === 'Review' && isAdmin && (
+                    <Button 
+                        onClick={handleCompleteWorkOrder} 
+                        disabled={isCompleting}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                        {isCompleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                        Complete WO
+                    </Button>
+                )}
                 {!isTechnician && (
                     <Button variant="outline" onClick={handleDownloadMedia} disabled={isDownloading}>
                         {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
