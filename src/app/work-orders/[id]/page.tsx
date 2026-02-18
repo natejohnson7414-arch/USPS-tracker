@@ -719,6 +719,7 @@ export default function WorkOrderDetailPage() {
 
   const isTechnician = currentUserRole?.name === 'Technician';
   const isAdmin = currentUserRole?.name === 'Administrator';
+  const isCompleted = workOrder.status === 'Completed';
 
   return (
     <MainLayout>
@@ -754,14 +755,16 @@ export default function WorkOrderDetailPage() {
                     </Button>
                 )}
                 
-                <Button asChild variant="outline">
-                    <Link href={`/work-orders/${workOrder.id}/start-quote`}>
-                        <Receipt className="mr-2 h-4 w-4" /> Start Quote
-                    </Link>
-                </Button>
+                {!isCompleted && (
+                    <Button asChild variant="outline">
+                        <Link href={`/work-orders/${workOrder.id}/start-quote`}>
+                            <Receipt className="mr-2 h-4 w-4" /> Start Quote
+                        </Link>
+                    </Button>
+                )}
 
 
-                {!isEditing && !isTechnician && workOrder.id !== '24-0001' && (
+                {!isCompleted && !isEditing && !isTechnician && workOrder.id !== '24-0001' && (
                   <Button variant="outline" onClick={() => setIsEditing(true)}>
                     <Pencil className="mr-2 h-4 w-4" /> Edit
                   </Button>

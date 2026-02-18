@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { format } from 'date-fns';
@@ -10,7 +9,7 @@ import { Badge } from './ui/badge';
 
 interface TimeActivityItemProps {
   timeEntry: TimeEntry & { technicianName?: string };
-  onTimeEntryDelete: (timeEntryId: string) => void;
+  onTimeEntryDelete?: (timeEntryId: string) => void;
 }
 
 export function TimeActivityItem({ timeEntry, onTimeEntryDelete }: TimeActivityItemProps) {
@@ -26,17 +25,17 @@ export function TimeActivityItem({ timeEntry, onTimeEntryDelete }: TimeActivityI
             {timeEntry.notes && <p className="text-sm mt-1 bg-muted p-2 rounded-md">{timeEntry.notes}</p>}
         </div>
         
-        <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-muted-foreground hover:text-destructive"
-            onClick={() => onTimeEntryDelete(timeEntry.id)}
-        >
-            <Trash2 className="h-4 w-4" />
-            <span className="sr-only">Delete Time Entry</span>
-        </Button>
+        {onTimeEntryDelete && (
+          <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+              onClick={() => onTimeEntryDelete(timeEntry.id)}
+          >
+              <Trash2 className="h-4 w-4" />
+              <span className="sr-only">Delete Time Entry</span>
+          </Button>
+        )}
     </div>
   );
 }
-
-    

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, FormEvent } from 'react';
@@ -77,11 +78,12 @@ const AddActivityForm = ({ technicians, onAddActivity, isLoading }: {
     );
 };
 
-const ActivityItem = ({ activity, onUpdateStatus, technicians, onDeleteClick }: { 
+const ActivityItem = ({ activity, onUpdateStatus, technicians, onDeleteClick, isCompleted }: { 
     activity: Activity, 
     onUpdateStatus: (id: string, status: Activity['status']) => void, 
     technicians: Technician[],
     onDeleteClick: () => void,
+    isCompleted: boolean
 }) => {
     const assignedTechnician = activity.technician || technicians.find(t => t.id === activity.technicianId);
     
@@ -103,7 +105,7 @@ const ActivityItem = ({ activity, onUpdateStatus, technicians, onDeleteClick }: 
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                 <Select value={activity.status} onValueChange={(status: Activity['status']) => onUpdateStatus(activity.id, status)}>
+                 <Select value={activity.status} onValueChange={(status: Activity['status']) => onUpdateStatus(activity.id, status)} disabled={isCompleted}>
                     <SelectTrigger className="w-[180px]">
                         <SelectValue />
                     </SelectTrigger>
@@ -114,10 +116,12 @@ const ActivityItem = ({ activity, onUpdateStatus, technicians, onDeleteClick }: 
                         <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
                 </Select>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onDeleteClick}>
-                    <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">Delete Activity</span>
-                </Button>
+                {!isCompleted && (
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onDeleteClick}>
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Delete Activity</span>
+                  </Button>
+                )}
             </div>
         </div>
     );
@@ -217,6 +221,8 @@ export function WorkOrderAdminDetails({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDeletingSignature, setIsDeletingSignature] = useState(false);
   const [ackToDelete, setAckToDelete] = useState<Acknowledgement | null>(null);
+
+  const isCompleted = workOrder.status === 'Completed';
 
   const combinedActivity = [
     ...workOrder.notes.map(note => ({ ...note, type: 'note', date: note.createdAt || workOrder.createdDate })),
@@ -409,9 +415,11 @@ export function WorkOrderAdminDetails({
                               <div className="bg-muted p-1 rounded-md">
                                 <Image src={workOrder.customerSignatureUrl} alt="Signature" width={120} height={40} style={{ objectFit: 'contain' }} />
                               </div>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => { setAckToDelete(undefined); setIsDeletingSignature(true); }}>
-                                <Trash2 className="h-4 w-4"/>
-                              </Button>
+                              {!isCompleted && (
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => { setAckToDelete(undefined); setIsDeletingSignature(true); }}>
+                                  <Trash2 className="h-4 w-4"/>
+                                </Button>
+                              )}
                             </div>
                         </div>
                     )}
@@ -430,9 +438,11 @@ export function WorkOrderAdminDetails({
                                         <div className="bg-white p-1 rounded-md border">
                                             <Image src={ack.signatureUrl} alt={`Signature ${index}`} width={100} height={35} style={{ objectFit: 'contain' }} />
                                         </div>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => { setAckToDelete(ack); setIsDeletingSignature(true); }}>
-                                            <Trash2 className="h-4 w-4"/>
-                                        </Button>
+                                        {!isCompleted && (
+                                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => { setAckToDelete(ack); setIsDeletingSignature(true); }}>
+                                              <Trash2 className="h-4 w-4"/>
+                                          </Button>
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -450,7 +460,9 @@ export function WorkOrderAdminDetails({
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2"><ClipboardCheck className="h-5 w-5" />Training Records</CardTitle>
-                  <Button asChild variant="outline" size="sm"><Link href={`/training-attendance?workOrderId=${workOrder.id}`}><PlusCircle className="mr-2 h-4 w-4" />Add Training</Link></Button>
+                  {!isCompleted && (
+                    <Button asChild variant="outline" size="sm"><Link href={`/training-attendance?workOrderId=${workOrder.id}`}><PlusCircle className="mr-2 h-4 w-4" />Add Training</Link></Button>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
@@ -469,7 +481,9 @@ export function WorkOrderAdminDetails({
                                 </Link>
                             </Button>
                             <Button asChild variant="outline" size="sm"><Link href={`/training-attendance/${record.id}`}>View</Link></Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setTrainingRecordToDelete(record.id)}><Trash2 className="h-4 w-4" /></Button>
+                            {!isCompleted && (
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setTrainingRecordToDelete(record.id)}><Trash2 className="h-4 w-4" /></Button>
+                            )}
                         </div>
                       </li>))}
                   </ul>
@@ -480,7 +494,9 @@ export function WorkOrderAdminDetails({
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2"><FileCog className="h-5 w-5" />HVAC Start-up Reports</CardTitle>
-                  <Button asChild variant="outline" size="sm"><Link href={`/hvac-startup-report?workOrderId=${workOrder.id}`}><PlusCircle className="mr-2 h-4 w-4" />Add Report</Link></Button>
+                  {!isCompleted && (
+                    <Button asChild variant="outline" size="sm"><Link href={`/hvac-startup-report?workOrderId=${workOrder.id}`}><PlusCircle className="mr-2 h-4 w-4" />Add Report</Link></Button>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
@@ -499,7 +515,9 @@ export function WorkOrderAdminDetails({
                                 </Link>
                             </Button>
                             <Button asChild variant="outline" size="sm"><Link href={`/hvac-startup-report/${report.id}`}>View</Link></Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setHvacReportToDelete(report.id)}><Trash2 className="h-4 w-4" /></Button>
+                            {!isCompleted && (
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setHvacReportToDelete(report.id)}><Trash2 className="h-4 w-4" /></Button>
+                            )}
                         </div>
                       </li>))}
                   </ul>
@@ -517,17 +535,29 @@ export function WorkOrderAdminDetails({
                       <div>
                           <h3 className="font-medium mb-2">Before Photos</h3>
                            <div className="relative">
-                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">{(workOrder.beforePhotoUrls || []).map((url) => (<div key={url} className="relative group aspect-square rounded-lg overflow-hidden border"><Image src={url} alt={`Before photo`} fill style={{ objectFit: 'cover' }} /><div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onBeforePhotoDelete(url)}><X className="h-4 w-4" /></Button></div></div>))}</div>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">{(workOrder.beforePhotoUrls || []).map((url) => (<div key={url} className="relative group aspect-square rounded-lg overflow-hidden border"><Image src={url} alt={`Before photo`} fill style={{ objectFit: 'cover' }} /><div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                {!isCompleted && (
+                                  <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onBeforePhotoDelete(url)}><X className="h-4 w-4" /></Button>
+                                )}
+                              </div></div>))}</div>
                           </div>
-                          <Button variant="outline" onClick={() => setPhotoSheetTarget('before')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add Before Photos</Button>
+                          {!isCompleted && (
+                            <Button variant="outline" onClick={() => setPhotoSheetTarget('before')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add Before Photos</Button>
+                          )}
                       </div>
                       <Separator />
                       <div>
                           <h3 className="font-medium mb-2">After Photos</h3>
                           <div className="relative">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">{(workOrder.afterPhotoUrls || []).map((url) => (<div key={url} className="relative group aspect-square rounded-lg overflow-hidden border"><Image src={url} alt={`After photo`} fill style={{ objectFit: 'cover' }} /><div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onAfterPhotoDelete(url)}><X className="h-4 w-4" /></Button></div></div>))}</div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">{(workOrder.afterPhotoUrls || []).map((url) => (<div key={url} className="relative group aspect-square rounded-lg overflow-hidden border"><Image src={url} alt={`After photo`} fill style={{ objectFit: 'cover' }} /><div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              {!isCompleted && (
+                                <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onAfterPhotoDelete(url)}><X className="h-4 w-4" /></Button>
+                              )}
+                            </div></div>))}</div>
                           </div>
-                          <Button variant="outline" onClick={() => setPhotoSheetTarget('after')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add After Photos</Button>
+                          {!isCompleted && (
+                            <Button variant="outline" onClick={() => setPhotoSheetTarget('after')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add After Photos</Button>
+                          )}
                       </div>
                   </CardContent>
               </Card>
@@ -540,17 +570,21 @@ export function WorkOrderAdminDetails({
                                 <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
                                     <Image src={url} alt={`Receipt or packing slip`} fill style={{ objectFit: 'cover' }} />
                                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onReceiptsAndPackingSlipsPhotoDelete(url)}>
-                                            <X className="h-4 w-4" />
-                                        </Button>
+                                        {!isCompleted && (
+                                          <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onReceiptsAndPackingSlipsPhotoDelete(url)}>
+                                              <X className="h-4 w-4" />
+                                          </Button>
+                                        )}
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </div>
-                  <Button variant="outline" onClick={() => setPhotoSheetTarget('receipts')} disabled={isSavingPhotos}>
-                      <Camera className="mr-2 h-4 w-4" /> Add Photos
-                  </Button>
+                  {!isCompleted && (
+                    <Button variant="outline" onClick={() => setPhotoSheetTarget('receipts')} disabled={isSavingPhotos}>
+                        <Camera className="mr-2 h-4 w-4" /> Add Photos
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
                <Card>
@@ -558,17 +592,21 @@ export function WorkOrderAdminDetails({
                       <CardTitle>Files</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                      <input
-                          type="file"
-                          ref={fileInputRef}
-                          onChange={handleFileSelection}
-                          className="hidden"
-                          multiple
-                      />
-                      <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploadingFiles}>
-                          <Upload className="mr-2 h-4 w-4" />
-                          Upload Files
-                      </Button>
+                      {!isCompleted && (
+                        <>
+                          <input
+                              type="file"
+                              ref={fileInputRef}
+                              onChange={handleFileSelection}
+                              className="hidden"
+                              multiple
+                          />
+                          <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploadingFiles}>
+                              <Upload className="mr-2 h-4 w-4" />
+                              Upload Files
+                          </Button>
+                        </>
+                      )}
                       <div className="relative">
                           <div className="space-y-2">
                               {(workOrder.uploadedFiles || []).length > 0 ? (
@@ -581,9 +619,11 @@ export function WorkOrderAdminDetails({
                                                   <p className="text-xs text-muted-foreground">{Math.round(file.size / 1024)} KB</p>
                                               </div>
                                           </a>
-                                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => onFileDeleted(file)}>
-                                              <Trash2 className="h-4 w-4" />
-                                          </Button>
+                                          {!isCompleted && (
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => onFileDeleted(file)}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                          )}
                                       </div>
                                   ))
                               ) : (
@@ -602,17 +642,21 @@ export function WorkOrderAdminDetails({
                 <CardHeader><CardTitle className="flex items-center gap-2"><CalendarClock className="h-5 w-5" /> Scheduled Activities</CardTitle></CardHeader>
                 <CardContent className="space-y-6">
                     <div className="space-y-4">
-                        {activities.length > 0 ? activities.map(activity => <ActivityItem key={activity.id} activity={activity} technicians={technicians} onUpdateStatus={onUpdateActivityStatus} onDeleteClick={() => setActivityToDelete(activity)} />) : <p className="text-center text-sm text-muted-foreground py-4">No scheduled activities.</p>}
+                        {activities.length > 0 ? activities.map(activity => <ActivityItem key={activity.id} activity={activity} technicians={technicians} onUpdateStatus={onUpdateActivityStatus} onDeleteClick={() => setActivityToDelete(activity)} isCompleted={isCompleted} />) : <p className="text-center text-sm text-muted-foreground py-4">No scheduled activities.</p>}
                     </div>
-                    <Separator />
-                    <AddActivityForm technicians={technicians} onAddActivity={onAddActivity} isLoading={isAddingActivity} />
+                    {!isCompleted && (
+                      <>
+                        <Separator />
+                        <AddActivityForm technicians={technicians} onAddActivity={onAddActivity} isLoading={isAddingActivity} />
+                      </>
+                    )}
                 </CardContent>
             </Card>
             <Card>
                 <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" /> Notes &amp; Time Postings</CardTitle></CardHeader>
                 <CardContent className="space-y-6">
                     <div className="space-y-6">
-                        {isClient ? combinedActivity.map(activity => activity.type === 'note' ? <NoteActivityItem key={`note-${activity.id}`} note={activity} onPhotoDelete={onNotePhotoDelete} onNoteDelete={setNoteToDelete} showPhotos={false} /> : <TimeActivityItem key={`time-${activity.id}`} timeEntry={activity} onTimeEntryDelete={setTimeEntryToDelete} />) : <p className="text-center text-sm text-muted-foreground py-4">Loading activity...</p>}
+                        {isClient ? combinedActivity.map(activity => activity.type === 'note' ? <NoteActivityItem key={`note-${activity.id}`} note={activity} onPhotoDelete={isCompleted ? undefined : onNotePhotoDelete} onNoteDelete={isCompleted ? undefined : setNoteToDelete} showPhotos={false} /> : <TimeActivityItem key={`time-${activity.id}`} timeEntry={activity} onTimeEntryDelete={isCompleted ? undefined : setTimeEntryToDelete} />) : <p className="text-center text-sm text-muted-foreground py-4">Loading activity...</p>}
                         {isClient && combinedActivity.length === 0 && <p className="text-center text-sm text-muted-foreground py-4">No notes or activity yet.</p>}
                     </div>
                 </CardContent>
