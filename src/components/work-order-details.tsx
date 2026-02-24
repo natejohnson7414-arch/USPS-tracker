@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, ReceiptText, Download } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, ReceiptText, Download, AlertCircle } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser } from '@/firebase';
@@ -377,6 +377,19 @@ export function WorkOrderDetails({
           <p className="mt-4 text-lg font-medium">Uploading Photos...</p>
         </div>
       )}
+
+      {workOrder.needsAttention && (
+          <Card className="mb-6 border-destructive bg-destructive/5">
+              <CardContent className="p-4 flex items-start gap-3">
+                  <AlertCircle className="h-6 w-6 text-destructive shrink-0" />
+                  <div>
+                      <p className="font-bold text-destructive">OFFICE ALERT: NEEDS ATTENTION</p>
+                      <p className="text-sm font-medium">{workOrder.attentionMessage}</p>
+                  </div>
+              </CardContent>
+          </Card>
+      )}
+
       <Card className="mb-8">
         <CardHeader>
           <div className="flex justify-between items-start">

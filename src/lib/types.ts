@@ -94,7 +94,6 @@ export type WorkOrder = {
   work_history: ActivityHistoryItem[];
   checkInOutURL?: string; // CHECK-IN/OUT
   checkInWorkOrderNumber?: string;
-  // New fields for report
   tempOnArrival?: string;
   tempOnLeaving?: string;
   acknowledgements?: Acknowledgement[];
@@ -105,6 +104,9 @@ export type WorkOrder = {
   receiptsAndPackingSlips?: string[];
   uploadedFiles?: FileAttachment[];
   sourcePdfUrl?: string;
+  internalNotes?: string;
+  needsAttention?: boolean;
+  attentionMessage?: string;
 };
 
 

@@ -7,8 +7,9 @@ import type { WorkOrder, Technician, WorkSite } from '@/lib/types';
 import { StatusBadge } from './status-badge';
 import { format } from 'date-fns';
 import { Button } from './ui/button';
-import { Map, Link as LinkIcon } from 'lucide-react';
+import { Map, Link as LinkIcon, AlertCircle } from 'lucide-react';
 import { Separator } from './ui/separator';
+import { Badge } from './ui/badge';
 
 interface WorkOrderCardProps {
     order: WorkOrder;
@@ -35,11 +36,19 @@ export function WorkOrderCard({ order, technician, workSite, onDirectionsClick }
     }
 
     return (
-        <Card>
+        <Card className={order.needsAttention ? "border-destructive ring-1 ring-destructive/20" : ""}>
             <CardHeader>
                 <div className="flex justify-between items-start gap-4">
                     <Link href={`/work-orders/${order.id}`} className="overflow-hidden">
-                        <CardTitle className="hover:underline truncate">{order.jobName}</CardTitle>
+                        <div className="flex items-center gap-2 mb-1">
+                            {order.needsAttention && (
+                                <Badge variant="destructive" className="h-5 px-1.5 gap-1">
+                                    <AlertCircle className="h-3 w-3" />
+                                    Attention
+                                </Badge>
+                            )}
+                            <CardTitle className="hover:underline truncate">{order.jobName}</CardTitle>
+                        </div>
                         <p className="text-sm text-muted-foreground">Job # {order.id}</p>
                     </Link>
                     <StatusBadge status={order.status} />

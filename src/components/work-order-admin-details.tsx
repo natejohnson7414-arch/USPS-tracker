@@ -13,10 +13,10 @@ import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText, Download } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText, Download, AlertCircle, Save } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
 import { getTechnicianById } from '@/lib/data';
@@ -25,6 +25,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DatePicker } from './ui/date-picker';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
+import { doc } from 'firebase/firestore';
+import { notifyTechnicianOfAttention } from '@/ai/flows/notify-technician-flow';
 
 
 const AddActivityForm = ({ technicians, onAddActivity, isLoading }: { 
@@ -209,7 +213,9 @@ export function WorkOrderAdminDetails({
   activeTab,
   setActiveTab,
 }: WorkOrderAdminDetailsProps) {
+  const db = useFirestore();
   const { user } = useUser();
+  const { toast } = useToast();
 
   const [photoSheetTarget, setPhotoSheetTarget] = useState<'before' | 'after' | 'receipts' | null>(null);
   const [isClient, setIsClient] = useState(false);
@@ -221,6 +227,12 @@ export function WorkOrderAdminDetails({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDeletingSignature, setIsDeletingSignature] = useState(false);
   const [ackToDelete, setAckToDelete] = useState<Acknowledgement | null>(null);
+
+  // New admin-only state
+  const [internalNotes, setInternalNotes] = useState(workOrder.internalNotes || '');
+  const [needsAttention, setNeedsAttention] = useState(workOrder.needsAttention || false);
+  const [attentionMessage, setAttentionMessage] = useState(workOrder.attentionMessage || '');
+  const [isSavingAdminNotes, setIsSavingAdminNotes] = useState(false);
 
   const isCompleted = workOrder.status === 'Completed';
 
@@ -283,6 +295,38 @@ export function WorkOrderAdminDetails({
     return <File className="h-5 w-5 flex-shrink-0 text-gray-500" />;
   }
 
+  const handleSaveAdminNotes = async () => {
+    if (!db || !user) return;
+    setIsSavingAdminNotes(true);
+    try {
+        const woRef = doc(db, 'work_orders', workOrder.id);
+        const updateData: Partial<WorkOrder> = {
+            internalNotes,
+            needsAttention,
+            attentionMessage: needsAttention ? attentionMessage : ''
+        };
+        await updateDocumentNonBlocking(woRef, updateData);
+        toast({ title: 'Admin Notes Saved' });
+
+        // If newly flagged for attention and a technician is assigned, trigger simulated notification
+        if (needsAttention && !workOrder.needsAttention && assignedTechnician) {
+            notifyTechnicianOfAttention({
+                workOrderId: workOrder.id,
+                jobName: workOrder.jobName,
+                technicianName: assignedTechnician.name,
+                technicianEmail: assignedTechnician.email || '',
+                message: attentionMessage
+            });
+        }
+
+    } catch (error) {
+        console.error("Error saving admin notes:", error);
+        toast({ title: "Failed to save admin notes", variant: 'destructive' });
+    } finally {
+        setIsSavingAdminNotes(false);
+    }
+  };
+
   return (
     <>
       {(isSavingPhotos || isUploadingFiles) && (
@@ -300,6 +344,16 @@ export function WorkOrderAdminDetails({
 
         <TabsContent value="overview" className="mt-0">
           <div className="space-y-8">
+            {workOrder.needsAttention && (
+                <div className="bg-destructive/10 border-2 border-destructive p-4 rounded-lg flex items-start gap-3">
+                    <AlertCircle className="h-6 w-6 text-destructive shrink-0" />
+                    <div>
+                        <p className="font-bold text-destructive">NEEDS ATTENTION</p>
+                        <p className="text-sm">{workOrder.attentionMessage}</p>
+                    </div>
+                </div>
+            )}
+
             <Card className="rounded-t-none">
               <CardHeader>
                 <div className="flex justify-between items-center">
@@ -398,6 +452,55 @@ export function WorkOrderAdminDetails({
                         <span className="font-medium">{workOrder.estimator || 'N/A'}</span>
                     </div>
               </CardContent>
+            </Card>
+
+            <Card className="border-primary/20 bg-primary/5">
+                <CardHeader>
+                    <CardTitle className="text-lg">Office Internal Notes & Priority</CardTitle>
+                    <CardDescription>Only visible to administrators.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between space-x-2 border p-3 rounded-md bg-background">
+                        <div className="space-y-0.5">
+                            <Label htmlFor="needs-attention">Flag: Needs Attention</Label>
+                            <p className="text-xs text-muted-foreground">Highlights this job for the technician.</p>
+                        </div>
+                        <Switch 
+                            id="needs-attention" 
+                            checked={needsAttention} 
+                            onCheckedChange={setNeedsAttention}
+                        />
+                    </div>
+                    
+                    {needsAttention && (
+                        <div className="space-y-2">
+                            <Label htmlFor="attention-msg">Attention Instructions</Label>
+                            <Textarea 
+                                id="attention-msg" 
+                                placeholder="Explain why this needs attention..." 
+                                value={attentionMessage}
+                                onChange={(e) => setAttentionMessage(e.target.value)}
+                                className="bg-background"
+                            />
+                        </div>
+                    )}
+
+                    <div className="space-y-2">
+                        <Label htmlFor="internal-notes">Internal Office Notes</Label>
+                        <Textarea 
+                            id="internal-notes" 
+                            placeholder="Add private notes for the office..." 
+                            value={internalNotes}
+                            onChange={(e) => setInternalNotes(e.target.value)}
+                            rows={4}
+                            className="bg-background"
+                        />
+                    </div>
+                    <Button onClick={handleSaveAdminNotes} disabled={isSavingAdminNotes} className="w-full">
+                        {isSavingAdminNotes ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        Save Internal Notes
+                    </Button>
+                </CardContent>
             </Card>
             
             <Card>

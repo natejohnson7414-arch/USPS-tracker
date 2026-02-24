@@ -1,5 +1,4 @@
 
-
 'use client';
 import Link from 'next/link';
 import {
@@ -16,10 +15,12 @@ import type { WorkOrder, Technician, WorkSite } from '@/lib/types';
 import { StatusBadge } from './status-badge';
 import { format } from 'date-fns';
 import { Button } from './ui/button';
-import { Map, Link as LinkIcon } from 'lucide-react';
+import { Map, Link as LinkIcon, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 import { MapProviderSelection } from './map-provider-selection';
 import { WorkOrderCard } from './work-order-card';
+import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 interface WorkOrderTableProps {
   workOrders: WorkOrder[];
@@ -102,11 +103,26 @@ export function WorkOrderTable({ workOrders, technicians, workSites }: WorkOrder
                   const workSite = getWorkSite(order.workSiteId);
                   const isValidDate = order.createdDate && !isNaN(new Date(order.createdDate).getTime());
                   return (
-                    <TableRow key={order.id}>
+                    <TableRow key={order.id} className={cn(order.needsAttention && "bg-destructive/5 hover:bg-destructive/10")}>
                       <TableCell>
-                        <Link href={`/work-orders/${order.id}`} className="font-medium text-accent hover:underline">
-                          {order.id}
-                        </Link>
+                        <div className="flex items-center gap-2">
+                            {order.needsAttention && (
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger>
+                                            <AlertCircle className="h-4 w-4 text-destructive" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p className="font-bold">Needs Attention</p>
+                                            <p className="text-xs">{order.attentionMessage}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            )}
+                            <Link href={`/work-orders/${order.id}`} className="font-medium text-accent hover:underline">
+                            {order.id}
+                            </Link>
+                        </div>
                         {order.customerPO && (
                           <div className="text-xs text-muted-foreground mt-1">PO: {order.customerPO}</div>
                         )}
