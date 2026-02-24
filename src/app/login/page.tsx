@@ -66,7 +66,7 @@ export default function LoginPage() {
         </div>
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Technician Login</CardTitle>
+            <CardTitle className="text-2xl">Login</CardTitle>
             <CardDescription>Enter your credentials to access your work orders.</CardDescription>
           </CardHeader>
           <CardContent>
