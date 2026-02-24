@@ -393,16 +393,10 @@ export function WorkOrderDetails({
       <Card className="mb-8">
         <CardHeader>
           <div className="flex justify-between items-start">
-            <div className="hidden md:block">
-                <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                   {workOrder.jobName}
-                </CardTitle>
-                <CardDescription>
-                    Job # {workOrder.id}
-                </CardDescription>
+            <div className="flex flex-col items-start gap-2">
+              <StatusBadge status={workOrder.status} />
             </div>
             <div className="flex flex-col items-end gap-2 ml-auto">
-              <StatusBadge status={workOrder.status} />
               {canCompleteWorkOrder && (
                 <Button onClick={onMarkForReview} disabled={isSubmittingReview} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                   {isSubmittingReview && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -414,7 +408,6 @@ export function WorkOrderDetails({
            {isTechnician && workOrder.workSite && (
               <div className="flex justify-between items-center pt-4">
                   <div>
-                      <p className="font-medium hidden md:block">{workOrder.workSite?.name || 'N/A'}</p>
                       <p className="text-sm text-muted-foreground">{workOrder.workSite.address}</p>
                   </div>
                    <div className="flex items-center gap-2">

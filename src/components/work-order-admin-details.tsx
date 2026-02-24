@@ -357,7 +357,9 @@ export function WorkOrderAdminDetails({
             <Card className="rounded-t-none">
               <CardHeader>
                 <div className="flex justify-between items-center">
-                  <CardTitle>Details</CardTitle>
+                  <div className="flex flex-col items-start gap-2">
+                    <StatusBadge status={workOrder.status} />
+                  </div>
                   <div className="flex items-center gap-2">
                     {workOrder.sourcePdfUrl && (
                         <Button asChild variant="secondary">
