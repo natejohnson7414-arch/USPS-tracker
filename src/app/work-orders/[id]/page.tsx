@@ -771,6 +771,15 @@ export default function WorkOrderDetailPage() {
                 )}
             </div>
         </div>
+
+        {/* Mobile-only prominent header */}
+        {!isEditing && (
+          <div className="md:hidden mb-6 px-1">
+              <h1 className="text-2xl font-bold tracking-tight">{workOrder.workSite?.name || workOrder.jobName}</h1>
+              <p className="text-muted-foreground font-medium">Job # {workOrder.id}</p>
+          </div>
+        )}
+
         <div className="pb-24">
             {isEditing ? (
                  <WorkOrderEditForm 
