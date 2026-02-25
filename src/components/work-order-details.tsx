@@ -13,10 +13,10 @@ import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, ReceiptText, Download, AlertCircle } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, ReceiptText, Download, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
 import { getTechnicianById } from '@/lib/data';
@@ -25,6 +25,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DatePicker } from './ui/date-picker';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { doc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 
 const AddActivityForm = ({ technicians, onAddActivity, isLoading, isTechnician, currentUserId }: { 
@@ -251,6 +253,7 @@ export function WorkOrderDetails({
 }: WorkOrderDetailsProps) {
   const db = useFirestore();
   const { user } = useUser();
+  const { toast } = useToast();
 
   const [assignedTechnician, setAssignedTechnician] = useState<Technician | undefined>();
   
@@ -265,6 +268,7 @@ export function WorkOrderDetails({
   const [activityForTimePosting, setActivityForTimePosting] = useState<Activity | null>(null);
   const [ackToDelete, setAckToDelete] = useState<Acknowledgement | null>(null);
   const [isDeletingSignature, setIsDeletingSignature] = useState(false);
+  const [isReplying, setIsReplying] = useState(false);
 
   const isCompleted = workOrder.status === 'Completed';
 
@@ -365,6 +369,24 @@ export function WorkOrderDetails({
     setActivityForTimePosting(activity);
     setIsAddTimeOpen(true);
   };
+
+  const handleReplyToAttention = async () => {
+    if (!db || !workOrder) return;
+    setIsReplying(true);
+    try {
+        const woRef = doc(db, 'work_orders', workOrder.id);
+        await updateDocumentNonBlocking(woRef, {
+            needsAttention: false,
+            technicianReplied: true
+        });
+        toast({ title: 'Attention Acknowledged', description: 'Office has been notified.' });
+    } catch (error) {
+        console.error("Error replying to attention:", error);
+        toast({ title: 'Failed to reply', variant: 'destructive' });
+    } finally {
+        setIsReplying(false);
+    }
+  };
   
   const isCurrentUserAssigned = workOrder.assignedTechnicianId === user?.uid;
   const canCompleteWorkOrder = isTechnician && isCurrentUserAssigned && (workOrder.status === 'In Progress' || workOrder.status === 'Open');
@@ -380,11 +402,35 @@ export function WorkOrderDetails({
 
       {workOrder.needsAttention && (
           <Card className="mb-6 border-destructive bg-destructive/5">
-              <CardContent className="p-4 flex items-start gap-3">
-                  <AlertCircle className="h-6 w-6 text-destructive shrink-0" />
+              <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-6 w-6 text-destructive shrink-0" />
+                    <div>
+                        <p className="font-bold text-destructive">OFFICE ALERT: NEEDS ATTENTION</p>
+                        <p className="text-sm font-medium">{workOrder.attentionMessage}</p>
+                    </div>
+                  </div>
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    className="shrink-0" 
+                    onClick={handleReplyToAttention}
+                    disabled={isReplying}
+                  >
+                    {isReplying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                    Acknowledge &amp; Reply
+                  </Button>
+              </CardContent>
+          </Card>
+      )}
+
+      {!workOrder.needsAttention && workOrder.technicianReplied && (
+          <Card className="mb-6 border-green-600 bg-green-50">
+              <CardContent className="p-4 flex items-center gap-3">
+                  <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0" />
                   <div>
-                      <p className="font-bold text-destructive">OFFICE ALERT: NEEDS ATTENTION</p>
-                      <p className="text-sm font-medium">{workOrder.attentionMessage}</p>
+                      <p className="font-bold text-green-700">Replied to Office</p>
+                      <p className="text-sm">You have acknowledged the office instruction.</p>
                   </div>
               </CardContent>
           </Card>

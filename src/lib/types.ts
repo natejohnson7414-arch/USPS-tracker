@@ -107,6 +107,7 @@ export type WorkOrder = {
   internalNotes?: string;
   needsAttention?: boolean;
   attentionMessage?: string;
+  technicianReplied?: boolean;
 };
 
 

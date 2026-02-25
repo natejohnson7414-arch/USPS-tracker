@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText, Download, AlertCircle, Save } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText, Download, AlertCircle, Save, CheckCircle2 } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
@@ -228,7 +228,7 @@ export function WorkOrderAdminDetails({
   const [isDeletingSignature, setIsDeletingSignature] = useState(false);
   const [ackToDelete, setAckToDelete] = useState<Acknowledgement | null>(null);
 
-  // New admin-only state
+  // Admin-only state
   const [internalNotes, setInternalNotes] = useState(workOrder.internalNotes || '');
   const [needsAttention, setNeedsAttention] = useState(workOrder.needsAttention || false);
   const [attentionMessage, setAttentionMessage] = useState(workOrder.attentionMessage || '');
@@ -303,7 +303,9 @@ export function WorkOrderAdminDetails({
         const updateData: Partial<WorkOrder> = {
             internalNotes,
             needsAttention,
-            attentionMessage: needsAttention ? attentionMessage : ''
+            attentionMessage: needsAttention ? attentionMessage : '',
+            // If turning attention ON, reset the reply flag.
+            ...(needsAttention && { technicianReplied: false })
         };
         await updateDocumentNonBlocking(woRef, updateData);
         toast({ title: 'Admin Notes Saved' });
@@ -324,6 +326,17 @@ export function WorkOrderAdminDetails({
         toast({ title: "Failed to save admin notes", variant: 'destructive' });
     } finally {
         setIsSavingAdminNotes(false);
+    }
+  };
+
+  const handleClearReplyStatus = async () => {
+    if (!db || !user) return;
+    try {
+        const woRef = doc(db, 'work_orders', workOrder.id);
+        await updateDocumentNonBlocking(woRef, { technicianReplied: false });
+        toast({ title: 'Status Cleared' });
+    } catch (error) {
+        console.error("Error clearing reply status:", error);
     }
   };
 
@@ -351,6 +364,19 @@ export function WorkOrderAdminDetails({
                         <p className="font-bold text-destructive">NEEDS ATTENTION</p>
                         <p className="text-sm">{workOrder.attentionMessage}</p>
                     </div>
+                </div>
+            )}
+
+            {!workOrder.needsAttention && workOrder.technicianReplied && (
+                <div className="bg-green-50 border-2 border-green-600 p-4 rounded-lg flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0" />
+                        <div>
+                            <p className="font-bold text-green-700">TECHNICIAN REPLIED</p>
+                            <p className="text-sm">The technician has addressed your attention request.</p>
+                        </div>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={handleClearReplyStatus}>Clear Notification</Button>
                 </div>
             )}
 
@@ -465,7 +491,7 @@ export function WorkOrderAdminDetails({
                     <div className="flex items-center justify-between space-x-2 border p-3 rounded-md bg-background">
                         <div className="space-y-0.5">
                             <Label htmlFor="needs-attention">Flag: Needs Attention</Label>
-                            <p className="text-xs text-muted-foreground">Highlights this job for the technician.</p>
+                            <p className="text-xs text-muted-foreground">Highlights this job for the technician (Red Highlight).</p>
                         </div>
                         <Switch 
                             id="needs-attention" 

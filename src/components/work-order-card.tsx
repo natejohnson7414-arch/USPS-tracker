@@ -7,9 +7,10 @@ import type { WorkOrder, Technician, WorkSite } from '@/lib/types';
 import { StatusBadge } from './status-badge';
 import { format } from 'date-fns';
 import { Button } from './ui/button';
-import { Map, Link as LinkIcon, AlertCircle } from 'lucide-react';
+import { Map, Link as LinkIcon, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Separator } from './ui/separator';
 import { Badge } from './ui/badge';
+import { cn } from '@/lib/utils';
 
 interface WorkOrderCardProps {
     order: WorkOrder;
@@ -36,17 +37,26 @@ export function WorkOrderCard({ order, technician, workSite, onDirectionsClick }
     }
 
     return (
-        <Card className={order.needsAttention ? "border-destructive ring-1 ring-destructive/20" : ""}>
+        <Card className={cn(
+            "transition-colors",
+            order.needsAttention && "border-destructive ring-1 ring-destructive/20 bg-destructive/5",
+            order.technicianReplied && !order.needsAttention && "border-green-600 ring-1 ring-green-600/20 bg-green-50"
+        )}>
             <CardHeader>
                 <div className="flex justify-between items-start gap-4">
                     <Link href={`/work-orders/${order.id}`} className="overflow-hidden">
                         <div className="flex items-center gap-2 mb-1">
-                            {order.needsAttention && (
+                            {order.needsAttention ? (
                                 <Badge variant="destructive" className="h-5 px-1.5 gap-1">
                                     <AlertCircle className="h-3 w-3" />
                                     Attention
                                 </Badge>
-                            )}
+                            ) : order.technicianReplied ? (
+                                <Badge className="h-5 px-1.5 gap-1 bg-green-600 hover:bg-green-700 text-white border-0">
+                                    <CheckCircle2 className="h-3 w-3" />
+                                    Replied
+                                </Badge>
+                            ) : null}
                             <CardTitle className="hover:underline truncate">{order.jobName}</CardTitle>
                         </div>
                         <p className="text-sm text-muted-foreground">Job # {order.id}</p>

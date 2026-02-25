@@ -15,7 +15,7 @@ import type { WorkOrder, Technician, WorkSite } from '@/lib/types';
 import { StatusBadge } from './status-badge';
 import { format } from 'date-fns';
 import { Button } from './ui/button';
-import { Map, Link as LinkIcon, AlertCircle } from 'lucide-react';
+import { Map, Link as LinkIcon, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useState } from 'react';
 import { MapProviderSelection } from './map-provider-selection';
 import { WorkOrderCard } from './work-order-card';
@@ -103,10 +103,14 @@ export function WorkOrderTable({ workOrders, technicians, workSites }: WorkOrder
                   const workSite = getWorkSite(order.workSiteId);
                   const isValidDate = order.createdDate && !isNaN(new Date(order.createdDate).getTime());
                   return (
-                    <TableRow key={order.id} className={cn(order.needsAttention && "bg-destructive/5 hover:bg-destructive/10")}>
+                    <TableRow key={order.id} className={cn(
+                        "transition-colors",
+                        order.needsAttention && "bg-destructive/5 hover:bg-destructive/10 border-l-4 border-l-destructive",
+                        order.technicianReplied && !order.needsAttention && "bg-green-50 hover:bg-green-100 border-l-4 border-l-green-600"
+                    )}>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                            {order.needsAttention && (
+                            {order.needsAttention ? (
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger>
@@ -118,7 +122,18 @@ export function WorkOrderTable({ workOrders, technicians, workSites }: WorkOrder
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
-                            )}
+                            ) : order.technicianReplied ? (
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger>
+                                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p className="font-bold">Technician Replied</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            ) : null}
                             <Link href={`/work-orders/${order.id}`} className="font-medium text-accent hover:underline">
                             {order.id}
                             </Link>
