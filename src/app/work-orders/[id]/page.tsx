@@ -707,6 +707,34 @@ export default function WorkOrderDetailPage() {
     }
   };
 
+  const handleReplyToAttention = async () => {
+    if (!db || !workOrder) return;
+    try {
+        const woRef = doc(db, 'work_orders', workOrder.id);
+        await updateDocumentNonBlocking(woRef, {
+            needsAttention: false,
+            technicianReplied: true
+        });
+        toast({ title: 'Attention Acknowledged', description: 'Office has been notified.' });
+        fetchData();
+    } catch (error) {
+        console.error("Error replying to attention:", error);
+        toast({ title: 'Failed to reply', variant: 'destructive' });
+    }
+  };
+
+  const handleClearReplyStatus = async () => {
+    if (!db || !workOrder) return;
+    try {
+        const woRef = doc(db, 'work_orders', workOrder.id);
+        await updateDocumentNonBlocking(woRef, { technicianReplied: false });
+        toast({ title: 'Status Cleared' });
+        fetchData();
+    } catch (error) {
+        console.error("Error clearing reply status:", error);
+    }
+  };
+
   if (isLoading || !workOrder) {
     return (
       <MainLayout>
@@ -832,6 +860,7 @@ export default function WorkOrderDetailPage() {
                     onSignatureDelete={handleSignatureDelete}
                     activeTab={activeTab}
                     setActiveTab={setActiveTab}
+                    onReplyToAttention={handleReplyToAttention}
                 />
             ) : (
                  <WorkOrderAdminDetails
@@ -875,6 +904,7 @@ export default function WorkOrderDetailPage() {
                     onSignatureDelete={handleSignatureDelete}
                     activeTab={activeTab}
                     setActiveTab={setActiveTab}
+                    onClearAttentionStatus={handleClearReplyStatus}
                 />
             )}
         </div>

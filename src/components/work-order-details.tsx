@@ -210,6 +210,7 @@ interface WorkOrderDetailsProps {
   isSubmittingReview: boolean;
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  onReplyToAttention?: () => void;
 }
 
 export function WorkOrderDetails({
@@ -250,6 +251,7 @@ export function WorkOrderDetails({
   isSubmittingReview,
   activeTab,
   setActiveTab,
+  onReplyToAttention,
 }: WorkOrderDetailsProps) {
   const db = useFirestore();
   const { user } = useUser();
@@ -371,20 +373,13 @@ export function WorkOrderDetails({
   };
 
   const handleReplyToAttention = async () => {
-    if (!db || !workOrder) return;
-    setIsReplying(true);
-    try {
-        const woRef = doc(db, 'work_orders', workOrder.id);
-        await updateDocumentNonBlocking(woRef, {
-            needsAttention: false,
-            technicianReplied: true
-        });
-        toast({ title: 'Attention Acknowledged', description: 'Office has been notified.' });
-    } catch (error) {
-        console.error("Error replying to attention:", error);
-        toast({ title: 'Failed to reply', variant: 'destructive' });
-    } finally {
-        setIsReplying(false);
+    if (onReplyToAttention) {
+        setIsReplying(true);
+        try {
+            await onReplyToAttention();
+        } finally {
+            setIsReplying(false);
+        }
     }
   };
   

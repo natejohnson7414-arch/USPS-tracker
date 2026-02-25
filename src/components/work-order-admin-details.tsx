@@ -172,6 +172,7 @@ interface WorkOrderAdminDetailsProps {
   onSignatureDelete: (ack?: Acknowledgement) => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  onClearAttentionStatus?: () => void;
 }
 
 export function WorkOrderAdminDetails({
@@ -212,6 +213,7 @@ export function WorkOrderAdminDetails({
   onSignatureDelete,
   activeTab,
   setActiveTab,
+  onClearAttentionStatus,
 }: WorkOrderAdminDetailsProps) {
   const db = useFirestore();
   const { user } = useUser();
@@ -330,13 +332,8 @@ export function WorkOrderAdminDetails({
   };
 
   const handleClearReplyStatus = async () => {
-    if (!db || !user) return;
-    try {
-        const woRef = doc(db, 'work_orders', workOrder.id);
-        await updateDocumentNonBlocking(woRef, { technicianReplied: false });
-        toast({ title: 'Status Cleared' });
-    } catch (error) {
-        console.error("Error clearing reply status:", error);
+    if (onClearAttentionStatus) {
+        onClearAttentionStatus();
     }
   };
 
