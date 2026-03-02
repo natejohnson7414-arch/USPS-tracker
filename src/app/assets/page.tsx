@@ -193,7 +193,8 @@ export default function AssetsPage() {
                 <CardContent className="h-64 flex items-center justify-center text-muted-foreground">
                   Replacement Forecast Placeholder
                 </CardContent>
-              </div>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
