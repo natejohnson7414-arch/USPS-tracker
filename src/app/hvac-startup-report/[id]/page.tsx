@@ -19,20 +19,19 @@ import { doc } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-
 const SectionTitle = ({ children }: { children: React.ReactNode }) => (
     <h3 className="font-bold bg-gray-100 p-2 border-b border-t text-sm uppercase tracking-wide">{children}</h3>
 );
 
 const ValueBox = ({ value, className }: { value?: string, className?: string }) => (
-    <div className={`min-h-8 px-3 py-1.5 text-sm border rounded-md bg-white flex items-center ${className}`}>
+    <div className={`min-h-[32px] px-3 py-1.5 text-sm border rounded-md bg-white flex items-center ${className}`}>
         {value || ''}
     </div>
 );
 
 const LabeledInput = ({ label, value, colSpan = 'sm:col-span-1' }: { label: string, value?: string, colSpan?: string }) => (
     <div className={`grid grid-cols-[1fr_2fr] sm:grid-cols-1 gap-1 ${colSpan}`}>
-        <label className="text-[10px] uppercase font-bold text-muted-foreground sm:text-[9px]">{label}</label>
+        <label className="text-[10px] uppercase font-bold text-muted-foreground sm:text-[9px] mb-0.5">{label}</label>
         <ValueBox value={value} />
     </div>
 );
@@ -50,7 +49,6 @@ const GroupedLabeledInput = ({ label, values, labels, colSpan = 'sm:col-span-1' 
         </div>
     </div>
 );
-
 
 export default function ViewHvacStartupReportPage() {
     const db = useFirestore();
@@ -85,7 +83,6 @@ export default function ViewHvacStartupReportPage() {
                 setWorkOrder(wo);
                 setTechnician(tech);
                 setAllTechnicians(allTechs);
-
             } else {
                 notFound();
             }
@@ -120,20 +117,21 @@ export default function ViewHvacStartupReportPage() {
                 });
                 
                 const imgData = canvas.toDataURL('image/png');
-                const pdfWidth = canvas.width;
-                const pdfHeight = canvas.height;
+                const canvasWidth = canvas.width;
+                const canvasHeight = canvas.height;
 
+                // Standard letter points are 612 x 792 (8.5 x 11 inches)
                 if (i === 0) {
                     pdf = new jsPDF({
-                        orientation: pdfWidth > pdfHeight ? 'l' : 'p',
+                        orientation: 'p',
                         unit: 'pt',
-                        format: [pdfWidth, pdfHeight]
+                        format: 'letter'
                     });
                 } else {
-                    pdf!.addPage([pdfWidth, pdfHeight], pdfWidth > pdfHeight ? 'l' : 'p');
+                    pdf!.addPage('letter', 'p');
                 }
                 
-                pdf!.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf!.addImage(imgData, 'PNG', 0, 0, 612, 792);
             }
 
             if (pdf) {
@@ -175,18 +173,14 @@ export default function ViewHvacStartupReportPage() {
         }
     };
 
-
     if (isLoading) {
         return (
              <MainLayout>
                 <div className="container mx-auto py-8">
                     <Card>
-                        <CardContent className="p-8">
-                             <Skeleton className="h-24 w-1/2 mx-auto mb-8" />
-                             <Skeleton className="h-8 w-full mb-4" />
-                             <Skeleton className="h-8 w-full mb-4" />
-                             <Skeleton className="h-20 w-full mb-4" />
-                             <Skeleton className="h-40 w-full" />
+                        <CardContent className="p-8 text-center">
+                             <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
+                             <p className="mt-4 text-muted-foreground">Loading report data...</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -239,17 +233,17 @@ export default function ViewHvacStartupReportPage() {
                 ) : (
                     <div className="space-y-8" ref={printRef}>
                         {/* PAGE 1: EQUIPMENT INFO */}
-                        <div className="pdf-page bg-white text-black p-10 shadow-lg mx-auto" style={{ width: '8.5in', height: '11in', boxSizing: 'border-box' }}>
+                        <div className="pdf-page bg-white text-black p-10 shadow-lg mx-auto overflow-hidden" style={{ width: '8.5in', height: '11in', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
                             <header className="flex justify-center items-center mb-8">
                                 <h1 className="text-2xl font-black text-center border-b-4 border-black pb-2 px-8">
                                 HVAC START-UP REPORT
                                 </h1>
                             </header>
 
-                            <main className="space-y-6">
+                            <main className="space-y-6 flex-1">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 border-b-2 border-black pb-6">
                                     <LabeledInput label="Site" value={workOrder?.workSite?.name || report.site} />
-                                    <LabeledInput label="Date" value={report.date ? new Date(report.date).toLocaleDateString() : ''} />
+                                    <LabeledInput label="Date" value={report.date ? format(new Date(report.date), 'PPP') : ''} />
                                     <LabeledInput label="Technician" value={technician?.name || report.technician} />
                                     <LabeledInput label="Job #" value={workOrder?.id || report.workOrderId} />
                                 </div>
@@ -277,52 +271,54 @@ export default function ViewHvacStartupReportPage() {
                                 </div>
                             </main>
                             
-                            <footer className="mt-auto pt-10 text-[9px] text-gray-400 flex justify-between">
+                            <footer className="mt-auto pt-6 text-[10px] font-bold text-gray-400 flex justify-between border-t border-gray-100">
                                 <span>HVAC Start-Up Report - Job# {workOrder?.id || report.workOrderId}</span>
                                 <span>Page 1 of 2</span>
                             </footer>
                         </div>
 
                         {/* PAGE 2: TECHNICAL DATA */}
-                        <div className="pdf-page bg-white text-black p-10 shadow-lg mx-auto" style={{ width: '8.5in', height: '11in', boxSizing: 'border-box' }}>
-                            <main className="space-y-6 h-full flex flex-col">
-                                <h2 className="text-lg font-bold text-center border-b-2 border-black pb-2 mb-4">Technical Performance Data</h2>
-                                
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-6">
-                                    <div>
-                                        <SectionTitle>Supply Voltage</SectionTitle>
-                                        <div className="p-4 border-2 border-t-0 space-y-4 rounded-b-md">
-                                            <LabeledInput label="L1-L2" value={report.supplyVoltage_L1_L2} />
-                                            <LabeledInput label="L2-L3" value={report.supplyVoltage_L2_L3} />
-                                            <LabeledInput label="L3-L1" value={report.supplyVoltage_L3_L1} />
-                                            <LabeledInput label="Control Voltage AC/DC" value={report.controlVoltageACDC} />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <SectionTitle>Supply Blower Data</SectionTitle>
-                                        <div className="p-4 border-2 border-t-0 space-y-4 rounded-b-md">
-                                            <LabeledInput label="Motor HP" value={report.motorHp} />
-                                            <LabeledInput label="Motor Amps" value={report.motorAmps} />
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-6">
-                                    <GroupedLabeledInput label="Condenser: Suction Pressure" values={[report.suctionPressure_S1, report.suctionPressure_S2, report.suctionPressure_S3, report.suctionPressure_S4]} labels={['S-1', 'S-2', 'S-3', 'S-4']} />
-                                    <GroupedLabeledInput label="Condenser: Discharge Pressure" values={[report.dischargePressure_S1, report.dischargePressure_S2, report.dischargePressure_S3, report.dischargePressure_S4]} labels={['S-1', 'S-2', 'S-3', 'S-4']} />
-                                    <GroupedLabeledInput label="Condenser: Crankcase Heater AMP" values={[report.crankcaseHeaterAmp_S1, report.crankcaseHeaterAmp_S2, report.crankcaseHeaterAmp_S3, report.crankcaseHeaterAmp_S4]} labels={['S-1', 'S-2', 'S-3', 'S-4']} />
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] uppercase font-bold text-muted-foreground sm:text-[9px]">Compressor AMP</p>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <div><p className="text-[9px] text-center font-medium">T1</p><ValueBox value={report.compressorAmp_T1} className="h-7 px-1 justify-center" /></div>
-                                            <div><p className="text-[9px] text-center font-medium">T2</p><ValueBox value={report.compressorAmp_T2} className="h-7 px-1 justify-center" /></div>
-                                            <div><p className="text-[9px] text-center font-medium">T3</p><ValueBox value={report.compressorAmp_T3} className="h-7 px-1 justify-center" /></div>
-                                        </div>
-                                    </div>
-                                </div>
+                        <div className="pdf-page bg-white text-black p-10 shadow-lg mx-auto overflow-hidden" style={{ width: '8.5in', height: '11in', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+                            <main className="space-y-6 flex-1">
+                                <h2 className="text-xl font-bold text-center border-b-4 border-black pb-2 mb-8">TECHNICAL PERFORMANCE DATA</h2>
                                 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-6">
                                     <div className="space-y-4">
+                                        <div>
+                                            <SectionTitle>Supply Voltage</SectionTitle>
+                                            <div className="p-4 border-2 border-t-0 space-y-4 rounded-b-md">
+                                                <LabeledInput label="L1-L2" value={report.supplyVoltage_L1_L2} />
+                                                <LabeledInput label="L2-L3" value={report.supplyVoltage_L2_L3} />
+                                                <LabeledInput label="L3-L1" value={report.supplyVoltage_L3_L1} />
+                                                <LabeledInput label="Control Voltage AC/DC" value={report.controlVoltageACDC} />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <SectionTitle>Supply Blower Data</SectionTitle>
+                                            <div className="p-4 border-2 border-t-0 space-y-4 rounded-b-md">
+                                                <LabeledInput label="Motor HP" value={report.motorHp} />
+                                                <LabeledInput label="Motor Amps" value={report.motorAmps} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="space-y-4">
+                                        <GroupedLabeledInput label="Condenser: Suction Pressure" values={[report.suctionPressure_S1, report.suctionPressure_S2, report.suctionPressure_S3, report.suctionPressure_S4]} labels={['S-1', 'S-2', 'S-3', 'S-4']} />
+                                        <GroupedLabeledInput label="Condenser: Discharge Pressure" values={[report.dischargePressure_S1, report.dischargePressure_S2, report.dischargePressure_S3, report.dischargePressure_S4]} labels={['S-1', 'S-2', 'S-3', 'S-4']} />
+                                        <GroupedLabeledInput label="Condenser: Crankcase Heater AMP" values={[report.crankcaseHeaterAmp_S1, report.crankcaseHeaterAmp_S2, report.crankcaseHeaterAmp_S3, report.crankcaseHeaterAmp_S4]} labels={['S-1', 'S-2', 'S-3', 'S-4']} />
+                                    </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-6 pt-4 border-t border-black/10">
+                                    <div className="space-y-4">
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] uppercase font-bold text-muted-foreground sm:text-[9px]">Compressor AMP</p>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <div><p className="text-[9px] text-center font-medium">T1</p><ValueBox value={report.compressorAmp_T1} className="h-7 px-1 justify-center" /></div>
+                                                <div><p className="text-[9px] text-center font-medium">T2</p><ValueBox value={report.compressorAmp_T2} className="h-7 px-1 justify-center" /></div>
+                                                <div><p className="text-[9px] text-center font-medium">T3</p><ValueBox value={report.compressorAmp_T3} className="h-7 px-1 justify-center" /></div>
+                                            </div>
+                                        </div>
                                         <div className="space-y-1">
                                             <p className="text-[10px] uppercase font-bold text-muted-foreground sm:text-[9px]">Compressor Voltage</p>
                                             <div className="grid grid-cols-3 gap-2">
@@ -336,28 +332,30 @@ export default function ViewHvacStartupReportPage() {
                                             <LabeledInput label="Cond. Fan Amp" value={report.condenserFanAmp} />
                                         </div>
                                     </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] uppercase font-bold text-muted-foreground sm:text-[9px]">Cooling (°F)</p>
-                                        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                                            <LabeledInput label="Evap EAT" value={report.cooling_evaporatorEAT} />
-                                            <LabeledInput label="Evap LAT" value={report.cooling_evaporatorLAT} />
-                                            <LabeledInput label="Cond EAT" value={report.cooling_condenserEAT} />
-                                            <LabeledInput label="Cond LAT" value={report.cooling_condenserLAT} />
+                                    <div className="space-y-4">
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] uppercase font-bold text-muted-foreground sm:text-[9px]">Cooling (°F)</p>
+                                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                                                <LabeledInput label="Evap EAT" value={report.cooling_evaporatorEAT} />
+                                                <LabeledInput label="Evap LAT" value={report.cooling_evaporatorLAT} />
+                                                <LabeledInput label="Cond EAT" value={report.cooling_condenserEAT} />
+                                                <LabeledInput label="Cond LAT" value={report.cooling_condenserLAT} />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <SectionTitle>Motor Rated Amps</SectionTitle>
+                                            <div className="p-4 border-2 border-t-0 space-y-3 rounded-b-md">
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    <LabeledInput label="T1" value={report.motorRatedAmps_T1} />
+                                                    <LabeledInput label="T2" value={report.motorRatedAmps_T2} />
+                                                    <LabeledInput label="T3" value={report.motorRatedAmps_T3} />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-6">
-                                    <div>
-                                        <SectionTitle>Motor Rated Amps</SectionTitle>
-                                        <div className="p-4 border-2 border-t-0 space-y-3 rounded-b-md">
-                                            <div className="grid grid-cols-3 gap-2">
-                                                <LabeledInput label="T1" value={report.motorRatedAmps_T1} />
-                                                <LabeledInput label="T2" value={report.motorRatedAmps_T2} />
-                                                <LabeledInput label="T3" value={report.motorRatedAmps_T3} />
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-6 pt-4 border-t border-black/10">
                                     <div>
                                         <SectionTitle>Gas Heating</SectionTitle>
                                         <div className="p-4 border-2 border-t-0 space-y-3 rounded-b-md">
@@ -365,32 +363,27 @@ export default function ViewHvacStartupReportPage() {
                                             <LabeledInput label="Gas Pressure IN WC" value={report.gasPressureInWC} />
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-6">
                                     <div>
                                         <SectionTitle>Electric Heating</SectionTitle>
-                                        <div className="p-4 border-2 border-t-0 rounded-b-md">
+                                        <div className="p-4 border-2 border-t-0 rounded-b-md h-full">
                                             <GroupedLabeledInput label="RAT | SAT Temp °F" values={[report.electricHeating_RAT_SAT_S1, report.electricHeating_RAT_SAT_S2, report.electricHeating_RAT_SAT_S3, report.electricHeating_RAT_SAT_S4]} labels={['S-1', 'S-2', 'S-3', 'S-4']} />
                                         </div>
                                     </div>
-                                    <div>
-                                        <SectionTitle>Voltage Output</SectionTitle>
-                                        <div className="p-4 border-2 border-t-0 rounded-b-md">
-                                            <div className="grid grid-cols-3 gap-2">
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-6 pt-4 border-t border-black/10">
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div>
+                                            <p className="text-[10px] font-bold uppercase mb-1">Voltage Output</p>
+                                            <div className="grid grid-cols-1 gap-2">
                                                 <LabeledInput label="T1-T2" value={report.voltage_T1_T2} />
                                                 <LabeledInput label="T2-T3" value={report.voltage_T2_T3} />
                                                 <LabeledInput label="T3-T1" value={report.voltage_T3_T1} />
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-6">
-                                    <div>
-                                        <SectionTitle>Amps Output</SectionTitle>
-                                        <div className="p-4 border-2 border-t-0 rounded-b-md">
-                                            <div className="grid grid-cols-3 gap-2">
+                                        <div>
+                                            <p className="text-[10px] font-bold uppercase mb-1">Amps Output</p>
+                                            <div className="grid grid-cols-1 gap-2">
                                                 <LabeledInput label="T1" value={report.amps_T1} />
                                                 <LabeledInput label="T2" value={report.amps_T2} />
                                                 <LabeledInput label="T3" value={report.amps_T3} />
@@ -404,12 +397,12 @@ export default function ViewHvacStartupReportPage() {
                                         </div>
                                     </div>
                                 </div>
-
-                                <footer className="mt-auto pt-10 text-[9px] text-gray-400 flex justify-between">
-                                    <span>HVAC Start-Up Report - Job# {workOrder?.id || report.workOrderId}</span>
-                                    <span>Page 2 of 2</span>
-                                </footer>
                             </main>
+
+                            <footer className="mt-auto pt-6 text-[10px] font-bold text-gray-400 flex justify-between border-t border-gray-100">
+                                <span>HVAC Start-Up Report - Job# {workOrder?.id || report.workOrderId}</span>
+                                <span>Page 2 of 2</span>
+                            </footer>
                         </div>
                     </div>
                 )}

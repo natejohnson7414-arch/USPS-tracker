@@ -17,6 +17,7 @@ service cloud.firestore {
         get(/databases/$(database)/documents/roles/$(get(userDocPath).data.roleId)).data.name == roleName;
     }
 
+    // Asset Management
     match /assets/{assetId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
@@ -33,15 +34,24 @@ service cloud.firestore {
     }
 
     match /asset_service_history/{historyId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow get, list: if isSignedIn();
+      allow create, update: if isSignedIn();
+      allow delete: if isAdmin();
     }
 
+    // Work Orders & Core
     match /work_orders/{workOrderId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn();
       allow update: if isSignedIn();
       allow delete: if isAdmin();
+
+      match /updates/{updateId} {
+        allow read, write: if isSignedIn();
+      }
+      match /activities/{activityId} {
+        allow read, write: if isSignedIn();
+      }
     }
 
     match /technicians/{techId} {
@@ -82,6 +92,11 @@ service cloud.firestore {
     match /quotes/{quoteId} {
       allow read: if isSignedIn();
       allow write: if isSignedIn();
+    }
+
+    match /counters/{counterId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
   }
 }
