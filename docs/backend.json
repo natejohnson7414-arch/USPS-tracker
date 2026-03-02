@@ -1,306 +1,125 @@
 
 {
   "entities": {
-    "Quote": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Quote",
+    "Asset": {
+      "title": "Asset",
       "type": "object",
-      "description": "Represents a price quote for a potential job.",
+      "description": "Represents a piece of equipment at a site.",
       "properties": {
         "id": { "type": "string" },
-        "workOrderId": { "type": "string", "description": "The work order this quote originated from, if any." },
-        "quoteNumber": { "type": "string", "description": "A unique, sequential number for the quote." },
-        "status": { "type": "string", "enum": ["Draft", "Sent", "Accepted", "Rejected", "Archived"] },
-        "clientId": { "type": "string" },
-        "workSiteId": { "type": "string" },
-        "jobName": { "type": "string", "description": "Denormalized from Work Order or Work Site for display." },
-        "description": { "type": "string", "description": "Initial description of work needed, provided by the technician." },
-        "modelNumber": { "type": "string", "description": "The model number of the equipment related to the quote." },
-        "serialNumber": { "type": "string", "description": "The serial number of the equipment related to the quote." },
-        "estimatedLabor": { "type": "string", "description": "Estimated labor for the job, including notes about a second person if needed." },
-        "materialsNeeded": { "type": "string", "description": "A description of the materials needed for the job." },
-        "photos": { "type": "array", "description": "URLs of photos.", "items": { "type": "string" } },
-        "videos": { "type": "array", "description": "URLs of videos.", "items": { "type": "string" } },
-        "createdDate": { "type": "string", "format": "date-time" },
-        "createdBy_technicianId": { "type": "string" },
-        "lineItems": {
+        "name": { "type": "string" },
+        "assetTag": { "type": "string" },
+        "serialNumber": { "type": "string" },
+        "manufacturer": { "type": "string" },
+        "model": { "type": "string" },
+        "siteId": { "type": "string" },
+        "locationDescription": { "type": "string" },
+        "installDate": { "type": "string", "format": "date-time" },
+        "warrantyExpiration": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["active", "retired", "out_of_service"] },
+        "criticality": { "type": "string", "enum": ["low", "medium", "high"] },
+        "expectedLifeYears": { "type": "number" },
+        "replacementCost": { "type": "number" },
+        "lastServiceDate": { "type": "string", "format": "date-time" },
+        "nextServiceDate": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "assetTag", "siteId", "status", "criticality"]
+    },
+    "PmTemplate": {
+      "title": "PmTemplate",
+      "type": "object",
+      "description": "Definition of a preventative maintenance task.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "frequencyType": { "type": "string", "enum": ["monthly", "quarterly", "semiannual", "annual", "custom_days"] },
+        "customIntervalDays": { "type": "number" },
+        "estimatedLaborHours": { "type": "number" },
+        "requiredMaterials": {
           "type": "array",
-          "description": "Line items for the quote, added by an admin.",
           "items": {
             "type": "object",
             "properties": {
-              "id": { "type": "string" },
-              "description": { "type": "string" },
+              "materialId": { "type": "string" },
+              "name": { "type": "string" },
               "quantity": { "type": "number" },
-              "unitPrice": { "type": "number" }
-            },
-            "required": ["id", "description", "quantity", "unitPrice"]
+              "uom": { "type": "string" }
+            }
           }
         },
-        "subtotal": { "type": "number" },
-        "tax": { "type": "number" },
-        "total": { "type": "number" },
-        "adminNotes": { "type": "string" }
+        "checklist": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "step": { "type": "string" },
+              "requiresPhoto": { "type": "boolean" },
+              "requiresMeasurement": { "type": "boolean" }
+            }
+          }
+        },
+        "safetyNotes": { "type": "string" },
+        "complianceCategory": { "type": "string" }
       },
-      "required": ["id", "quoteNumber", "status", "createdDate", "createdBy_technicianId", "description", "modelNumber", "serialNumber"]
+      "required": ["id", "name", "frequencyType", "estimatedLaborHours"]
     },
-    "WorkOrder": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "WorkOrder",
+    "AssetPmSchedule": {
+      "title": "AssetPmSchedule",
       "type": "object",
-      "description": "Represents a work order in the system based on the Small Job Form.",
+      "description": "A scheduled PM for a specific asset.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the WorkOrder entity (Job #)."
-        },
-        "createdDate": {
-          "type": "string",
-          "description": "Date when the work order was created.",
-          "format": "date-time"
-        },
-        "billTo": {
-            "type": "string",
-            "description": "The name of the client to bill."
-        },
-        "clientId": {
-            "type": "string",
-            "description": "Reference to the Client to bill for the job."
-        },
-        "poNumber": {
-            "type": "string",
-            "description": "Purchase Order number."
-        },
-        "contactInfo": {
-            "type": "string",
-            "description": "Contact information for the job."
-        },
-        "jobName": {
-            "type": "string",
-            "description": "Name of the job, derived from the selected WorkSite."
-        },
-        "workSiteId": {
-          "type": "string",
-          "description": "Reference to the WorkSite where the order is located."
-        },
-        "description": {
-          "type": "string",
-          "description": "Detailed description of the work order."
-        },
-        "serviceScheduleDate": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Date for the scheduled service."
-        },
-        "quotedAmount": {
-            "type": "number",
-            "description": "The quoted amount for the job."
-        },
-        "taxable": {
-            "type": "boolean",
-            "description": "Is the job taxable."
-        },
-        "timeAndMaterial": {
-            "type": "boolean",
-            "description": "Is the job billed based on time and material."
-        },
-        "exempt": {
-            "type": "boolean",
-            "description": "Is the job exempt from tax."
-        },
-        "permit": {
-            "type": "boolean",
-            "description": "Is a permit required."
-        },
-        "locates": {
-            "type": "string",
-            "description": "Information about utility locates."
-        },
-        "locatesDone": {
-             "type": "string",
-             "format": "date-time",
-            "description": "Date when locates were done."
-        },
-        "permitCost": {
-            "type": "number",
-            "description": "Cost of the permit."
-        },
-        "digNumber": {
-            "type": "string",
-            "description": "Dig safe number."
-        },
-        "permitFiled": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Date when the permit was filed."
-        },
-        "coi": {
-            "type": "boolean",
-            "description": "Is a Certificate of Insurance required."
-        },
-        "coiRequested": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Date when COI was requested."
-        },
-        "bondNeeded": {
-            "type": "string",
-            "description": "Information about any bond needed."
-        },
-        "bondAppliedFor": {
-            "type": "string",
-            "description": "Information about bond application."
-        },
-        "bondSent": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Date when the bond was sent."
-        },
-        "certifiedPayroll": {
-            "type": "boolean",
-            "description": "Is certified payroll required."
-        },
-        "certifiedPayrollRequested": {
-             "type": "string",
-             "format": "date-time",
-            "description": "Date when certified payroll was requested."
-        },
-        "intercoPO": {
-            "type": "string",
-            "description": "Intercompany Purchase Order number."
-        },
-        "customerPO": {
-            "type": "string",
-            "description": "Customer Purchase Order number."
-        },
-        "estimator": {
-            "type": "string",
-            "description": "Name of the estimator or requester."
-        },
-        "status": {
-          "type": "string",
-          "description": "Current status of the work order (e.g., Open, In Progress, Review, Completed)."
-        },
-        "assignedTechnicianId": {
-          "type": "string",
-          "description": "Reference to Technician. (Relationship: Technician 1:N WorkOrder)"
-        },
-        "checkInOutURL": {
-            "type": "string",
-            "description": "A URL or phone number for technician check-in and check-out."
-        },
-        "checkInWorkOrderNumber": {
-            "type": "string",
-            "description": "The work order number to be used for a manual phone check-in."
-        },
-        "tempOnArrival": {
-            "type": "string",
-            "description": "Temperature recorded upon arrival at the job site."
-        },
-        "tempOnLeaving": {
-            "type": "string",
-            "description": "Temperature recorded upon leaving the job site."
-        },
-        "internalNotes": {
-            "type": "string",
-            "description": "Internal notes for office staff only."
-        },
-        "needsAttention": {
-            "type": "boolean",
-            "description": "Indicates if the work order needs immediate attention."
-        },
-        "attentionMessage": {
-            "type": "string",
-            "description": "Instructions for the technician when attention is needed."
-        }
+        "id": { "type": "string" },
+        "assetId": { "type": "string" },
+        "templateId": { "type": "string" },
+        "nextDueDate": { "type": "string", "format": "date-time" },
+        "lastCompletedDate": { "type": "string", "format": "date-time" },
+        "autoGenerateWorkOrder": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["active", "paused"] }
       },
-      "required": [
-        "id",
-        "createdDate",
-        "jobName",
-        "description",
-        "status"
-      ]
+      "required": ["assetId", "templateId", "nextDueDate", "status"]
     },
-    "Technician": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Technician",
+    "AssetServiceHistory": {
+      "title": "AssetServiceHistory",
       "type": "object",
-      "description": "Represents a technician in the system.",
+      "description": "Historical record of service for an asset.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Technician entity."
-        },
-        "employeeId": {
-          "type": "string",
-          "description": "Employee ID number for the technician."
-        },
-        "firstName": {
-          "type": "string",
-          "description": "First name of the technician."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "Last name of the technician."
-        },
-        "email": {
-          "type": "string",
-          "description": "Email address of the technician.",
-          "format": "email"
-        },
-        "phone": {
-          "type": "string",
-          "description": "Phone number of the technician."
-        },
-        "roleId": {
-            "type": "string",
-            "description": "Reference to the role of the technician."
-        },
-        "disabled": {
-            "type": "boolean",
-            "description": "Indicates if the technician's account is disabled."
-        },
-        "passwordChangeRequired": {
-          "type": "boolean",
-          "description": "Indicates if the user must change their password on next login."
-        }
+        "id": { "type": "string" },
+        "assetId": { "type": "string" },
+        "workOrderId": { "type": "string" },
+        "technicianId": { "type": "string" },
+        "completedDate": { "type": "string", "format": "date-time" },
+        "notes": { "type": "string" },
+        "materialsUsed": { "type": "array" },
+        "measurements": { "type": "object" },
+        "photos": { "type": "array" },
+        "followUpRequired": { "type": "boolean" }
       },
-      "required": [
-        "id",
-        "firstName",
-        "lastName",
-        "email"
-      ]
+      "required": ["assetId", "workOrderId", "completedDate", "notes"]
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous"
-    ]
+    "providers": ["password", "anonymous"]
   },
   "firestore": {
     "structure": [
       {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "User",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Stores user profiles."
-        }
+        "path": "/assets/{assetId}",
+        "definition": { "entityName": "Asset" }
       },
       {
-        "path": "/work_orders/{workOrderId}",
-        "definition": {
-          "entityName": "WorkOrder",
-          "schema": {
-            "$ref": "#/backend/entities/WorkOrder"
-          },
-          "description": "Stores work orders."
-        }
+        "path": "/pm_templates/{templateId}",
+        "definition": { "entityName": "PmTemplate" }
+      },
+      {
+        "path": "/asset_pm_schedules/{scheduleId}",
+        "definition": { "entityName": "AssetPmSchedule" }
+      },
+      {
+        "path": "/asset_service_history/{historyId}",
+        "definition": { "entityName": "AssetServiceHistory" }
       }
     ]
   }

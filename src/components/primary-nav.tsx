@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -5,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { CreateWorkOrderDialog } from './create-work-order-dialog';
 import type { Technician, WorkSite, Client } from '@/lib/types';
-import { Home, LayoutDashboard, Receipt } from 'lucide-react';
+import { Home, LayoutDashboard, Receipt, Package, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTechnician } from '@/hooks/use-technician';
 
@@ -24,40 +25,45 @@ export function PrimaryNav({ technicians, workSites, clients, onWorkSiteAdded }:
     return (
         <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-                <Button asChild className={cn(
-                    "text-white font-semibold",
-                    pathname === '/' 
-                        ? 'bg-blue-600 hover:bg-blue-700' 
-                        : 'bg-blue-500 hover:bg-blue-600'
+                <Button asChild variant="ghost" className={cn(
+                    "font-semibold",
+                    pathname === '/' && "bg-muted"
                 )}>
                     <Link href="/">
-                        <Home className="mr-2" />
+                        <Home className="mr-2 h-4 w-4" />
                         Work Orders
                     </Link>
                 </Button>
-                <Button asChild className={cn(
-                    "text-white font-semibold",
-                    pathname === '/dispatch' 
-                        ? 'bg-green-600 hover:bg-green-700'
-                        : 'bg-green-500 hover:bg-green-600'
+                <Button asChild variant="ghost" className={cn(
+                    "font-semibold",
+                    pathname === '/dispatch' && "bg-muted"
                 )}>
                     <Link href="/dispatch">
-                        <LayoutDashboard className="mr-2" />
-                        Dispatch Board
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        Dispatch
                     </Link>
                 </Button>
                 {!isTechnician && (
-                    <Button asChild className={cn(
-                        "text-white font-semibold",
-                        pathname.startsWith('/quotes') 
-                            ? 'bg-purple-600 hover:bg-purple-700'
-                            : 'bg-purple-500 hover:bg-purple-600'
-                    )}>
-                        <Link href="/quotes">
-                            <Receipt className="mr-2" />
-                            Quotes
-                        </Link>
-                    </Button>
+                    <>
+                        <Button asChild variant="ghost" className={cn(
+                            "font-semibold",
+                            pathname.startsWith('/assets') && "bg-muted"
+                        )}>
+                            <Link href="/assets">
+                                <Package className="mr-2 h-4 w-4" />
+                                Assets & PM
+                            </Link>
+                        </Button>
+                        <Button asChild variant="ghost" className={cn(
+                            "font-semibold",
+                            pathname.startsWith('/quotes') && "bg-muted"
+                        )}>
+                            <Link href="/quotes">
+                                <Receipt className="mr-2 h-4 w-4" />
+                                Quotes
+                            </Link>
+                        </Button>
+                    </>
                 )}
             </div>
             {!isTechnician && (

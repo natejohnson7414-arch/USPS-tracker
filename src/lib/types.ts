@@ -13,7 +13,6 @@ export type Acknowledgement = {
   date: string;
 };
 
-
 export type Technician = {
   id: string;
   employeeId?: string;
@@ -53,46 +52,45 @@ export type ActivityHistoryItem = {
   authorName: string;
 };
 
-
 export type WorkOrder = {
-  id: string; // Job #
-  createdDate: string; // DATE
-  billTo?: string; // BILL TO
-  clientId?: string; // Client ID
-  client?: Client; // Client (populated)
-  poNumber?: string; // PO#
-  contactInfo?: string; // CONTACT INFO
-  jobName: string; // JOB NAME
-  workSiteId?: string; // JOB SITE
-  workSite?: WorkSite; // JOB SITE (populated)
-  description: string; // JOB DESCRIPTION
-  serviceScheduleDate?: string; // SERVICE SCHEDULE DATE
-  quotedAmount?: number; // QUOTED AMOUNT
-  taxable?: boolean; // TAXABLE
-  timeAndMaterial?: boolean; // TIME & MATERIAL
-  exempt?: boolean; // EXEMPT
-  permit?: boolean; // PERMIT
-  locates?: string; // LOCATES
-  locatesDone?: string; // LOCATES DONE
-  permitCost?: number; // PERMIT COST
-  digNumber?: string; // DIG#
-  permitFiled?: string; // PERMIT FILED
-  coi?: boolean; // COI
-  coiRequested?: string; // COI REQUESTED
-  bondNeeded?: string; // BOND NEEDED
-  bondAppliedFor?: string; // APPLIED FOR
-  bondSent?: string; // SENT
-  certifiedPayroll?: boolean; // CERTIFIED PAYROLL
-  certifiedPayrollRequested?: string; // REQUESTED
-  intercoPO?: string; // INTERCO PO#
-  customerPO?: string; // CUSTOMER PO#
-  estimator?: string; // ESTIMATOR/REQUESTED BY
+  id: string;
+  createdDate: string;
+  billTo?: string;
+  clientId?: string;
+  client?: Client;
+  poNumber?: string;
+  contactInfo?: string;
+  jobName: string;
+  workSiteId?: string;
+  workSite?: WorkSite;
+  description: string;
+  serviceScheduleDate?: string;
+  quotedAmount?: number;
+  taxable?: boolean;
+  timeAndMaterial?: boolean;
+  exempt?: boolean;
+  permit?: boolean;
+  locates?: string;
+  locatesDone?: string;
+  permitCost?: number;
+  digNumber?: string;
+  permitFiled?: string;
+  coi?: boolean;
+  coiRequested?: string;
+  bondNeeded?: string;
+  bondAppliedFor?: string;
+  bondSent?: string;
+  certifiedPayroll?: boolean;
+  certifiedPayrollRequested?: string;
+  intercoPO?: string;
+  customerPO?: string;
+  estimator?: string;
   status: 'Open' | 'In Progress' | 'On Hold' | 'Review' | 'Completed';
   assignedTechnicianId?: string;
   notes: WorkOrderNote[];
   activities: Activity[];
   work_history: ActivityHistoryItem[];
-  checkInOutURL?: string; // CHECK-IN/OUT
+  checkInOutURL?: string;
   checkInWorkOrderNumber?: string;
   tempOnArrival?: string;
   tempOnLeaving?: string;
@@ -108,8 +106,11 @@ export type WorkOrder = {
   needsAttention?: boolean;
   attentionMessage?: string;
   technicianReplied?: boolean;
+  // Asset Integration
+  assetId?: string;
+  pmScheduleId?: string;
+  isPm?: boolean;
 };
-
 
 export type Role = {
     id: string;
@@ -155,141 +156,77 @@ export type Client = {
     };
 }
 
-export type TrainingRecord = {
-    id: string;
-    workOrderId?: string | null;
-    trainingCourse: string;
-    trainer: string;
-    description: string;
-    basUserName: string;
-    basPassword?: string | null;
-    date?: string;
-    trainerSignatureUrl?: string | null;
-    attendees: Attendee[];
-    checklist?: { [key: string]: boolean };
+export type Asset = {
+  id: string;
+  name: string;
+  assetTag: string;
+  serialNumber: string;
+  manufacturer: string;
+  model: string;
+  siteId: string;
+  locationDescription?: string;
+  installDate: string;
+  warrantyExpiration?: string;
+  status: 'active' | 'retired' | 'out_of_service';
+  criticality: 'low' | 'medium' | 'high';
+  expectedLifeYears?: number;
+  replacementCost?: number;
+  lastServiceDate?: string;
+  nextServiceDate?: string;
+  createdAt: string;
+  updatedAt: string;
+  // Denormalized for display
+  siteName?: string;
 };
 
-export type Attendee = {
-    id: string;
-    name: string;
-    signatureUrl?: string | null;
+export type RequiredMaterial = {
+  materialId: string;
+  name: string;
+  quantity: number;
+  uom: string;
 };
 
-export type HvacStartupReport = {
-    id: string;
-    workOrderId?: string;
-    technicianId?: string;
-    date: string;
-    site?: string;
-    technician?: string;
-    equipmentBeingRemoved?: string;
-    unitTag?: string;
-    manufacturer?: string;
-    mNumber?: string;
-    sNumber?: string;
-    equipmentType?: string;
-    equipmentManufacturer?: string;
-    model?: string;
-    serial?: string;
-    location?: string;
-    beltSize?: string;
-    filterSizeAndQty?: string;
-    ambientTemp?: string;
-    equipmentId?: string;
-    areaEquipmentServes?: string;
-    supplyVoltage_L1_L2?: string;
-    supplyVoltage_L2_L3?: string;
-    supplyVoltage_L3_L1?: string;
-    controlVoltageACDC?: string;
-    motorHp?: string;
-    motorAmps?: string;
-    suctionPressure_S1?: string;
-    suctionPressure_S2?: string;
-    suctionPressure_S3?: string;
-    suctionPressure_S4?: string;
-    dischargePressure_S1?: string;
-    dischargePressure_S2?: string;
-    dischargePressure_S3?: string;
-    dischargePressure_S4?: string;
-    crankcaseHeaterAmp_S1?: string;
-    crankcaseHeaterAmp_S2?: string;
-    crankcaseHeaterAmp_S3?: string;
-    crankcaseHeaterAmp_S4?: string;
-    compressorAmp_T1?: string;
-    compressorAmp_T2?: string;
-    compressorAmp_T3?: string;
-    compressorVoltage_T1_T2?: string;
-    compressorVoltage_T2_T3?: string;
-    compressorVoltage_T3_T1?: string;
-    condenserFanVoltage?: string;
-    condenserFanAmp?: string;
-    cooling_evaporatorEAT?: string;
-    cooling_evaporatorLAT?: string;
-    cooling_condenserEAT?: string;
-    cooling_condenserLAT?: string;
-    motorRatedAmps_T1?: string;
-    motorRatedAmps_T2?: string;
-    motorRatedAmps_T3?: string;
-    gasHeating_RAT_SAT_S1?: string;
-    gasHeating_RAT_SAT_S2?: string;
-    gasHeating_RAT_SAT_S3?: string;
-    gasHeating_RAT_SAT_S4?: string;
-    gasPressureInWC?: string;
-    electricHeating_RAT_SAT_S1?: string;
-    electricHeating_RAT_SAT_S2?: string;
-    electricHeating_RAT_SAT_S3?: string;
-    electricHeating_RAT_SAT_S4?: string;
-    voltage_T1_T2?: string;
-    voltage_T2_T3?: string;
-    voltage_T3_T1?: string;
-    amps_T1?: string;
-    amps_T2?: string;
-    amps_T3?: string;
-    checkedRotation?: string;
+export type ChecklistStep = {
+  step: string;
+  requiresPhoto?: boolean;
+  requiresMeasurement?: boolean;
 };
 
-export type TimeEntry = {
-    id: string;
-    technicianId: string;
-    workOrderId: string | null;
-    date: string;
-    hours: number;
-    timeType: 'Regular' | 'Overtime' | 'Double Time';
-    notes?: string;
-    workOrder?: WorkOrder; // For display purposes on the timesheet
-    technicianName?: string;
-};
-    
-export type QuoteLineItem = {
-    id: string;
-    description: string;
-    quantity: number;
-    unitPrice: number;
+export type PmTemplate = {
+  id: string;
+  name: string;
+  description: string;
+  frequencyType: 'monthly' | 'quarterly' | 'semiannual' | 'annual' | 'custom_days';
+  customIntervalDays?: number;
+  estimatedLaborHours: number;
+  requiredMaterials: RequiredMaterial[];
+  checklist: ChecklistStep[];
+  safetyNotes?: string;
+  complianceCategory?: string;
 };
 
-export type Quote = {
-    id: string;
-    workOrderId?: string;
-    quoteNumber: string;
-    status: 'Draft' | 'Sent' | 'Accepted' | 'Rejected' | 'Archived';
-    clientId?: string;
-    client?: Client;
-    workSiteId?: string;
-    workSite?: WorkSite;
-    jobName?: string; // Denormalized for display
-    description: string;
-    modelNumber: string;
-    serialNumber: string;
-    estimatedLabor?: string;
-    materialsNeeded?: string;
-    photos: string[];
-    videos: string[];
-    createdDate: string;
-    createdBy_technicianId: string;
-    createdBy_technician?: Technician;
-    lineItems: QuoteLineItem[];
-    subtotal: number;
-    tax: number;
-    total: number;
-    adminNotes?: string;
+export type AssetPmSchedule = {
+  id: string;
+  assetId: string;
+  templateId: string;
+  nextDueDate: string;
+  lastCompletedDate?: string;
+  autoGenerateWorkOrder: boolean;
+  status: 'active' | 'paused';
+  // Denormalized for display
+  assetName?: string;
+  templateName?: string;
+};
+
+export type AssetServiceHistory = {
+  id: string;
+  assetId: string;
+  workOrderId: string;
+  technicianId: string;
+  completedDate: string;
+  notes: string;
+  materialsUsed?: any[];
+  measurements?: Record<string, any>;
+  photos?: string[];
+  followUpRequired?: boolean;
 };

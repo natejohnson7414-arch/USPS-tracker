@@ -1,307 +1,67 @@
 
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * Core Philosophy: This ruleset enforces a lenient access model for active work orders
-     * and a stricter model for completed ones. Any authenticated user can create, view, and
-     * edit any work order that is not marked as 'Completed'. Once a work order is completed,
-     * it becomes read-only for non-administrators to preserve historical data integrity.
-     * Administrators retain full access to all data at all times.
-     *
-     * Data Structure: The data is organized into top-level collections for `users`, `roles`,
-     * `technicians`, and `work_orders`.
-     *
-     * Key Security Decisions:
-     * - Default Deny: All operations are denied by default. Access must be explicitly granted.
-     * - Open Editing for Active Orders: Non-admin users can edit any work order as long
-     *   as its status is not 'Completed'.
-     * - Admin Override: Administrators have full CRUD access to all resources, including
-     *   editing completed work orders.
-     * - No User Enumeration: Listing users is restricted to administrators
-     *   to protect user privacy. Listing technicians is allowed for any signed-in user.
-     *
-     */
-
-    // --------------------------------------------------------------------------
-    // Helper Functions
-    // --------------------------------------------------------------------------
-
-    /**
-     * Checks if a user is authenticated.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * Checks if the currently authenticated user's UID matches the provided userId.
-     */
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    /**
-     * Retrieves the authenticated user's profile document from the 'technicians' collection.
-     */
-    function getUserDoc() {
-      return get(/databases/$(database)/documents/technicians/$(request.auth.uid));
-    }
-
-    /**
-     * Checks if the authenticated user has a specific role by name.
-     * This performs two reads: one for the user document and one for the role document.
-     */
-    function userHasRole(roleName) {
-      let userDoc = getUserDoc();
-      return isSignedIn() && userDoc.data != null && userDoc.data.roleId != null &&
-        get(/databases/$(database)/documents/roles/$(userDoc.data.roleId)).data.name == roleName;
-    }
-
-    /**
-     * Checks if the user is an Administrator.
-     * The user is an admin if their email is 'admin@crawford-company.com' OR they have the 'Administrator' role.
-     */
     function isAdmin() {
       return isSignedIn() && (request.auth.token.email == 'admin@crawford-company.com' || userHasRole('Administrator'));
     }
 
-    /**
-     * Checks if the user is a Technician.
-     */
-    function isTechnician() {
-      return userHasRole('Technician');
+    function userHasRole(roleName) {
+      let userDoc = get(/databases/$(database)/documents/technicians/$(request.auth.uid));
+      return isSignedIn() && userDoc.data != null && userDoc.data.roleId != null &&
+        get(/databases/$(database)/documents/roles/$(userDoc.data.roleId)).data.name == roleName;
     }
 
-    /**
-     * Validates that a document being created has an `id` field matching the user's auth UID.
-     */
-    function isCreatingOwnProfile(userId) {
-      return isOwner(userId) && request.resource.data.id == userId;
+    match /assets/{assetId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
-    /**
-     * Validates that a user is updating their own profile and that the `id` field is immutable.
-     */
-    function isUpdatingOwnProfile(userId) {
-      return isOwner(userId) && resource != null && request.resource.data.id == resource.data.id;
-    }
-    
-    // Check if the required fields for a work order exist
-    function hasRequiredWorkOrderFields() {
-        let data = request.resource.data;
-        return data.id != null && 
-               data.jobName != null &&
-               data.description != null &&
-               data.status != null &&
-               data.createdDate != null;
-    }
-    
-    /**
-     * Checks if the parent work order is in a locked state (Review or Completed).
-     */
-     function isParentWorkOrderLocked(workOrderId) {
-        let status = get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.status;
-        return status == 'Review' || status == 'Completed';
-     }
-     
-    /**
-     * Checks if a user is creating their own time entry.
-     */
-    function isCreatingOwnTimeEntry() {
-      return isSignedIn() && request.resource.data.technicianId == request.auth.uid;
+    match /pm_templates/{templateId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
-    /**
-     * Checks if a user has permission to update a work order document.
-     */
-    function isAllowedToUpdateWorkOrder() {
-        // Admins can always update.
-        if (isAdmin()) {
-            return true;
-        }
-        // Technicians can update if they are the owner and the order is not completed.
-        if (isOwner(resource.data.assignedTechnicianId) && resource.data.status != 'Completed') {
-            // If the order is in Review, they can only update the work_history.
-            if (resource.data.status == 'Review') {
-                return request.writeFields.size() == 1 && 'work_history' in request.writeFields;
-            }
-            // Otherwise (Open, In Progress, On Hold), they can update.
-            return true;
-        }
-        return false;
+    match /asset_pm_schedules/{scheduleId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
-
-    // --------------------------------------------------------------------------
-    // Collection Rules
-    // --------------------------------------------------------------------------
-
-    /**
-     * @description Governs access to user profile documents, which store auth info and role assignments.
-     * @path /users/{userId}
-     * @allow (create) A new user signing up, creating their own document at `/users/abc` with UID 'abc'.
-     * @deny (get) User 'xyz' attempting to read the profile of user 'abc'.
-     * @principle Restricts access to a user's own data tree, with an Admin override for management.
-     */
-    match /users/{userId} {
-      allow get: if isOwner(userId) || isAdmin();
-      allow list: if isAdmin();
-      allow create: if isCreatingOwnProfile(userId);
-      allow update: if isUpdatingOwnProfile(userId);
-      allow delete: if isAdmin() && resource != null;
+    match /asset_service_history/{historyId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
-    /**
-     * @description Manages access to role definition documents.
-     * @path /roles/{roleId}
-     * @allow (get) Any signed-in user reading a role to understand its name or permissions.
-     * @deny (create) A non-admin user trying to create a new role.
-     * @principle Defines roles as readable by authenticated users but writable only by Administrators.
-     */
-    match /roles/{roleId} {
-      allow get, list: if isSignedIn();
-      allow create: if isAdmin();
-      allow update, delete: if isAdmin() && resource != null;
-    }
-
-    /**
-     * @description Governs access to technician profile documents.
-     * @path /technicians/{technicianId}
-     * @allow (update) Technician 'tech123' updating their own profile at `/technicians/tech123`.
-     * @deny (list) An unauthenticated user trying to list all technician profiles.
-     * @principle Enforces document ownership for writes and self-creation, with an Admin override. List is allowed for any authenticated user.
-     */
-    match /technicians/{technicianId} {
-      allow get, list: if isSignedIn();
-      allow create: if isCreatingOwnProfile(technicianId) || isAdmin();
-      allow update: if isOwner(technicianId) || isAdmin();
-      allow delete: if isAdmin() && resource != null;
-    }
-
-    /**
-     * @description Governs access to work site location documents.
-     * @path /work_sites/{workSiteId}
-     * @allow (list) Any authenticated user can list work sites to assign them to work orders.
-     * @deny (create) A non-admin trying to create a new company-wide work site.
-     * @principle Work sites are considered public information within the organization, but only Admins can manage them.
-     */
-    match /work_sites/{workSiteId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isAdmin();
-    }
-    
-    /**
-     * @description Governs access to client documents for billing.
-     * @path /clients/{clientId}
-     * @allow (list) Any authenticated user can list clients to assign them to work orders.
-     * @deny (create) A non-admin trying to create a new client.
-     * @principle Clients are considered public information within the organization, but only Admins can manage them.
-     */
-    match /clients/{clientId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isAdmin();
-    }
-
-
-    /**
-     * @description Manages access to the primary collection of work order documents.
-     * @path /work_orders/{workOrderId}
-     * @allow (get, list) Any signed-in user.
-     * @allow (update) An admin, or the assigned technician if the order isn't locked.
-     * @principle Enforces open viewing, but restricted editing based on assignment and status.
-     */
     match /work_orders/{workOrderId} {
       allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && hasRequiredWorkOrderFields();
-      allow update: if workOrderId != '24-0001' && isAllowedToUpdateWorkOrder();
-      allow delete: if workOrderId != '24-0001' && isAdmin() && resource != null;
-
-      /**
-       * @description Manages access to updates on a specific work order.
-       * @path /work_orders/{workOrderId}/updates/{updateId}
-       * @allow (create) The assigned technician or an admin, if the parent work order is not locked.
-       * @principle Access for notes mirrors the parent work order's editability, but is restricted to the assigned tech/admin.
-       */
-      match /updates/{updateId} {
-        allow read, list: if isSignedIn();
-        allow create: if isSignedIn() && !isParentWorkOrderLocked(workOrderId);
-        allow update, delete: if isAdmin() || (isOwner(get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.assignedTechnicianId) && !isParentWorkOrderLocked(workOrderId));
-      }
-      
-      /**
-       * @description Manages access to scheduled activities on a work order.
-       * @path /work_orders/{workOrderId}/activities/{activityId}
-       * @principle Access is granted to the assigned technician or an administrator. Technicians can create activities on any incomplete work order.
-       */
-      match /activities/{activityId} {
-        allow read, list: if isSignedIn();
-        allow create: if isAdmin() || (isTechnician() && !isParentWorkOrderLocked(workOrderId));
-        allow update, delete: if isAdmin() || (isOwner(get(/databases/$(database)/documents/work_orders/$(workOrderId)).data.assignedTechnicianId) && !isParentWorkOrderLocked(workOrderId));
-      }
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isAdmin();
     }
 
-    /**
-     * @description Secures the denormalized work orders for technician-specific queries.
-     * @path /technicians/{technicianId}/work_orders/{workOrderId}
-     * @allow (list) Technician 'tech123' listing all documents under `/technicians/tech123/work_orders`.
-     * @deny (list) Technician 'tech456' attempting to list documents under `/technicians/tech123/work_orders`.
-     * @principle Enforces strict ownership based on the path, enabling secure and efficient queries for technicians.
-     */
-    match /technicians/{technicianId}/work_orders/{workOrderId} {
-      allow get, list: if isOwner(technicianId);
-      allow create: if isOwner(technicianId) && request.resource.data.assignedTechnicianId == technicianId;
-      allow update: if isOwner(technicianId) && resource != null && request.resource.data.assignedTechnicianId == resource.data.assignedTechnicianId;
-      allow delete: if isOwner(technicianId) && resource != null;
+    match /technicians/{techId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
-    
-    /**
-     * @description Manages access to training attendance records.
-     * @path /training_records/{recordId}
-     * @allow (read, write) Any authenticated user can create, read, and update training records.
-     * @principle Training records are considered general internal documents.
-     */
-    match /training_records/{recordId} {
-      allow read, write: if isSignedIn();
-    }
-    
-    /**
-     * @description Manages access to HVAC Start-Up reports.
-     * @path /hvac_startup_reports/{reportId}
-     * @allow (read, write) Any authenticated user can create, read, and update reports.
-     * @principle HVAC reports are considered general internal documents.
-     */
-    match /hvac_startup_reports/{reportId} {
-      allow read, write: if isSignedIn();
-    }
-    
-    /**
-     * @description Manages access to time entries.
-     * @path /time_entries/{timeEntryId}
-     * @allow (read, delete) A user can read or delete their own time entries. Admins can manage any entry.
-     * @allow (create) A user can create a time entry for themselves.
-     * @principle Enforces that users can only manage their own time entries, with an admin override.
-     */
-     match /time_entries/{timeEntryId} {
-        allow list: if isSignedIn();
-        allow get: if isAdmin() || (isSignedIn() && isOwner(resource.data.technicianId));
-        allow create: if isCreatingOwnTimeEntry();
-        allow update: if isAdmin() || (isSignedIn() && isOwner(resource.data.technicianId));
-        allow delete: if isAdmin() || (isSignedIn() && isOwner(resource.data.technicianId));
-     }
 
-    /**
-     * @description Manages access to quotes. Admins have full access. Any signed-in user can list quotes.
-     * Technicians can create quotes and read quotes they created.
-     * @path /quotes/{quoteId}
-     */
-    match /quotes/{quoteId} {
-      allow read: if isAdmin() || (isTechnician() && resource.data.createdBy_technicianId == request.auth.uid);
-      allow list: if isSignedIn();
-      allow create: if isTechnician();
-      allow update, delete: if isAdmin();
+    match /roles/{roleId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /work_sites/{siteId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /clients/{clientId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
   }
 }
