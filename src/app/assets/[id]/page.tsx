@@ -3,12 +3,13 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { History, CalendarClock, Settings, Tool, Wrench, ShieldCheck, Clock, FileText, Loader2, AlertCircle } from 'lucide-react';
+import { History, CalendarClock, Settings, Tool, Wrench, ShieldCheck, Clock, FileText, Loader2, AlertCircle, PlusCircle } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { getAssetById, getAssetPmSchedules, getAssetServiceHistory, calculateAssetMetrics } from '@/lib/data';
 import type { Asset, AssetPmSchedule, AssetServiceHistory } from '@/lib/types';
@@ -24,7 +25,7 @@ export default function AssetDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (db && id) {
+    if (db && id && id !== 'new') {
       Promise.all([
         getAssetById(db, id as string),
         getAssetPmSchedules(db, id as string),
@@ -34,6 +35,9 @@ export default function AssetDetailsPage() {
         setSchedules(s);
         setHistory(h);
       }).finally(() => setIsLoading(false));
+    } else if (id === 'new') {
+        // Handled by assets/new/page.tsx, but just in case:
+        setIsLoading(false);
     }
   }, [db, id]);
 
@@ -55,7 +59,11 @@ export default function AssetDetailsPage() {
             <p className="text-muted-foreground font-mono">Tag: {asset.assetTag} | S/N: {asset.serialNumber}</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline"><Settings className="mr-2 h-4 w-4" /> Edit Asset</Button>
+            <Button variant="outline" asChild>
+              <Link href={`/assets/${id}/edit`}>
+                <Settings className="mr-2 h-4 w-4" /> Edit Asset
+              </Link>
+            </Button>
             <Button><Wrench className="mr-2 h-4 w-4" /> Record Service</Button>
           </div>
         </div>
@@ -69,10 +77,10 @@ export default function AssetDetailsPage() {
                 <div><p className="text-muted-foreground">Model</p><p className="font-medium">{asset.model}</p></div>
                 <div><p className="text-muted-foreground">Site Location</p><p className="font-medium">{asset.siteName}</p></div>
                 <Separator />
-                <div><p className="text-muted-foreground">Install Date</p><p className="font-medium">{format(new Date(asset.installDate), 'PPP')}</p></div>
+                <div><p className="text-muted-foreground">Install Date</p><p className="font-medium">{asset.installDate ? format(new Date(asset.installDate), 'PPP') : 'N/A'}</p></div>
                 <div>
                   <p className="text-muted-foreground">Warranty Until</p>
-                  <p className={new Date(asset.warrantyExpiration || '') < new Date() ? "text-destructive font-medium" : "font-medium"}>
+                  <p className={(asset.warrantyExpiration && new Date(asset.warrantyExpiration) < new Date()) ? "text-destructive font-medium" : "font-medium"}>
                     {asset.warrantyExpiration ? format(new Date(asset.warrantyExpiration), 'PPP') : 'N/A'}
                   </p>
                 </div>
