@@ -27,6 +27,26 @@
       },
       "required": ["id", "name", "assetTag", "siteId", "status", "criticality"]
     },
+    "Material": {
+      "title": "Material",
+      "type": "object",
+      "description": "A part or material used in preventative maintenance (e.g. Belts, Filters).",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "partNumber": { "type": "string" },
+        "description": { "type": "string" },
+        "uom": { "type": "string" },
+        "customFields": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "category", "uom"]
+    },
     "PmTemplate": {
       "title": "PmTemplate",
       "type": "object",
@@ -108,6 +128,10 @@
       {
         "path": "/assets/{assetId}",
         "definition": { "entityName": "Asset" }
+      },
+      {
+        "path": "/materials/{materialId}",
+        "definition": { "entityName": "Material" }
       },
       {
         "path": "/pm_templates/{templateId}",

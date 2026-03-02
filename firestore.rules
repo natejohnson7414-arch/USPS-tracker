@@ -23,6 +23,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /materials/{materialId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     match /pm_templates/{templateId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();

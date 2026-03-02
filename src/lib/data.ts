@@ -3,7 +3,7 @@
 import type { 
   AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client, 
   TrainingRecord, HvacStartupReport, TimeEntry, Activity, ActivityHistoryItem, 
-  Quote, Asset, PmTemplate, AssetPmSchedule, AssetServiceHistory 
+  Quote, Asset, PmTemplate, AssetPmSchedule, AssetServiceHistory, Material
 } from '@/lib/types';
 import { collection, getDoc, doc, query, where, arrayUnion, orderBy, limit, getDocs, writeBatch } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
@@ -173,10 +173,16 @@ export const getAssetServiceHistory = async (db: any, assetId: string): Promise<
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AssetServiceHistory));
 };
 
-export const getLastAssetNotes = async (db: any, assetId: string, count: number = 3): Promise<AssetServiceHistory[]> => {
-  const q = query(collection(db, 'asset_service_history'), where('assetId', '==', assetId), orderBy('completedDate', 'desc'), limit(count));
-  const snapshot = await getCollectionNonBlocking(q);
-  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AssetServiceHistory));
+// --- Material Services ---
+
+export const getMaterials = async (db: any): Promise<Material[]> => {
+  const snapshot = await getCollectionNonBlocking(collection(db, 'materials'));
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Material)).sort((a, b) => a.name.localeCompare(b.name));
+};
+
+export const getMaterialById = async (db: any, id: string): Promise<Material | undefined> => {
+  const snap = await getDocumentNonBlocking(doc(db, 'materials', id));
+  return snap.exists() ? { id: snap.id, ...snap.data() } as Material : undefined;
 };
 
 // Automation Service

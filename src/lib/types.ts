@@ -179,6 +179,18 @@ export type Asset = {
   siteName?: string;
 };
 
+export type Material = {
+  id: string;
+  name: string;
+  category: string;
+  partNumber?: string;
+  description?: string;
+  uom: string;
+  customFields?: { [key: string]: string };
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type RequiredMaterial = {
   materialId: string;
   name: string;
