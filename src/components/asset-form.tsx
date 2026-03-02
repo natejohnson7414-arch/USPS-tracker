@@ -23,6 +23,8 @@ interface AssetFormProps {
   onCancel?: () => void;
 }
 
+const commonCategories = ['Filter', 'Belt', 'Oil', 'Refrigerant', 'Gasket', 'Fuse', 'Other'];
+
 export function AssetForm({ asset, onCancel }: AssetFormProps) {
   const db = useFirestore();
   const router = useRouter();
@@ -51,6 +53,7 @@ export function AssetForm({ asset, onCancel }: AssetFormProps) {
   const [newFieldName, setNewFieldName] = useState('');
   const [newFieldValue, setNewFieldValue] = useState('');
   const [newMatName, setNewMatName] = useState('');
+  const [newMatCategory, setNewMatCategory] = useState('Filter');
   const [newMatQty, setNewMatQty] = useState('1');
   const [newMatUom, setNewMatUom] = useState('EA');
 
@@ -93,6 +96,7 @@ export function AssetForm({ asset, onCancel }: AssetFormProps) {
     if (!newMatName) return;
     const newMat: AssetMaterial = {
       name: newMatName,
+      category: newMatCategory,
       quantity: parseFloat(newMatQty) || 1,
       uom: newMatUom
     };
@@ -234,7 +238,7 @@ export function AssetForm({ asset, onCancel }: AssetFormProps) {
                 {formData.materials?.map((mat, idx) => (
                   <div key={idx} className="flex items-center justify-between p-2 border rounded-md bg-muted/20">
                     <div className="text-sm">
-                      <span className="font-bold">{mat.quantity} {mat.uom}</span> - {mat.name}
+                      <span className="font-bold">{mat.quantity} {mat.uom}</span> - {mat.name} <span className="text-xs text-muted-foreground">({mat.category})</span>
                     </div>
                     <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleRemoveMaterial(idx)}>
                       <Trash2 className="h-4 w-4" />
@@ -245,12 +249,30 @@ export function AssetForm({ asset, onCancel }: AssetFormProps) {
               <Separator />
               <div className="space-y-3">
                 <Label className="text-xs uppercase text-muted-foreground">Add Required Material</Label>
-                <div className="grid grid-cols-4 gap-2">
-                  <div className="col-span-2">
-                    <Input placeholder="Part Name (e.g. 20x25x1 Filter)" value={newMatName} onChange={(e) => setNewMatName(e.target.value)} />
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">Name</Label>
+                    <Input placeholder="e.g. 20x25x1 Filter" value={newMatName} onChange={(e) => setNewMatName(e.target.value)} />
                   </div>
-                  <Input type="number" placeholder="Qty" value={newMatQty} onChange={(e) => setNewMatQty(e.target.value)} />
-                  <Input placeholder="UOM" value={newMatUom} onChange={(e) => setNewMatUom(e.target.value)} />
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">Type</Label>
+                    <Select value={newMatCategory} onValueChange={setNewMatCategory}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {commonCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">Qty</Label>
+                    <Input type="number" placeholder="Qty" value={newMatQty} onChange={(e) => setNewMatQty(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">UOM</Label>
+                    <Input placeholder="UOM" value={newMatUom} onChange={(e) => setNewMatUom(e.target.value)} />
+                  </div>
                 </div>
                 <Button type="button" variant="outline" className="w-full" onClick={handleAddMaterial} disabled={!newMatName}>
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Material

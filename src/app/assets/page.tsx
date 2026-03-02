@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Package, PlusCircle, Search, CalendarClock, TrendingUp, AlertTriangle, Play, Loader2 } from 'lucide-react';
+import { Package, PlusCircle, Search, CalendarClock, TrendingUp, AlertTriangle, Play, Loader2, FileBarChart } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useFirestore } from '@/firebase';
 import { getAssets, generatePmWorkOrders } from '@/lib/data';
@@ -15,6 +15,7 @@ import type { Asset } from '@/lib/types';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MaterialsReportDialog } from '@/components/materials-report-dialog';
 
 export default function AssetsPage() {
   const db = useFirestore();
@@ -23,6 +24,7 @@ export default function AssetsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRunningPm, setIsRunningPm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isReportOpen, setIsReportOpen] = useState(false);
 
   useEffect(() => {
     if (db) {
@@ -57,7 +59,11 @@ export default function AssetsPage() {
             <h1 className="text-3xl font-bold tracking-tight">Assets & PM</h1>
             <p className="text-muted-foreground">Manage equipment registry and preventative maintenance schedules.</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={() => setIsReportOpen(true)} variant="outline">
+              <FileBarChart className="mr-2 h-4 w-4" />
+              Materials Report
+            </Button>
             <Button onClick={handleRunPmCheck} disabled={isRunningPm} variant="secondary">
               {isRunningPm ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
               Generate Due PMs
@@ -187,11 +193,11 @@ export default function AssetsPage() {
                 <CardContent className="h-64 flex items-center justify-center text-muted-foreground">
                   Replacement Forecast Placeholder
                 </CardContent>
-              </Card>
-            </div>
+              </div>
           </TabsContent>
         </Tabs>
       </div>
+      <MaterialsReportDialog isOpen={isReportOpen} onOpenChange={setIsReportOpen} />
     </MainLayout>
   );
 }

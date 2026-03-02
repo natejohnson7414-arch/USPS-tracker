@@ -158,6 +158,7 @@ export type Client = {
 
 export type AssetMaterial = {
   name: string;
+  category: string;
   description?: string;
   quantity: number;
   uom: string;

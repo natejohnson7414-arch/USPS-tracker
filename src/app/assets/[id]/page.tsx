@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { History, CalendarClock, Settings, Wrench, ShieldCheck, Clock, FileText, Loader2, AlertCircle, Box, Tag } from 'lucide-react';
+import { History, CalendarClock, Settings, Wrench, ShieldCheck, Clock, FileText, Loader2, AlertCircle, Box, Tag, PlusCircle } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { getAssetById, getAssetPmSchedules, getAssetServiceHistory, calculateAssetMetrics } from '@/lib/data';
 import type { Asset, AssetPmSchedule, AssetServiceHistory } from '@/lib/types';
@@ -95,9 +95,12 @@ export default function AssetDetailsPage() {
               <CardContent className="space-y-3">
                 {asset.materials && asset.materials.length > 0 ? (
                   asset.materials.map((m, i) => (
-                    <div key={i} className="flex justify-between items-start text-xs border-b pb-2 last:border-0">
-                      <span className="font-medium">{m.name}</span>
-                      <Badge variant="secondary" className="scale-75 origin-right">{m.quantity} {m.uom}</Badge>
+                    <div key={i} className="flex flex-col border-b pb-2 last:border-0">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-medium text-xs">{m.name}</span>
+                        <Badge variant="secondary" className="scale-75 origin-right">{m.quantity} {m.uom}</Badge>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground uppercase">{m.category}</span>
                     </div>
                   ))
                 ) : <p className="text-xs text-muted-foreground italic">No materials listed.</p>}
