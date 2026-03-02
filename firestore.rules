@@ -12,9 +12,9 @@ service cloud.firestore {
     }
 
     function userHasRole(roleName) {
-      let userDoc = get(/databases/$(database)/documents/technicians/$(request.auth.uid));
-      return isSignedIn() && userDoc.data != null && userDoc.data.roleId != null &&
-        get(/databases/$(database)/documents/roles/$(userDoc.data.roleId)).data.name == roleName;
+      let userDocPath = /databases/$(database)/documents/technicians/$(request.auth.uid);
+      return isSignedIn() && exists(userDocPath) && get(userDocPath).data.roleId != null &&
+        get(/databases/$(database)/documents/roles/$(get(userDocPath).data.roleId)).data.name == roleName;
     }
 
     match /assets/{assetId} {
@@ -62,6 +62,26 @@ service cloud.firestore {
     match /clients/{clientId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
+    }
+    
+    match /hvac_startup_reports/{reportId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+    
+    match /training_records/{recordId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+    
+    match /time_entries/{entryId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+    
+    match /quotes/{quoteId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
   }
 }

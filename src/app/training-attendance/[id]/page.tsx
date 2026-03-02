@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -256,7 +257,7 @@ export default function ViewTrainingRecordPage() {
             ) : (
                 <div className="space-y-8" ref={printRef}>
                     {/* PAGE 1: RECORD INFO & ATTENDEES */}
-                    <div className="pdf-page bg-white text-black p-8 shadow-lg mx-auto" style={{ width: '8.5in', height: '11in' }}>
+                    <div className="pdf-page bg-white text-black p-8 shadow-lg mx-auto" style={{ width: '8.5in', height: '11in', boxSizing: 'border-box' }}>
                         <header className="flex justify-end items-start mb-6">
                             <div className="text-right text-[10px] leading-tight">
                                 <p className="font-bold">Heating / Air Conditioning / Plumbing / Piping / Electrical</p>
@@ -345,10 +346,15 @@ export default function ViewTrainingRecordPage() {
                                 </div>
                             </div>
                         </main>
+                        
+                        <footer className="mt-auto pt-4 text-[9px] text-gray-400 flex justify-between">
+                            <span>Training Record - Job# {workOrder?.id || record.workOrderId}</span>
+                            <span>Page 1 of 2</span>
+                        </footer>
                     </div>
 
                     {/* PAGE 2: CHECKLIST */}
-                    <div className="pdf-page bg-white text-black p-8 shadow-lg mx-auto" style={{ width: '8.5in', height: '11in' }}>
+                    <div className="pdf-page bg-white text-black p-8 shadow-lg mx-auto" style={{ width: '8.5in', height: '11in', boxSizing: 'border-box' }}>
                         <main className="h-full flex flex-col">
                             <h2 className="text-lg font-bold text-center border-b border-black pb-2 mb-4">Owners Training Check List</h2>
                             
@@ -395,7 +401,7 @@ export default function ViewTrainingRecordPage() {
                             </div>
                             
                             <footer className="mt-auto pt-4 border-t border-gray-200 text-[9px] text-gray-400 flex justify-between">
-                                <span>Training Record - WO# {workOrder?.id || record.workOrderId}</span>
+                                <span>Training Record - Job# {workOrder?.id || record.workOrderId}</span>
                                 <span>Page 2 of 2</span>
                             </footer>
                         </main>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -238,7 +239,7 @@ export default function ViewHvacStartupReportPage() {
                 ) : (
                     <div className="space-y-8" ref={printRef}>
                         {/* PAGE 1: EQUIPMENT INFO */}
-                        <div className="pdf-page bg-white text-black p-10 shadow-lg mx-auto" style={{ width: '8.5in', height: '11in' }}>
+                        <div className="pdf-page bg-white text-black p-10 shadow-lg mx-auto" style={{ width: '8.5in', height: '11in', boxSizing: 'border-box' }}>
                             <header className="flex justify-center items-center mb-8">
                                 <h1 className="text-2xl font-black text-center border-b-4 border-black pb-2 px-8">
                                 HVAC START-UP REPORT
@@ -283,7 +284,7 @@ export default function ViewHvacStartupReportPage() {
                         </div>
 
                         {/* PAGE 2: TECHNICAL DATA */}
-                        <div className="pdf-page bg-white text-black p-10 shadow-lg mx-auto" style={{ width: '8.5in', height: '11in' }}>
+                        <div className="pdf-page bg-white text-black p-10 shadow-lg mx-auto" style={{ width: '8.5in', height: '11in', boxSizing: 'border-box' }}>
                             <main className="space-y-6 h-full flex flex-col">
                                 <h2 className="text-lg font-bold text-center border-b-2 border-black pb-2 mb-4">Technical Performance Data</h2>
                                 
