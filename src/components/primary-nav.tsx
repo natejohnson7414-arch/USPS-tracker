@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { CreateWorkOrderDialog } from './create-work-order-dialog';
 import type { Technician, WorkSite, Client } from '@/lib/types';
-import { Home, LayoutDashboard, Receipt, Package, Settings, Box } from 'lucide-react';
+import { Home, LayoutDashboard, Receipt, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTechnician } from '@/hooks/use-technician';
 
@@ -52,15 +52,6 @@ export function PrimaryNav({ technicians, workSites, clients, onWorkSiteAdded }:
                             <Link href="/assets">
                                 <Package className="mr-2 h-4 w-4" />
                                 Assets & PM
-                            </Link>
-                        </Button>
-                        <Button asChild variant="ghost" className={cn(
-                            "font-semibold",
-                            pathname === '/materials' && "bg-muted"
-                        )}>
-                            <Link href="/materials">
-                                <Box className="mr-2 h-4 w-4" />
-                                Materials
                             </Link>
                         </Button>
                         <Button asChild variant="ghost" className={cn(

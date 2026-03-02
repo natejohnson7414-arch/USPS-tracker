@@ -156,6 +156,13 @@ export type Client = {
     };
 }
 
+export type AssetMaterial = {
+  name: string;
+  description?: string;
+  quantity: number;
+  uom: string;
+}
+
 export type Asset = {
   id: string;
   name: string;
@@ -175,6 +182,8 @@ export type Asset = {
   nextServiceDate?: string;
   createdAt: string;
   updatedAt: string;
+  customFields?: { [key: string]: string };
+  materials?: AssetMaterial[];
   // Denormalized for display
   siteName?: string;
 };

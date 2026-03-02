@@ -23,29 +23,25 @@
         "lastServiceDate": { "type": "string", "format": "date-time" },
         "nextServiceDate": { "type": "string", "format": "date-time" },
         "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "name", "assetTag", "siteId", "status", "criticality"]
-    },
-    "Material": {
-      "title": "Material",
-      "type": "object",
-      "description": "A part or material used in preventative maintenance (e.g. Belts, Filters).",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "category": { "type": "string" },
-        "partNumber": { "type": "string" },
-        "description": { "type": "string" },
-        "uom": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" },
         "customFields": {
           "type": "object",
           "additionalProperties": { "type": "string" }
         },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "materials": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "description": { "type": "string" },
+              "quantity": { "type": "number" },
+              "uom": { "type": "string" }
+            }
+          }
+        }
       },
-      "required": ["id", "name", "category", "uom"]
+      "required": ["id", "name", "assetTag", "siteId", "status", "criticality"]
     },
     "PmTemplate": {
       "title": "PmTemplate",
@@ -128,10 +124,6 @@
       {
         "path": "/assets/{assetId}",
         "definition": { "entityName": "Asset" }
-      },
-      {
-        "path": "/materials/{materialId}",
-        "definition": { "entityName": "Material" }
       },
       {
         "path": "/pm_templates/{templateId}",

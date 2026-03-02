@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { History, CalendarClock, Settings, Tool, Wrench, ShieldCheck, Clock, FileText, Loader2, AlertCircle, PlusCircle } from 'lucide-react';
+import { History, CalendarClock, Settings, Wrench, ShieldCheck, Clock, FileText, Loader2, AlertCircle, Box, Tag } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { getAssetById, getAssetPmSchedules, getAssetServiceHistory, calculateAssetMetrics } from '@/lib/data';
 import type { Asset, AssetPmSchedule, AssetServiceHistory } from '@/lib/types';
@@ -36,7 +36,6 @@ export default function AssetDetailsPage() {
         setHistory(h);
       }).finally(() => setIsLoading(false));
     } else if (id === 'new') {
-        // Handled by assets/new/page.tsx, but just in case:
         setIsLoading(false);
     }
   }, [db, id]);
@@ -73,9 +72,13 @@ export default function AssetDetailsPage() {
             <Card>
               <CardHeader><CardTitle className="text-sm font-bold uppercase tracking-wider">Specifications</CardTitle></CardHeader>
               <CardContent className="space-y-4 text-sm">
-                <div><p className="text-muted-foreground">Manufacturer</p><p className="font-medium">{asset.manufacturer}</p></div>
-                <div><p className="text-muted-foreground">Model</p><p className="font-medium">{asset.model}</p></div>
-                <div><p className="text-muted-foreground">Site Location</p><p className="font-medium">{asset.siteName}</p></div>
+                <div><p className="text-muted-foreground">Manufacturer</p><p className="font-medium">{asset.manufacturer || 'N/A'}</p></div>
+                <div><p className="text-muted-foreground">Model</p><p className="font-medium">{asset.model || 'N/A'}</p></div>
+                <div><p className="text-muted-foreground">Site Location</p><p className="font-medium">{asset.siteName || 'N/A'}</p></div>
+                <Separator />
+                {Object.entries(asset.customFields || {}).map(([k, v]) => (
+                  <div key={k}><p className="text-muted-foreground capitalize">{k}</p><p className="font-medium">{v}</p></div>
+                ))}
                 <Separator />
                 <div><p className="text-muted-foreground">Install Date</p><p className="font-medium">{asset.installDate ? format(new Date(asset.installDate), 'PPP') : 'N/A'}</p></div>
                 <div>
@@ -84,6 +87,20 @@ export default function AssetDetailsPage() {
                     {asset.warrantyExpiration ? format(new Date(asset.warrantyExpiration), 'PPP') : 'N/A'}
                   </p>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-2"><Box className="h-4 w-4" />Recurring Parts</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                {asset.materials && asset.materials.length > 0 ? (
+                  asset.materials.map((m, i) => (
+                    <div key={i} className="flex justify-between items-start text-xs border-b pb-2 last:border-0">
+                      <span className="font-medium">{m.name}</span>
+                      <Badge variant="secondary" className="scale-75 origin-right">{m.quantity} {m.uom}</Badge>
+                    </div>
+                  ))
+                ) : <p className="text-xs text-muted-foreground italic">No materials listed.</p>}
               </CardContent>
             </Card>
 
