@@ -94,8 +94,9 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
   // Local state for adding new items (temporary UI state)
   const [newFieldName, setNewFieldName] = useState('');
   const [newFieldValue, setNewFieldValue] = useState('');
+  
   const [newMatName, setNewMatName] = useState('');
-  const [newMatCategory, setNewMatCategory] = useState('Filter');
+  const [newMatCategory, setNewMatCategory] = useState<string>('ALL');
   const [newMatQty, setNewMatQty] = useState('1');
   const [newMatUom, setNewMatUom] = useState('EA');
 
@@ -113,7 +114,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
   }, [catalogMaterials]);
 
   const filteredCatalogMaterials = useMemo(() => {
-    if (!newMatCategory) return catalogMaterials;
+    if (!newMatCategory || newMatCategory === 'ALL') return catalogMaterials;
     return catalogMaterials.filter(m => m.category === newMatCategory);
   }, [catalogMaterials, newMatCategory]);
 
@@ -138,9 +139,17 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
 
   const handleAddMaterial = () => {
     if (!newMatName) return;
+    
+    // Determine the category to save. If "ALL" was selected in UI, we should try to find the actual category.
+    let finalCategory = newMatCategory === 'ALL' ? 'Other' : newMatCategory;
+    const match = catalogMaterials.find(m => m.name.toLowerCase() === newMatName.toLowerCase());
+    if (match) {
+      finalCategory = match.category;
+    }
+
     const newMat: AssetMaterial = {
       name: newMatName,
-      category: newMatCategory,
+      category: finalCategory,
       quantity: parseFloat(newMatQty) || 1,
       uom: newMatUom
     };
@@ -354,8 +363,9 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
                   <div className="space-y-1">
                     <Label className="text-[10px]">Type</Label>
                     <Select value={newMatCategory} onValueChange={setNewMatCategory}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Filter type..." /></SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="ALL">All Types</SelectItem>
                         {allCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -366,20 +376,26 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
                       placeholder="Type to search..." 
                       value={newMatName} 
                       list="catalog-material-list"
+                      autoComplete="off"
                       onChange={(e) => {
                         const val = e.target.value;
                         setNewMatName(val);
                         // Auto-select type and uom if matching a catalog item
                         const match = catalogMaterials.find(m => m.name.toLowerCase() === val.toLowerCase());
                         if (match) {
-                          setNewMatCategory(match.category);
                           setNewMatUom(match.uom);
+                          // If currently on "ALL", switch to the actual type for better feedback
+                          if (newMatCategory === 'ALL') {
+                            setNewMatCategory(match.category);
+                          }
                         }
                       }} 
                     />
                     <datalist id="catalog-material-list">
                       {filteredCatalogMaterials.map(m => (
-                        <option key={m.id} value={m.name} />
+                        <option key={m.id} value={m.name}>
+                          {m.category} - {m.uom}
+                        </option>
                       ))}
                     </datalist>
                   </div>
