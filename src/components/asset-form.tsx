@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, Suspense, useMemo } from 'react';
@@ -14,8 +13,8 @@ import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking } from 
 import { collection, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save, Ban, PlusCircle, Trash2, CalendarClock, Wrench } from 'lucide-react';
-import type { Asset, WorkSite, AssetMaterial } from '@/lib/types';
-import { getWorkSites } from '@/lib/data';
+import type { Asset, WorkSite, AssetMaterial, Material } from '@/lib/types';
+import { getWorkSites, getMaterials } from '@/lib/data';
 import { Separator } from '@/components/ui/separator';
 
 interface AssetFormProps {
@@ -37,9 +36,9 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
   
   const [isSaving, setIsSaving] = useState(false);
   const [workSites, setWorkSites] = useState<WorkSite[]>([]);
+  const [catalogMaterials, setCatalogMaterials] = useState<Material[]>([]);
 
   // 1. Derive the initial form state from props or defaults
-  // This memoized object ensures we have a stable reference for the initial state
   const initialFormData = useMemo(() => {
     if (asset) {
       return {
@@ -87,7 +86,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
   // 2. Initialize state directly from the computed initial data
   const [formData, setFormData] = useState<Partial<Asset>>(initialFormData);
 
-  // 3. Keep local state in sync if the asset prop changes (important for navigation)
+  // 3. Keep local state in sync if the asset prop changes
   useEffect(() => {
     setFormData(initialFormData);
   }, [initialFormData]);
@@ -103,6 +102,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
   useEffect(() => {
     if (db) {
       getWorkSites(db).then(setWorkSites);
+      getMaterials(db).then(setCatalogMaterials);
     }
   }, [db]);
 
@@ -167,14 +167,14 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
       };
 
       if (asset?.id) {
-        await updateDocumentNonBlocking(doc(db, 'assets', asset.id), data);
+        updateDocumentNonBlocking(doc(db, 'assets', asset.id), data);
         toast({ title: 'Asset Updated' });
       } else {
         const newData = {
           ...data,
           createdAt: new Date().toISOString(),
         };
-        await addDocumentNonBlocking(collection(db, 'assets'), newData);
+        addDocumentNonBlocking(collection(db, 'assets'), newData);
         toast({ title: 'Asset Created' });
       }
 
@@ -341,10 +341,6 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
                 <Label className="text-xs uppercase text-muted-foreground">Add Required Material</Label>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <Label className="text-[10px]">Name</Label>
-                    <Input placeholder="e.g. 20x25x1 Filter" value={newMatName} onChange={(e) => setNewMatName(e.target.value)} />
-                  </div>
-                  <div className="space-y-1">
                     <Label className="text-[10px]">Type</Label>
                     <Select value={newMatCategory} onValueChange={setNewMatCategory}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
@@ -352,6 +348,29 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
                         {commonCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">Name</Label>
+                    <Input 
+                      placeholder="e.g. 20x25x1 Filter" 
+                      value={newMatName} 
+                      list="catalog-material-list"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setNewMatName(val);
+                        // Auto-select type and uom if matching a catalog item
+                        const match = catalogMaterials.find(m => m.name.toLowerCase() === val.toLowerCase());
+                        if (match) {
+                          setNewMatCategory(match.category);
+                          setNewMatUom(match.uom);
+                        }
+                      }} 
+                    />
+                    <datalist id="catalog-material-list">
+                      {catalogMaterials.map(m => (
+                        <option key={m.id} value={m.name} />
+                      ))}
+                    </datalist>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
