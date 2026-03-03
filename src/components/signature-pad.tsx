@@ -42,9 +42,6 @@ export function SignaturePad({ onSave, onClear, className }: SignaturePadProps) 
                 style: { width: '100%', height: '100%' }
             }}
           />
-          <div className="absolute top-4 left-4 pointer-events-none opacity-30">
-              <p className="text-xs uppercase font-black tracking-widest text-muted-foreground border-b-2 border-muted-foreground pb-1">Sign Here</p>
-          </div>
       </div>
       <div className="grid grid-cols-2 gap-0 border-t">
         <Button variant="ghost" onClick={handleClear} size="lg" className="h-16 rounded-none border-r text-lg font-bold">
