@@ -6,6 +6,7 @@ import {
   initializeFirestore, 
   getFirestore, 
   persistentLocalCache, 
+  memoryLocalCache,
   Firestore
 } from 'firebase/firestore'
 import { getStorage, FirebaseStorage } from 'firebase/storage';
@@ -21,49 +22,91 @@ export interface FirebaseServices {
 let services: FirebaseServices | null = null;
 
 /**
- * Initializes Firebase services with robust offline persistence.
- * This function handles multi-tab environments and restricted storage scenarios.
+ * Safely checks if IndexedDB is available and working.
+ * This prevents hangs in restricted environments like Safari Private or VMs.
  */
-export function initializeFirebase(): FirebaseServices {
+async function isIndexedDbAvailable(): Promise<boolean> {
+  if (typeof window === 'undefined' || !window.indexedDB) return false;
+  
+  return new Promise((resolve) => {
+    // 1s timeout to prevent hanging in broken environments
+    const timeout = setTimeout(() => {
+      console.warn("IndexedDB check timed out. Falling back to memory cache.");
+      resolve(false);
+    }, 1000);
+
+    try {
+      const name = 'idb-persistence-check';
+      const request = indexedDB.open(name);
+      
+      request.onsuccess = () => {
+        clearTimeout(timeout);
+        indexedDB.deleteDatabase(name);
+        resolve(true);
+      };
+      
+      request.onerror = () => {
+        clearTimeout(timeout);
+        console.warn("IndexedDB error detected. Persistence disabled.");
+        resolve(false);
+      };
+    } catch (e) {
+      clearTimeout(timeout);
+      console.warn("IndexedDB access thrown. Persistence disabled.");
+      resolve(false);
+    }
+  });
+}
+
+/**
+ * Initializes Firebase services with a guaranteed completion path.
+ * Never leaves services undefined.
+ */
+export async function initializeFirebase(): Promise<FirebaseServices> {
+  // Return existing services if already initialized
   if (services) return services;
 
   const isServer = typeof window === 'undefined';
+  
+  // 1. Initialize Firebase App (Idempotent)
+  const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-  if (!getApps().length) {
-    const firebaseApp = initializeApp(firebaseConfig);
+  let firestore: Firestore;
 
-    let firestore: Firestore;
-    if (!isServer) {
-      try {
-        // Attempt to initialize with persistence. 
-        // We use a simpler persistentLocalCache without the multiple tab manager initially 
-        // to ensure maximum compatibility across browser security settings.
-        firestore = initializeFirestore(firebaseApp, {
+  if (isServer) {
+    // Basic init for SSR
+    firestore = getFirestore(app);
+  } else {
+    try {
+      // 2. Browser Environment: Detect Persistence Support
+      const idbAvailable = await isIndexedDbAvailable();
+      
+      if (idbAvailable) {
+        firestore = initializeFirestore(app, {
           localCache: persistentLocalCache({}),
         });
-      } catch (e: any) {
-        console.warn("Firestore initialization fallback:", e.message);
-        firestore = getFirestore(firebaseApp);
+        console.log("Firestore initialized with persistentLocalCache.");
+      } else {
+        firestore = initializeFirestore(app, {
+          localCache: memoryLocalCache(),
+        });
+        console.log("Firestore initialized with memoryLocalCache.");
       }
-    } else {
-      firestore = getFirestore(firebaseApp);
+    } catch (e: any) {
+      // 3. Absolute Fallback: Use standard getFirestore if custom init throws
+      // (Usually occurs if firestore was already initialized elsewhere)
+      console.error("Firestore custom initialization failed, using default getFirestore:", e.message);
+      firestore = getFirestore(app);
     }
-
-    services = {
-      firebaseApp,
-      auth: getAuth(firebaseApp),
-      firestore,
-      storage: getStorage(firebaseApp),
-    };
-  } else {
-    const app = getApp();
-    services = {
-      firebaseApp: app,
-      auth: getAuth(app),
-      firestore: getFirestore(app),
-      storage: getStorage(app),
-    };
   }
+
+  // 4. Set final services object
+  services = {
+    firebaseApp: app,
+    auth: getAuth(app),
+    firestore,
+    storage: getStorage(app),
+  };
 
   return services;
 }

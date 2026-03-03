@@ -11,8 +11,8 @@ interface FirebaseClientProviderProps {
 }
 
 /**
- * The FirebaseClientProvider ensures that Firebase is initialized only once
- * and exclusively on the client side after hydration.
+ * The FirebaseClientProvider handles the async initialization of Firebase services.
+ * It ensures the app doesn't hang if Firestore persistence is restricted.
  */
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
   const [firebaseServices, setFirebaseServices] = useState<FirebaseServices | null>(null);
@@ -21,36 +21,44 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
 
   useEffect(() => {
     setHasHydrated(true);
-    try {
-      // Ensure we call the initialization from the non-circular init.ts
-      const services = initializeFirebase();
-      if (services) {
+    
+    const startServices = async () => {
+      try {
+        // This call is now guaranteed to resolve or use a fallback
+        const services = await initializeFirebase();
         setFirebaseServices(services);
-      } else {
-        throw new Error("Failed to initialize Firebase services.");
+      } catch (err: any) {
+        console.error("Critical Firebase Client Provider Error:", err);
+        setError(err.message || "Failed to establish database connection.");
       }
-    } catch (err: any) {
-      console.error("Critical Firebase initialization error:", err);
-      setError(err.message || "An unknown error occurred during initialization.");
-    }
+    };
+
+    startServices();
   }, []);
 
+  // Hydration fallback
+  if (!hasHydrated) {
+    return null;
+  }
+
+  // Fatal error fallback
   if (error) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 text-center">
         <AlertCircle className="h-12 w-12 text-destructive mb-4" />
-        <h1 className="text-xl font-bold mb-2">Connection Error</h1>
+        <h1 className="text-xl font-bold mb-2">Service Unavailable</h1>
         <p className="text-muted-foreground mb-6 max-w-xs">{error}</p>
         <Button onClick={() => window.location.reload()}>Retry Connection</Button>
       </div>
     );
   }
 
-  if (!hasHydrated || !firebaseServices) {
+  // Loading state (should resolve quickly now with fallbacks)
+  if (!firebaseServices) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-        <p className="text-muted-foreground font-medium">Connecting to USPS Tracker...</p>
+        <p className="text-muted-foreground font-medium italic">Initializing USPS Tracker...</p>
       </div>
     );
   }
