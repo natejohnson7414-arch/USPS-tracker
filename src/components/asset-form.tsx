@@ -72,10 +72,10 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
         materials: asset.materials || [],
       });
     } else {
-      // Check for pre-selected siteId from search params
-      const siteId = searchParams.get('siteId');
-      if (siteId && !formData.siteId) {
-        setFormData(prev => ({ ...prev, siteId }));
+      // Check for pre-selected siteId from search params for new assets
+      const siteIdParam = searchParams.get('siteId');
+      if (siteIdParam) {
+        setFormData(prev => ({ ...prev, siteId: siteIdParam }));
       }
     }
   }, [asset, searchParams]);
