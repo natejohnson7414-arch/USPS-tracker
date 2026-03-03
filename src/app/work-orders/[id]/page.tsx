@@ -693,7 +693,7 @@ export default function WorkOrderDetailPage() {
 
        <MapProviderSelection address={selectedAddress} isOpen={!!selectedAddress} onOpenChange={() => setSelectedAddress(null)} />
         <Dialog open={isSignatureDialogOpen} onOpenChange={setIsSignatureDialogOpen}>
-            <DialogContent className="h-full w-full max-w-none p-0 flex flex-col border-0 rounded-none shadow-none">
+            <DialogContent className="fixed inset-0 h-[100dvh] w-screen max-w-none p-0 flex flex-col border-0 rounded-none shadow-none z-[100]">
                 <SignaturePad 
                     onSave={handleSignatureSave}
                     onClear={() => {}}

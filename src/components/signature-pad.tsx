@@ -32,8 +32,8 @@ export function SignaturePad({ onSave, onClear, className }: SignaturePadProps) 
   };
 
   return (
-    <div className={cn("w-full h-full flex flex-col p-0 bg-background", className)}>
-      <div className="flex-1 bg-muted overflow-hidden relative">
+    <div className={cn("w-full h-full flex flex-col p-0 bg-white", className)}>
+      <div className="flex-1 bg-white overflow-hidden relative">
           <SignatureCanvas
             ref={sigCanvas}
             penColor="black"

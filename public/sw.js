@@ -2,18 +2,17 @@
 const CACHE_NAME = 'usps-tracker-v1';
 const OFFLINE_URL = '/';
 
-// Assets to cache immediately
-const PRECACHE_ASSETS = [
+// Assets to cache on install
+const ASSETS_TO_CACHE = [
   '/',
-  '/login',
-  '/manifest.json',
+  '/manifest.webmanifest',
   'https://firebasestudio.app/favicon.ico'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_ASSETS);
+      return cache.addAll(ASSETS_TO_CACHE);
     })
   );
   self.skipWaiting();
@@ -23,7 +22,11 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.filter((name) => name !== CACHE_NAME).map((name) => caches.delete(name))
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
+        })
       );
     })
   );
@@ -31,39 +34,36 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests
-  if (event.request.method !== 'GET') return;
+  // Handle navigation requests
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return caches.match(OFFLINE_URL);
+      })
+    );
+    return;
+  }
 
-  // Skip Firebase/Google domains (Firestore handles its own persistence)
-  const url = new URL(event.request.url);
-  if (url.origin.includes('firebase') || url.origin.includes('googleapis')) return;
-
+  // Cache-first strategy for other assets (JS, CSS, Images)
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-
-      return fetch(event.request)
-        .then((response) => {
-          // Don't cache if not a success or is an API call
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-
-          return response;
-        })
-        .catch(() => {
-          // If both fail and it's a navigation request, return the cached home page
-          if (event.request.mode === 'navigate') {
-            return caches.match(OFFLINE_URL);
-          }
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request).then((fetchResponse) => {
+        // Only cache successful GET requests
+        if (!fetchResponse || fetchResponse.status !== 200 || fetchResponse.type !== 'basic' || event.request.method !== 'GET') {
+          return fetchResponse;
+        }
+        
+        // Dynamic caching of assets
+        const responseToCache = fetchResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseToCache);
         });
+        
+        return fetchResponse;
+      }).catch(() => {
+        // Return null or generic fallback for failed non-nav fetches
+        return null;
+      });
     })
   );
 });
