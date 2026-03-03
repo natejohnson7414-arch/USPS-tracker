@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -23,12 +22,14 @@ import {
   AlertCircle,
   Clock,
   Settings,
-  ChevronRight
+  ChevronRight,
+  PlusCircle
 } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { getWorkSiteById, getAssetsBySiteId, getAssetPmSchedules } from '@/lib/data';
 import type { WorkSite, Asset, AssetPmSchedule } from '@/lib/types';
 import { WorkSiteForm } from '@/components/work-site-form';
+import { AddPmScheduleDialog } from '@/components/add-pm-schedule-dialog';
 import { format } from 'date-fns';
 
 export default function WorkSiteDetailsPage() {
@@ -40,6 +41,7 @@ export default function WorkSiteDetailsPage() {
   const [schedules, setSchedules] = useState<AssetPmSchedule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [isAddScheduleOpen, setIsAddScheduleOpen] = useState(false);
 
   const fetchData = async () => {
     if (!db || !id) return;
@@ -72,6 +74,10 @@ export default function WorkSiteDetailsPage() {
 
   const handleFormSaved = () => {
     setIsEditing(false);
+    fetchData();
+  };
+
+  const handleScheduleAdded = () => {
     fetchData();
   };
 
@@ -198,8 +204,16 @@ export default function WorkSiteDetailsPage() {
           <TabsContent value="pm" className="mt-0">
             <Card className="rounded-t-none">
               <CardHeader>
-                <CardTitle>PM Schedule</CardTitle>
-                <CardDescription>Upcoming preventative maintenance for all assets at this site.</CardDescription>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle>PM Schedule</CardTitle>
+                    <CardDescription>Upcoming preventative maintenance for all assets at this site.</CardDescription>
+                  </div>
+                  <Button size="sm" onClick={() => setIsAddScheduleOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Schedule
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {schedules.length > 0 ? (
@@ -277,6 +291,13 @@ export default function WorkSiteDetailsPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <AddPmScheduleDialog 
+        isOpen={isAddScheduleOpen}
+        onOpenChange={setIsAddScheduleOpen}
+        assets={assets}
+        onScheduleAdded={handleScheduleAdded}
+      />
     </MainLayout>
   );
 }
