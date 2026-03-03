@@ -21,6 +21,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 
+export const dynamic = "force-static";
+export const revalidate = false;
+
 export default function AssetsPage() {
   const db = useFirestore();
   const { toast } = useToast();

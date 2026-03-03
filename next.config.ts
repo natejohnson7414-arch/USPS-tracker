@@ -1,8 +1,75 @@
-
-import type {NextConfig} from 'next';
+import type { NextConfig } from 'next';
+const withPWA = require('next-pwa')({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development',
+  runtimeCaching: [
+    {
+      // Cache Next.js static chunks
+      urlPattern: /\/_next\/static\/.*/i,
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'next-static-assets',
+        expiration: {
+          maxEntries: 64,
+          maxAgeSeconds: 24 * 60 * 60 * 30, // 30 days
+        },
+      },
+    },
+    {
+      // Cache Next.js images
+      urlPattern: /\/_next\/image\?url=.*/i,
+      handler: 'StaleWhileRevalidate',
+      options: {
+        cacheName: 'next-image-assets',
+        expiration: {
+          maxEntries: 64,
+          maxAgeSeconds: 24 * 60 * 60 * 7, // 7 days
+        },
+      },
+    },
+    {
+      // Cache App Router RSC (Flight) requests
+      urlPattern: /.*(_rsc|__flight__).*/i,
+      handler: 'StaleWhileRevalidate',
+      options: {
+        cacheName: 'next-rsc-payloads',
+        expiration: {
+          maxEntries: 128,
+          maxAgeSeconds: 24 * 60 * 60 * 1, // 1 day
+        },
+      },
+    },
+    {
+      // Stale-while-revalidate for navigation requests (pages)
+      urlPattern: /\/.*$/i,
+      handler: 'StaleWhileRevalidate',
+      options: {
+        cacheName: 'next-pages',
+        expiration: {
+          maxEntries: 64,
+          maxAgeSeconds: 24 * 60 * 60 * 7, // 7 days
+        },
+      },
+    },
+    {
+      // Network-first for API routes
+      urlPattern: /\/api\/.*/i,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'api-responses',
+        expiration: {
+          maxEntries: 32,
+          maxAgeSeconds: 24 * 60 * 60, // 24 hours
+        },
+        networkTimeoutSeconds: 10,
+      },
+    },
+  ],
+});
 
 const nextConfig: NextConfig = {
-  /* config options here */
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -63,4 +130,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withPWA(nextConfig);

@@ -7,7 +7,10 @@ import { useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebas
 import { collection, query, where } from 'firebase/firestore';
 import { useTechnician as useRoleData } from '@/hooks/use-technician';
 
-// Define a type for the raw technician data from Firestore
+// Static shell strategy for PWA offline support
+export const dynamic = "force-static";
+export const revalidate = false;
+
 type RawTechnician = Omit<Technician, 'name'> & { firstName: string; lastName: string };
 
 export default function DashboardPage() {
@@ -24,7 +27,6 @@ export default function DashboardPage() {
   const defaultFilterSet = useRef(false);
 
   useEffect(() => {
-    // Set default filter for technician once user and role are loaded
     if (user && currentUserRole && !defaultFilterSet.current) {
         if (currentUserRole.name === 'Technician') {
             setAssignedToFilter(user.uid);
@@ -33,33 +35,26 @@ export default function DashboardPage() {
     }
   }, [user, currentUserRole]);
 
-  // Memoize the query to prevent re-creating it on every render
   const workOrdersQuery = useMemoFirebase(() => {
     if (!db || isAuthLoading || !user || !currentUserRole) return null;
 
     const workOrdersCollection = collection(db, 'work_orders');
     const filters: any[] = [];
 
-    // Filter by technician assignment. For technicians, this defaults to their own ID.
     if (assignedToFilter !== 'All') {
       filters.push(where('assignedTechnicianId', '==', assignedToFilter));
     }
 
-    // Filter by status.
     if (statusFilter === 'All' && currentUserRole.name === 'Technician') {
-      // For technicians, a filter of "All" means all active work orders.
       filters.push(where('status', 'in', ['Open', 'In Progress', 'On Hold']));
     } else if (statusFilter !== 'All') {
-      // For all users when a specific status is selected.
       filters.push(where('status', '==', statusFilter));
     }
     
-    // Construct the query
     if (filters.length > 0) {
       return query(workOrdersCollection, ...filters);
     }
     
-    // For Admins/other roles with "All" selected for status and technician, return all work orders.
     return query(workOrdersCollection);
 
   }, [db, statusFilter, assignedToFilter, user, isAuthLoading, currentUserRole]);
