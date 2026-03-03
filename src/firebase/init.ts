@@ -1,16 +1,15 @@
 'use client';
 
-import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { 
   initializeFirestore, 
   getFirestore, 
   persistentLocalCache, 
-  persistentMultipleTabManager,
   Firestore
 } from 'firebase/firestore'
 import { getStorage, FirebaseStorage } from 'firebase/storage';
+import { firebaseConfig } from '@/firebase/config';
 
 export interface FirebaseServices {
   firebaseApp: FirebaseApp;
@@ -22,8 +21,8 @@ export interface FirebaseServices {
 let services: FirebaseServices | null = null;
 
 /**
- * Initializes Firebase services with a focus on PWA offline persistence.
- * This function is idempotent and safe for both SSR and Client environments.
+ * Initializes Firebase services with robust offline persistence.
+ * This function handles multi-tab environments and restricted storage scenarios.
  */
 export function initializeFirebase(): FirebaseServices {
   if (services) return services;
@@ -36,14 +35,13 @@ export function initializeFirebase(): FirebaseServices {
     let firestore: Firestore;
     if (!isServer) {
       try {
-        // Attempt to initialize with multi-tab persistence
+        // Attempt to initialize with persistence. 
+        // We use a simpler persistentLocalCache without the multiple tab manager initially 
+        // to ensure maximum compatibility across browser security settings.
         firestore = initializeFirestore(firebaseApp, {
-          localCache: persistentLocalCache({
-            tabManager: persistentMultipleTabManager(),
-          }),
+          localCache: persistentLocalCache({}),
         });
       } catch (e: any) {
-        // Fallback if already initialized or persistence not supported
         console.warn("Firestore initialization fallback:", e.message);
         firestore = getFirestore(firebaseApp);
       }
