@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Package, PlusCircle, Search, CalendarClock, TrendingUp, AlertTriangle, Play, Loader2, FileBarChart, ChevronRight, MapPin } from 'lucide-react';
+import { Package, PlusCircle, Search, CalendarClock, TrendingUp, AlertTriangle, Loader2, FileBarChart, ChevronRight, MapPin } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useFirestore } from '@/firebase';
 import { getAssets, getAssetPmSchedules } from '@/lib/data';
@@ -16,8 +16,9 @@ import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MaterialsReportDialog } from '@/components/materials-report-dialog';
-import { format, addMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
+import { format, addMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO, differenceInMonths } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 export default function AssetsPage() {
   const db = useFirestore();
@@ -58,11 +59,38 @@ export default function AssetsPage() {
   }, []);
 
   const getSchedulesForMonth = (monthDate: Date) => {
-    const start = startOfMonth(monthDate);
-    const end = endOfMonth(monthDate);
+    const targetStart = startOfMonth(monthDate);
+    const targetEnd = endOfMonth(monthDate);
+
     return schedules.filter(s => {
-      const dueDate = parseISO(s.nextDueDate);
-      return isWithinInterval(dueDate, { start, end }) && s.status === 'active';
+      if (s.status !== 'active') return false;
+      
+      const startDueDate = parseISO(s.nextDueDate);
+      
+      // If the schedule starts exactly in this month
+      if (isWithinInterval(startDueDate, { start: targetStart, end: targetEnd })) {
+        return true;
+      }
+
+      // If it's a recurring schedule, check if it projects into this month
+      if (startDueDate < targetStart) {
+        const monthsDiff = differenceInMonths(targetStart, startDueDate);
+        
+        switch (s.frequencyType) {
+          case 'monthly':
+            return true;
+          case 'quarterly':
+            return monthsDiff % 3 === 0;
+          case 'semiannual':
+            return monthsDiff % 6 === 0;
+          case 'annual':
+            return monthsDiff % 12 === 0;
+          default:
+            return false;
+        }
+      }
+
+      return false;
     });
   };
 
@@ -72,7 +100,7 @@ export default function AssetsPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Assets & PM</h1>
-            <p className="text-muted-foreground">Manage equipment registry and preventative maintenance planning.</p>
+            <p className="text-muted-foreground">Manage equipment registry and repeatable maintenance planning.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button onClick={() => setIsReportOpen(true)} variant="outline">
@@ -107,7 +135,7 @@ export default function AssetsPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Due This Month</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total PM Month Hits</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-primary">
@@ -149,7 +177,7 @@ export default function AssetsPage() {
                       <TableHead>Site</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Criticality</TableHead>
-                      <TableHead>Planned PM</TableHead>
+                      <TableHead>Repeat Cycle</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -175,7 +203,7 @@ export default function AssetsPage() {
                             </TableCell>
                             <TableCell>
                               {nextPm ? (
-                                <span className="text-sm font-medium">{format(parseISO(nextPm.nextDueDate), 'MMMM yyyy')}</span>
+                                <Badge variant="outline" className="capitalize">{nextPm.frequencyType}</Badge>
                               ) : (
                                 <span className="text-xs text-muted-foreground italic">Not planned</span>
                               )}
@@ -201,7 +229,7 @@ export default function AssetsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Maintenance Planning Calendar</CardTitle>
-                <CardDescription>Visual timeline of upcoming preventative maintenance by site.</CardDescription>
+                <CardDescription>Indefinite recurring timeline of preventative maintenance by site.</CardDescription>
               </CardHeader>
               <CardContent>
                 <ScrollArea className="h-[600px] pr-4">
@@ -210,7 +238,7 @@ export default function AssetsPage() {
                       const monthSchedules = getSchedulesForMonth(month);
                       const sitesDue = Array.from(new Set(monthSchedules.map(s => s.siteId))).map(siteId => {
                         return {
-                          id: siteId,
+                          id: siteId!,
                           name: monthSchedules.find(s => s.siteId === siteId)?.siteName,
                           count: monthSchedules.filter(s => s.siteId === siteId).length
                         };
@@ -238,7 +266,7 @@ export default function AssetsPage() {
                                       <div className="space-y-1">
                                         <p className="font-bold text-sm truncate max-w-[180px]">{site.name}</p>
                                         <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                          <Package className="h-3 w-3" /> {site.count} Units Scheduled
+                                          <Package className="h-3 w-3" /> {site.count} Units Recurring
                                         </p>
                                       </div>
                                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -248,7 +276,7 @@ export default function AssetsPage() {
                               ))}
                             </div>
                           ) : (
-                            <p className="text-sm text-muted-foreground italic">No maintenance planned for this month.</p>
+                            <p className="text-sm text-muted-foreground italic">No maintenance projected for this month.</p>
                           )}
                         </div>
                       );
@@ -264,11 +292,11 @@ export default function AssetsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5" /> Labor Projections</CardTitle>
-                  <CardDescription>Estimated technician hours required for upcoming PMs.</CardDescription>
+                  <CardDescription>Estimated technician hours required based on repeat cycles.</CardDescription>
                 </CardHeader>
                 <CardContent className="h-64 flex flex-col items-center justify-center text-muted-foreground bg-muted/20 rounded-md m-6 border-2 border-dashed">
                   <TrendingUp className="h-8 w-8 mb-2 opacity-20" />
-                  <p className="text-sm">Forecast charts available in Materials Report</p>
+                  <p className="text-sm">Repeatable forecast charts coming soon</p>
                 </CardContent>
               </Card>
               <Card>

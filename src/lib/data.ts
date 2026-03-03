@@ -168,13 +168,15 @@ export const getAssetPmSchedules = async (db: any, assetId?: string): Promise<As
   const [assets, templates, sites] = await Promise.all([getAssets(db), getPmTemplates(db), getWorkSites(db)]);
   return schedules.map(s => {
     const asset = assets.find(a => a.id === s.assetId);
+    const template = templates.find(t => t.id === s.templateId);
     return {
       ...s,
       assetName: asset?.name,
       assetTag: asset?.assetTag,
       siteId: asset?.siteId,
       siteName: sites.find(site => site.id === asset?.siteId)?.name,
-      templateName: templates.find(t => t.id === s.templateId)?.name
+      templateName: template?.name,
+      frequencyType: template?.frequencyType
     };
   });
 };

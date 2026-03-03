@@ -24,7 +24,8 @@ import {
   Clock,
   Settings,
   ChevronRight,
-  PlusCircle
+  PlusCircle,
+  Repeat
 } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { getWorkSiteById, getAssetsBySiteId, getAssetPmSchedules } from '@/lib/data';
@@ -56,10 +57,8 @@ export default function WorkSiteDetailsPage() {
       setSite(s || null);
       setAssets(a);
 
-      // Fetch schedules for these assets
-      const allSchedules = await getAssetPmSchedules(db);
-      const siteSchedules = allSchedules.filter(sch => a.some(asset => asset.id === sch.assetId));
-      setSchedules(siteSchedules);
+      const siteSchedules = await getAssetPmSchedules(db);
+      setSchedules(siteSchedules.filter(sch => a.some(asset => asset.id === sch.assetId)));
     } catch (error) {
       console.error("Error fetching site data:", error);
     } finally {
@@ -137,7 +136,7 @@ export default function WorkSiteDetailsPage() {
             </TabsTrigger>
             <TabsTrigger value="pm" variant="folder">
               <CalendarClock className="mr-2 h-4 w-4" />
-              Maintenance Schedule ({schedules.length})
+              Repeatable PMs ({schedules.length})
             </TabsTrigger>
             <TabsTrigger value="info" variant="folder">
               <Info className="mr-2 h-4 w-4" />
@@ -205,12 +204,12 @@ export default function WorkSiteDetailsPage() {
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <div>
-                    <CardTitle>Planned Maintenance</CardTitle>
-                    <CardDescription>Upcoming PM months for equipment at this site.</CardDescription>
+                    <CardTitle>Repeatable Maintenance Schedules</CardTitle>
+                    <CardDescription>Indefinite cycles for equipment at this site.</CardDescription>
                   </div>
                   <Button size="sm" onClick={() => setIsAddScheduleOpen(true)}>
                     <PlusCircle className="mr-2 h-4 w-4" />
-                    Plan PM
+                    Plan PM Cycle
                   </Button>
                 </div>
               </CardHeader>
@@ -221,11 +220,17 @@ export default function WorkSiteDetailsPage() {
                       <div key={schedule.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors">
                         <div className="space-y-1">
                           <p className="font-bold text-primary">{schedule.assetName}</p>
-                          <p className="text-sm font-medium">{schedule.templateName}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium">{schedule.templateName}</p>
+                            <Badge variant="secondary" className="text-[10px] h-5 flex items-center gap-1">
+                              <Repeat className="h-3 w-3" />
+                              {schedule.frequencyType}
+                            </Badge>
+                          </div>
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1 font-semibold text-foreground">
                               <Clock className="h-3 w-3" /> 
-                              Due: {format(parseISO(schedule.nextDueDate), 'MMMM yyyy')}
+                              Starts: {format(parseISO(schedule.nextDueDate), 'MMMM yyyy')}
                             </span>
                           </div>
                         </div>
@@ -242,7 +247,7 @@ export default function WorkSiteDetailsPage() {
                   </div>
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">
-                    No preventative maintenance planned for this site.
+                    No repeatable maintenance cycles planned for this site.
                   </div>
                 )}
               </CardContent>

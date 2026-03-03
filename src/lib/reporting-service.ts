@@ -3,7 +3,7 @@
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import type { AssetPmSchedule, PmTemplate, RequiredMaterial, WorkSite, Asset, AssetMaterial } from '@/lib/types';
 import { getAssetPmSchedules, getPmTemplates, getWorkSites, getAssets } from './data';
-import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, addMonths } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, addMonths, differenceInMonths } from 'date-fns';
 
 export interface MaterialForecast {
   materialId: string;
@@ -32,6 +32,7 @@ export interface MaterialReportGroup {
 
 /**
  * Generates a material forecast report based on PM schedules due in a specific month.
+ * Handles repeatable schedule logic to project future requirements.
  */
 export const generateMaterialsReport = async (
   db: any, 
@@ -50,16 +51,42 @@ export const generateMaterialsReport = async (
     getWorkSites(db)
   ]);
 
-  // Filter schedules by date and site
+  // Filter schedules by projected recurrence hits
   const dueSchedules = schedules.filter(s => {
-    const dueDate = parseISO(s.nextDueDate);
+    if (s.status !== 'active') return false;
+    
     const asset = assets.find(a => a.id === s.assetId);
     if (!asset) return false;
     
-    const isDue = isWithinInterval(dueDate, { start, end });
     const isCorrectSite = siteIds.length === 0 || siteIds.includes(asset.siteId);
+    if (!isCorrectSite) return false;
+
+    const startDueDate = parseISO(s.nextDueDate);
     
-    return isDue && isCorrectSite && s.status === 'active';
+    // If it starts this month
+    if (isWithinInterval(startDueDate, { start, end })) {
+      return true;
+    }
+
+    // If it started before, check recurrence pattern
+    if (startDueDate < start) {
+      const monthsDiff = differenceInMonths(start, startDueDate);
+      
+      switch (s.frequencyType) {
+        case 'monthly':
+          return true;
+        case 'quarterly':
+          return monthsDiff % 3 === 0;
+        case 'semiannual':
+          return monthsDiff % 6 === 0;
+        case 'annual':
+          return monthsDiff % 12 === 0;
+        default:
+          return false;
+      }
+    }
+
+    return false;
   });
 
   const reportGroups = new Map<string, MaterialReportGroup>();
@@ -79,8 +106,6 @@ export const generateMaterialsReport = async (
     const group = reportGroups.get(groupKey)!;
 
     asset.materials.forEach((mat: AssetMaterial) => {
-      const itemKey = groupBy === 'category' ? `${mat.category} - ${mat.name}` : mat.name;
-      
       let item = group.items.find(i => i.name === mat.name && i.category === mat.category);
       
       if (item) {
@@ -100,7 +125,6 @@ export const generateMaterialsReport = async (
     });
   });
 
-  // If grouping by category, we need a different top-level structure
   if (groupBy === 'category') {
     const categoryGroups = new Map<string, MaterialReportGroup>();
     
@@ -117,75 +141,4 @@ export const generateMaterialsReport = async (
   }
 
   return Array.from(reportGroups.values()).sort((a, b) => a.groupName.localeCompare(b.groupName));
-};
-
-export const generateMonthlyMaterialsForecast = async (db: any, year: number, month: number): Promise<SiteForecast[]> => {
-  const targetDate = new Date(year, month - 1, 1);
-  const start = startOfMonth(targetDate);
-  const end = endOfMonth(targetDate);
-
-  const [schedules, templates, sites, assets] = await Promise.all([
-    getAssetPmSchedules(db),
-    getPmTemplates(db),
-    getWorkSites(db),
-    getAssets(db)
-  ]);
-
-  const siteMap = new Map<string, SiteForecast>();
-
-  schedules.forEach(schedule => {
-    const dueDate = parseISO(schedule.nextDueDate);
-    if (isWithinInterval(dueDate, { start, end })) {
-      const template = templates.find(t => t.id === schedule.templateId);
-      const asset = assets.find(a => a.id === schedule.assetId);
-      if (template && asset) {
-        const site = sites.find(s => s.id === asset.siteId);
-        if (!site) return;
-
-        if (!siteMap.has(site.id)) {
-          siteMap.set(site.id, { siteId: site.id, siteName: site.name, materials: [] });
-        }
-
-        const siteForecast = siteMap.get(site.id)!;
-        template.requiredMaterials.forEach(mat => {
-          const existing = siteForecast.materials.find(m => m.materialId === mat.materialId);
-          if (existing) {
-            existing.quantity += mat.quantity;
-          } else {
-            siteForecast.materials.push({ ...mat, category: 'General' });
-          }
-        });
-      }
-    }
-  });
-
-  return Array.from(siteMap.values());
-};
-
-export const generateLaborForecast = async (db: any, monthsAhead: number = 6): Promise<{ month: string, hours: number }[]> => {
-  const [schedules, templates] = await Promise.all([
-    getAssetPmSchedules(db),
-    getPmTemplates(db)
-  ]);
-
-  const forecast: Record<string, number> = {};
-  const today = new Date();
-
-  for (let i = 0; i < monthsAhead; i++) {
-    const monthKey = format(addMonths(today, i), 'yyyy-MM');
-    forecast[monthKey] = 0;
-  }
-
-  schedules.forEach(schedule => {
-    const dueDate = parseISO(schedule.nextDueDate);
-    const monthKey = format(dueDate, 'yyyy-MM');
-    if (forecast[monthKey] !== undefined) {
-      const template = templates.find(t => t.id === schedule.templateId);
-      if (template) {
-        forecast[monthKey] += template.estimatedLaborHours;
-      }
-    }
-  });
-
-  return Object.entries(forecast).map(([month, hours]) => ({ month, hours }));
 };
