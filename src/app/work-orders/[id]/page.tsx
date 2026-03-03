@@ -19,9 +19,6 @@ import { MapProviderSelection } from '@/components/map-provider-selection';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -38,8 +35,6 @@ import { useTechnician as useRoleData } from '@/hooks/use-technician';
 import { WorkOrderEditForm } from '@/components/work-order-edit-form';
 import { ReportPreviewDialog } from '@/components/report-preview-dialog';
 import { Loader2 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 
 export default function WorkOrderDetailPage() {
   const params = useParams();
@@ -707,11 +702,11 @@ export default function WorkOrderDetailPage() {
 
        <MapProviderSelection address={selectedAddress} isOpen={!!selectedAddress} onOpenChange={() => setSelectedAddress(null)} />
         <Dialog open={isSignatureDialogOpen} onOpenChange={setIsSignatureDialogOpen}>
-            <DialogContent className="h-[90vh] w-[90vw] max-w-full flex flex-col p-0">
+            <DialogContent className="h-full sm:h-[90vh] w-full sm:w-[90vw] max-w-none p-0 flex flex-col border-0 sm:border rounded-none sm:rounded-lg">
                 <SignaturePad 
                     onSave={handleSignatureSave}
                     onClear={() => {}}
-                    className="flex-1 min-h-0"
+                    className="flex-1"
                 />
             </DialogContent>
         </Dialog>

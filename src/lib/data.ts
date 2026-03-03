@@ -1,14 +1,15 @@
+
 'use client';
 import type { 
   AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client, 
   TrainingRecord, HvacStartupReport, TimeEntry, Activity, ActivityHistoryItem, 
   Quote, Asset, PmTemplate, AssetPmSchedule, AssetServiceHistory, Material
 } from '@/lib/types';
-import { collection, getDoc, doc, query, where, arrayUnion, orderBy, limit, getDocs, writeBatch, collectionGroup } from 'firebase/firestore';
+import { collection, doc, query, where, arrayUnion, orderBy, collectionGroup } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 import { sampleRoles, sampleTechnicians, sampleWorkOrders, sampleWorkSites, sampleClients } from './sample-data';
 import { setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { addDays, addMonths, format } from 'date-fns';
+import { parseISO } from 'date-fns';
 
 export const seedDatabase = async (db: any) => {
     const rolesSnapshot = await getCollectionNonBlocking(collection(db, 'roles'));
@@ -128,8 +129,6 @@ export const updateWorkOrderStatus = async (db: any, workOrderId: string) => {
     }
 };
 
-// --- Asset & PM Services ---
-
 export const getAssets = async (db: any): Promise<Asset[]> => {
   const snapshot = await getCollectionNonBlocking(collection(db, 'assets'));
   const assets = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Asset));
@@ -154,11 +153,6 @@ export const getAssetById = async (db: any, id: string): Promise<Asset | undefin
 export const getPmTemplates = async (db: any): Promise<PmTemplate[]> => {
   const snapshot = await getCollectionNonBlocking(collection(db, 'pm_templates'));
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as PmTemplate));
-};
-
-export const getPmTemplateById = async (db: any, id: string): Promise<PmTemplate | undefined> => {
-  const snap = await getDocumentNonBlocking(doc(db, 'pm_templates', id));
-  return snap.exists() ? { id: snap.id, ...snap.data() } as PmTemplate : undefined;
 };
 
 export const getAssetPmSchedules = async (db: any, assetId?: string): Promise<AssetPmSchedule[]> => {
@@ -216,8 +210,6 @@ export const getAssetServiceHistory = async (db: any, assetId: string): Promise<
   const snapshot = await getCollectionNonBlocking(q);
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AssetServiceHistory));
 };
-
-// --- Subcollection & Record Logic ---
 
 export const getTrainingRecordsByWorkOrderId = async (db: any, workOrderId: string): Promise<TrainingRecord[]> => {
     const q = query(collection(db, 'training_records'), where('workOrderId', '==', workOrderId));
@@ -282,7 +274,7 @@ export const getTimeEntriesByTechnician = async (db: any, technicianId: string):
         const data = docRef.data();
         let workOrder;
         if (data.workOrderId) {
-            const woSnap = await getDoc(doc(db, 'work_orders', data.workOrderId));
+            const woSnap = await getDocumentNonBlocking(doc(db, 'work_orders', data.workOrderId));
             if (woSnap.exists()) {
                 workOrder = { id: woSnap.id, jobName: woSnap.data().jobName };
             }
@@ -312,14 +304,14 @@ export const getQuotes = async (db: any): Promise<Quote[]> => {
 };
 
 export const getAllActivitiesWithDetails = async (db: any): Promise<Activity[]> => {
-    const snapshot = await getDocs(collectionGroup(db, 'activities'));
+    const snapshot = await getCollectionNonBlocking(collectionGroup(db, 'activities'));
     const activities = await Promise.all(snapshot.docs.map(async (actDoc) => {
         const actData = actDoc.data();
         const workOrderRef = actDoc.ref.parent.parent;
         if (!workOrderRef) return null;
         
         const [woSnap, tech] = await Promise.all([
-            getDoc(workOrderRef),
+            getDocumentNonBlocking(workOrderRef),
             actData.technicianId ? getTechnicianById(db, actData.technicianId) : Promise.resolve(undefined)
         ]);
         
@@ -358,8 +350,6 @@ export const getUsers = async (db: any, roles: Role[]): Promise<AppUser[]> => {
     });
 };
 
-// --- Material Services ---
-
 export const getMaterials = async (db: any): Promise<Material[]> => {
   const snapshot = await getCollectionNonBlocking(collection(db, 'materials'));
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Material)).sort((a, b) => a.name.localeCompare(b.name));
@@ -370,12 +360,10 @@ export const getMaterialById = async (db: any, id: string): Promise<Material | u
   return snap.exists() ? { id: snap.id, ...snap.data() } as Material : undefined;
 };
 
-// Automation Service
 export const generatePmWorkOrders = async (db: any) => {
   return { count: 0 };
 };
 
-// Calculation Metrics
 export const calculateAssetMetrics = (history: AssetServiceHistory[]) => {
   if (history.length < 2) return { mtbf: 0, mttr: 0 };
   

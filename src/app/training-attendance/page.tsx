@@ -400,11 +400,11 @@ function TrainingAttendancePageContent() {
       </div>
 
        <Dialog open={isSignatureDialogOpen} onOpenChange={setIsSignatureDialogOpen}>
-            <DialogContent className="h-[90vh] w-[90vw] max-w-full flex flex-col p-0">
+            <DialogContent className="h-full sm:h-[90vh] w-full sm:w-[90vw] max-w-none p-0 flex flex-col border-0 sm:border rounded-none sm:rounded-lg">
                 <SignaturePad 
                     onSave={handleSignatureSave}
                     onClear={() => {}}
-                    className="flex-1 min-h-0 py-4"
+                    className="flex-1"
                 />
             </DialogContent>
         </Dialog>
