@@ -107,28 +107,32 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
       
       // Load suggestions from BOTH catalog and existing asset data (previously typed names)
       const loadSuggestions = async () => {
-        const [catalog, allAssets] = await Promise.all([
-          getMaterials(db),
-          getAssets(db)
-        ]);
-        
-        const suggestions = new Map<string, {name: string, category: string, uom: string}>();
-        
-        // Add from catalog
-        catalog.forEach(m => {
-          suggestions.set(m.name.toLowerCase(), { name: m.name, category: m.category, uom: m.uom });
-        });
-        
-        // Add from assets (previously typed names)
-        allAssets.forEach(a => {
-          a.materials?.forEach(m => {
-            if (!suggestions.has(m.name.toLowerCase())) {
-              suggestions.set(m.name.toLowerCase(), { name: m.name, category: m.category, uom: m.uom });
-            }
+        try {
+          const [catalog, allAssets] = await Promise.all([
+            getMaterials(db),
+            getAssets(db)
+          ]);
+          
+          const suggestions = new Map<string, {name: string, category: string, uom: string}>();
+          
+          // Add from catalog
+          catalog.forEach(m => {
+            suggestions.set(m.name.toLowerCase(), { name: m.name, category: m.category, uom: m.uom });
           });
-        });
-        
-        setMaterialSuggestions(Array.from(suggestions.values()).sort((a, b) => a.name.localeCompare(b.name)));
+          
+          // Add from assets (previously typed names)
+          allAssets.forEach(a => {
+            a.materials?.forEach(m => {
+              if (!suggestions.has(m.name.toLowerCase())) {
+                suggestions.set(m.name.toLowerCase(), { name: m.name, category: m.category, uom: m.uom });
+              }
+            });
+          });
+          
+          setMaterialSuggestions(Array.from(suggestions.values()).sort((a, b) => a.name.localeCompare(b.name)));
+        } catch (e) {
+          console.error("Failed to load material suggestions", e);
+        }
       };
       
       loadSuggestions();
@@ -137,7 +141,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
 
   const allCategories = useMemo(() => {
     const suggestionCats = materialSuggestions.map(m => m.category);
-    return Array.from(new Set([...commonCategories, ...suggestionCats])).sort();
+    return Array.from(new Set([...commonCategories, ...suggestionCats])).filter(Boolean).sort();
   }, [materialSuggestions]);
 
   const filteredSuggestions = useMemo(() => {
@@ -401,7 +405,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
                     <Input 
                       placeholder="Type to search..." 
                       value={newMatName} 
-                      list="asset-material-suggestions"
+                      list="asset-material-datalist"
                       autoComplete="off"
                       onChange={(e) => {
                         const val = e.target.value;
@@ -416,9 +420,11 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
                         }
                       }} 
                     />
-                    <datalist id="asset-material-suggestions">
+                    <datalist id="asset-material-datalist">
                       {filteredSuggestions.map((m, i) => (
-                        <option key={`${m.name}-${i}`} value={m.name} />
+                        <option key={`${m.name}-${i}`} value={m.name}>
+                          {m.category}
+                        </option>
                       ))}
                     </datalist>
                   </div>
