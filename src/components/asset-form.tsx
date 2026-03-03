@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, Suspense, useMemo } from 'react';
@@ -14,7 +15,7 @@ import { collection, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save, Ban, PlusCircle, Trash2, CalendarClock, Wrench } from 'lucide-react';
 import type { Asset, WorkSite, AssetMaterial, Material } from '@/lib/types';
-import { getWorkSites, getMaterials } from '@/lib/data';
+import { getWorkSites, getMaterials, getAssets } from '@/lib/data';
 import { Separator } from '@/components/ui/separator';
 
 interface AssetFormProps {
@@ -36,7 +37,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
   
   const [isSaving, setIsSaving] = useState(false);
   const [workSites, setWorkSites] = useState<WorkSite[]>([]);
-  const [catalogMaterials, setCatalogMaterials] = useState<Material[]>([]);
+  const [materialSuggestions, setMaterialSuggestions] = useState<{name: string, category: string, uom: string}[]>([]);
 
   // 1. Derive the initial form state from props or defaults
   const initialFormData = useMemo(() => {
@@ -103,20 +104,46 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
   useEffect(() => {
     if (db) {
       getWorkSites(db).then(setWorkSites);
-      getMaterials(db).then(setCatalogMaterials);
+      
+      // Load suggestions from BOTH catalog and existing asset data (previously typed names)
+      const loadSuggestions = async () => {
+        const [catalog, allAssets] = await Promise.all([
+          getMaterials(db),
+          getAssets(db)
+        ]);
+        
+        const suggestions = new Map<string, {name: string, category: string, uom: string}>();
+        
+        // Add from catalog
+        catalog.forEach(m => {
+          suggestions.set(m.name.toLowerCase(), { name: m.name, category: m.category, uom: m.uom });
+        });
+        
+        // Add from assets (previously typed names)
+        allAssets.forEach(a => {
+          a.materials?.forEach(m => {
+            if (!suggestions.has(m.name.toLowerCase())) {
+              suggestions.set(m.name.toLowerCase(), { name: m.name, category: m.category, uom: m.uom });
+            }
+          });
+        });
+        
+        setMaterialSuggestions(Array.from(suggestions.values()).sort((a, b) => a.name.localeCompare(b.name)));
+      };
+      
+      loadSuggestions();
     }
   }, [db]);
 
-  // Dynamic lists for material selection
   const allCategories = useMemo(() => {
-    const catalogCats = catalogMaterials.map(m => m.category);
-    return Array.from(new Set([...commonCategories, ...catalogCats])).sort();
-  }, [catalogMaterials]);
+    const suggestionCats = materialSuggestions.map(m => m.category);
+    return Array.from(new Set([...commonCategories, ...suggestionCats])).sort();
+  }, [materialSuggestions]);
 
-  const filteredCatalogMaterials = useMemo(() => {
-    if (!newMatCategory || newMatCategory === 'ALL') return catalogMaterials;
-    return catalogMaterials.filter(m => m.category === newMatCategory);
-  }, [catalogMaterials, newMatCategory]);
+  const filteredSuggestions = useMemo(() => {
+    if (!newMatCategory || newMatCategory === 'ALL') return materialSuggestions;
+    return materialSuggestions.filter(m => m.category === newMatCategory);
+  }, [materialSuggestions, newMatCategory]);
 
   const handleAddCustomField = () => {
     if (!newFieldName) return;
@@ -140,9 +167,8 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
   const handleAddMaterial = () => {
     if (!newMatName) return;
     
-    // Determine the category to save. If "ALL" was selected in UI, we should try to find the actual category.
     let finalCategory = newMatCategory === 'ALL' ? 'Other' : newMatCategory;
-    const match = catalogMaterials.find(m => m.name.toLowerCase() === newMatName.toLowerCase());
+    const match = materialSuggestions.find(m => m.name.toLowerCase() === newMatName.toLowerCase());
     if (match) {
       finalCategory = match.category;
     }
@@ -375,27 +401,24 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
                     <Input 
                       placeholder="Type to search..." 
                       value={newMatName} 
-                      list="catalog-material-list"
+                      list="asset-material-suggestions"
                       autoComplete="off"
                       onChange={(e) => {
                         const val = e.target.value;
                         setNewMatName(val);
-                        // Auto-select type and uom if matching a catalog item
-                        const match = catalogMaterials.find(m => m.name.toLowerCase() === val.toLowerCase());
+                        // Auto-select type and uom if matching an existing suggestion
+                        const match = materialSuggestions.find(m => m.name.toLowerCase() === val.toLowerCase());
                         if (match) {
                           setNewMatUom(match.uom);
-                          // If currently on "ALL", switch to the actual type for better feedback
-                          if (newMatCategory === 'ALL') {
+                          if (newMatCategory === 'ALL' || newMatCategory !== match.category) {
                             setNewMatCategory(match.category);
                           }
                         }
                       }} 
                     />
-                    <datalist id="catalog-material-list">
-                      {filteredCatalogMaterials.map(m => (
-                        <option key={m.id} value={m.name}>
-                          {m.category} - {m.uom}
-                        </option>
+                    <datalist id="asset-material-suggestions">
+                      {filteredSuggestions.map((m, i) => (
+                        <option key={`${m.name}-${i}`} value={m.name} />
                       ))}
                     </datalist>
                   </div>
