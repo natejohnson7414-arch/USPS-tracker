@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,9 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  
+  const siteIdFromQuery = searchParams.get('siteId') || '';
+
   const [isSaving, setIsSaving] = useState(false);
   const [workSites, setWorkSites] = useState<WorkSite[]>([]);
 
@@ -39,7 +42,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
     serialNumber: '',
     manufacturer: '',
     model: '',
-    siteId: '',
+    siteId: siteIdFromQuery,
     locationDescription: '',
     status: 'active',
     criticality: 'medium',
@@ -71,14 +74,8 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
         customFields: asset.customFields || {},
         materials: asset.materials || [],
       });
-    } else {
-      // Check for pre-selected siteId from search params for new assets
-      const siteIdParam = searchParams.get('siteId');
-      if (siteIdParam) {
-        setFormData(prev => ({ ...prev, siteId: siteIdParam }));
-      }
     }
-  }, [asset, searchParams]);
+  }, [asset]);
 
   const handleAddCustomField = () => {
     if (!newFieldName) return;
