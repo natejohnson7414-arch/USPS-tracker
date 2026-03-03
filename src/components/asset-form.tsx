@@ -106,6 +106,17 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
     }
   }, [db]);
 
+  // Dynamic lists for material selection
+  const allCategories = useMemo(() => {
+    const catalogCats = catalogMaterials.map(m => m.category);
+    return Array.from(new Set([...commonCategories, ...catalogCats])).sort();
+  }, [catalogMaterials]);
+
+  const filteredCatalogMaterials = useMemo(() => {
+    if (!newMatCategory) return catalogMaterials;
+    return catalogMaterials.filter(m => m.category === newMatCategory);
+  }, [catalogMaterials, newMatCategory]);
+
   const handleAddCustomField = () => {
     if (!newFieldName) return;
     setFormData(prev => ({
@@ -345,14 +356,14 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
                     <Select value={newMatCategory} onValueChange={setNewMatCategory}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {commonCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                        {allCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[10px]">Name</Label>
                     <Input 
-                      placeholder="e.g. 20x25x1 Filter" 
+                      placeholder="Type to search..." 
                       value={newMatName} 
                       list="catalog-material-list"
                       onChange={(e) => {
@@ -367,7 +378,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
                       }} 
                     />
                     <datalist id="catalog-material-list">
-                      {catalogMaterials.map(m => (
+                      {filteredCatalogMaterials.map(m => (
                         <option key={m.id} value={m.name} />
                       ))}
                     </datalist>
