@@ -13,7 +13,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, Ban, PlusCircle, Trash2, CalendarClock, Clock, Wrench } from 'lucide-react';
+import { Loader2, Save, Ban, PlusCircle, Trash2, CalendarClock, Wrench } from 'lucide-react';
 import type { Asset, WorkSite, AssetMaterial } from '@/lib/types';
 import { getWorkSites } from '@/lib/data';
 import { Separator } from '@/components/ui/separator';
@@ -35,32 +35,64 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   
-  const siteIdFromQuery = searchParams.get('siteId') || '';
-
   const [isSaving, setIsSaving] = useState(false);
   const [workSites, setWorkSites] = useState<WorkSite[]>([]);
 
-  const [formData, setFormData] = useState<Partial<Asset>>({
-    name: '',
-    assetTag: '',
-    serialNumber: '',
-    manufacturer: '',
-    model: '',
-    siteId: siteIdFromQuery,
-    locationDescription: '',
-    status: 'active',
-    criticality: 'medium',
-    installDate: new Date().toISOString(),
-    expectedLifeYears: 10,
-    replacementCost: 0,
-    pmFrequency: 'none',
-    pmLaborHours: 0,
-    pmMonth: new Date().getMonth() + 1,
-    customFields: {},
-    materials: [],
-  });
+  // 1. Derive the initial form state from props or defaults
+  // This memoized object ensures we have a stable reference for the initial state
+  const initialFormData = useMemo(() => {
+    if (asset) {
+      return {
+        ...asset,
+        name: asset.name || '',
+        assetTag: asset.assetTag || '',
+        serialNumber: asset.serialNumber || '',
+        manufacturer: asset.manufacturer || '',
+        model: asset.model || '',
+        siteId: asset.siteId || '',
+        locationDescription: asset.locationDescription || '',
+        status: asset.status || 'active',
+        criticality: asset.criticality || 'medium',
+        installDate: asset.installDate || new Date().toISOString(),
+        expectedLifeYears: asset.expectedLifeYears ?? 10,
+        replacementCost: asset.replacementCost ?? 0,
+        pmFrequency: asset.pmFrequency || 'none',
+        pmLaborHours: asset.pmLaborHours ?? 0,
+        pmMonth: asset.pmMonth ?? new Date().getMonth() + 1,
+        customFields: asset.customFields || {},
+        materials: asset.materials || [],
+      };
+    }
+    return {
+      name: '',
+      assetTag: '',
+      serialNumber: '',
+      manufacturer: '',
+      model: '',
+      siteId: searchParams.get('siteId') || '',
+      locationDescription: '',
+      status: 'active',
+      criticality: 'medium',
+      installDate: new Date().toISOString(),
+      expectedLifeYears: 10,
+      replacementCost: 0,
+      pmFrequency: 'none',
+      pmLaborHours: 0,
+      pmMonth: new Date().getMonth() + 1,
+      customFields: {},
+      materials: [],
+    };
+  }, [asset, searchParams]);
 
-  // Local state for adding new items
+  // 2. Initialize state directly from the computed initial data
+  const [formData, setFormData] = useState<Partial<Asset>>(initialFormData);
+
+  // 3. Keep local state in sync if the asset prop changes (important for navigation)
+  useEffect(() => {
+    setFormData(initialFormData);
+  }, [initialFormData]);
+
+  // Local state for adding new items (temporary UI state)
   const [newFieldName, setNewFieldName] = useState('');
   const [newFieldValue, setNewFieldValue] = useState('');
   const [newMatName, setNewMatName] = useState('');
@@ -73,19 +105,6 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
       getWorkSites(db).then(setWorkSites);
     }
   }, [db]);
-
-  useEffect(() => {
-    if (asset) {
-      setFormData({
-        ...asset,
-        customFields: asset.customFields || {},
-        materials: asset.materials || [],
-        pmFrequency: asset.pmFrequency || 'none',
-        pmLaborHours: asset.pmLaborHours || 0,
-        pmMonth: asset.pmMonth || new Date().getMonth() + 1,
-      });
-    }
-  }, [asset]);
 
   const handleAddCustomField = () => {
     if (!newFieldName) return;
@@ -177,26 +196,26 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Asset Name *</Label>
-                <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Roof Top Unit 1" required />
+                <Input id="name" value={formData.name || ''} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Roof Top Unit 1" required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="assetTag">Asset Tag *</Label>
-                  <Input id="assetTag" value={formData.assetTag} onChange={(e) => setFormData({ ...formData, assetTag: e.target.value })} placeholder="RTU-001" required />
+                  <Input id="assetTag" value={formData.assetTag || ''} onChange={(e) => setFormData({ ...formData, assetTag: e.target.value })} placeholder="RTU-001" required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="serialNumber">Serial Number</Label>
-                  <Input id="serialNumber" value={formData.serialNumber} onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })} />
+                  <Input id="serialNumber" value={formData.serialNumber || ''} onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="manufacturer">Manufacturer</Label>
-                  <Input id="manufacturer" value={formData.manufacturer} onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })} />
+                  <Input id="manufacturer" value={formData.manufacturer || ''} onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="model">Model</Label>
-                  <Input id="model" value={formData.model} onChange={(e) => setFormData({ ...formData, model: e.target.value })} />
+                  <Input id="model" value={formData.model || ''} onChange={(e) => setFormData({ ...formData, model: e.target.value })} />
                 </div>
               </div>
             </CardContent>
@@ -207,19 +226,19 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="site">Work Site *</Label>
-                <Select value={formData.siteId} onValueChange={(val) => setFormData({ ...formData, siteId: val })}>
+                <Select value={formData.siteId || ''} onValueChange={(val) => setFormData({ ...formData, siteId: val })}>
                   <SelectTrigger id="site"><SelectValue placeholder="Select site" /></SelectTrigger>
                   <SelectContent>{workSites.map((site) => (<SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="locationDescription">Location Description</Label>
-                <Input id="locationDescription" value={formData.locationDescription} onChange={(e) => setFormData({ ...formData, locationDescription: e.target.value })} placeholder="e.g. Northeast corner of roof" />
+                <Input id="locationDescription" value={formData.locationDescription || ''} onChange={(e) => setFormData({ ...formData, locationDescription: e.target.value })} placeholder="e.g. Northeast corner of roof" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
-                  <Select value={formData.status} onValueChange={(val: any) => setFormData({ ...formData, status: val })}>
+                  <Select value={formData.status || 'active'} onValueChange={(val: any) => setFormData({ ...formData, status: val })}>
                     <SelectTrigger id="status"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="active">Active</SelectItem>
@@ -230,7 +249,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="criticality">Criticality</Label>
-                  <Select value={formData.criticality} onValueChange={(val: any) => setFormData({ ...formData, criticality: val })}>
+                  <Select value={formData.criticality || 'medium'} onValueChange={(val: any) => setFormData({ ...formData, criticality: val })}>
                     <SelectTrigger id="criticality"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="low">Low</SelectItem>
@@ -254,7 +273,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>PM Frequency</Label>
-                  <Select value={formData.pmFrequency} onValueChange={(val: any) => setFormData({ ...formData, pmFrequency: val })}>
+                  <Select value={formData.pmFrequency || 'none'} onValueChange={(val: any) => setFormData({ ...formData, pmFrequency: val })}>
                     <SelectTrigger className="bg-background">
                       <SelectValue />
                     </SelectTrigger>
@@ -270,7 +289,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
                 <div className="space-y-2">
                   <Label>Anchor Month</Label>
                   <Select 
-                    value={formData.pmMonth?.toString()} 
+                    value={formData.pmMonth?.toString() || ''} 
                     onValueChange={(val) => setFormData({ ...formData, pmMonth: parseInt(val) })}
                     disabled={formData.pmFrequency === 'none'}
                   >
@@ -291,7 +310,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
                   type="number" 
                   step="0.5" 
                   className="bg-background"
-                  value={formData.pmLaborHours} 
+                  value={formData.pmLaborHours || 0} 
                   onChange={(e) => setFormData({ ...formData, pmLaborHours: parseFloat(e.target.value) || 0 })}
                   disabled={formData.pmFrequency === 'none'}
                 />
