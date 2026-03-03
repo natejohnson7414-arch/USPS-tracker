@@ -19,9 +19,10 @@ export interface FirebaseServices {
   storage: FirebaseStorage;
 }
 
-// Module-level singletons to prevent race conditions
+// Module-level singletons to prevent race conditions and double-initialization
 let servicesPromise: Promise<FirebaseServices> | null = null;
 let services: FirebaseServices | null = null;
+let firestoreInitialized = false;
 
 /**
  * Perform a full CRUD lifecycle test on IndexedDB.
@@ -71,7 +72,8 @@ async function isIndexedDbAvailable(): Promise<boolean> {
 
 /**
  * Initializes Firebase services with a guaranteed completion path.
- * Uses a Promise guard to handle React Strict Mode double-invocations.
+ * Uses a Promise guard and a boolean flag to handle React Strict Mode 
+ * and prevent "Firestore already initialized" errors.
  */
 export async function initializeFirebase(): Promise<FirebaseServices> {
   // 1. If we already have the services, return them immediately
@@ -93,24 +95,33 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
     if (isServer) {
       firestore = getFirestore(app);
     } else {
-      try {
-        const idbAvailable = await isIndexedDbAvailable();
-        
-        if (idbAvailable) {
-          firestore = initializeFirestore(app, {
-            localCache: persistentLocalCache({}),
-          });
-          console.log("Firestore initialized with persistentLocalCache.");
-        } else {
-          firestore = initializeFirestore(app, {
-            localCache: memoryLocalCache(),
-          });
-          console.log("Firestore initialized with memoryLocalCache (fallback).");
-        }
-      } catch (e: any) {
-        // Fallback to standard getFirestore if initializeFirestore fails (e.g. called twice)
-        console.error("Firestore custom initialization failed, falling back to standard getFirestore:", e.message);
+      // Check if Firestore was already initialized by a non-standard call elsewhere
+      if (firestoreInitialized) {
+        console.log("Firestore already initialized — using existing instance");
         firestore = getFirestore(app);
+      } else {
+        try {
+          const idbAvailable = await isIndexedDbAvailable();
+          
+          if (idbAvailable) {
+            firestore = initializeFirestore(app, {
+              localCache: persistentLocalCache({}),
+            });
+            console.log("Firestore persistence enabled");
+          } else {
+            firestore = initializeFirestore(app, {
+              localCache: memoryLocalCache(),
+            });
+            console.log("Firestore memory fallback");
+          }
+          firestoreInitialized = true;
+        } catch (e: any) {
+          // If initializeFirestore fails (e.g. it was actually initialized already),
+          // fallback to getFirestore to recover the existing instance.
+          console.warn("Firestore custom initialization failed, falling back to standard getFirestore:", e.message);
+          firestore = getFirestore(app);
+          firestoreInitialized = true;
+        }
       }
     }
 
