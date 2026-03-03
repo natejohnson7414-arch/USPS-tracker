@@ -231,12 +231,15 @@ export type AssetPmSchedule = {
   id: string;
   assetId: string;
   templateId: string;
-  nextDueDate: string;
+  nextDueDate: string; // ISO string, but treated as month of service
   lastCompletedDate?: string;
   autoGenerateWorkOrder: boolean;
   status: 'active' | 'paused';
   // Denormalized for display
   assetName?: string;
+  assetTag?: string;
+  siteId?: string;
+  siteName?: string;
   templateName?: string;
 };
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -30,7 +31,7 @@ import { getWorkSiteById, getAssetsBySiteId, getAssetPmSchedules } from '@/lib/d
 import type { WorkSite, Asset, AssetPmSchedule } from '@/lib/types';
 import { WorkSiteForm } from '@/components/work-site-form';
 import { AddPmScheduleDialog } from '@/components/add-pm-schedule-dialog';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 export default function WorkSiteDetailsPage() {
   const { id } = useParams();
@@ -56,11 +57,9 @@ export default function WorkSiteDetailsPage() {
       setAssets(a);
 
       // Fetch schedules for these assets
-      if (a.length > 0) {
-        const allSchedules = await getAssetPmSchedules(db);
-        const siteSchedules = allSchedules.filter(sch => a.some(asset => asset.id === sch.assetId));
-        setSchedules(siteSchedules);
-      }
+      const allSchedules = await getAssetPmSchedules(db);
+      const siteSchedules = allSchedules.filter(sch => a.some(asset => asset.id === sch.assetId));
+      setSchedules(siteSchedules);
     } catch (error) {
       console.error("Error fetching site data:", error);
     } finally {
@@ -206,12 +205,12 @@ export default function WorkSiteDetailsPage() {
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <div>
-                    <CardTitle>PM Schedule</CardTitle>
-                    <CardDescription>Upcoming preventative maintenance for all assets at this site.</CardDescription>
+                    <CardTitle>Planned Maintenance</CardTitle>
+                    <CardDescription>Upcoming PM months for equipment at this site.</CardDescription>
                   </div>
                   <Button size="sm" onClick={() => setIsAddScheduleOpen(true)}>
                     <PlusCircle className="mr-2 h-4 w-4" />
-                    Add Schedule
+                    Plan PM
                   </Button>
                 </div>
               </CardHeader>
@@ -224,9 +223,9 @@ export default function WorkSiteDetailsPage() {
                           <p className="font-bold text-primary">{schedule.assetName}</p>
                           <p className="text-sm font-medium">{schedule.templateName}</p>
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
+                            <span className="flex items-center gap-1 font-semibold text-foreground">
                               <Clock className="h-3 w-3" /> 
-                              Due: {format(new Date(schedule.nextDueDate), 'PPP')}
+                              Due: {format(parseISO(schedule.nextDueDate), 'MMMM yyyy')}
                             </span>
                           </div>
                         </div>
@@ -243,7 +242,7 @@ export default function WorkSiteDetailsPage() {
                   </div>
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">
-                    No active preventative maintenance schedules for this site.
+                    No preventative maintenance planned for this site.
                   </div>
                 )}
               </CardContent>

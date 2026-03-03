@@ -165,12 +165,18 @@ export const getAssetPmSchedules = async (db: any, assetId?: string): Promise<As
   if (assetId) q = query(q, where('assetId', '==', assetId)) as any;
   const snapshot = await getCollectionNonBlocking(q);
   const schedules = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AssetPmSchedule));
-  const [assets, templates] = await Promise.all([getAssets(db), getPmTemplates(db)]);
-  return schedules.map(s => ({
-    ...s,
-    assetName: assets.find(a => a.id === s.assetId)?.name,
-    templateName: templates.find(t => t.id === s.templateId)?.name
-  }));
+  const [assets, templates, sites] = await Promise.all([getAssets(db), getPmTemplates(db), getWorkSites(db)]);
+  return schedules.map(s => {
+    const asset = assets.find(a => a.id === s.assetId);
+    return {
+      ...s,
+      assetName: asset?.name,
+      assetTag: asset?.assetTag,
+      siteId: asset?.siteId,
+      siteName: sites.find(site => site.id === asset?.siteId)?.name,
+      templateName: templates.find(t => t.id === s.templateId)?.name
+    };
+  });
 };
 
 export const getAssetServiceHistory = async (db: any, assetId: string): Promise<AssetServiceHistory[]> => {
@@ -193,63 +199,8 @@ export const getMaterialById = async (db: any, id: string): Promise<Material | u
 
 // Automation Service
 export const generatePmWorkOrders = async (db: any) => {
-  const today = new Date();
-  const schedulesRef = collection(db, 'asset_pm_schedules');
-  const q = query(schedulesRef, where('status', '==', 'active'), where('nextDueDate', '<=', today.toISOString()));
-  const snapshot = await getDocs(q);
-  
-  if (snapshot.empty) return { count: 0 };
-
-  const batch = writeBatch(db);
-  let generatedCount = 0;
-
-  for (const scheduleDoc of snapshot.docs) {
-    const schedule = { id: scheduleDoc.id, ...scheduleDoc.data() } as AssetPmSchedule;
-    if (!schedule.autoGenerateWorkOrder) continue;
-
-    const asset = await getAssetById(db, schedule.assetId);
-    const template = await getPmTemplateById(db, schedule.templateId);
-    if (!asset || !template) continue;
-
-    const jobId = `PM-${asset.assetTag}-${format(today, 'yyMMddHHmm')}`;
-    const workOrderRef = doc(db, 'work_orders', jobId);
-    
-    const pmWorkOrder: Partial<WorkOrder> = {
-      id: jobId,
-      createdDate: today.toISOString(),
-      jobName: `PM: ${asset.name} (${template.name})`,
-      description: `Preventative Maintenance for ${asset.name} at ${asset.siteName}. Template: ${template.name}. ${template.description}`,
-      status: 'Open',
-      assetId: asset.id,
-      pmScheduleId: schedule.id,
-      isPm: true,
-      workSiteId: asset.siteId,
-      clientId: asset.siteId, // Assuming site maps to client context for now
-      serviceScheduleDate: schedule.nextDueDate,
-    };
-
-    batch.set(workOrderRef, pmWorkOrder);
-
-    // Calculate next due date
-    let nextDate = new Date(schedule.nextDueDate);
-    switch (template.frequencyType) {
-      case 'monthly': nextDate = addMonths(nextDate, 1); break;
-      case 'quarterly': nextDate = addMonths(nextDate, 3); break;
-      case 'semiannual': nextDate = addMonths(nextDate, 6); break;
-      case 'annual': nextDate = addMonths(nextDate, 12); break;
-      case 'custom_days': nextDate = addDays(nextDate, template.customIntervalDays || 30); break;
-    }
-
-    batch.update(scheduleDoc.ref, {
-      lastCompletedDate: today.toISOString(),
-      nextDueDate: nextDate.toISOString()
-    });
-
-    generatedCount++;
-  }
-
-  await batch.commit();
-  return { count: generatedCount };
+  // Manual trigger removed as per request to not auto-generate work orders.
+  return { count: 0 };
 };
 
 // Calculation Metrics

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -18,14 +19,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { DatePicker } from '@/components/ui/date-picker';
 import { useFirestore, addDocumentNonBlocking } from '@/firebase';
 import { getPmTemplates } from '@/lib/data';
 import type { Asset, PmTemplate, AssetPmSchedule } from '@/lib/types';
 import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, CalendarClock } from 'lucide-react';
+import { startOfMonth } from 'date-fns';
 
 interface AddPmScheduleDialogProps {
   isOpen: boolean;
@@ -33,6 +33,11 @@ interface AddPmScheduleDialogProps {
   assets: Asset[];
   onScheduleAdded: () => void;
 }
+
+const months = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 export function AddPmScheduleDialog({
   isOpen,
@@ -47,8 +52,9 @@ export function AddPmScheduleDialog({
   
   const [selectedAssetId, setSelectedAssetId] = useState<string>('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
-  const [nextDueDate, setNextDueDate] = useState<Date | undefined>(new Date());
-  const [autoGenerate, setAutoGenerate] = useState(true);
+  
+  const [selectedMonth, setSelectedMonth] = useState((new Date().getMonth() + 1).toString());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
 
   useEffect(() => {
     if (isOpen && db) {
@@ -58,32 +64,33 @@ export function AddPmScheduleDialog({
 
   const handleSubmit = async () => {
     if (!db) return;
-    if (!selectedAssetId || !selectedTemplateId || !nextDueDate) {
-      toast({ title: 'Missing Information', description: 'Please select an asset, template, and due date.', variant: 'destructive' });
+    if (!selectedAssetId || !selectedTemplateId) {
+      toast({ title: 'Missing Information', description: 'Please select an asset and template.', variant: 'destructive' });
       return;
     }
 
     setIsLoading(true);
     try {
+      // Create a date object for the 1st of the selected month
+      const dueDate = new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1, 1);
+      
       const scheduleData: Omit<AssetPmSchedule, 'id'> = {
         assetId: selectedAssetId,
         templateId: selectedTemplateId,
-        nextDueDate: nextDueDate.toISOString(),
-        autoGenerateWorkOrder: autoGenerate,
+        nextDueDate: dueDate.toISOString(),
+        autoGenerateWorkOrder: false,
         status: 'active',
       };
 
       await addDocumentNonBlocking(collection(db, 'asset_pm_schedules'), scheduleData);
       
-      toast({ title: 'Schedule Added', description: 'The PM task has been successfully scheduled.' });
+      toast({ title: 'PM Planned', description: 'The maintenance task has been added to the calendar.' });
       onScheduleAdded();
       onOpenChange(false);
       
       // Reset form
       setSelectedAssetId('');
       setSelectedTemplateId('');
-      setNextDueDate(new Date());
-      setAutoGenerate(true);
     } catch (error) {
       console.error(error);
       toast({ title: 'Error', description: 'Could not create schedule.', variant: 'destructive' });
@@ -92,16 +99,18 @@ export function AddPmScheduleDialog({
     }
   };
 
+  const years = Array.from({ length: 5 }, (_, i) => (new Date().getFullYear() + i).toString());
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarClock className="h-5 w-5 text-primary" />
-            Schedule PM Task
+            Plan PM Task
           </DialogTitle>
           <DialogDescription>
-            Assign a preventative maintenance template to an asset at this site.
+            Schedule a month for preventative maintenance at this site.
           </DialogDescription>
         </DialogHeader>
 
@@ -138,23 +147,33 @@ export function AddPmScheduleDialog({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label>Next Service Due Date</Label>
-            <DatePicker date={nextDueDate} setDate={setNextDueDate} />
-          </div>
-
-          <div className="flex items-center justify-between space-x-2 border p-3 rounded-md">
-            <div className="space-y-0.5">
-              <Label htmlFor="auto-gen">Auto-Generate Work Order</Label>
-              <p className="text-xs text-muted-foreground">
-                Creates a new job automatically on the due date.
-              </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Due Month</Label>
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {months.map((m, i) => (
+                    <SelectItem key={m} value={(i + 1).toString()}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Switch
-              id="auto-gen"
-              checked={autoGenerate}
-              onCheckedChange={setAutoGenerate}
-            />
+            <div className="space-y-2">
+              <Label>Year</Label>
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {years.map(y => (
+                    <SelectItem key={y} value={y}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
@@ -164,7 +183,7 @@ export function AddPmScheduleDialog({
           </Button>
           <Button onClick={handleSubmit} disabled={isLoading}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Create Schedule
+            Add to Calendar
           </Button>
         </DialogFooter>
       </DialogContent>
