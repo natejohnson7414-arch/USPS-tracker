@@ -45,6 +45,7 @@ export default function WorkSiteDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isAddScheduleOpen, setIsAddScheduleOpen] = useState(false);
+  const [selectedSchedule, setSelectedSchedule] = useState<AssetPmSchedule | null>(null);
 
   const fetchData = async () => {
     if (!db || !id) return;
@@ -78,6 +79,16 @@ export default function WorkSiteDetailsPage() {
 
   const handleScheduleAdded = () => {
     fetchData();
+  };
+
+  const handleEditSchedule = (s: AssetPmSchedule) => {
+    setSelectedSchedule(s);
+    setIsAddScheduleOpen(true);
+  };
+
+  const handleNewSchedule = () => {
+    setSelectedSchedule(null);
+    setIsAddScheduleOpen(true);
   };
 
   if (isLoading) {
@@ -212,7 +223,7 @@ export default function WorkSiteDetailsPage() {
                     <CardTitle>Repeatable Maintenance Schedules</CardTitle>
                     <CardDescription>Indefinite cycles for equipment at this site.</CardDescription>
                   </div>
-                  <Button size="sm" onClick={() => setIsAddScheduleOpen(true)}>
+                  <Button size="sm" onClick={handleNewSchedule}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Plan PM Cycle
                   </Button>
@@ -245,10 +256,8 @@ export default function WorkSiteDetailsPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge variant={schedule.status === 'active' ? 'default' : 'secondary'}>{schedule.status}</Badge>
-                          <Button asChild variant="ghost" size="icon">
-                            <Link href={`/assets/${schedule.assetId}`}>
-                              <Settings className="h-4 w-4" />
-                            </Link>
+                          <Button variant="ghost" size="icon" onClick={() => handleEditSchedule(schedule)}>
+                            <Settings className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
@@ -317,6 +326,7 @@ export default function WorkSiteDetailsPage() {
         isOpen={isAddScheduleOpen}
         onOpenChange={setIsAddScheduleOpen}
         assets={assets}
+        schedule={selectedSchedule}
         onScheduleAdded={handleScheduleAdded}
       />
     </MainLayout>

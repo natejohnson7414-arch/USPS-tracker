@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
@@ -9,12 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { History, CalendarClock, Settings, Wrench, ShieldCheck, Clock, FileText, Loader2, AlertCircle, Box, Tag, PlusCircle } from 'lucide-react';
+import { History, CalendarClock, Settings, Wrench, ShieldCheck, Clock, FileText, Loader2, AlertCircle, Box, Tag, PlusCircle, Repeat } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { getAssetById, getAssetPmSchedules, getAssetServiceHistory, calculateAssetMetrics } from '@/lib/data';
 import type { Asset, AssetPmSchedule, AssetServiceHistory } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
+import { AddPmScheduleDialog } from '@/components/add-pm-schedule-dialog';
 
 export default function AssetDetailsPage() {
   const { id } = useParams();
@@ -23,22 +24,44 @@ export default function AssetDetailsPage() {
   const [schedules, setSchedules] = useState<AssetPmSchedule[]>([]);
   const [history, setHistory] = useState<AssetServiceHistory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+  const [selectedSchedule, setSelectedSchedule] = useState<AssetPmSchedule | null>(null);
 
-  useEffect(() => {
+  const fetchAssetData = useCallback(async () => {
     if (db && id && id !== 'new') {
-      Promise.all([
+      const [a, s, h] = await Promise.all([
         getAssetById(db, id as string),
         getAssetPmSchedules(db, id as string),
         getAssetServiceHistory(db, id as string)
-      ]).then(([a, s, h]) => {
-        setAsset(a || null);
-        setSchedules(s);
-        setHistory(h);
-      }).finally(() => setIsLoading(false));
+      ]);
+      setAsset(a || null);
+      setSchedules(s);
+      setHistory(h);
+    }
+  }, [db, id]);
+
+  useEffect(() => {
+    if (db && id && id !== 'new') {
+      fetchAssetData().finally(() => setIsLoading(false));
     } else if (id === 'new') {
         setIsLoading(false);
     }
-  }, [db, id]);
+  }, [db, id, fetchAssetData]);
+
+  const handleEditSchedule = (s: AssetPmSchedule) => {
+    setSelectedSchedule(s);
+    setIsScheduleDialogOpen(true);
+  };
+
+  const handleAddSchedule = () => {
+    setSelectedSchedule(null);
+    setIsScheduleDialogOpen(true);
+  };
+
+  const handleScheduleSaved = () => {
+    fetchAssetData();
+  };
 
   if (isLoading) return <MainLayout><div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div></MainLayout>;
   if (!asset) return <MainLayout><div className="container py-12 text-center"><AlertCircle className="h-12 w-12 mx-auto mb-4 text-destructive" /><h1 className="text-2xl font-bold">Asset Not Found</h1></div></MainLayout>;
@@ -161,7 +184,7 @@ export default function AssetDetailsPage() {
                   <CardHeader>
                     <div className="flex justify-between items-center">
                       <CardTitle>PM Schedules</CardTitle>
-                      <Button size="sm" variant="outline"><PlusCircle className="mr-2 h-4 w-4" /> New Schedule</Button>
+                      <Button size="sm" variant="outline" onClick={handleAddSchedule}><PlusCircle className="mr-2 h-4 w-4" /> New Schedule</Button>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -172,11 +195,17 @@ export default function AssetDetailsPage() {
                             <div className="space-y-1">
                               <p className="font-bold">{schedule.templateName}</p>
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Due: {format(new Date(schedule.nextDueDate), 'PPP')}</span>
-                                <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> Auto-Generate: {schedule.autoGenerateWorkOrder ? 'Yes' : 'No'}</span>
+                                <span className="flex items-center gap-1 font-semibold text-foreground"><Clock className="h-3 w-3" /> Due: {format(new Date(schedule.nextDueDate), 'MMMM')}</span>
+                                <span className="flex items-center gap-1"><Repeat className="h-3 w-3" /> Frequency: {schedule.frequencyType}</span>
+                                <span className="flex items-center gap-1"><Wrench className="h-3 w-3" /> Labor: {schedule.estimatedLaborHours} hrs</span>
                               </div>
                             </div>
-                            <Badge variant={schedule.status === 'active' ? 'default' : 'secondary'}>{schedule.status}</Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={schedule.status === 'active' ? 'default' : 'secondary'}>{schedule.status}</Badge>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditSchedule(schedule)}>
+                                <Settings className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -190,6 +219,14 @@ export default function AssetDetailsPage() {
           </div>
         </div>
       </div>
+
+      <AddPmScheduleDialog 
+        isOpen={isScheduleDialogOpen}
+        onOpenChange={setIsScheduleDialogOpen}
+        assetId={id as string}
+        schedule={selectedSchedule}
+        onScheduleAdded={handleScheduleSaved}
+      />
     </MainLayout>
   );
 }
