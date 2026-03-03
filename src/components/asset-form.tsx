@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,9 +25,10 @@ interface AssetFormProps {
 
 const commonCategories = ['Filter', 'Belt', 'Oil', 'Refrigerant', 'Gasket', 'Fuse', 'Other'];
 
-export function AssetForm({ asset, onCancel }: AssetFormProps) {
+function AssetFormInner({ asset, onCancel }: AssetFormProps) {
   const db = useFirestore();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [workSites, setWorkSites] = useState<WorkSite[]>([]);
@@ -70,8 +71,14 @@ export function AssetForm({ asset, onCancel }: AssetFormProps) {
         customFields: asset.customFields || {},
         materials: asset.materials || [],
       });
+    } else {
+      // Check for pre-selected siteId from search params
+      const siteId = searchParams.get('siteId');
+      if (siteId && !formData.siteId) {
+        setFormData(prev => ({ ...prev, siteId }));
+      }
     }
-  }, [asset]);
+  }, [asset, searchParams]);
 
   const handleAddCustomField = () => {
     if (!newFieldName) return;
@@ -325,5 +332,13 @@ export function AssetForm({ asset, onCancel }: AssetFormProps) {
         </div>
       </div>
     </form>
+  );
+}
+
+export function AssetForm(props: AssetFormProps) {
+  return (
+    <Suspense fallback={<div className="p-12 text-center"><Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" /><p className="mt-4 text-muted-foreground">Loading form...</p></div>}>
+      <AssetFormInner {...props} />
+    </Suspense>
   );
 }

@@ -142,8 +142,18 @@ export default function WorkSiteDetailsPage() {
           <TabsContent value="assets" className="mt-0">
             <Card className="rounded-t-none">
               <CardHeader>
-                <CardTitle>On-Site Equipment</CardTitle>
-                <CardDescription>Managed assets at this location.</CardDescription>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle>On-Site Equipment</CardTitle>
+                    <CardDescription>Managed assets at this location.</CardDescription>
+                  </div>
+                  <Button asChild size="sm">
+                    <Link href={`/assets/new?siteId=${site.id}`}>
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Add Asset
+                    </Link>
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="p-0">
                 <Table>
