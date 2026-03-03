@@ -29,6 +29,15 @@ import { generateMaterialsReport, type MaterialReportGroup } from '@/lib/reporti
 import { Loader2, Printer, X, Download, FileText } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 
 interface MaterialsReportDialogProps {
   isOpen: boolean;
