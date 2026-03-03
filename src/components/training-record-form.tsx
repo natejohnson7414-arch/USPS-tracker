@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -13,9 +14,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
 } from '@/components/ui/dialog';
 import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -83,7 +81,6 @@ export function TrainingRecordForm({ record, workOrder, onFormSaved, onCancel }:
   const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
   const [signatureTarget, setSignatureTarget] = useState<{ type: 'trainer' | 'attendee'; index?: number } | null>(null);
 
-  // Effect to populate the form fields from the `record` prop
   useEffect(() => {
     if (record) {
       setTrainingCourse(record.trainingCourse || '');
@@ -187,16 +184,12 @@ export function TrainingRecordForm({ record, workOrder, onFormSaved, onCancel }:
         };
 
         const recordRef = doc(db, 'training_records', record.id);
-        await updateDocumentNonBlocking(recordRef, trainingRecordData);
+        updateDocumentNonBlocking(recordRef, trainingRecordData);
         toast({ title: 'Training Record Updated' });
-        
         onFormSaved();
 
     } catch (error) {
-        if (error instanceof Error && !error.message.includes('permission-error')) {
-            console.error("Error saving training record:", error);
-            toast({ title: 'Save Failed', description: 'Could not save the training record.', variant: 'destructive' });
-        }
+        console.error(error);
     } finally {
         setIsSaving(false);
     }
@@ -368,11 +361,7 @@ export function TrainingRecordForm({ record, workOrder, onFormSaved, onCancel }:
         </div>
     </div>
     <Dialog open={isSignatureDialogOpen} onOpenChange={setIsSignatureDialogOpen}>
-        <DialogContent className="h-[90vh] w-[90vw] max-w-full flex flex-col">
-            <DialogHeader>
-                <DialogTitle>Provide Signature</DialogTitle>
-                <DialogDescription>Please sign in the box below.</DialogDescription>
-            </DialogHeader>
+        <DialogContent className="h-[90vh] w-[90vw] max-w-full flex flex-col p-0">
             <SignaturePad 
                 onSave={handleSignatureSave}
                 onClear={() => {}}

@@ -23,9 +23,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
 } from '@/components/ui/dialog';
 import { useFirestore, addDocumentNonBlocking, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -101,7 +98,6 @@ function TrainingAttendancePageContent() {
   useEffect(() => {
     if (woIdFromQuery && db) {
         setWorkOrderId(woIdFromQuery);
-        // fetch work order to pre-populate course name
         getWorkOrderById(db, woIdFromQuery).then(wo => {
             if (wo) {
                 setTrainingCourse(wo.jobName);
@@ -210,16 +206,13 @@ function TrainingAttendancePageContent() {
             checklist,
         };
 
-        await addDocumentNonBlocking(collection(db, 'training_records'), trainingRecordData);
+        addDocumentNonBlocking(collection(db, 'training_records'), trainingRecordData);
 
         toast({ title: 'Training Record Saved' });
         resetForm();
 
     } catch (error) {
-        if (error instanceof Error && !error.message.includes('permission-error')) {
-            console.error("Error saving training record:", error);
-            toast({ title: 'Save Failed', description: 'Could not save the training record.', variant: 'destructive' });
-        }
+        console.error(error);
     } finally {
         setIsSaving(false);
     }
@@ -407,11 +400,7 @@ function TrainingAttendancePageContent() {
       </div>
 
        <Dialog open={isSignatureDialogOpen} onOpenChange={setIsSignatureDialogOpen}>
-            <DialogContent className="h-[90vh] w-[90vw] max-w-full flex flex-col">
-                <DialogHeader>
-                    <DialogTitle>Provide Signature</DialogTitle>
-                    <DialogDescription>Please sign in the box below.</DialogDescription>
-                </DialogHeader>
+            <DialogContent className="h-[90vh] w-[90vw] max-w-full flex flex-col p-0">
                 <SignaturePad 
                     onSave={handleSignatureSave}
                     onClear={() => {}}

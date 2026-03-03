@@ -178,7 +178,7 @@ export default function WorkOrderDetailPage() {
       const currentUrls = workOrder[fieldToUpdate] || [];
       const newUrls = [...currentUrls, ...uploadedUrls];
 
-      await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), {
+      updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), {
         [fieldToUpdate]: newUrls,
       });
 
@@ -214,7 +214,7 @@ export default function WorkOrderDetailPage() {
     setWorkOrder(prev => prev ? { ...prev, [fieldToUpdate]: newUrls } : null);
 
     try {
-        await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { [fieldToUpdate]: newUrls });
+        updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { [fieldToUpdate]: newUrls });
         await deleteImage(urlToDelete);
         toast({ title: "Photo Deleted" });
     } catch(error) {
@@ -247,7 +247,7 @@ export default function WorkOrderDetailPage() {
       const currentFiles = workOrder.uploadedFiles || [];
       const newFiles = [...currentFiles, ...uploadedFiles];
 
-      await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), {
+      updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), {
         uploadedFiles: newFiles,
       });
 
@@ -274,8 +274,8 @@ export default function WorkOrderDetailPage() {
     setWorkOrder(prev => prev ? { ...prev, uploadedFiles: newFiles } : null); // Optimistic update
 
     try {
-        await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { uploadedFiles: newFiles });
-        await deleteImage(fileToDelete.url); // This function takes a URL
+        updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { uploadedFiles: newFiles });
+        await deleteImage(fileToDelete.url); 
         toast({ title: "File Deleted" });
     } catch(error) {
         console.error(`Error deleting file:`, error);
@@ -294,42 +294,31 @@ export default function WorkOrderDetailPage() {
                 authorId: user.uid,
                 authorName: technician?.name || user.email!,
             };
-            await addWorkHistoryItem(db, workOrder.id, historyItem);
-            await fetchData();
+            addWorkHistoryItem(db, workOrder.id, historyItem);
+            fetchData();
             setActiveTab('activity');
         } catch (e) {
             console.error("Error logging time entry history:", e);
         }
     };
   
-  const handleTempUpdate = async () => {
+  const handleTempUpdate = () => {
     if (!workOrderDocRef) return;
-  
-    try {
-      await updateDocumentNonBlocking(workOrderDocRef, { tempOnArrival, tempOnLeaving });
-      toast({ title: "Temperatures Updated", description: "The arrival and leaving temperatures have been saved." });
-      setWorkOrder(prev => prev ? ({ ...prev, tempOnArrival, tempOnLeaving }) : null);
-    } catch (error) {
-      console.error("Failed to update temperatures", error);
-    }
+    updateDocumentNonBlocking(workOrderDocRef, { tempOnArrival, tempOnLeaving });
+    setWorkOrder(prev => prev ? ({ ...prev, tempOnArrival, tempOnLeaving }) : null);
   };
   
-  const handleContactInfoUpdate = async () => {
+  const handleContactInfoUpdate = () => {
     if (!workOrderDocRef) return;
-    try {
-        await updateDocumentNonBlocking(workOrderDocRef, { contactInfo });
-        toast({ title: "Contact Info Updated", description: "The customer's name has been saved." });
-        setWorkOrder(prev => prev ? ({...prev, contactInfo }) : null);
-    } catch (error) {
-        console.error("Failed to update contact info", error);
-    }
+    updateDocumentNonBlocking(workOrderDocRef, { contactInfo });
+    setWorkOrder(prev => prev ? ({...prev, contactInfo }) : null);
   };
   
   const handleFormSaved = (newId?: string) => {
       if (newId && newId !== id) {
           router.push(`/work-orders/${newId}`);
       } else {
-          fetchData(); // Refetch all data to get the latest state
+          fetchData(); 
       }
       setIsEditing(false);
   }
@@ -340,17 +329,16 @@ export default function WorkOrderDetailPage() {
         toast({ title: 'Missing Name', description: "Please enter the signer's name.", variant: 'destructive' });
         return;
       }
+      
+      setIsSavingPhotos(true);
       const signaturePath = `signatures/${workOrder.id}/${Date.now()}.png`;
       
       try {
-        const signatureUrl = await uploadImage(
-            await (await fetch(signatureDataUrl)).blob(), 
-            signaturePath
-        );
-
+        const signatureBlob = await (await fetch(signatureDataUrl)).blob();
+        const signatureUrl = await uploadImage(signatureBlob, signaturePath);
         const signatureDate = new Date().toISOString();
         
-        await updateDocumentNonBlocking(workOrderDocRef, {
+        updateDocumentNonBlocking(workOrderDocRef, {
             customerSignatureUrl: signatureUrl,
             signatureDate: signatureDate,
             contactInfo: contactInfo
@@ -361,8 +349,10 @@ export default function WorkOrderDetailPage() {
         toast({ title: "Signature Saved", description: "The signature has been saved." });
         setIsSignatureDialogOpen(false);
       } catch (error) {
-        console.error("Error saving signature:", error);
-        toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save the signature.' });
+        console.error("Error preparing signature upload:", error);
+        toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not upload the signature.' });
+      } finally {
+        setIsSavingPhotos(false);
       }
   };
 
@@ -370,11 +360,10 @@ export default function WorkOrderDetailPage() {
     if (!db || !workOrder) return;
 
     if (!ack) {
-        // Handle single field deletion
         const oldUrl = workOrder.customerSignatureUrl;
         setWorkOrder(prev => prev ? ({ ...prev, customerSignatureUrl: undefined, signatureDate: undefined }) : null);
         try {
-            await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { 
+            updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { 
                 customerSignatureUrl: null, 
                 signatureDate: null 
             });
@@ -382,15 +371,14 @@ export default function WorkOrderDetailPage() {
             toast({ title: "Signature Deleted" });
         } catch(error) {
             console.error(`Error deleting signature:`, error);
-            toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete signature." });
-            fetchData(); // Revert
+            toast({ variant: "destructive", title: "Delete Failed" });
+            fetchData(); 
         }
     } else {
-        // Handle array element deletion (legacy signatures)
         const updatedAcks = (workOrder.acknowledgements || []).filter(a => a.signatureUrl !== ack.signatureUrl);
         setWorkOrder(prev => prev ? ({ ...prev, acknowledgements: updatedAcks }) : null);
         try {
-            await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { 
+            updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { 
                 acknowledgements: updatedAcks 
             });
             await deleteImage(ack.signatureUrl);
@@ -398,7 +386,7 @@ export default function WorkOrderDetailPage() {
         } catch(error) {
             console.error(`Error deleting legacy signature:`, error);
             toast({ variant: "destructive", title: "Delete Failed" });
-            fetchData(); // Revert
+            fetchData(); 
         }
     }
   };
@@ -408,7 +396,6 @@ export default function WorkOrderDetailPage() {
     
     const noteRef = doc(db, 'work_orders', workOrder.id, 'updates', noteId);
     
-    // Optimistically update UI
     const originalNotes = workOrder.notes;
     const updatedNotes = workOrder.notes.map(note => {
       if (note.id === noteId) {
@@ -419,16 +406,14 @@ export default function WorkOrderDetailPage() {
     setWorkOrder(prev => prev ? { ...prev, notes: updatedNotes } : null);
 
     try {
-        await deleteImage(photoUrl); // Delete from Storage
+        await deleteImage(photoUrl); 
         const updatedNote = updatedNotes.find(n => n.id === noteId);
         if(updatedNote) {
-            await updateDocumentNonBlocking(noteRef, { photoUrls: updatedNote.photoUrls || [] }); // Update Firestore
+            updateDocumentNonBlocking(noteRef, { photoUrls: updatedNote.photoUrls || [] }); 
         }
-        toast({ title: 'Photo Deleted', description: 'The photo has been removed.' });
+        toast({ title: 'Photo Deleted' });
     } catch (error) {
         console.error("Error deleting photo:", error);
-        toast({ variant: 'destructive', title: 'Deletion Failed', description: 'Could not delete the photo.' });
-        // Revert UI if error occurs
         setWorkOrder(prev => prev ? ({...prev, notes: originalNotes}) : null);
     }
   };
@@ -439,26 +424,21 @@ export default function WorkOrderDetailPage() {
     const noteToDelete = workOrder.notes.find(note => note.id === noteId);
     if (!noteToDelete) return;
 
-    // Optimistically remove from UI
     const originalNotes = workOrder.notes;
     setWorkOrder(prev => prev ? ({ ...prev, notes: prev.notes.filter(n => n.id !== noteId) }) : null);
 
     const noteRef = doc(db, 'work_orders', workOrder.id, 'updates', noteId);
     
-    // Delete Firestore document
     deleteDocumentNonBlocking(noteRef)
         .then(() => {
-            // After successful Firestore deletion, delete associated photos from Storage
             const photoDeletePromises = (noteToDelete.photoUrls || []).map(url => deleteImage(url));
             return Promise.all(photoDeletePromises);
         })
         .then(() => {
-            toast({ title: 'Note Deleted', description: 'The note and its photos have been removed.' });
+            toast({ title: 'Note Deleted' });
         })
         .catch(error => {
             console.error("Error deleting note:", error);
-            toast({ variant: 'destructive', title: 'Deletion Failed', description: 'Could not delete the note.' });
-             // Revert UI if error occurs
             setWorkOrder(prev => prev ? ({...prev, notes: originalNotes}) : null);
         });
   };
@@ -466,7 +446,6 @@ export default function WorkOrderDetailPage() {
   const handleTimeEntryDelete = (timeEntryId: string) => {
     if (!db) return;
 
-    // Optimistically remove from UI
     const originalTimeEntries = timeEntries;
     setTimeEntries(prev => prev.filter(t => t.id !== timeEntryId));
 
@@ -477,49 +456,26 @@ export default function WorkOrderDetailPage() {
       })
       .catch(error => {
         console.error("Error deleting time entry:", error);
-        toast({ variant: 'destructive', title: 'Deletion Failed' });
-        // Revert on error
         setTimeEntries(originalTimeEntries);
       });
   };
   
   const handleTrainingRecordDelete = (recordId: string) => {
     if (!db) return;
-    // Optimistic UI update
     setTrainingRecords(prev => prev.filter(r => r.id !== recordId));
-    
-    deleteTrainingRecord(db, recordId)
-        .then(() => {
-            toast({ title: 'Training Record Deleted' });
-        })
-        .catch(error => {
-            console.error("Error deleting training record:", error);
-            toast({ title: "Deletion Failed", variant: 'destructive' });
-            fetchData(); // Re-fetch to revert optimistic update
-        });
+    deleteTrainingRecord(db, recordId).then(() => toast({ title: 'Training Record Deleted' }));
   }
 
   const handleHvacReportDelete = (reportId: string) => {
     if (!db) return;
-    // Optimistic UI update
     setHvacReports(prev => prev.filter(r => r.id !== reportId));
-    
-    deleteHvacStartupReport(db, reportId)
-        .then(() => {
-            toast({ title: 'HVAC Start-Up Report Deleted' });
-        })
-        .catch(error => {
-            console.error("Error deleting HVAC report:", error);
-            toast({ title: "Deletion Failed", variant: 'destructive' });
-            fetchData(); // Re-fetch to revert optimistic update
-        });
+    deleteHvacStartupReport(db, reportId).then(() => toast({ title: 'HVAC Start-Up Report Deleted' }));
   }
 
-  const handleAddActivity = async (newActivityData: Omit<Activity, 'id' | 'createdDate' | 'workOrderId'>) => {
+  const handleAddActivity = (newActivityData: Omit<Activity, 'id' | 'createdDate' | 'workOrderId'>) => {
     if (!db || !user || !workOrder) return;
     
     setIsAddingActivity(true);
-    
     const activityData = {
         ...newActivityData,
         workOrderId: workOrder.id,
@@ -527,68 +483,45 @@ export default function WorkOrderDetailPage() {
     };
     
     const activitiesColRef = collection(db, 'work_orders', workOrder.id, 'activities');
-    try {
-        const docRef = await addDocumentNonBlocking(activitiesColRef, activityData);
-        toast({ title: 'Activity Scheduled' });
-        await updateWorkOrderStatus(db, workOrder.id);
-        await fetchData();
-        setActiveTab('activity');
-    } catch(error) {
-        if (error instanceof Error && !error.message.includes('permission-error')) {
-            console.error("Error scheduling activity:", error);
-            toast({ title: 'Error', description: 'Failed to schedule activity', variant: 'destructive' });
-        }
-    } finally {
-        setIsAddingActivity(false);
-    }
+    addDocumentNonBlocking(activitiesColRef, activityData)
+        .then(() => {
+            toast({ title: 'Activity Scheduled' });
+            updateWorkOrderStatus(db, workOrder.id);
+            fetchData();
+            setActiveTab('activity');
+        })
+        .finally(() => setIsAddingActivity(false));
   };
 
-  const handleUpdateActivityStatus = async (activityId: string, status: Activity['status']) => {
+  const handleUpdateActivityStatus = (activityId: string, status: Activity['status']) => {
       if (!db || !workOrder) return;
       const activityRef = doc(db, 'work_orders', workOrder.id, 'activities', activityId);
-      try {
-          await updateDocumentNonBlocking(activityRef, { status });
-          toast({ title: 'Activity Status Updated' });
-          await updateWorkOrderStatus(db, workOrder.id);
-          fetchData();
-      } catch(error) {
-        if (error instanceof Error && !error.message.includes('permission-error')) {
-          console.error("Error updating activity status:", error);
-          toast({ title: 'Error', description: 'Failed to update activity status', variant: 'destructive' });
-        }
-      }
+      updateDocumentNonBlocking(activityRef, { status });
+      toast({ title: 'Activity Status Updated' });
+      updateWorkOrderStatus(db, workOrder.id);
+      fetchData();
   };
 
-  const handleDeleteActivity = async (activityId: string) => {
+  const handleDeleteActivity = (activityId: string) => {
     if (!db || !workOrder) return;
     const activityRef = doc(db, 'work_orders', workOrder.id, 'activities', activityId);
-    try {
-        await deleteDocumentNonBlocking(activityRef);
-        toast({ title: 'Activity Deleted' });
-        await updateWorkOrderStatus(db, workOrder.id);
-        fetchData();
-    } catch (error) {
-        console.error('Error deleting activity:', error);
-        if (error instanceof Error && !error.message.includes('permission-error')) {
-            toast({ title: 'Delete Failed', variant: 'destructive' });
-        }
-    }
+    deleteDocumentNonBlocking(activityRef);
+    toast({ title: 'Activity Deleted' });
+    updateWorkOrderStatus(db, workOrder.id);
+    fetchData();
   };
 
   const handleDownloadMedia = async () => {
     if (!workOrder) return;
     setIsDownloading(true);
 
-    const photoUrls = [
+    const allUrls = [
         ...(workOrder.beforePhotoUrls || []),
         ...(workOrder.afterPhotoUrls || []),
         ...(workOrder.notes?.flatMap(note => note.photoUrls || []) || []),
-        ...(quotes.flatMap(quote => quote.photos || []))
+        ...(quotes.flatMap(quote => quote.photos || [])),
+        ...(quotes.flatMap(quote => quote.videos || []))
     ];
-
-    const videoUrls = quotes.flatMap(quote => quote.videos || []);
-
-    const allUrls = [...photoUrls, ...videoUrls];
 
     if (allUrls.length === 0) {
         toast({ title: "No media to download." });
@@ -596,45 +529,26 @@ export default function WorkOrderDetailPage() {
         return;
     }
 
-    toast({ title: `Starting download of ${allUrls.length} media files...` });
-
     for (const [index, url] of allUrls.entries()) {
         try {
-            // Use the proxy for CORS
             const response = await fetch(`/api/image-proxy?url=${encodeURIComponent(url)}`);
-            if (!response.ok) {
-                console.error(`Failed to fetch ${url}: ${response.statusText}`);
-                toast({ title: `Download failed for file ${index + 1}`, variant: "destructive" });
-                continue; // continue to next file
-            }
+            if (!response.ok) continue;
             const blob = await response.blob();
             const objectUrl = window.URL.createObjectURL(blob);
-            
             const a = document.createElement('a');
             a.href = objectUrl;
-            
-            // Extract filename from URL
             const urlParts = new URL(url);
             const pathParts = urlParts.pathname.split('/');
             a.download = decodeURIComponent(pathParts[pathParts.length - 1]);
-            
             document.body.appendChild(a);
             a.click();
-            
-            // Cleanup
             document.body.removeChild(a);
             window.URL.revokeObjectURL(objectUrl);
-
-            // Small delay between downloads
             await new Promise(resolve => setTimeout(resolve, 200));
-
         } catch (error) {
             console.error("Download failed for", url, error);
-            toast({ title: `Download failed for file ${index + 1}`, variant: "destructive" });
         }
     }
-    
-    toast({ title: "All downloads initiated." });
     setIsDownloading(false);
 };
 
@@ -654,20 +568,15 @@ export default function WorkOrderDetailPage() {
       };
 
       const workOrderRef = doc(db, 'work_orders', workOrder.id);
-      
-      // Perform as a single atomic update
-      await updateDocumentNonBlocking(workOrderRef, {
+      updateDocumentNonBlocking(workOrderRef, {
         status: 'Review',
         work_history: arrayUnion(historyItem)
       });
       
       toast({ title: "Work Order Submitted for Review" });
-      fetchData(); // to get latest history
+      fetchData(); 
     } catch (error) {
-      console.error("Error setting work order to review:", error);
-      if (error instanceof Error && !error.message.includes('permission-error')) {
-        toast({ title: 'Update Failed', variant: 'destructive' });
-      }
+        console.error(error);
     } finally {
         setIsSubmittingReview(false);
     }
@@ -689,8 +598,7 @@ export default function WorkOrderDetailPage() {
       };
 
       const workOrderRef = doc(db, 'work_orders', workOrder.id);
-      
-      await updateDocumentNonBlocking(workOrderRef, {
+      updateDocumentNonBlocking(workOrderRef, {
         status: 'Completed',
         work_history: arrayUnion(historyItem)
       });
@@ -698,51 +606,33 @@ export default function WorkOrderDetailPage() {
       toast({ title: "Work Order Completed" });
       fetchData(); 
     } catch (error) {
-      console.error("Error completing work order:", error);
-      if (error instanceof Error && !error.message.includes('permission-error')) {
-        toast({ title: 'Update Failed', variant: 'destructive' });
-      }
+        console.error(error);
     } finally {
         setIsCompleting(false);
     }
   };
 
-  const handleReplyToAttention = async () => {
+  const handleReplyToAttention = () => {
     if (!db || !workOrder) return;
-    try {
-        const woRef = doc(db, 'work_orders', workOrder.id);
-        await updateDocumentNonBlocking(woRef, {
-            needsAttention: false,
-            technicianReplied: true
-        });
-        toast({ title: 'Attention Acknowledged', description: 'Office has been notified.' });
-        fetchData();
-    } catch (error) {
-        console.error("Error replying to attention:", error);
-        toast({ title: 'Failed to reply', variant: 'destructive' });
-    }
+    const woRef = doc(db, 'work_orders', workOrder.id);
+    updateDocumentNonBlocking(woRef, {
+        needsAttention: false,
+        technicianReplied: true
+    });
+    toast({ title: 'Attention Acknowledged' });
+    fetchData();
   };
 
-  const handleClearReplyStatus = async () => {
+  const handleClearReplyStatus = () => {
     if (!db || !workOrder) return;
-    try {
-        const woRef = doc(db, 'work_orders', workOrder.id);
-        await updateDocumentNonBlocking(woRef, { technicianReplied: false });
-        toast({ title: 'Status Cleared' });
-        fetchData();
-    } catch (error) {
-        console.error("Error clearing reply status:", error);
-    }
+    const woRef = doc(db, 'work_orders', workOrder.id);
+    updateDocumentNonBlocking(woRef, { technicianReplied: false });
+    toast({ title: 'Status Cleared' });
+    fetchData();
   };
 
   if (isLoading || !workOrder) {
-    return (
-      <MainLayout>
-        <div className="flex items-center justify-center h-full">
-          <p>Loading work order details...</p>
-        </div>
-      </MainLayout>
-    );
+    return <MainLayout><div className="flex items-center justify-center h-full"><p>Loading work order details...</p></div></MainLayout>;
   }
 
   const isTechnician = currentUserRole?.name === 'Technician';
@@ -761,11 +651,7 @@ export default function WorkOrderDetailPage() {
             </Button>
              <div className="flex items-center gap-2">
                 {workOrder.status === 'Review' && isAdmin && (
-                    <Button 
-                        onClick={handleCompleteWorkOrder} 
-                        disabled={isCompleting}
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                    >
+                    <Button onClick={handleCompleteWorkOrder} disabled={isCompleting} className="bg-green-600 hover:bg-green-700 text-white">
                         {isCompleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
                         Complete WO
                     </Button>
@@ -782,7 +668,6 @@ export default function WorkOrderDetailPage() {
                         Report
                     </Button>
                 )}
-                
                 {!isCompleted && (
                     <Button asChild variant="outline">
                         <Link href={`/work-orders/${workOrder.id}/start-quote`}>
@@ -790,8 +675,6 @@ export default function WorkOrderDetailPage() {
                         </Link>
                     </Button>
                 )}
-
-
                 {!isCompleted && !isEditing && !isTechnician && workOrder.id !== '24-0001' && (
                   <Button variant="outline" onClick={() => setIsEditing(true)}>
                     <Pencil className="mr-2 h-4 w-4" /> Edit
@@ -800,7 +683,6 @@ export default function WorkOrderDetailPage() {
             </div>
         </div>
 
-        {/* Global Page Header: Site and Work Order # */}
         {!isEditing && (
           <div className="mb-6 px-1">
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{workOrder.workSite?.name || workOrder.jobName}</h1>
@@ -810,121 +692,22 @@ export default function WorkOrderDetailPage() {
 
         <div className="pb-24">
             {isEditing ? (
-                 <WorkOrderEditForm 
-                    workOrder={workOrder}
-                    technicians={technicians}
-                    workSites={workSites}
-                    clients={clients}
-                    onFormSaved={handleFormSaved}
-                    onCancel={() => setIsEditing(false)}
-                 />
+                 <WorkOrderEditForm workOrder={workOrder} technicians={technicians} workSites={workSites} clients={clients} onFormSaved={handleFormSaved} onCancel={() => setIsEditing(false)} />
             ) : isTechnician ? (
                 <WorkOrderDetails
-                    workOrder={workOrder}
-                    isTechnician={isTechnician}
-                    isAdmin={isAdmin}
-                    trainingRecords={trainingRecords}
-                    onTrainingRecordDelete={handleTrainingRecordDelete}
-                    hvacReports={hvacReports}
-                    onHvacReportDelete={handleHvacReportDelete}
-                    timeEntries={timeEntries}
-                    activities={activities}
-                    onTimeEntriesSaved={handleTimeEntriesSaved}
-                    onNotePhotoDelete={handleNotePhotoDelete}
-                    onNoteDelete={handleNoteDelete}
-                    onBeforePhotosAdded={(files) => handlePhotosAdded('before', files)}
-                    onAfterPhotosAdded={(files) => handlePhotosAdded('after', files)}
-                    onReceiptsAndPackingSlipsAdded={(files) => handlePhotosAdded('receipts', files)}
-                    onBeforePhotoDelete={(url) => handlePhotoDeleted('before', url)}
-                    onAfterPhotoDelete={(url) => handlePhotoDeleted('after', url)}
-                    onReceiptsAndPackingSlipsPhotoDelete={(url) => handlePhotoDeleted('receipts', url)}
-                    onTimeEntryDelete={handleTimeEntryDelete}
-                    isSavingPhotos={isSavingPhotos}
-                    onDirectionsClick={() => workOrder.workSite && handleDirectionsClick(workOrder.workSite)}
-                    onSignatureSave={() => setIsSignatureDialogOpen(true)}
-                    onTempUpdate={handleTempUpdate}
-                    tempOnArrival={tempOnArrival}
-                    setTempOnArrival={setTempOnArrival}
-                    tempOnLeaving={tempOnLeaving}
-                    setTempOnLeaving={setTempOnLeaving}
-                    contactInfo={contactInfo}
-                    setContactInfo={setContactInfo}
-                    onContactInfoUpdate={handleContactInfoUpdate}
-                    onAddActivity={handleAddActivity}
-                    isAddingActivity={isAddingActivity}
-                    onUpdateActivityStatus={handleUpdateActivityStatus}
-                    onDeleteActivity={handleDeleteActivity}
-                    technicians={technicians}
-                    onMarkForReview={handleMarkForReview}
-                    isSubmittingReview={isSubmittingReview}
-                    onSignatureDelete={handleSignatureDelete}
-                    activeTab={activeTab}
-                    setActiveTab={setActiveTab}
-                    onReplyToAttention={handleReplyToAttention}
+                    workOrder={workOrder} isTechnician={isTechnician} isAdmin={isAdmin} trainingRecords={trainingRecords} onTrainingRecordDelete={handleTrainingRecordDelete} hvacReports={hvacReports} onHvacReportDelete={handleHvacReportDelete} timeEntries={timeEntries} activities={activities} onTimeEntriesSaved={handleTimeEntriesSaved} onNotePhotoDelete={handleNotePhotoDelete} onNoteDelete={handleNoteDelete} onBeforePhotosAdded={(files) => handlePhotosAdded('before', files)} onAfterPhotosAdded={(files) => handlePhotosAdded('after', files)} onReceiptsAndPackingSlipsAdded={(files) => handlePhotosAdded('receipts', files)} onBeforePhotoDelete={(url) => handlePhotoDeleted('before', url)} onAfterPhotoDelete={(url) => handlePhotoDeleted('after', url)} onReceiptsAndPackingSlipsPhotoDelete={(url) => handlePhotoDeleted('receipts', url)} onTimeEntryDelete={handleTimeEntryDelete} isSavingPhotos={isSavingPhotos} onDirectionsClick={() => workOrder.workSite && handleDirectionsClick(workOrder.workSite)} onSignatureSave={() => setIsSignatureDialogOpen(true)} onTempUpdate={handleTempUpdate} tempOnArrival={tempOnArrival} setTempOnArrival={setTempOnArrival} tempOnLeaving={tempOnLeaving} setTempOnLeaving={setTempOnLeaving} contactInfo={contactInfo} setContactInfo={setContactInfo} onContactInfoUpdate={handleContactInfoUpdate} onAddActivity={handleAddActivity} isAddingActivity={isAddingActivity} onUpdateActivityStatus={handleUpdateActivityStatus} onDeleteActivity={handleDeleteActivity} technicians={technicians} onMarkForReview={handleMarkForReview} isSubmittingReview={isSubmittingReview} onSignatureDelete={handleSignatureDelete} activeTab={activeTab} setActiveTab={setActiveTab} onReplyToAttention={handleReplyToAttention}
                 />
             ) : (
                  <WorkOrderAdminDetails
-                    workOrder={workOrder}
-                    assignedTechnician={assignedTechnician}
-                    isTechnician={isTechnician}
-                    isAdmin={isAdmin}
-                    trainingRecords={trainingRecords}
-                    onTrainingRecordDelete={handleTrainingRecordDelete}
-                    hvacReports={hvacReports}
-                    onHvacReportDelete={handleHvacReportDelete}
-                    timeEntries={timeEntries}
-                    activities={activities}
-                    onNotePhotoDelete={handleNotePhotoDelete}
-                    onNoteDelete={handleNoteDelete}
-                    onBeforePhotosAdded={(files) => handlePhotosAdded('before', files)}
-                    onAfterPhotosAdded={(files) => handlePhotosAdded('after', files)}
-                    onReceiptsAndPackingSlipsAdded={(files) => handlePhotosAdded('receipts', files)}
-                    onBeforePhotoDelete={(url) => handlePhotoDeleted('before', url)}
-                    onAfterPhotoDelete={(url) => handlePhotoDeleted('after', url)}
-                    onReceiptsAndPackingSlipsPhotoDelete={(url) => handlePhotoDeleted('receipts', url)}
-                    onTimeEntryDelete={handleTimeEntryDelete}
-                    isSavingPhotos={isSavingPhotos}
-                    onDirectionsClick={() => workOrder.workSite && handleDirectionsClick(workOrder.workSite)}
-                    onSignatureSave={() => setIsSignatureDialogOpen(true)}
-                    onTempUpdate={handleTempUpdate}
-                    tempOnArrival={tempOnArrival}
-                    setTempOnArrival={setTempOnArrival}
-                    tempOnLeaving={tempOnLeaving}
-                    setTempOnLeaving={setTempOnLeaving}
-                    contactInfo={contactInfo}
-                    setContactInfo={setContactInfo}
-                    onAddActivity={handleAddActivity}
-                    isAddingActivity={isAddingActivity}
-                    onUpdateActivityStatus={handleUpdateActivityStatus}
-                    onDeleteActivity={handleDeleteActivity}
-                    technicians={technicians}
-                    onFilesUploaded={handleFilesUploaded}
-                    onFileDeleted={handleFileDeleted}
-                    isUploadingFiles={isUploadingFiles}
-                    onSignatureDelete={handleSignatureDelete}
-                    activeTab={activeTab}
-                    setActiveTab={setActiveTab}
-                    onClearAttentionStatus={handleClearReplyStatus}
+                    workOrder={workOrder} assignedTechnician={assignedTechnician} isTechnician={isTechnician} isAdmin={isAdmin} trainingRecords={trainingRecords} onTrainingRecordDelete={handleTrainingRecordDelete} hvacReports={hvacReports} onHvacReportDelete={handleHvacReportDelete} timeEntries={timeEntries} activities={activities} onNotePhotoDelete={handleNotePhotoDelete} onNoteDelete={handleNoteDelete} onBeforePhotosAdded={(files) => handlePhotosAdded('before', files)} onAfterPhotosAdded={(files) => handlePhotosAdded('after', files)} onReceiptsAndPackingSlipsAdded={(files) => handlePhotosAdded('receipts', files)} onBeforePhotoDelete={(url) => handlePhotoDeleted('before', url)} onAfterPhotoDelete={(url) => handlePhotoDeleted('after', url)} onReceiptsAndPackingSlipsPhotoDelete={(url) => handlePhotoDeleted('receipts', url)} onTimeEntryDelete={handleTimeEntryDelete} isSavingPhotos={isSavingPhotos} onDirectionsClick={() => workOrder.workSite && handleDirectionsClick(workOrder.workSite)} onSignatureSave={() => setIsSignatureDialogOpen(true)} onTempUpdate={handleTempUpdate} tempOnArrival={tempOnArrival} setTempOnArrival={setTempOnArrival} tempOnLeaving={tempOnLeaving} setTempOnLeaving={setTempOnLeaving} contactInfo={contactInfo} setContactInfo={setContactInfo} onAddActivity={handleAddActivity} isAddingActivity={isAddingActivity} onUpdateActivityStatus={handleUpdateActivityStatus} onDeleteActivity={handleDeleteActivity} technicians={technicians} onFilesUploaded={handleFilesUploaded} onFileDeleted={handleFileDeleted} isUploadingFiles={isUploadingFiles} onSignatureDelete={handleSignatureDelete} activeTab={activeTab} setActiveTab={setActiveTab} onClearAttentionStatus={handleClearReplyStatus}
                 />
             )}
         </div>
       </div>
 
-       <MapProviderSelection 
-            address={selectedAddress} 
-            isOpen={!!selectedAddress} 
-            onOpenChange={() => setSelectedAddress(null)} 
-        />
+       <MapProviderSelection address={selectedAddress} isOpen={!!selectedAddress} onOpenChange={() => setSelectedAddress(null)} />
         <Dialog open={isSignatureDialogOpen} onOpenChange={setIsSignatureDialogOpen}>
-            <DialogContent className="h-[90vh] w-[90vw] max-w-full flex flex-col">
-                <DialogHeader>
-                    <DialogTitle>Add Signature</DialogTitle>
-                    <DialogDescription>Please have the customer sign in the box below.</DialogDescription>
-                </DialogHeader>
-                <div className='py-4'>
-                  <Label htmlFor="signer-name">Signer's Name</Label>
-                  <Input id="signer-name" placeholder="Enter printed name" value={contactInfo} onChange={e => setContactInfo(e.target.value)} />
-                </div>
+            <DialogContent className="h-[90vh] w-[90vw] max-w-full flex flex-col p-0">
                 <SignaturePad 
                     onSave={handleSignatureSave}
                     onClear={() => {}}
@@ -932,11 +715,7 @@ export default function WorkOrderDetailPage() {
                 />
             </DialogContent>
         </Dialog>
-        <ReportPreviewDialog
-            isOpen={isReportDialogOpen}
-            onOpenChange={setIsReportDialogOpen}
-            workOrderId={workOrder.id}
-        />
+        <ReportPreviewDialog isOpen={isReportDialogOpen} onOpenChange={setIsReportDialogOpen} workOrderId={workOrder.id} />
     </MainLayout>
   );
 }
