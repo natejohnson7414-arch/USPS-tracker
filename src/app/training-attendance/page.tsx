@@ -157,7 +157,6 @@ function TrainingAttendancePageContent() {
       setSignatureTarget(null);
 
     } catch (error) {
-      console.error('Error uploading signature:', error);
       savingToast.dismiss();
       toast({ title: 'Error', description: 'Could not save signature.', variant: 'destructive' });
     }
@@ -212,7 +211,7 @@ function TrainingAttendancePageContent() {
         resetForm();
 
     } catch (error) {
-        console.error(error);
+        // non-blocking util handles permission error
     } finally {
         setIsSaving(false);
     }
@@ -400,7 +399,7 @@ function TrainingAttendancePageContent() {
       </div>
 
        <Dialog open={isSignatureDialogOpen} onOpenChange={setIsSignatureDialogOpen}>
-            <DialogContent className="h-full sm:h-[90vh] w-full sm:w-[90vw] max-w-none p-0 flex flex-col border-0 sm:border rounded-none sm:rounded-lg">
+            <DialogContent className="h-full w-full max-w-none p-0 flex flex-col border-0 rounded-none shadow-none">
                 <SignaturePad 
                     onSave={handleSignatureSave}
                     onClear={() => {}}

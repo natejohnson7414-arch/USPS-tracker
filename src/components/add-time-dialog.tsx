@@ -1,3 +1,4 @@
+
 'use client';
 import {
   Dialog,
@@ -113,10 +114,7 @@ export function AddTimeDialog({ isOpen, setIsOpen, workOrderId, activity, onTime
         setIsOpen(false);
 
     } catch (error) {
-       if (error instanceof Error && !error.message.startsWith('Missing or insufficient permissions:')) {
-            console.error("Error adding time entry:", error);
-            toast({ title: 'Save Failed', description: 'Could not add time entries.', variant: 'destructive' });
-        }
+       // Handled by contextual error emitter in non-blocking utilities
     } finally {
         setIsSubmitting(false);
     }

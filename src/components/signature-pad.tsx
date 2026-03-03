@@ -32,8 +32,8 @@ export function SignaturePad({ onSave, onClear, className }: SignaturePadProps) 
   };
 
   return (
-    <div className={cn("w-full h-full flex flex-col p-2 bg-background", className)}>
-      <div className="flex-1 bg-muted rounded-md border border-input overflow-hidden relative">
+    <div className={cn("w-full h-full flex flex-col p-0 bg-background", className)}>
+      <div className="flex-1 bg-muted overflow-hidden relative">
           <SignatureCanvas
             ref={sigCanvas}
             penColor="black"
@@ -42,15 +42,15 @@ export function SignaturePad({ onSave, onClear, className }: SignaturePadProps) 
                 style: { width: '100%', height: '100%' }
             }}
           />
-          <div className="absolute top-2 left-2 pointer-events-none">
-              <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest opacity-50">Sign Here</p>
+          <div className="absolute top-4 left-4 pointer-events-none opacity-30">
+              <p className="text-xs uppercase font-black tracking-widest text-muted-foreground border-b-2 border-muted-foreground pb-1">Sign Here</p>
           </div>
       </div>
-      <div className="grid grid-cols-2 gap-3 mt-3 pb-safe">
-        <Button variant="outline" onClick={handleClear} size="lg" className="h-12">
+      <div className="grid grid-cols-2 gap-0 border-t">
+        <Button variant="ghost" onClick={handleClear} size="lg" className="h-16 rounded-none border-r text-lg font-bold">
           Clear
         </Button>
-        <Button onClick={handleSave} size="lg" className="h-12">
+        <Button onClick={handleSave} size="lg" className="h-16 rounded-none text-lg font-bold bg-primary text-primary-foreground">
           Save Signature
         </Button>
       </div>

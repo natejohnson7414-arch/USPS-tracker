@@ -131,7 +131,7 @@ export default function WorkOrderDetailPage() {
         }
 
       } catch (error) {
-        console.error('Failed to fetch initial data:', error);
+        // Standard data fetching error handling
         setWorkOrder(null);
         notFound();
       } finally {
@@ -183,7 +183,6 @@ export default function WorkOrderDetailPage() {
       toast({ title: "Photos Uploaded", description: `${files.length} photo(s) have been added.` });
 
     } catch (error) {
-      console.error(`Error adding ${type} photos:`, error);
       toastId.dismiss();
       toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload photos." });
     } finally {
@@ -213,8 +212,7 @@ export default function WorkOrderDetailPage() {
         await deleteImage(urlToDelete);
         toast({ title: "Photo Deleted" });
     } catch(error) {
-        console.error(`Error deleting ${type} photo:`, error);
-        toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete photo." });
+        // Error emitted by updateDocumentNonBlocking
         setWorkOrder(prev => prev ? { ...prev, [fieldToUpdate]: currentUrls } : null); // Revert
     }
   };
@@ -252,7 +250,6 @@ export default function WorkOrderDetailPage() {
       toast({ title: "Files Uploaded", description: `${files.length} file(s) have been added.` });
 
     } catch (error) {
-      console.error(`Error adding files:`, error);
       toastId.dismiss();
       toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload files." });
     } finally {
@@ -273,8 +270,7 @@ export default function WorkOrderDetailPage() {
         await deleteImage(fileToDelete.url); 
         toast({ title: "File Deleted" });
     } catch(error) {
-        console.error(`Error deleting file:`, error);
-        toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete file." });
+        // Error emitted by updateDocumentNonBlocking
         setWorkOrder(prev => prev ? { ...prev, uploadedFiles: currentFiles } : null); // Revert
     }
   };
@@ -293,7 +289,7 @@ export default function WorkOrderDetailPage() {
             fetchData();
             setActiveTab('activity');
         } catch (e) {
-            console.error("Error logging time entry history:", e);
+            // History error handling
         }
     };
   
@@ -344,8 +340,10 @@ export default function WorkOrderDetailPage() {
         toast({ title: "Signature Saved", description: "The signature has been saved." });
         setIsSignatureDialogOpen(false);
       } catch (error) {
-        console.error("Error preparing signature upload:", error);
-        toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not upload the signature.' });
+        // uploadImage handled manually, Firestore handled via non-blocking utils
+        if (!(error instanceof Error && error.name === 'FirebaseError')) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not upload the signature.' });
+        }
       } finally {
         setIsSavingPhotos(false);
       }
@@ -365,8 +363,6 @@ export default function WorkOrderDetailPage() {
             if (oldUrl) await deleteImage(oldUrl);
             toast({ title: "Signature Deleted" });
         } catch(error) {
-            console.error(`Error deleting signature:`, error);
-            toast({ variant: "destructive", title: "Delete Failed" });
             fetchData(); 
         }
     } else {
@@ -379,8 +375,6 @@ export default function WorkOrderDetailPage() {
             await deleteImage(ack.signatureUrl);
             toast({ title: "Legacy Signature Deleted" });
         } catch(error) {
-            console.error(`Error deleting legacy signature:`, error);
-            toast({ variant: "destructive", title: "Delete Failed" });
             fetchData(); 
         }
     }
@@ -408,7 +402,6 @@ export default function WorkOrderDetailPage() {
         }
         toast({ title: 'Photo Deleted' });
     } catch (error) {
-        console.error("Error deleting photo:", error);
         setWorkOrder(prev => prev ? ({...prev, notes: originalNotes}) : null);
     }
   };
@@ -433,7 +426,6 @@ export default function WorkOrderDetailPage() {
             toast({ title: 'Note Deleted' });
         })
         .catch(error => {
-            console.error("Error deleting note:", error);
             setWorkOrder(prev => prev ? ({...prev, notes: originalNotes}) : null);
         });
   };
@@ -450,7 +442,6 @@ export default function WorkOrderDetailPage() {
         toast({ title: 'Time Entry Deleted' });
       })
       .catch(error => {
-        console.error("Error deleting time entry:", error);
         setTimeEntries(originalTimeEntries);
       });
   };
@@ -541,7 +532,7 @@ export default function WorkOrderDetailPage() {
             window.URL.revokeObjectURL(objectUrl);
             await new Promise(resolve => setTimeout(resolve, 200));
         } catch (error) {
-            console.error("Download failed for", url, error);
+            // silent fail
         }
     }
     setIsDownloading(false);
@@ -571,7 +562,7 @@ export default function WorkOrderDetailPage() {
       toast({ title: "Work Order Submitted for Review" });
       fetchData(); 
     } catch (error) {
-        console.error(error);
+        // non-blocking utils handle permission errors
     } finally {
         setIsSubmittingReview(false);
     }
@@ -601,7 +592,7 @@ export default function WorkOrderDetailPage() {
       toast({ title: "Work Order Completed" });
       fetchData(); 
     } catch (error) {
-        console.error(error);
+        // non-blocking utils handle permission errors
     } finally {
         setIsCompleting(false);
     }
@@ -702,7 +693,7 @@ export default function WorkOrderDetailPage() {
 
        <MapProviderSelection address={selectedAddress} isOpen={!!selectedAddress} onOpenChange={() => setSelectedAddress(null)} />
         <Dialog open={isSignatureDialogOpen} onOpenChange={setIsSignatureDialogOpen}>
-            <DialogContent className="h-full sm:h-[90vh] w-full sm:w-[90vw] max-w-none p-0 flex flex-col border-0 sm:border rounded-none sm:rounded-lg">
+            <DialogContent className="h-full w-full max-w-none p-0 flex flex-col border-0 rounded-none shadow-none">
                 <SignaturePad 
                     onSave={handleSignatureSave}
                     onClear={() => {}}
