@@ -7,11 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Package, PlusCircle, Search, CalendarClock, TrendingUp, AlertTriangle, Loader2, FileBarChart, ChevronRight, MapPin } from 'lucide-react';
+import { Package, PlusCircle, Search, CalendarClock, TrendingUp, AlertTriangle, Loader2, FileBarChart, ChevronRight, MapPin, Wrench } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useFirestore } from '@/firebase';
 import { getAssets, getAssetPmSchedules } from '@/lib/data';
 import type { Asset, AssetPmSchedule } from '@/lib/types';
+import { generateLaborForecast, type LaborForecast } from '@/lib/reporting-service';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,12 +20,14 @@ import { MaterialsReportDialog } from '@/components/materials-report-dialog';
 import { format, addMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO, differenceInMonths } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 
 export default function AssetsPage() {
   const db = useFirestore();
   const { toast } = useToast();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [schedules, setSchedules] = useState<AssetPmSchedule[]>([]);
+  const [laborForecast, setLaborForecast] = useState<LaborForecast[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isReportOpen, setIsReportOpen] = useState(false);
@@ -34,10 +37,12 @@ export default function AssetsPage() {
       setIsLoading(true);
       Promise.all([
         getAssets(db),
-        getAssetPmSchedules(db)
-      ]).then(([a, s]) => {
+        getAssetPmSchedules(db),
+        generateLaborForecast(db)
+      ]).then(([a, s, l]) => {
         setAssets(a);
         setSchedules(s);
+        setLaborForecast(l);
       }).finally(() => setIsLoading(false));
     }
   }, [db]);
@@ -48,7 +53,6 @@ export default function AssetsPage() {
     a.siteName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Generate 12 months for the calendar
   const planningMonths = useMemo(() => {
     const months = [];
     const today = new Date();
@@ -67,26 +71,19 @@ export default function AssetsPage() {
       
       const startDueDate = parseISO(s.nextDueDate);
       
-      // If the schedule starts exactly in this month
       if (isWithinInterval(startDueDate, { start: targetStart, end: targetEnd })) {
         return true;
       }
 
-      // If it's a recurring schedule, check if it projects into this month
       if (startDueDate < targetStart) {
         const monthsDiff = differenceInMonths(targetStart, startDueDate);
         
         switch (s.frequencyType) {
-          case 'monthly':
-            return true;
-          case 'quarterly':
-            return monthsDiff % 3 === 0;
-          case 'semiannual':
-            return monthsDiff % 6 === 0;
-          case 'annual':
-            return monthsDiff % 12 === 0;
-          default:
-            return false;
+          case 'monthly': return true;
+          case 'quarterly': return monthsDiff % 3 === 0;
+          case 'semiannual': return monthsDiff % 6 === 0;
+          case 'annual': return monthsDiff % 12 === 0;
+          default: return false;
         }
       }
 
@@ -135,11 +132,11 @@ export default function AssetsPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total PM Month Hits</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">PM Sites (This Month)</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-primary">
-                {getSchedulesForMonth(new Date()).length}
+                {new Set(getSchedulesForMonth(new Date()).map(s => s.siteId)).size}
               </div>
             </CardContent>
           </Card>
@@ -149,7 +146,7 @@ export default function AssetsPage() {
           <TabsList className="mb-4">
             <TabsTrigger value="registry">Equipment Registry</TabsTrigger>
             <TabsTrigger value="calendar">PM Planning Calendar</TabsTrigger>
-            <TabsTrigger value="reports">Forecasts</TabsTrigger>
+            <TabsTrigger value="reports">Labor Projections</TabsTrigger>
           </TabsList>
 
           <TabsContent value="registry">
@@ -203,7 +200,10 @@ export default function AssetsPage() {
                             </TableCell>
                             <TableCell>
                               {nextPm ? (
-                                <Badge variant="outline" className="capitalize">{nextPm.frequencyType}</Badge>
+                                <div className="flex flex-col">
+                                  <Badge variant="outline" className="capitalize w-fit">{nextPm.frequencyType}</Badge>
+                                  <span className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1"><Wrench className="h-2.5 w-2.5" /> {nextPm.estimatedLaborHours} hrs</span>
+                                </div>
                               ) : (
                                 <span className="text-xs text-muted-foreground italic">Not planned</span>
                               )}
@@ -237,10 +237,12 @@ export default function AssetsPage() {
                     {planningMonths.map((month, idx) => {
                       const monthSchedules = getSchedulesForMonth(month);
                       const sitesDue = Array.from(new Set(monthSchedules.map(s => s.siteId))).map(siteId => {
+                        const siteSchedules = monthSchedules.filter(s => s.siteId === siteId);
                         return {
                           id: siteId!,
-                          name: monthSchedules.find(s => s.siteId === siteId)?.siteName,
-                          count: monthSchedules.filter(s => s.siteId === siteId).length
+                          name: siteSchedules[0]?.siteName,
+                          count: siteSchedules.length,
+                          totalHours: siteSchedules.reduce((acc, s) => acc + (s.estimatedLaborHours || 0), 0)
                         };
                       });
 
@@ -265,9 +267,10 @@ export default function AssetsPage() {
                                     <CardContent className="p-4 flex items-center justify-between">
                                       <div className="space-y-1">
                                         <p className="font-bold text-sm truncate max-w-[180px]">{site.name}</p>
-                                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                          <Package className="h-3 w-3" /> {site.count} Units Recurring
-                                        </p>
+                                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                                          <span className="flex items-center gap-1"><Package className="h-3 w-3" /> {site.count} Units</span>
+                                          <span className="flex items-center gap-1 font-semibold text-foreground"><Wrench className="h-3 w-3" /> {site.totalHours} hrs</span>
+                                        </div>
                                       </div>
                                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
                                     </CardContent>
@@ -288,27 +291,100 @@ export default function AssetsPage() {
           </TabsContent>
 
           <TabsContent value="reports">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5" /> Labor Projections</CardTitle>
-                  <CardDescription>Estimated technician hours required based on repeat cycles.</CardDescription>
+                  <CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5" /> Estimated Labor Demand</CardTitle>
+                  <CardDescription>Projected man-hours required for scheduled PM cycles over the next 12 months.</CardDescription>
                 </CardHeader>
-                <CardContent className="h-64 flex flex-col items-center justify-center text-muted-foreground bg-muted/20 rounded-md m-6 border-2 border-dashed">
-                  <TrendingUp className="h-8 w-8 mb-2 opacity-20" />
-                  <p className="text-sm">Repeatable forecast charts coming soon</p>
+                <CardContent className="h-[400px] pt-10">
+                  {laborForecast.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={laborForecast}>
+                        <XAxis 
+                          dataKey="month" 
+                          stroke="#888888" 
+                          fontSize={12} 
+                          tickLine={false} 
+                          axisLine={false} 
+                        />
+                        <YAxis 
+                          stroke="#888888" 
+                          fontSize={12} 
+                          tickLine={false} 
+                          axisLine={false} 
+                          tickFormatter={(value) => `${value}h`}
+                        />
+                        <Tooltip 
+                          cursor={{fill: 'transparent'}}
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              return (
+                                <div className="rounded-lg border bg-background p-2 shadow-sm">
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div className="flex flex-col">
+                                      <span className="text-[0.70rem] uppercase text-muted-foreground">
+                                        Month
+                                      </span>
+                                      <span className="font-bold text-muted-foreground">
+                                        {payload[0].payload.month}
+                                      </span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                      <span className="text-[0.70rem] uppercase text-muted-foreground">
+                                        Est. Hours
+                                      </span>
+                                      <span className="font-bold text-primary">
+                                        {payload[0].value}h
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Bar dataKey="hours" radius={[4, 4, 0, 0]}>
+                          {laborForecast.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill="hsl(var(--primary))" fillOpacity={0.8 - (index * 0.04)} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
+                      <Loader2 className="h-8 w-8 animate-spin mb-4" />
+                      <p>Calculating labor forecast...</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5" /> Replacement Risk</CardTitle>
-                  <CardDescription>Assets nearing the end of their expected lifecycle.</CardDescription>
-                </CardHeader>
-                <CardContent className="h-64 flex flex-col items-center justify-center text-muted-foreground bg-muted/20 rounded-md m-6 border-2 border-dashed">
-                  <AlertTriangle className="h-8 w-8 mb-2 opacity-20" />
-                  <p className="text-sm">Lifecycle tracking available in Asset Details</p>
-                </CardContent>
-              </Card>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm font-bold flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Capacity Risk</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm">
+                    <p className="text-muted-foreground">
+                      The peak labor requirement is <span className="font-bold text-foreground">{Math.max(...laborForecast.map(f => f.hours))} hours</span>. 
+                      Ensure your team has the available bandwidth for these months.
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm font-bold flex items-center gap-2"><MapPin className="h-4 w-4" /> Distribution</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm">
+                    <p className="text-muted-foreground">
+                      Maintenance is distributed across <span className="font-bold text-foreground">{new Set(schedules.map(s => s.siteId)).size} sites</span>. 
+                      Consolidated site visits are recommended for months with high site density.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </TabsContent>
         </Tabs>

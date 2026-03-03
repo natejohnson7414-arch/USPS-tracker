@@ -176,7 +176,8 @@ export const getAssetPmSchedules = async (db: any, assetId?: string): Promise<As
       siteId: asset?.siteId,
       siteName: sites.find(site => site.id === asset?.siteId)?.name,
       templateName: template?.name,
-      frequencyType: template?.frequencyType
+      frequencyType: template?.frequencyType,
+      estimatedLaborHours: template?.estimatedLaborHours
     };
   });
 };

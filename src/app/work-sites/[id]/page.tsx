@@ -25,7 +25,8 @@ import {
   Settings,
   ChevronRight,
   PlusCircle,
-  Repeat
+  Repeat,
+  Wrench
 } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { getWorkSiteById, getAssetsBySiteId, getAssetPmSchedules } from '@/lib/data';
@@ -230,7 +231,11 @@ export default function WorkSiteDetailsPage() {
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1 font-semibold text-foreground">
                               <Clock className="h-3 w-3" /> 
-                              Starts: {format(parseISO(schedule.nextDueDate), 'MMMM yyyy')}
+                              Scheduled: {format(parseISO(schedule.nextDueDate), 'MMMM')}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Wrench className="h-3 w-3" />
+                              Est. Labor: {schedule.estimatedLaborHours} hrs
                             </span>
                           </div>
                         </div>

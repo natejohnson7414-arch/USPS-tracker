@@ -24,8 +24,7 @@ import { getPmTemplates } from '@/lib/data';
 import type { Asset, PmTemplate, AssetPmSchedule } from '@/lib/types';
 import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, CalendarClock } from 'lucide-react';
-import { startOfMonth } from 'date-fns';
+import { Loader2, CalendarClock, Clock } from 'lucide-react';
 
 interface AddPmScheduleDialogProps {
   isOpen: boolean;
@@ -52,9 +51,9 @@ export function AddPmScheduleDialog({
   
   const [selectedAssetId, setSelectedAssetId] = useState<string>('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
-  
   const [selectedMonth, setSelectedMonth] = useState((new Date().getMonth() + 1).toString());
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
+
+  const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
 
   useEffect(() => {
     if (isOpen && db) {
@@ -71,8 +70,10 @@ export function AddPmScheduleDialog({
 
     setIsLoading(true);
     try {
-      // Create a date object for the 1st of the selected month
-      const dueDate = new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1, 1);
+      // Create a date object for the 1st of the selected month in the current year.
+      // The year selector was removed as these are now yearly anchors.
+      const currentYear = new Date().getFullYear();
+      const dueDate = new Date(currentYear, parseInt(selectedMonth) - 1, 1);
       
       const scheduleData: Omit<AssetPmSchedule, 'id'> = {
         assetId: selectedAssetId,
@@ -99,18 +100,16 @@ export function AddPmScheduleDialog({
     }
   };
 
-  const years = Array.from({ length: 5 }, (_, i) => (new Date().getFullYear() + i).toString());
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarClock className="h-5 w-5 text-primary" />
-            Plan PM Task
+            Plan PM Cycle
           </DialogTitle>
           <DialogDescription>
-            Schedule a month for preventative maintenance at this site.
+            Assign an indefinite preventative maintenance cycle to equipment at this site.
           </DialogDescription>
         </DialogHeader>
 
@@ -147,34 +146,34 @@ export function AddPmScheduleDialog({
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Due Month</Label>
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {months.map((m, i) => (
-                    <SelectItem key={m} value={(i + 1).toString()}>{m}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Year</Label>
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map(y => (
-                    <SelectItem key={y} value={y}>{y}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label>Month of First Service</Label>
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {months.map((m, i) => (
+                  <SelectItem key={m} value={(i + 1).toString()}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground">The schedule will repeat annually on this month (or more frequently if specified in the template).</p>
           </div>
+
+          {selectedTemplate && (
+            <div className="mt-2 p-3 bg-muted rounded-md space-y-1">
+              <p className="text-xs font-semibold flex items-center gap-1"><Clock className="h-3 w-3" /> Plan Details</p>
+              <div className="flex justify-between text-[11px]">
+                <span className="text-muted-foreground">Cycle</span>
+                <span className="capitalize">{selectedTemplate.frequencyType}</span>
+              </div>
+              <div className="flex justify-between text-[11px]">
+                <span className="text-muted-foreground">Labor Estimate</span>
+                <span className="font-bold">{selectedTemplate.estimatedLaborHours} Hours</span>
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -183,7 +182,7 @@ export function AddPmScheduleDialog({
           </Button>
           <Button onClick={handleSubmit} disabled={isLoading}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Add to Calendar
+            Start Cycle
           </Button>
         </DialogFooter>
       </DialogContent>

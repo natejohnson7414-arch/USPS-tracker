@@ -231,7 +231,7 @@ export type AssetPmSchedule = {
   id: string;
   assetId: string;
   templateId: string;
-  nextDueDate: string; // ISO string, but treated as month of service
+  nextDueDate: string; // ISO string, anchored to a month
   lastCompletedDate?: string;
   autoGenerateWorkOrder: boolean;
   status: 'active' | 'paused';
@@ -241,6 +241,8 @@ export type AssetPmSchedule = {
   siteId?: string;
   siteName?: string;
   templateName?: string;
+  frequencyType?: string;
+  estimatedLaborHours?: number;
 };
 
 export type AssetServiceHistory = {
