@@ -58,6 +58,12 @@ service cloud.firestore {
         allow read, write: if isSignedIn();
       }
     }
+    
+    // Support for collection group queries on activities (required for global Dispatch Board)
+    match /{path=**}/activities/{activityId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
 
     match /technicians/{techId} {
       allow read: if isSignedIn();
