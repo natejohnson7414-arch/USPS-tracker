@@ -11,24 +11,33 @@ import {
 } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage';
 
+/**
+ * Initializes Firebase services with a focus on PWA offline persistence.
+ * This function is designed to be safe for both SSR and Client environments.
+ */
 export function initializeFirebase() {
-  if (!getApps().length) {
-    let firebaseApp;
-    try {
-      firebaseApp = initializeApp();
-    } catch (e) {
-      if (process.env.NODE_ENV === "production") {
-        console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
-      }
-      firebaseApp = initializeApp(firebaseConfig);
-    }
+  // 1. Basic check for server environment
+  const isServer = typeof window === 'undefined';
 
-    // Modern Firestore persistence configuration for PWAs
-    const firestore = initializeFirestore(firebaseApp, {
-      localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager(),
-      }),
-    });
+  if (!getApps().length) {
+    const firebaseApp = initializeApp(firebaseConfig);
+
+    // 2. Configure Firestore with persistence ONLY on the client
+    let firestore;
+    if (!isServer) {
+      try {
+        firestore = initializeFirestore(firebaseApp, {
+          localCache: persistentLocalCache({
+            tabManager: persistentMultipleTabManager(),
+          }),
+        });
+      } catch (e) {
+        console.warn("Firestore initialization failed, falling back to default.", e);
+        firestore = getFirestore(firebaseApp);
+      }
+    } else {
+      firestore = getFirestore(firebaseApp);
+    }
 
     return {
       firebaseApp,
@@ -38,6 +47,7 @@ export function initializeFirebase() {
     };
   }
 
+  // 3. If app is already initialized, return existing instances
   const app = getApp();
   return {
     firebaseApp: app,

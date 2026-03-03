@@ -1,4 +1,6 @@
 import type { NextConfig } from 'next';
+
+// Configuration for next-pwa to provide robust offline support for App Router
 const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
@@ -6,7 +8,7 @@ const withPWA = require('next-pwa')({
   disable: process.env.NODE_ENV === 'development',
   runtimeCaching: [
     {
-      // Cache Next.js static chunks
+      // Cache Next.js static chunks (JS/CSS)
       urlPattern: /\/_next\/static\/.*/i,
       handler: 'CacheFirst',
       options: {
@@ -18,7 +20,7 @@ const withPWA = require('next-pwa')({
       },
     },
     {
-      // Cache Next.js images
+      // Cache optimized Next.js images
       urlPattern: /\/_next\/image\?url=.*/i,
       handler: 'StaleWhileRevalidate',
       options: {
@@ -30,7 +32,7 @@ const withPWA = require('next-pwa')({
       },
     },
     {
-      // Cache App Router RSC (Flight) requests
+      // CRITICAL: Cache App Router RSC (Flight) requests for offline navigation
       urlPattern: /.*(_rsc|__flight__).*/i,
       handler: 'StaleWhileRevalidate',
       options: {
@@ -42,7 +44,7 @@ const withPWA = require('next-pwa')({
       },
     },
     {
-      // Stale-while-revalidate for navigation requests (pages)
+      // Stale-while-revalidate for standard navigation requests (HTML pages)
       urlPattern: /\/.*$/i,
       handler: 'StaleWhileRevalidate',
       options: {
@@ -54,7 +56,7 @@ const withPWA = require('next-pwa')({
       },
     },
     {
-      // Network-first for API routes
+      // Network-first for API routes (like the image proxy)
       urlPattern: /\/api\/.*/i,
       handler: 'NetworkFirst',
       options: {
