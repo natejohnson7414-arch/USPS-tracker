@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -142,12 +141,77 @@ export default function AssetsPage() {
           </Card>
         </div>
 
-        <Tabs defaultValue="registry">
+        <Tabs defaultValue="calendar">
           <TabsList className="mb-4">
-            <TabsTrigger value="registry">Equipment Registry</TabsTrigger>
             <TabsTrigger value="calendar">PM Planning Calendar</TabsTrigger>
+            <TabsTrigger value="registry">Equipment Registry</TabsTrigger>
             <TabsTrigger value="reports">Labor Projections</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="calendar">
+            <Card>
+              <CardHeader>
+                <CardTitle>Maintenance Planning Calendar</CardTitle>
+                <CardDescription>Indefinite recurring timeline of preventative maintenance by site.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[600px] pr-4">
+                  <div className="space-y-8">
+                    {planningMonths.map((month, idx) => {
+                      const monthSchedules = getSchedulesForMonth(month);
+                      const sitesDue = Array.from(new Set(monthSchedules.map(s => s.siteId))).map(siteId => {
+                        const siteSchedules = monthSchedules.filter(s => s.siteId === siteId);
+                        return {
+                          id: siteId!,
+                          name: siteSchedules[0]?.siteName,
+                          count: siteSchedules.length,
+                          totalHours: siteSchedules.reduce((acc, s) => acc + (s.estimatedLaborHours || 0), 0)
+                        };
+                      });
+
+                      return (
+                        <div key={idx} className="relative pl-8 border-l pb-4 last:pb-0">
+                          <div className={cn(
+                            "absolute left-[-9px] top-0 h-4 w-4 rounded-full border-2 bg-background transition-colors",
+                            sitesDue.length > 0 ? "border-primary" : "border-muted"
+                          )} />
+                          <div className="mb-4">
+                            <h3 className="text-lg font-bold flex items-center gap-2">
+                              {format(month, 'MMMM yyyy')}
+                              {sitesDue.length > 0 && <Badge variant="secondary">{sitesDue.length} Sites Due</Badge>}
+                            </h3>
+                          </div>
+                          
+                          {sitesDue.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {sitesDue.map(site => (
+                                <Link key={site.id} href={`/work-sites/${site.id}`}>
+                                  <Card className="hover:bg-muted/50 transition-colors cursor-pointer border-l-4 border-l-primary">
+                                    <CardContent className="p-4 flex items-center justify-between">
+                                      <div className="space-y-1">
+                                        <p className="font-bold text-sm truncate max-w-[180px]">{site.name}</p>
+                                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                                          <span className="flex items-center gap-1"><Package className="h-3 w-3" /> {site.count} Units</span>
+                                          <span className="flex items-center gap-1 font-semibold text-foreground"><Wrench className="h-3 w-3" /> {site.totalHours} hrs</span>
+                                        </div>
+                                      </div>
+                                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                    </CardContent>
+                                  </Card>
+                                </Link>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground italic">No maintenance projected for this month.</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="registry">
             <Card>
@@ -221,71 +285,6 @@ export default function AssetsPage() {
                     )}
                   </TableBody>
                 </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="calendar">
-            <Card>
-              <CardHeader>
-                <CardTitle>Maintenance Planning Calendar</CardTitle>
-                <CardDescription>Indefinite recurring timeline of preventative maintenance by site.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[600px] pr-4">
-                  <div className="space-y-8">
-                    {planningMonths.map((month, idx) => {
-                      const monthSchedules = getSchedulesForMonth(month);
-                      const sitesDue = Array.from(new Set(monthSchedules.map(s => s.siteId))).map(siteId => {
-                        const siteSchedules = monthSchedules.filter(s => s.siteId === siteId);
-                        return {
-                          id: siteId!,
-                          name: siteSchedules[0]?.siteName,
-                          count: siteSchedules.length,
-                          totalHours: siteSchedules.reduce((acc, s) => acc + (s.estimatedLaborHours || 0), 0)
-                        };
-                      });
-
-                      return (
-                        <div key={idx} className="relative pl-8 border-l pb-4 last:pb-0">
-                          <div className={cn(
-                            "absolute left-[-9px] top-0 h-4 w-4 rounded-full border-2 bg-background transition-colors",
-                            sitesDue.length > 0 ? "border-primary" : "border-muted"
-                          )} />
-                          <div className="mb-4">
-                            <h3 className="text-lg font-bold flex items-center gap-2">
-                              {format(month, 'MMMM yyyy')}
-                              {sitesDue.length > 0 && <Badge variant="secondary">{sitesDue.length} Sites Due</Badge>}
-                            </h3>
-                          </div>
-                          
-                          {sitesDue.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {sitesDue.map(site => (
-                                <Link key={site.id} href={`/work-sites/${site.id}`}>
-                                  <Card className="hover:bg-muted/50 transition-colors cursor-pointer border-l-4 border-l-primary">
-                                    <CardContent className="p-4 flex items-center justify-between">
-                                      <div className="space-y-1">
-                                        <p className="font-bold text-sm truncate max-w-[180px]">{site.name}</p>
-                                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                                          <span className="flex items-center gap-1"><Package className="h-3 w-3" /> {site.count} Units</span>
-                                          <span className="flex items-center gap-1 font-semibold text-foreground"><Wrench className="h-3 w-3" /> {site.totalHours} hrs</span>
-                                        </div>
-                                      </div>
-                                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                    </CardContent>
-                                  </Card>
-                                </Link>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-sm text-muted-foreground italic">No maintenance projected for this month.</p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </ScrollArea>
               </CardContent>
             </Card>
           </TabsContent>
