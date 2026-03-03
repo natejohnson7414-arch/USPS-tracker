@@ -161,12 +161,41 @@ export const getPmTemplateById = async (db: any, id: string): Promise<PmTemplate
 };
 
 export const getAssetPmSchedules = async (db: any, assetId?: string): Promise<AssetPmSchedule[]> => {
+  // 1. Fetch standalone schedules from legacy/template system
   let q = collection(db, 'asset_pm_schedules');
   if (assetId) q = query(q, where('assetId', '==', assetId)) as any;
   const snapshot = await getCollectionNonBlocking(q);
-  const schedules = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AssetPmSchedule));
+  const standaloneSchedules = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AssetPmSchedule));
+  
+  // 2. Fetch Assets to extract "built-in" schedules
   const [assets, templates, sites] = await Promise.all([getAssets(db), getPmTemplates(db), getWorkSites(db)]);
-  return schedules.map(s => {
+  
+  const filteredAssets = assetId ? assets.filter(a => a.id === assetId) : assets;
+  const assetSchedules: AssetPmSchedule[] = filteredAssets
+    .filter(a => a.pmFrequency && a.pmFrequency !== 'none')
+    .map(a => {
+      const currentYear = new Date().getFullYear();
+      const dueDate = new Date(currentYear, (a.pmMonth || 1) - 1, 1);
+      
+      return {
+        id: `asset-pm-${a.id}`,
+        assetId: a.id,
+        templateId: 'built-in',
+        nextDueDate: dueDate.toISOString(),
+        autoGenerateWorkOrder: false,
+        status: 'active',
+        assetName: a.name,
+        assetTag: a.assetTag,
+        siteId: a.siteId,
+        siteName: sites.find(s => s.id === a.siteId)?.name,
+        templateName: `${a.pmFrequency?.toUpperCase()} Maintenace`,
+        frequencyType: a.pmFrequency,
+        estimatedLaborHours: a.pmLaborHours || 0
+      };
+    });
+
+  // 3. Combine and return
+  const combined = [...standaloneSchedules.map(s => {
     const asset = assets.find(a => a.id === s.assetId);
     const template = templates.find(t => t.id === s.templateId);
     return {
@@ -179,7 +208,9 @@ export const getAssetPmSchedules = async (db: any, assetId?: string): Promise<As
       frequencyType: template?.frequencyType,
       estimatedLaborHours: template?.estimatedLaborHours
     };
-  });
+  }), ...assetSchedules];
+
+  return combined;
 };
 
 export const getAssetServiceHistory = async (db: any, assetId: string): Promise<AssetServiceHistory[]> => {

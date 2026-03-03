@@ -13,7 +13,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, Ban, PlusCircle, Trash2 } from 'lucide-react';
+import { Loader2, Save, Ban, PlusCircle, Trash2, CalendarClock, Clock, Wrench } from 'lucide-react';
 import type { Asset, WorkSite, AssetMaterial } from '@/lib/types';
 import { getWorkSites } from '@/lib/data';
 import { Separator } from '@/components/ui/separator';
@@ -24,6 +24,10 @@ interface AssetFormProps {
 }
 
 const commonCategories = ['Filter', 'Belt', 'Oil', 'Refrigerant', 'Gasket', 'Fuse', 'Other'];
+const months = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 function AssetFormInner({ asset, onCancel }: AssetFormProps) {
   const db = useFirestore();
@@ -49,6 +53,9 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
     installDate: new Date().toISOString(),
     expectedLifeYears: 10,
     replacementCost: 0,
+    pmFrequency: 'none',
+    pmLaborHours: 0,
+    pmMonth: new Date().getMonth() + 1,
     customFields: {},
     materials: [],
   });
@@ -73,6 +80,9 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
         ...asset,
         customFields: asset.customFields || {},
         materials: asset.materials || [],
+        pmFrequency: asset.pmFrequency || 'none',
+        pmLaborHours: asset.pmLaborHours || 0,
+        pmMonth: asset.pmMonth || new Date().getMonth() + 1,
       });
     }
   }, [asset]);
@@ -229,6 +239,63 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarClock className="h-5 w-5 text-primary" />
+                Maintenance Planning
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>PM Frequency</Label>
+                  <Select value={formData.pmFrequency} onValueChange={(val: any) => setFormData({ ...formData, pmFrequency: val })}>
+                    <SelectTrigger className="bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None (Repair Only)</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="quarterly">Quarterly</SelectItem>
+                      <SelectItem value="semiannual">Semi-Annual</SelectItem>
+                      <SelectItem value="annual">Annual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Anchor Month</Label>
+                  <Select 
+                    value={formData.pmMonth?.toString()} 
+                    onValueChange={(val) => setFormData({ ...formData, pmMonth: parseInt(val) })}
+                    disabled={formData.pmFrequency === 'none'}
+                  >
+                    <SelectTrigger className="bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {months.map((m, i) => (
+                        <SelectItem key={m} value={(i + 1).toString()}>{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2"><Wrench className="h-3 w-3" /> Est. Labor Hours per Cycle</Label>
+                <Input 
+                  type="number" 
+                  step="0.5" 
+                  className="bg-background"
+                  value={formData.pmLaborHours} 
+                  onChange={(e) => setFormData({ ...formData, pmLaborHours: parseFloat(e.target.value) || 0 })}
+                  disabled={formData.pmFrequency === 'none'}
+                />
+                <p className="text-[10px] text-muted-foreground">This value is used for site-wide labor demand forecasting.</p>
               </div>
             </CardContent>
           </Card>

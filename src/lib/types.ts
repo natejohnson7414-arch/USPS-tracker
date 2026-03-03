@@ -183,6 +183,9 @@ export type Asset = {
   nextServiceDate?: string;
   createdAt: string;
   updatedAt: string;
+  pmFrequency?: 'monthly' | 'quarterly' | 'semiannual' | 'annual' | 'none';
+  pmLaborHours?: number;
+  pmMonth?: number;
   customFields?: { [key: string]: string };
   materials?: AssetMaterial[];
   // Denormalized for display

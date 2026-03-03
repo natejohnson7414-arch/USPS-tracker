@@ -24,6 +24,9 @@
         "nextServiceDate": { "type": "string", "format": "date-time" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" },
+        "pmFrequency": { "type": "string", "enum": ["monthly", "quarterly", "semiannual", "annual", "none"] },
+        "pmLaborHours": { "type": "number" },
+        "pmMonth": { "type": "number" },
         "customFields": {
           "type": "object",
           "additionalProperties": { "type": "string" }
@@ -34,7 +37,7 @@
             "type": "object",
             "properties": {
               "name": { "type": "string" },
-              "description": { "type": "string" },
+              "category": { "type": "string" },
               "quantity": { "type": "number" },
               "uom": { "type": "string" }
             }
