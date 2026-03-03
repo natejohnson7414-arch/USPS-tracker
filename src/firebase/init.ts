@@ -19,35 +19,46 @@ export interface FirebaseServices {
   storage: FirebaseStorage;
 }
 
+// Module-level singletons to prevent race conditions
+let servicesPromise: Promise<FirebaseServices> | null = null;
 let services: FirebaseServices | null = null;
 
 /**
- * Safely checks if IndexedDB is available and working.
- * This prevents hangs in restricted environments like Safari Private or VMs.
+ * Perform a full CRUD lifecycle test on IndexedDB.
+ * Essential for detecting restricted environments like Safari Private 
+ * or browsers with exceeded storage quotas.
  */
 async function isIndexedDbAvailable(): Promise<boolean> {
   if (typeof window === 'undefined' || !window.indexedDB) return false;
   
   return new Promise((resolve) => {
-    // 1s timeout to prevent hanging in broken environments
+    const dbName = 'idb-persistence-check';
     const timeout = setTimeout(() => {
-      console.warn("IndexedDB check timed out. Falling back to memory cache.");
+      console.warn("IndexedDB check timed out. Falling back to memory.");
       resolve(false);
     }, 1000);
 
     try {
-      const name = 'idb-persistence-check';
-      const request = indexedDB.open(name);
+      const request = indexedDB.open(dbName);
+      
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains('test')) {
+          db.createObjectStore('test');
+        }
+      };
       
       request.onsuccess = () => {
+        const db = request.result;
+        db.close();
+        indexedDB.deleteDatabase(dbName);
         clearTimeout(timeout);
-        indexedDB.deleteDatabase(name);
         resolve(true);
       };
       
       request.onerror = () => {
         clearTimeout(timeout);
-        console.warn("IndexedDB error detected. Persistence disabled.");
+        console.warn("IndexedDB error detected. Storage may be restricted.");
         resolve(false);
       };
     } catch (e) {
@@ -60,53 +71,59 @@ async function isIndexedDbAvailable(): Promise<boolean> {
 
 /**
  * Initializes Firebase services with a guaranteed completion path.
- * Never leaves services undefined.
+ * Uses a Promise guard to handle React Strict Mode double-invocations.
  */
 export async function initializeFirebase(): Promise<FirebaseServices> {
-  // Return existing services if already initialized
+  // 1. If we already have the services, return them immediately
   if (services) return services;
 
-  const isServer = typeof window === 'undefined';
-  
-  // 1. Initialize Firebase App (Idempotent)
-  const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+  // 2. If an initialization is already in progress, return the existing promise
+  // This is CRITICAL for Next.js 15 / React Strict Mode compatibility
+  if (servicesPromise) return servicesPromise;
 
-  let firestore: Firestore;
+  // 3. Create the initialization promise
+  servicesPromise = (async () => {
+    const isServer = typeof window === 'undefined';
+    
+    // Initialize App (Idempotent)
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-  if (isServer) {
-    // Basic init for SSR
-    firestore = getFirestore(app);
-  } else {
-    try {
-      // 2. Browser Environment: Detect Persistence Support
-      const idbAvailable = await isIndexedDbAvailable();
-      
-      if (idbAvailable) {
-        firestore = initializeFirestore(app, {
-          localCache: persistentLocalCache({}),
-        });
-        console.log("Firestore initialized with persistentLocalCache.");
-      } else {
-        firestore = initializeFirestore(app, {
-          localCache: memoryLocalCache(),
-        });
-        console.log("Firestore initialized with memoryLocalCache.");
-      }
-    } catch (e: any) {
-      // 3. Absolute Fallback: Use standard getFirestore if custom init throws
-      // (Usually occurs if firestore was already initialized elsewhere)
-      console.error("Firestore custom initialization failed, using default getFirestore:", e.message);
+    let firestore: Firestore;
+
+    if (isServer) {
       firestore = getFirestore(app);
+    } else {
+      try {
+        const idbAvailable = await isIndexedDbAvailable();
+        
+        if (idbAvailable) {
+          firestore = initializeFirestore(app, {
+            localCache: persistentLocalCache({}),
+          });
+          console.log("Firestore initialized with persistentLocalCache.");
+        } else {
+          firestore = initializeFirestore(app, {
+            localCache: memoryLocalCache(),
+          });
+          console.log("Firestore initialized with memoryLocalCache (fallback).");
+        }
+      } catch (e: any) {
+        // Fallback to standard getFirestore if initializeFirestore fails (e.g. called twice)
+        console.error("Firestore custom initialization failed, falling back to standard getFirestore:", e.message);
+        firestore = getFirestore(app);
+      }
     }
-  }
 
-  // 4. Set final services object
-  services = {
-    firebaseApp: app,
-    auth: getAuth(app),
-    firestore,
-    storage: getStorage(app),
-  };
+    const finalServices: FirebaseServices = {
+      firebaseApp: app,
+      auth: getAuth(app),
+      firestore,
+      storage: getStorage(app),
+    };
 
-  return services;
+    services = finalServices;
+    return finalServices;
+  })();
+
+  return servicesPromise;
 }
