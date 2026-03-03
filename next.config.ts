@@ -5,8 +5,27 @@ const withPWA = require('next-pwa')({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
+  // Navigation fallback ensures that when offline, hard navigations 
+  // (mode: 'navigate') return the index page shell.
+  fallbacks: {
+    document: '/', 
+  },
   runtimeCaching: [
     {
+      // 1. Navigation Requests (The "App Shell" strategy)
+      urlPattern: ({ request }) => request.mode === 'navigate',
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'pages',
+        networkTimeoutSeconds: 3,
+        expiration: {
+          maxEntries: 32,
+          maxAgeSeconds: 24 * 60 * 60, // 24 hours
+        },
+      },
+    },
+    {
+      // 2. Next.js Static Assets (Chunks, CSS)
       urlPattern: /\/_next\/static\/.*/i,
       handler: 'CacheFirst',
       options: {
@@ -18,6 +37,7 @@ const withPWA = require('next-pwa')({
       },
     },
     {
+      // 3. Next.js Images
       urlPattern: /\/_next\/image\?url=.*/i,
       handler: 'StaleWhileRevalidate',
       options: {
@@ -29,6 +49,7 @@ const withPWA = require('next-pwa')({
       },
     },
     {
+      // 4. RSC Flight Requests (_rsc query param in Next.js 15)
       urlPattern: /.*(_rsc|__flight__).*/i,
       handler: 'StaleWhileRevalidate',
       options: {
@@ -40,6 +61,7 @@ const withPWA = require('next-pwa')({
       },
     },
     {
+      // 5. General Page Caching
       urlPattern: /\/.*$/i,
       handler: 'StaleWhileRevalidate',
       options: {
@@ -51,6 +73,7 @@ const withPWA = require('next-pwa')({
       },
     },
     {
+      // 6. API Proxy Routes
       urlPattern: /\/api\/.*/i,
       handler: 'NetworkFirst',
       options: {
