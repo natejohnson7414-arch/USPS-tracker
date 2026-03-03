@@ -5,7 +5,7 @@ import type {
   TrainingRecord, HvacStartupReport, TimeEntry, Activity, ActivityHistoryItem, 
   Quote, Asset, PmTemplate, AssetPmSchedule, AssetServiceHistory, Material
 } from '@/lib/types';
-import { collection, getDoc, doc, query, where, arrayUnion, orderBy, limit, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, getDoc, doc, query, where, arrayUnion, orderBy, limit, getDocs, writeBatch, collectionGroup } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 import { sampleRoles, sampleTechnicians, sampleWorkOrders, sampleWorkSites, sampleClients } from './sample-data';
 import { setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
@@ -161,13 +161,11 @@ export const getPmTemplateById = async (db: any, id: string): Promise<PmTemplate
 };
 
 export const getAssetPmSchedules = async (db: any, assetId?: string): Promise<AssetPmSchedule[]> => {
-  // 1. Fetch standalone schedules from legacy/template system
   let q = collection(db, 'asset_pm_schedules');
   if (assetId) q = query(q, where('assetId', '==', assetId)) as any;
   const snapshot = await getCollectionNonBlocking(q);
   const standaloneSchedules = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AssetPmSchedule));
   
-  // 2. Fetch Assets to extract "built-in" schedules
   const [assets, templates, sites] = await Promise.all([getAssets(db), getPmTemplates(db), getWorkSites(db)]);
   
   const filteredAssets = assetId ? assets.filter(a => a.id === assetId) : assets;
@@ -194,7 +192,6 @@ export const getAssetPmSchedules = async (db: any, assetId?: string): Promise<As
       };
     });
 
-  // 3. Combine and return
   const combined = [...standaloneSchedules.map(s => {
     const asset = assets.find(a => a.id === s.assetId);
     const template = templates.find(t => t.id === s.templateId);
@@ -219,6 +216,147 @@ export const getAssetServiceHistory = async (db: any, assetId: string): Promise<
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AssetServiceHistory));
 };
 
+// --- Subcollection & Record Logic ---
+
+export const getTrainingRecordsByWorkOrderId = async (db: any, workOrderId: string): Promise<TrainingRecord[]> => {
+    const q = query(collection(db, 'training_records'), where('workOrderId', '==', workOrderId));
+    const snapshot = await getCollectionNonBlocking(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TrainingRecord));
+};
+
+export const getTrainingRecordById = async (db: any, id: string): Promise<TrainingRecord | undefined> => {
+    const snap = await getDocumentNonBlocking(doc(db, 'training_records', id));
+    return snap.exists() ? { id: snap.id, ...snap.data() } as TrainingRecord : undefined;
+};
+
+export const getTimeEntriesByWorkOrder = async (db: any, workOrderId: string): Promise<TimeEntry[]> => {
+    const q = query(collection(db, 'time_entries'), where('workOrderId', '==', workOrderId));
+    const snapshot = await getCollectionNonBlocking(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TimeEntry));
+};
+
+export const deleteTrainingRecord = async (db: any, recordId: string) => {
+    const recordRef = doc(db, 'training_records', recordId);
+    await deleteDocumentNonBlocking(recordRef);
+};
+
+export const getQuotesByWorkOrderId = async (db: any, workOrderId: string): Promise<Quote[]> => {
+    const q = query(collection(db, 'quotes'), where('workOrderId', '==', workOrderId));
+    const snapshot = await getCollectionNonBlocking(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quote));
+};
+
+export const getHvacStartupReportsByWorkOrderId = async (db: any, workOrderId: string): Promise<HvacStartupReport[]> => {
+    const q = query(collection(db, 'hvac_startup_reports'), where('workOrderId', '==', workOrderId));
+    const snapshot = await getCollectionNonBlocking(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HvacStartupReport));
+};
+
+export const getHvacStartupReportById = async (db: any, id: string): Promise<HvacStartupReport | undefined> => {
+    const snap = await getDocumentNonBlocking(doc(db, 'hvac_startup_reports', id));
+    return snap.exists() ? { id: snap.id, ...snap.data() } as HvacStartupReport : undefined;
+};
+
+export const deleteHvacStartupReport = async (db: any, reportId: string) => {
+    const reportRef = doc(db, 'hvac_startup_reports', reportId);
+    await deleteDocumentNonBlocking(reportRef);
+};
+
+export const addWorkHistoryItem = async (db: any, workOrderId: string, item: Omit<ActivityHistoryItem, 'id' | 'timestamp'>) => {
+    const workOrderRef = doc(db, 'work_orders', workOrderId);
+    const historyItem = {
+        ...item,
+        id: `hist-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+    };
+    await updateDocumentNonBlocking(workOrderRef, {
+        work_history: arrayUnion(historyItem)
+    });
+};
+
+export const getTimeEntriesByTechnician = async (db: any, technicianId: string): Promise<TimeEntry[]> => {
+    const q = query(collection(db, 'time_entries'), where('technicianId', '==', technicianId));
+    const snapshot = await getCollectionNonBlocking(q);
+    const entries = await Promise.all(snapshot.docs.map(async (docRef) => {
+        const data = docRef.data();
+        let workOrder;
+        if (data.workOrderId) {
+            const woSnap = await getDoc(doc(db, 'work_orders', data.workOrderId));
+            if (woSnap.exists()) {
+                workOrder = { id: woSnap.id, jobName: woSnap.data().jobName };
+            }
+        }
+        return { id: docRef.id, ...data, workOrder } as TimeEntry;
+    }));
+    return entries;
+};
+
+export const getQuoteById = async (db: any, id: string): Promise<Quote | undefined> => {
+    const snap = await getDocumentNonBlocking(doc(db, 'quotes', id));
+    if (!snap.exists()) return undefined;
+    const data = snap.data();
+    const client = data.clientId ? await getClientById(db, data.clientId) : undefined;
+    const workSite = data.workSiteId ? await getWorkSiteById(db, data.workSiteId) : undefined;
+    const createdBy = data.createdBy_technicianId ? await getTechnicianById(db, data.createdBy_technicianId) : undefined;
+    return { ...data, id: snap.id, client, workSite, createdBy_technician: createdBy } as Quote;
+};
+
+export const getQuotes = async (db: any): Promise<Quote[]> => {
+    const snapshot = await getCollectionNonBlocking(collection(db, 'quotes'));
+    return Promise.all(snapshot.docs.map(async (d) => {
+        const data = d.data();
+        const createdBy = data.createdBy_technicianId ? await getTechnicianById(db, data.createdBy_technicianId) : undefined;
+        return { ...data, id: d.id, createdBy_technician: createdBy } as Quote;
+    }));
+};
+
+export const getAllActivitiesWithDetails = async (db: any): Promise<Activity[]> => {
+    const snapshot = await getDocs(collectionGroup(db, 'activities'));
+    const activities = await Promise.all(snapshot.docs.map(async (actDoc) => {
+        const actData = actDoc.data();
+        const workOrderRef = actDoc.ref.parent.parent;
+        if (!workOrderRef) return null;
+        
+        const [woSnap, tech] = await Promise.all([
+            getDoc(workOrderRef),
+            actData.technicianId ? getTechnicianById(db, actData.technicianId) : Promise.resolve(undefined)
+        ]);
+        
+        if (!woSnap.exists()) return null;
+        const woData = woSnap.data();
+        const site = woData.workSiteId ? await getWorkSiteById(db, woData.workSiteId) : undefined;
+
+        return {
+            id: actDoc.id,
+            ...actData,
+            technician: tech,
+            parentWorkOrder: {
+                id: woSnap.id,
+                jobName: woData.jobName,
+                workSite: site
+            }
+        } as Activity;
+    }));
+    return activities.filter((a): a is Activity => a !== null).sort((a, b) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime());
+};
+
+export const getUsers = async (db: any, roles: Role[]): Promise<AppUser[]> => {
+    const snapshot = await getCollectionNonBlocking(collection(db, 'technicians'));
+    return snapshot.docs.map(docRef => {
+        const data = docRef.data();
+        const role = roles.find(r => r.id === data.roleId);
+        return {
+            id: docRef.id,
+            employeeId: data.employeeId,
+            name: `${data.firstName} ${data.lastName}`,
+            email: data.email,
+            avatarUrl: data.avatarUrl,
+            role: role?.name || 'User',
+            disabled: data.disabled || false,
+        } as AppUser;
+    });
+};
+
 // --- Material Services ---
 
 export const getMaterials = async (db: any): Promise<Material[]> => {
@@ -233,7 +371,6 @@ export const getMaterialById = async (db: any, id: string): Promise<Material | u
 
 // Automation Service
 export const generatePmWorkOrders = async (db: any) => {
-  // Manual trigger removed as per request to not auto-generate work orders.
   return { count: 0 };
 };
 
@@ -241,7 +378,6 @@ export const generatePmWorkOrders = async (db: any) => {
 export const calculateAssetMetrics = (history: AssetServiceHistory[]) => {
   if (history.length < 2) return { mtbf: 0, mttr: 0 };
   
-  // Simplified MTBF: average time between service records
   const totalIntervals = history.length - 1;
   let totalTimeMs = 0;
   for (let i = 0; i < totalIntervals; i++) {
@@ -249,5 +385,5 @@ export const calculateAssetMetrics = (history: AssetServiceHistory[]) => {
   }
   const mtbfDays = (totalTimeMs / totalIntervals) / (1000 * 60 * 60 * 24);
 
-  return { mtbf: mtbfDays, mttr: 4.5 }; // MTTR placeholder without explicit repair time tracking
+  return { mtbf: mtbfDays, mttr: 4.5 }; 
 };
