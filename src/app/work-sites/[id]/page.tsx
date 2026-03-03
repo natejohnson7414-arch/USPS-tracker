@@ -121,12 +121,6 @@ export default function WorkSiteDetailsPage() {
               <span>{site.address}, {site.city}, {site.state} {site.zip}</span>
             </div>
           </div>
-          {!isEditing && (
-            <Button onClick={() => setIsEditing(true)}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit Site Info
-            </Button>
-          )}
         </div>
 
         <Tabs defaultValue="assets" className="space-y-6">
@@ -269,32 +263,40 @@ export default function WorkSiteDetailsPage() {
                 />
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <Card className="rounded-t-none">
-                  <CardHeader><CardTitle>Contact Information</CardTitle></CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label className="text-muted-foreground">Contact Name</Label>
-                      <p className="font-medium">{site.contact?.name || 'Not provided'}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Phone Number</Label>
-                      <p className="font-medium">{site.contact?.phone || 'Not provided'}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Email Address</Label>
-                      <p className="font-medium">{site.contact?.email || 'Not provided'}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="rounded-t-none">
-                  <CardHeader><CardTitle>Site Notes</CardTitle></CardHeader>
-                  <CardContent>
-                    <p className="text-sm whitespace-pre-wrap min-h-[100px]">
-                      {site.notes || 'No specific notes for this site.'}
-                    </p>
-                  </CardContent>
-                </Card>
+              <div className="space-y-6">
+                <div className="flex justify-end">
+                  <Button onClick={() => setIsEditing(true)}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit Site Info
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <Card className="rounded-t-none">
+                    <CardHeader><CardTitle>Contact Information</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <Label className="text-muted-foreground">Contact Name</Label>
+                        <p className="font-medium">{site.contact?.name || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Phone Number</Label>
+                        <p className="font-medium">{site.contact?.phone || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Email Address</Label>
+                        <p className="font-medium">{site.contact?.email || 'Not provided'}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="rounded-t-none">
+                    <CardHeader><CardTitle>Site Notes</CardTitle></CardHeader>
+                    <CardContent>
+                      <p className="text-sm whitespace-pre-wrap min-h-[100px]">
+                        {site.notes || 'No specific notes for this site.'}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             )}
           </TabsContent>
