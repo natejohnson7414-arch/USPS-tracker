@@ -1,4 +1,3 @@
-
 'use client';
 import type { 
   AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client, 
@@ -124,7 +123,9 @@ export const updateWorkOrderStatus = async (db: any, workOrderId: string) => {
     let newStatus: WorkOrder['status'] | null = null;
     if (hasActive) newStatus = 'In Progress';
     else if (hasCompleted && !hasOpen && data.status !== 'Open') newStatus = 'Review';
-    if (newStatus && newStatus !== data.status) await updateDocumentNonBlocking(workOrderRef, { status: newStatus });
+    if (newStatus && newStatus !== data.status) {
+        updateDocumentNonBlocking(workOrderRef, { status: newStatus });
+    }
 };
 
 // --- Asset & PM Services ---
@@ -186,7 +187,7 @@ export const getAssetPmSchedules = async (db: any, assetId?: string): Promise<As
         assetTag: a.assetTag,
         siteId: a.siteId,
         siteName: sites.find(s => s.id === a.siteId)?.name,
-        templateName: `${a.pmFrequency?.toUpperCase()} Maintenace`,
+        templateName: `${a.pmFrequency?.toUpperCase()} Maintenance`,
         frequencyType: a.pmFrequency,
         estimatedLaborHours: a.pmLaborHours || 0
       };
@@ -237,7 +238,7 @@ export const getTimeEntriesByWorkOrder = async (db: any, workOrderId: string): P
 
 export const deleteTrainingRecord = async (db: any, recordId: string) => {
     const recordRef = doc(db, 'training_records', recordId);
-    await deleteDocumentNonBlocking(recordRef);
+    deleteDocumentNonBlocking(recordRef);
 };
 
 export const getQuotesByWorkOrderId = async (db: any, workOrderId: string): Promise<Quote[]> => {
@@ -259,7 +260,7 @@ export const getHvacStartupReportById = async (db: any, id: string): Promise<Hva
 
 export const deleteHvacStartupReport = async (db: any, reportId: string) => {
     const reportRef = doc(db, 'hvac_startup_reports', reportId);
-    await deleteDocumentNonBlocking(reportRef);
+    deleteDocumentNonBlocking(reportRef);
 };
 
 export const addWorkHistoryItem = async (db: any, workOrderId: string, item: Omit<ActivityHistoryItem, 'id' | 'timestamp'>) => {
@@ -269,7 +270,7 @@ export const addWorkHistoryItem = async (db: any, workOrderId: string, item: Omi
         id: `hist-${Date.now()}`,
         timestamp: new Date().toISOString(),
     };
-    await updateDocumentNonBlocking(workOrderRef, {
+    updateDocumentNonBlocking(workOrderRef, {
         work_history: arrayUnion(historyItem)
     });
 };
