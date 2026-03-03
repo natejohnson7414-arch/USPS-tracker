@@ -3,16 +3,16 @@ const CACHE_NAME = 'usps-tracker-v1';
 const OFFLINE_URL = '/';
 
 // Assets to cache on install
-const ASSETS_TO_CACHE = [
+const PRECACHE_ASSETS = [
   '/',
+  '/login',
   '/manifest.webmanifest',
-  'https://firebasestudio.app/favicon.ico'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      return cache.addAll(PRECACHE_ASSETS);
     })
   );
   self.skipWaiting();
@@ -30,40 +30,53 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
-  self.clients.claim();
+  self.claim();
 });
 
 self.addEventListener('fetch', (event) => {
-  // Handle navigation requests
-  if (event.request.mode === 'navigate') {
+  if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
+
+  // Strategy for Next.js static assets (_next/static) -> Cache First
+  if (url.pathname.startsWith('/_next/static') || url.pathname.includes('/api/image-proxy')) {
     event.respondWith(
-      fetch(event.request).catch(() => {
-        return caches.match(OFFLINE_URL);
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) return cachedResponse;
+        return fetch(event.request).then((networkResponse) => {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+          return networkResponse;
+        });
       })
     );
     return;
   }
 
-  // Cache-first strategy for other assets (JS, CSS, Images)
+  // Strategy for pages and navigation -> Stale While Revalidate
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request).then((fetchResponse) => {
-        // Only cache successful GET requests
-        if (!fetchResponse || fetchResponse.status !== 200 || fetchResponse.type !== 'basic' || event.request.method !== 'GET') {
-          return fetchResponse;
+    caches.match(event.request).then((cachedResponse) => {
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        if (networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
         }
-        
-        // Dynamic caching of assets
-        const responseToCache = fetchResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
-        
-        return fetchResponse;
+        return networkResponse;
       }).catch(() => {
-        // Return null or generic fallback for failed non-nav fetches
-        return null;
+        // Return cached version if network fails
+        return cachedResponse;
       });
+
+      return cachedResponse || fetchPromise;
+    }).catch(() => {
+      // Fallback for navigation requests
+      if (event.request.mode === 'navigate') {
+        return caches.match(OFFLINE_URL);
+      }
     })
   );
 });
