@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -17,14 +16,15 @@ import { FirestorePermissionError } from '@/firebase/errors';
  */
 export function getDocumentNonBlocking(docRef: DocumentReference) {
   const promise = getDoc(docRef).catch(error => {
-    errorEmitter.emit(
-      'permission-error',
-      new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'get',
-      })
-    );
-    // Re-throw the error so the caller's catch block can also handle it if needed.
+    if (error.code === 'permission-denied' || error.message.includes('permission')) {
+        errorEmitter.emit(
+            'permission-error',
+            new FirestorePermissionError({
+                path: docRef.path,
+                operation: 'get',
+            })
+        );
+    }
     throw error;
   });
   return promise;
@@ -36,27 +36,22 @@ export function getDocumentNonBlocking(docRef: DocumentReference) {
  */
 export function getCollectionNonBlocking(queryOrColRef: Query | CollectionReference) {
   const promise = getDocs(queryOrColRef).catch(error => {
-    let path: string;
-    try {
-        if (queryOrColRef.type === 'collection') {
-            path = (queryOrColRef as CollectionReference).path;
-        } else {
-            // This is the brittle part for Query
-            path = (queryOrColRef as any)._query.path.canonicalString();
+    if (error.code === 'permission-denied' || error.message.includes('permission')) {
+        let path: string;
+        try {
+            path = (queryOrColRef as any).path || (queryOrColRef as any)._query?.path?.canonicalString() || "unknown/collection";
+        } catch (e) {
+            path = "unknown/collection";
         }
-    } catch (e) {
-        console.warn("Could not determine path for getCollectionNonBlocking query error.");
-        path = "unknown/path";
-    }
 
-    errorEmitter.emit(
-      'permission-error',
-      new FirestorePermissionError({
-        path: path,
-        operation: 'list',
-      })
-    );
-     // Re-throw the error so the caller's catch block can also handle it if needed.
+        errorEmitter.emit(
+            'permission-error',
+            new FirestorePermissionError({
+                path: path,
+                operation: 'list',
+            })
+        );
+    }
     throw error;
   });
   return promise;

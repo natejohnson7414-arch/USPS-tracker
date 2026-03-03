@@ -1,7 +1,7 @@
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { 
   initializeFirestore, 
@@ -16,23 +16,23 @@ import { getStorage } from 'firebase/storage';
  * This function is designed to be safe for both SSR and Client environments.
  */
 export function initializeFirebase() {
-  // 1. Basic check for server environment
   const isServer = typeof window === 'undefined';
 
   if (!getApps().length) {
     const firebaseApp = initializeApp(firebaseConfig);
 
-    // 2. Configure Firestore with persistence ONLY on the client
     let firestore;
     if (!isServer) {
       try {
+        // Attempt to initialize with multi-tab persistence
         firestore = initializeFirestore(firebaseApp, {
           localCache: persistentLocalCache({
             tabManager: persistentMultipleTabManager(),
           }),
         });
-      } catch (e) {
-        console.warn("Firestore initialization failed, falling back to default.", e);
+      } catch (e: any) {
+        // Fallback if already initialized or persistence not supported
+        console.warn("Firestore initialization fallback:", e.message);
         firestore = getFirestore(firebaseApp);
       }
     } else {
@@ -47,7 +47,6 @@ export function initializeFirebase() {
     };
   }
 
-  // 3. If app is already initialized, return existing instances
   const app = getApp();
   return {
     firebaseApp: app,

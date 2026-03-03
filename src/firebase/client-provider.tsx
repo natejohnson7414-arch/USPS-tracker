@@ -3,6 +3,7 @@
 import React, { useState, useEffect, type ReactNode } from 'react';
 import { FirebaseProvider } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
+import { Loader2 } from 'lucide-react';
 
 interface FirebaseClientProviderProps {
   children: ReactNode;
@@ -10,24 +11,27 @@ interface FirebaseClientProviderProps {
 
 /**
  * The FirebaseClientProvider ensures that Firebase is initialized only once
- * and exclusively on the client side after hydration. This prevents SSR crashes
- * related to IndexedDB/Persistence and hydration mismatches.
+ * and exclusively on the client side after hydration.
  */
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
   const [firebaseServices, setFirebaseServices] = useState<any>(null);
+  const [hasHydrated, setHasHydrated] = useState(false);
 
   useEffect(() => {
-    // Only initialize after the component has mounted in the browser
-    const services = initializeFirebase();
-    setFirebaseServices(services);
+    setHasHydrated(true);
+    try {
+      const services = initializeFirebase();
+      setFirebaseServices(services);
+    } catch (error) {
+      console.error("Critical Firebase initialization error:", error);
+    }
   }, []);
 
-  // While waiting for hydration/initialization, we render a null or empty shell
-  // to avoid trying to use Firebase services before they are ready.
-  if (!firebaseServices) {
+  if (!hasHydrated || !firebaseServices) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Initializing USPS Tracker...</div>
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground font-medium">Connecting to USPS Tracker...</p>
       </div>
     );
   }
