@@ -3,13 +3,14 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { MainLayout } from '@/components/main-layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { List, PlusCircle, MoreHorizontal, Ban, Search } from 'lucide-react';
+import { List, PlusCircle, MoreHorizontal, Ban, Search, MapPin } from 'lucide-react';
 import { WorkSiteForm } from '@/components/work-site-form';
 import type { WorkSite } from '@/lib/types';
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, doc, orderBy } from 'firebase/firestore';
+import Link from 'next/link';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,11 +39,16 @@ import {
 
 function WorkSiteItem({ site, onEdit, onDelete }: { site: WorkSite, onEdit: () => void, onDelete: () => void }) {
     return (
-        <div className="flex items-center justify-between p-4 border-b">
-            <div>
-                <p className="font-semibold">{site.name}</p>
-                <p className="text-sm text-muted-foreground">{site.address}</p>
-            </div>
+        <div className="flex items-center justify-between p-4 border-b hover:bg-muted/50 transition-colors">
+            <Link href={`/work-sites/${site.id}`} className="flex-1">
+                <div className="flex items-center gap-3">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                        <p className="font-semibold">{site.name}</p>
+                        <p className="text-sm text-muted-foreground">{site.address}</p>
+                    </div>
+                </div>
+            </Link>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -51,8 +57,11 @@ function WorkSiteItem({ site, onEdit, onDelete }: { site: WorkSite, onEdit: () =
                 </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                    <Link href={`/work-sites/${site.id}`}>View Details</Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={onEdit}>
-                    Edit
+                    Edit Info
                 </DropdownMenuItem>
                 <DropdownMenuItem
                     onClick={onDelete}
@@ -223,7 +232,7 @@ export default function WorkSitesPage() {
                         {areSitesLoading ? (
                              <div className="p-6 text-center text-muted-foreground">Loading sites...</div>
                         ) : filteredAndSortedSites && filteredAndSortedSites.length > 0 ? (
-                            <div>
+                            <div className="divide-y">
                                 {filteredAndSortedSites.map(site => (
                                     <WorkSiteItem 
                                         key={site.id} 

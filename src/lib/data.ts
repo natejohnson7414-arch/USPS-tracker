@@ -136,6 +136,12 @@ export const getAssets = async (db: any): Promise<Asset[]> => {
   return assets.map(a => ({ ...a, siteName: sites.find(s => s.id === a.siteId)?.name }));
 };
 
+export const getAssetsBySiteId = async (db: any, siteId: string): Promise<Asset[]> => {
+  const q = query(collection(db, 'assets'), where('siteId', '==', siteId));
+  const snapshot = await getCollectionNonBlocking(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Asset));
+};
+
 export const getAssetById = async (db: any, id: string): Promise<Asset | undefined> => {
   const snap = await getDocumentNonBlocking(doc(db, 'assets', id));
   if (!snap.exists()) return undefined;
