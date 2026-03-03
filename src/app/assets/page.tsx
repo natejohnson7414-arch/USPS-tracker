@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Package, PlusCircle, Search, CalendarClock, TrendingUp, AlertTriangle, Loader2, FileBarChart, ChevronRight, MapPin, Wrench } from 'lucide-react';
+import { Package, PlusCircle, Search, CalendarClock, TrendingUp, AlertTriangle, Loader2, FileBarChart, ChevronRight, MapPin, Wrench, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useFirestore } from '@/firebase';
 import { getAssets, getAssetPmSchedules } from '@/lib/data';
@@ -159,6 +159,9 @@ export default function AssetsPage() {
                   <div className="space-y-8">
                     {planningMonths.map((month, idx) => {
                       const monthSchedules = getSchedulesForMonth(month);
+                      const totalMonthHours = monthSchedules.reduce((acc, s) => acc + (s.estimatedLaborHours || 0), 0);
+                      const techsNeeded = Math.ceil(totalMonthHours / 140);
+
                       const sitesDue = Array.from(new Set(monthSchedules.map(s => s.siteId))).map(siteId => {
                         const siteSchedules = monthSchedules.filter(s => s.siteId === siteId);
                         return {
@@ -176,10 +179,24 @@ export default function AssetsPage() {
                             sitesDue.length > 0 ? "border-primary" : "border-muted"
                           )} />
                           <div className="mb-4">
-                            <h3 className="text-lg font-bold flex items-center gap-2">
-                              {format(month, 'MMMM yyyy')}
-                              {sitesDue.length > 0 && <Badge variant="secondary">{sitesDue.length} Sites Due</Badge>}
-                            </h3>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                              <h3 className="text-lg font-bold">
+                                {format(month, 'MMMM yyyy')}
+                              </h3>
+                              <div className="flex flex-wrap items-center gap-2">
+                                {sitesDue.length > 0 && (
+                                  <>
+                                    <Badge variant="secondary">{sitesDue.length} Sites Due</Badge>
+                                    <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary">
+                                      <Wrench className="h-3 w-3 mr-1" /> {totalMonthHours} Hours
+                                    </Badge>
+                                    <Badge variant="outline" className="bg-accent/5 border-accent/20 text-accent">
+                                      <Users className="h-3 w-3 mr-1" /> {techsNeeded} {techsNeeded === 1 ? 'Tech' : 'Techs'}
+                                    </Badge>
+                                  </>
+                                )}
+                              </div>
+                            </div>
                           </div>
                           
                           {sitesDue.length > 0 ? (
