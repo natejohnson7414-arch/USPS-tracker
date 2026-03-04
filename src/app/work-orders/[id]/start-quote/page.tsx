@@ -103,14 +103,13 @@ export default function StartQuotePage() {
         setIsSubmitting(true);
         console.log('Starting quote submission...');
         
+        const progressToast = toast({ title: 'Processing...', description: 'Generating quote number.' });
+
         try {
             // 1. Generate sequential quote number via server action
-            const progressToast = toast({ title: 'Processing...', description: 'Generating quote number.' });
-            
             const result = await generateQuoteNumber();
 
             if (result.error || !result.quoteNumber) {
-                progressToast.dismiss();
                 throw new Error(result.error || 'The server failed to generate a quote number.');
             }
             
@@ -160,14 +159,15 @@ export default function StartQuotePage() {
                 total: 0,
             };
 
-            await addDocumentNonBlocking(collection(db, 'quotes'), newQuote);
+            // Use non-blocking mutation as per requirements (optimistic update)
+            addDocumentNonBlocking(collection(db, 'quotes'), newQuote);
 
             // 4. Update the parent work order status
             const workOrderRef = doc(db, 'work_orders', workOrder.id);
-            await updateDocumentNonBlocking(workOrderRef, { status: 'On Hold' });
+            updateDocumentNonBlocking(workOrderRef, { status: 'On Hold' });
 
             progressToast.dismiss();
-            toast({ title: 'Quote Submitted', description: 'Request sent to office. Work order is now "On Hold".' });
+            toast({ title: 'Quote Submitted', description: `Quote ${quoteNumber} has been requested. Work order updated to "On Hold".` });
             
             // 5. Notify administrators (background task)
             notifyAdminsOfNewQuote({
@@ -182,19 +182,13 @@ export default function StartQuotePage() {
 
         } catch (error: any) {
             console.error("Critical error in quote submission:", error);
+            progressToast.dismiss();
             toast({ 
                 title: 'Submission Failed', 
                 description: error.message || 'An unexpected error occurred. Please try again.', 
                 variant: 'destructive' 
             });
-            setIsSubmitting(false); // Reset immediately on catch
-        } finally {
-            // We only reset isSubmitting in finally if we didn't redirect
-            // But if we are still on the page, we need to unlock the button
-            const isStillHere = window.location.pathname.includes('/start-quote');
-            if (isStillHere) {
-                setIsSubmitting(false);
-            }
+            setIsSubmitting(false);
         }
     };
     

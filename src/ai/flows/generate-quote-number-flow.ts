@@ -19,7 +19,12 @@ function getAdminDb() {
       const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n').replace(/"/g, '');
 
       if (!projectId || !clientEmail || !privateKey) {
-        throw new Error('Missing Firebase Admin environment variables (Project ID, Client Email, or Private Key).');
+        console.error('Firebase Admin Environment Variables are missing:', {
+            hasProjectId: !!projectId,
+            hasClientEmail: !!clientEmail,
+            hasPrivateKey: !!privateKey
+        });
+        throw new Error('Server configuration error: Missing Firebase Admin credentials.');
       }
 
       initializeApp({
@@ -49,8 +54,9 @@ export type GenerateQuoteNumberOutput = z.infer<typeof GenerateQuoteNumberOutput
  * Format: QT-YY-0001
  */
 export async function generateQuoteNumber(): Promise<GenerateQuoteNumberOutput> {
-    console.log('Generating new quote number...');
+    console.log('Server: Starting sequential quote number generation...');
     const adminDb = getAdminDb();
+    
     if (!adminDb) {
       return { quoteNumber: '', error: 'Server configuration error: Database connection failed.' };
     }
@@ -64,6 +70,7 @@ export async function generateQuoteNumber(): Promise<GenerateQuoteNumberOutput> 
         const counterDoc = await transaction.get(counterRef);
 
         if (!counterDoc.exists) {
+          console.log('Server: Initializing counter document.');
           transaction.set(counterRef, { lastNumber: 1, year: currentYear });
           return 1;
         }
@@ -75,18 +82,19 @@ export async function generateQuoteNumber(): Promise<GenerateQuoteNumberOutput> 
           newLastNumber += 1;
         } else {
           // Reset counter for a new year
+          console.log('Server: New year detected, resetting sequence.');
           newLastNumber = 1;
         }
         
         transaction.update(counterRef, { lastNumber: newLastNumber, year: currentYear });
         return newLastNumber;
-      });
+      }, { maxAttempts: 5 });
 
       const formattedNumber = `QT-${yearShort}-${newNumber.toString().padStart(4, '0')}`;
-      console.log('Successfully generated quote number:', formattedNumber);
+      console.log('Server: Generated quote number:', formattedNumber);
       return { quoteNumber: formattedNumber };
     } catch (error: any) {
-      console.error("Transaction to generate quote number failed:", error.message);
-      return { quoteNumber: '', error: `Database error: ${error.message}` };
+      console.error("Server: Transaction to generate quote number failed:", error.message);
+      return { quoteNumber: '', error: `Database transaction failed: ${error.message}` };
     }
 }
