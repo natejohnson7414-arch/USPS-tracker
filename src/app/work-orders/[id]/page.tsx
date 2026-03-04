@@ -663,6 +663,7 @@ export default function WorkOrderDetailPage() {
 
   const isTechnician = currentUserRole?.name === 'Technician';
   const isAdmin = currentUserRole?.name === 'Administrator';
+  const isCompleted = workOrder.status === 'Completed';
 
   return (
     <MainLayout>
