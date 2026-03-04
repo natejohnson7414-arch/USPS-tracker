@@ -47,10 +47,15 @@ export default function WorkOrderReportPage() {
                 }
                 setWorkOrder(wo);
                 
-                const notesToSummarize = [wo.description, ...wo.notes.map(n => n.text)].filter(Boolean);
+                // Aggregate all textual info for the AI
+                const contentParts = [
+                    `Job Specification: ${wo.description}`,
+                    ...wo.notes.map(n => `Technician Note: ${n.text}`),
+                    ...wo.activities.map(a => `Activity Performed: ${a.description}`)
+                ].filter(Boolean);
 
-                if (notesToSummarize.length > 0) {
-                    const result = await summarizeNotes({ notes: notesToSummarize });
+                if (contentParts.length > 0) {
+                    const result = await summarizeNotes({ notes: contentParts });
                     setSummarizedDescription(result.summary);
                 } else {
                     setSummarizedDescription('No description provided.');
@@ -130,7 +135,6 @@ export default function WorkOrderReportPage() {
             if (action === 'download') {
                 handleDownload();
             } else if (action === 'print') {
-                // A small delay can help ensure images are loaded before the print dialog opens
                 setTimeout(() => window.print(), 500);
             }
         }
@@ -157,7 +161,7 @@ export default function WorkOrderReportPage() {
         return (
             <div className="flex h-screen items-center justify-center bg-gray-100">
                 <div className="p-8 bg-white shadow-lg rounded-lg text-center">
-                    <p className="text-lg font-medium">Generating Report...</p>
+                    <p className="text-lg font-medium">Generating AI Technical Summary...</p>
                     <Skeleton className="w-full h-96 mt-4" />
                 </div>
             </div>
@@ -181,7 +185,6 @@ export default function WorkOrderReportPage() {
 
     const proxiedUrl = (url: string) => `/api/image-proxy?url=${encodeURIComponent(url)}`;
     
-    // Fallback logic for signatures: check the single field first, then the latest legacy acknowledgement.
     const latestAck = workOrder.acknowledgements && workOrder.acknowledgements.length > 0 
         ? workOrder.acknowledgements[workOrder.acknowledgements.length - 1] 
         : null;
@@ -246,8 +249,8 @@ export default function WorkOrderReportPage() {
                             <div className="w-2/3 border-2 border-black p-2 text-sm font-medium -ml-px -mt-px flex items-center min-h-[2rem]">{workOrder.workSite?.name || ''}</div>
                         </div>
                         <div className="flex items-stretch">
-                            <div className="w-1/3 flex items-start pt-2 pr-4 text-sm"><p>Work Description:</p></div>
-                            <div className="w-2/3 border-2 border-black p-2 text-sm -ml-px -mt-px min-h-[9.5rem] break-words">{summarizedDescription}</div>
+                            <div className="w-1/3 flex items-start pt-2 pr-4 text-sm"><p>Work Performed Summary:</p></div>
+                            <div className="w-2/3 border-2 border-black p-2 text-sm -ml-px -mt-px min-h-[14rem] break-words leading-relaxed">{summarizedDescription}</div>
                         </div>
                         <div className="flex items-stretch">
                             <div className="w-1/3 flex items-center pr-4 text-sm"><p>Contractor:</p></div>
@@ -273,7 +276,7 @@ export default function WorkOrderReportPage() {
 
                     <div className="mt-8">
                         <h2 className="font-bold">USPS STAFF MEMBER:</h2>
-                        <p className="text-sm">Please review this sheet and verify that the above listed contractor has been on site to address the item(s) described in "Work Description". Please print, sign, and date below on the day that work was completed.</p>
+                        <p className="text-sm">Please review this sheet and verify that the above listed contractor has been on site to address the item(s) described in "Work Performed Summary". Please print, sign, and date below on the day that work was completed.</p>
                     </div>
                     
                     <div className="space-y-[-2px] mt-2">

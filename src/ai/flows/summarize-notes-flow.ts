@@ -1,7 +1,6 @@
-
 'use server';
 /**
- * @fileOverview An AI flow to summarize a list of work order notes.
+ * @fileOverview An AI flow to summarize work order data into a technical work performed description.
  *
  * - summarizeNotes - A function that handles the summarization process.
  * - SummarizeNotesInput - The input type for the summarization function.
@@ -12,17 +11,17 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
 const SummarizeNotesInputSchema = z.object({
-  notes: z.array(z.string()).describe("An array of notes from a work order."),
+  notes: z.array(z.string()).describe("An array of notes, descriptions, and activities from a work order."),
 });
 export type SummarizeNotesInput = z.infer<typeof SummarizeNotesInputSchema>;
 
 const SummarizeNotesOutputSchema = z.object({
-  summary: z.string().describe("A consolidated, grammatically correct, and concise summary of the work performed, based on the provided notes."),
+  summary: z.string().describe("A consolidated, professional, and technical 'Description of Work Performed' summary."),
 }).describe("The summarized work description.");
 export type SummarizeNotesOutput = z.infer<typeof SummarizeNotesOutputSchema>;
 
 export async function summarizeNotes(input: SummarizeNotesInput): Promise<SummarizeNotesOutput> {
-  // If there's only one note, just return it to save an AI call.
+  // If there's only one item, just return it to save an AI call.
   if (input.notes.length === 1) {
     return { summary: input.notes[0] };
   }
@@ -37,9 +36,24 @@ const prompt = ai.definePrompt({
   name: 'summarizeNotesPrompt',
   input: { schema: SummarizeNotesInputSchema },
   output: { schema: SummarizeNotesOutputSchema },
-  prompt: `You are an expert technical writer. Your task is to consolidate the following work order notes into a single, concise, and grammatically correct paragraph. The summary should accurately reflect all actions taken without being overly long or conversational.
-
-  Combine these notes into a professional summary:
+  prompt: `You are an expert facilities management reporter and technical writer. 
+  
+  Your task is to create a professional "Description of Work Performed" summary for a facility work order report. 
+  
+  I will provide you with a list of items including:
+  1. The original "Job Specification" (the problem/request).
+  2. "Technician Notes" (field updates and observations).
+  3. "Activities Performed" (specific tasks logged by the tech).
+  
+  Instructions:
+  - Combine these into a single, cohesive, and concise paragraph. 
+  - Focus primarily on the ACTIONS TAKEN and the RESOLUTION provided by the technician.
+  - Use past tense (e.g., "Inspected unit", "Replaced filters", "Verified operation").
+  - Maintain a professional and technical tone suitable for a high-level facility report.
+  - Omit administrative notes, conversational filler, or internal instructions.
+  - The final output should read as a clean technical summary of the work done on site.
+  
+  Input Data:
   {{#each notes}}
   - {{{this}}}
   {{/each}}
