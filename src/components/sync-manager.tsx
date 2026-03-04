@@ -1,10 +1,9 @@
 
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useFirestore, useUser } from '@/firebase';
-import { collection, query, where, getDocs, doc } from 'firebase/firestore';
-import { useToast } from '@/hooks/use-toast';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 /**
  * Background component that pre-caches data for technicians
@@ -13,10 +12,13 @@ import { useToast } from '@/hooks/use-toast';
 export function SyncManager() {
   const db = useFirestore();
   const { user } = useUser();
-  const { toast } = useToast();
+  const isSyncing = useRef(false);
 
   const performSync = useCallback(async () => {
-    if (!db || !user) return;
+    if (!db || !user || isSyncing.current || !navigator.onLine) return;
+
+    isSyncing.current = true;
+    console.log('Background sync starting...');
 
     try {
       // 1. Fetch assigned work orders to put them in persistent cache
@@ -31,10 +33,14 @@ export function SyncManager() {
       const syncPromises = snapshot.docs.map(async (woDoc) => {
         const woId = woDoc.id;
         // Trigger reads for subcollections so they are cached
-        await Promise.all([
-          getDocs(collection(db, 'work_orders', woId, 'updates')),
-          getDocs(collection(db, 'work_orders', woId, 'activities'))
-        ]);
+        try {
+            await Promise.all([
+                getDocs(collection(db, 'work_orders', woId, 'updates')),
+                getDocs(collection(db, 'work_orders', woId, 'activities'))
+            ]);
+        } catch (e) {
+            console.warn(`Could not sync subcollections for ${woId}`);
+        }
       });
 
       await Promise.all(syncPromises);
@@ -46,9 +52,11 @@ export function SyncManager() {
         getDocs(collection(db, 'technicians'))
       ]);
 
-      console.log('Background sync: Technician data cached locally.');
+      console.log('Background sync: Complete. Technician data cached locally.');
     } catch (error) {
       console.warn('Background sync encountered an issue:', error);
+    } finally {
+      isSyncing.current = false;
     }
   }, [db, user]);
 

@@ -310,6 +310,12 @@ export function WorkOrderAdminDetails({
             attentionMessage: needsAttention ? attentionMessage : '',
             ...(needsAttention && { technicianReplied: false })
         };
+
+        // Automatic Status Revert: If flagged for attention, put back into In Progress
+        if (needsAttention && workOrder.status !== 'Completed') {
+            updateData.status = 'In Progress';
+        }
+
         await updateDocumentNonBlocking(woRef, updateData);
         toast({ title: 'Admin Notes Saved' });
         if (needsAttention && !workOrder.needsAttention && assignedTechnician) {
