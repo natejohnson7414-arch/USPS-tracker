@@ -110,14 +110,23 @@ export default function WorkOrderDetailPage() {
         setClients(fetchedClients);
         setTrainingRecords(fetchedTrainingRecords);
         setHvacReports(fetchedHvacReports);
-        setTimeEntries(fetchedTimeEntries);
         setQuotes(fetchedQuotes);
         setActivities(fetchedActivities);
+        
+        // Correctly join technician names to time entries using the registry
+        const formattedTimeEntries = fetchedTimeEntries.map(entry => {
+            const tech = fetchedTechnicians.find(t => t.id === entry.technicianId);
+            return {
+                ...entry,
+                technicianName: tech?.name || entry.technicianName || 'Unknown User'
+            };
+        });
+        setTimeEntries(formattedTimeEntries);
         
         if (fetchedWorkOrder) {
             setWorkOrder(fetchedWorkOrder);
             if (fetchedWorkOrder.assignedTechnicianId) {
-                const tech = await getTechnicianById(db, fetchedWorkOrder.assignedTechnicianId);
+                const tech = fetchedTechnicians.find(t => t.id === fetchedWorkOrder.assignedTechnicianId);
                 setAssignedTechnician(tech);
             } else {
                 setAssignedTechnician(undefined);

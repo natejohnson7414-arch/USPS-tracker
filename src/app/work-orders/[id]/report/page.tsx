@@ -5,8 +5,8 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, notFound, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { useFirestore } from '@/firebase';
-import { getWorkOrderById, getTimeEntriesByWorkOrder } from '@/lib/data';
-import type { WorkOrder, TimeEntry } from '@/lib/types';
+import { getWorkOrderById, getTimeEntriesByWorkOrder, getTechnicians } from '@/lib/data';
+import type { WorkOrder, TimeEntry, Technician } from '@/lib/types';
 import { summarizeNotes } from '@/ai/flows/summarize-notes-flow';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -41,9 +41,10 @@ export default function WorkOrderReportPage() {
             setIsLoading(true);
             setError(null);
             try {
-                const [wo, timeEntries] = await Promise.all([
+                const [wo, timeEntries, techs] = await Promise.all([
                     getWorkOrderById(db, id),
-                    getTimeEntriesByWorkOrder(db, id)
+                    getTimeEntriesByWorkOrder(db, id),
+                    getTechnicians(db)
                 ]);
 
                 if (!wo) {
@@ -60,11 +61,18 @@ export default function WorkOrderReportPage() {
                 }
 
                 // 2. Aggregate filtered info for the AI (excluding items marked by admin)
+                // We correctly resolve technician names here for the AI to have context
                 const contentParts = [
                     `Job Specification: ${wo.description}`,
                     ...wo.notes.filter(n => !n.excludeFromReport).map(n => `Technician Note: ${n.text}`),
-                    ...wo.activities.filter(a => !a.excludeFromReport).map(a => `Activity Performed: ${a.description}`),
-                    ...timeEntries.filter(e => !e.excludeFromReport && e.notes).map(e => `Work Details (Labor Posting): ${e.notes}`)
+                    ...wo.activities.filter(a => !a.excludeFromReport).map(a => {
+                        const tech = techs.find(t => t.id === a.technicianId);
+                        return `Activity Performed by ${tech?.name || 'Technician'}: ${a.description}`;
+                    }),
+                    ...timeEntries.filter(e => !e.excludeFromReport && e.notes).map(e => {
+                        const tech = techs.find(t => t.id === e.technicianId);
+                        return `Work Details (Labor Posting by ${tech?.name || 'Technician'}): ${e.notes}`;
+                    })
                 ].filter(Boolean);
 
                 if (contentParts.length > 0) {
