@@ -1,4 +1,3 @@
-
 'use client';
 
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -14,6 +13,9 @@ export const uploadImage = async (file: Blob, path: string): Promise<string> => 
   try {
     // initializeFirebase is async and returns a promise of services
     const { storage } = await initializeFirebase();
+    if (!storage) {
+        throw new Error("Firebase Storage service is not available.");
+    }
     const storageRef = ref(storage, path);
     
     // 'file' comes from the Blob or File API
@@ -37,6 +39,9 @@ export const uploadImage = async (file: Blob, path: string): Promise<string> => 
 export const deleteImage = async (imageUrl: string): Promise<void> => {
     try {
         const { storage } = await initializeFirebase();
+        if (!storage) {
+            throw new Error("Firebase Storage service is not available.");
+        }
         const imageRef = ref(storage, imageUrl);
         await deleteObject(imageRef);
     } catch (error: any) {

@@ -8,19 +8,30 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { ai } from '@/ai/genkit';
 
-// Bulletproof initialization: Initialize Firebase Admin only once.
-if (!getApps().length) {
-  try {
-    initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
-      }),
-    });
-  } catch (error: any) {
-    console.error('Firebase Admin SDK initialization failed:', error);
+function getAdminDb() {
+  if (!getApps().length) {
+    try {
+      const projectId = process.env.FIREBASE_PROJECT_ID;
+      const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+      const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n').replace(/"/g, '');
+
+      if (!projectId || !clientEmail || !privateKey) {
+        throw new Error('Missing Firebase Admin environment variables.');
+      }
+
+      initializeApp({
+        credential: cert({
+          projectId,
+          clientEmail,
+          privateKey,
+        }),
+      });
+    } catch (error: any) {
+      console.error('Firebase Admin SDK initialization failed:', error.message);
+      return null;
+    }
   }
+  return getFirestore();
 }
 
 const GenerateQuoteNumberOutputSchema = z.object({
@@ -39,11 +50,11 @@ const generateQuoteNumberFlow = ai.defineFlow(
     outputSchema: GenerateQuoteNumberOutputSchema,
   },
   async () => {
-    if (!getApps().length) {
-      return { quoteNumber: '', error: 'Firebase Admin SDK is not initialized.' };
+    const adminDb = getAdminDb();
+    if (!adminDb) {
+      return { quoteNumber: '', error: 'Firebase Admin SDK is not initialized. Please check server environment variables.' };
     }
 
-    const adminDb = getFirestore();
     const counterRef = adminDb.collection('counters').doc('quoteCounter');
     const currentYear = new Date().getFullYear();
     const yearShort = currentYear.toString().slice(-2);
@@ -73,8 +84,8 @@ const generateQuoteNumberFlow = ai.defineFlow(
       const formattedNumber = `QT-${yearShort}-${newNumber.toString().padStart(4, '0')}`;
       return { quoteNumber: formattedNumber };
     } catch (error: any) {
-      console.error("Transaction to generate quote number failed:", error);
-      return { quoteNumber: '', error: 'Failed to generate quote number.' };
+      console.error("Transaction to generate quote number failed:", error.message);
+      return { quoteNumber: '', error: `Failed to generate quote number: ${error.message}` };
     }
   }
 );

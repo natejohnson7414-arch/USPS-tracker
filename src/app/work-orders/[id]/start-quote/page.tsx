@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -93,19 +92,24 @@ export default function StartQuotePage() {
         if (!db || !user || !workOrder) return;
         
         if (!description || !modelNumber || !serialNumber) {
-            toast({ title: 'Description, Model, and Serial Number are required', variant: 'destructive' });
+            toast({ title: 'Missing required fields', description: 'Description, Model, and Serial Number are required', variant: 'destructive' });
             return;
         }
 
         setIsSubmitting(true);
         
         try {
+            const progressToast = toast({ title: 'Generating Quote Number...', description: 'Please wait...' });
+            
             const { quoteNumber, error } = await generateQuoteNumber();
 
             if (error || !quoteNumber) {
+                progressToast.dismiss();
                 throw new Error(error || 'Could not generate quote number.');
             }
             
+            progressToast.update({ id: progressToast.id, title: 'Uploading Media...', description: `Uploading ${photos.length + videos.length} items.` });
+
             const uploadPromises = [
                 ...photos.map(file => uploadImage(file, `quotes/${quoteNumber}/photos/${file.name}`)),
                 ...videos.map(file => uploadImage(file, `quotes/${quoteNumber}/videos/${file.name}`))
@@ -114,6 +118,8 @@ export default function StartQuotePage() {
             const uploadedUrls = await Promise.all(uploadPromises);
             const photoUrls = uploadedUrls.slice(0, photos.length);
             const videoUrls = uploadedUrls.slice(photos.length);
+
+            progressToast.update({ id: progressToast.id, title: 'Saving Quote...', description: 'Almost done.' });
 
             const newQuote: Omit<Quote, 'id'> = {
                 quoteNumber: quoteNumber,
@@ -143,6 +149,7 @@ export default function StartQuotePage() {
             const workOrderRef = doc(db, 'work_orders', workOrder.id);
             await updateDocumentNonBlocking(workOrderRef, { status: 'On Hold' });
 
+            progressToast.dismiss();
             toast({ title: 'Quote Submitted', description: 'The work order status has been set to "On Hold".' });
             
             // Notify administrators, but don't block the UI
@@ -151,23 +158,17 @@ export default function StartQuotePage() {
                 workOrderId: workOrder.id,
                 jobName: workOrder.jobName,
                 technicianName: user.displayName || user.email || 'Unknown Technician'
-            }).then(result => {
-                if (result.success) {
-                    console.log('Admin notification process initiated.');
-                } else {
-                    console.warn('Admin notification failed:', result.message);
-                }
-            });
+            }).catch(e => console.warn('Admin notification failed:', e.message));
 
             router.push(`/work-orders/${workOrder.id}`);
 
         } catch (error: any) {
             console.error("Error starting quote:", error);
-            if (error instanceof Error && !error.message.includes('permission-error')) {
-              toast({ title: 'Failed to start quote', description: error.message, variant: 'destructive' });
-            } else {
-                 toast({ title: 'Failed to start quote', variant: 'destructive' });
-            }
+            toast({ 
+                title: 'Failed to start quote', 
+                description: error.message || 'An unexpected error occurred. Please try again.', 
+                variant: 'destructive' 
+            });
         } finally {
             setIsSubmitting(false);
         }
@@ -220,6 +221,7 @@ export default function StartQuotePage() {
                                     onChange={(e) => setDescription(e.target.value)}
                                     placeholder={workOrder.description || "Describe the necessary work, materials, and any other important details..."}
                                     required
+                                    disabled={isSubmitting}
                                 />
                             </div>
 
@@ -231,6 +233,7 @@ export default function StartQuotePage() {
                                         value={modelNumber}
                                         onChange={(e) => setModelNumber(e.target.value)}
                                         required
+                                        disabled={isSubmitting}
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -240,6 +243,7 @@ export default function StartQuotePage() {
                                         value={serialNumber}
                                         onChange={(e) => setSerialNumber(e.target.value)}
                                         required
+                                        disabled={isSubmitting}
                                     />
                                 </div>
                             </div>
@@ -247,9 +251,11 @@ export default function StartQuotePage() {
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <Label>Photos & Videos</Label>
-                                    <Button type="button" variant="outline" onClick={() => mediaInputRef.current?.click()}>
-                                        <Upload className="mr-2 h-4 w-4" /> Upload Media
-                                    </Button>
+                                    <div className="flex gap-2">
+                                        <Button type="button" variant="outline" onClick={() => mediaInputRef.current?.click()} disabled={isSubmitting}>
+                                            <Upload className="mr-2 h-4 w-4" /> Upload Media
+                                        </Button>
+                                    </div>
                                     <input type="file" ref={mediaInputRef} multiple accept="image/*,video/*" className="hidden" onChange={handleFileChange} />
                                 </div>
                                 {photos.length > 0 && (
@@ -257,7 +263,7 @@ export default function StartQuotePage() {
                                         {photos.map((file, index) => (
                                             <div key={index} className="relative group aspect-square">
                                                 <Image src={URL.createObjectURL(file)} alt={file.name} fill className="object-cover rounded-lg border" />
-                                                <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => removeMedia(index, 'photo')}>
+                                                <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => removeMedia(index, 'photo')} disabled={isSubmitting}>
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
                                             </div>
@@ -270,7 +276,7 @@ export default function StartQuotePage() {
                                             <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
                                                 <Video className="h-5 w-5 text-muted-foreground" />
                                                 <p className="text-sm flex-1 truncate">{file.name}</p>
-                                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => removeMedia(index, 'video')}>
+                                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => removeMedia(index, 'video')} disabled={isSubmitting}>
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
                                             </div>
@@ -287,6 +293,7 @@ export default function StartQuotePage() {
                                     value={estimatedLabor}
                                     onChange={(e) => setEstimatedLabor(e.target.value)}
                                     placeholder="e.g., 2 hours for one person, 1 hour for second person for assistance."
+                                    disabled={isSubmitting}
                                 />
                             </div>
 
@@ -298,13 +305,14 @@ export default function StartQuotePage() {
                                     value={materialsNeeded}
                                     onChange={(e) => setMaterialsNeeded(e.target.value)}
                                     placeholder="List all parts and materials required for the job..."
+                                    disabled={isSubmitting}
                                 />
                             </div>
 
                              <div className="flex justify-end pt-4">
-                                <Button type="submit" disabled={isSubmitting}>
+                                <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
                                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Submit Quote Request
+                                    {isSubmitting ? 'Processing Quote...' : 'Submit Quote Request'}
                                 </Button>
                             </div>
                         </CardContent>

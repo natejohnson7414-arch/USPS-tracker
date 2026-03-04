@@ -80,7 +80,6 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
   if (services) return services;
 
   // 2. If an initialization is already in progress, return the existing promise
-  // This is CRITICAL for Next.js 15 / React Strict Mode compatibility
   if (servicesPromise) return servicesPromise;
 
   // 3. Create the initialization promise
@@ -95,9 +94,7 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
     if (isServer) {
       firestore = getFirestore(app);
     } else {
-      // Check if Firestore was already initialized by a non-standard call elsewhere
       if (firestoreInitialized) {
-        console.log("Firestore already initialized — using existing instance");
         firestore = getFirestore(app);
       } else {
         try {
@@ -116,8 +113,6 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
           }
           firestoreInitialized = true;
         } catch (e: any) {
-          // If initializeFirestore fails (e.g. it was actually initialized already),
-          // fallback to getFirestore to recover the existing instance.
           console.warn("Firestore custom initialization failed, falling back to standard getFirestore:", e.message);
           firestore = getFirestore(app);
           firestoreInitialized = true;
