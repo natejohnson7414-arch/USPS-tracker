@@ -28,7 +28,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { doc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 const AddActivityForm = ({ technicians, onAddActivity, isLoading, isTechnician, currentUserId }: { 
     technicians: Technician[], 
@@ -254,10 +253,8 @@ export function WorkOrderDetails({
   const [isReplying, setIsReplying] = useState(false);
 
   // Asset State
-  const [linkedAssets, setLinkedAssets] = useState<Asset[]>([]);
   const [siteAssets, setSiteAssets] = useState<Asset[]>([]);
-  const [isLinkAssetOpen, setIsLinkAssetOpen] = useState(false);
-  const [isLinking, setIsLinking] = useState(false);
+  const [isLinking, setIsLinking] = useState<string | null>(null);
 
   const isCompleted = workOrder.status === 'Completed';
 
@@ -275,12 +272,7 @@ export function WorkOrderDetails({
     if (db && workOrder.workSiteId) {
         getAssetsBySiteId(db, workOrder.workSiteId).then(setSiteAssets);
     }
-    if (db && workOrder.assetIds && workOrder.assetIds.length > 0) {
-        getAssetsByIds(db, workOrder.assetIds).then(setLinkedAssets);
-    } else {
-        setLinkedAssets([]);
-    }
-  }, [db, workOrder.workSiteId, workOrder.assetIds]);
+  }, [db, workOrder.workSiteId]);
 
   const takePhotoInputRef = useRef<HTMLInputElement>(null);
   const chooseFromLibraryInputRef = useRef<HTMLInputElement>(null);
@@ -327,23 +319,23 @@ export function WorkOrderDetails({
 
   const handleLinkAsset = async (assetId: string) => {
     if (!db || isLinking) return;
-    setIsLinking(true);
+    setIsLinking(assetId);
     try {
         const woRef = doc(db, 'work_orders', workOrder.id);
         await updateDocumentNonBlocking(woRef, {
             assetIds: arrayUnion(assetId)
         });
-        toast({ title: 'Asset Linked' });
-        setIsLinkAssetOpen(false);
+        toast({ title: 'Asset Linked to Job' });
     } catch (e) {
         // Handled globally
     } finally {
-        setIsLinking(false);
+        setIsLinking(null);
     }
   };
 
   const handleUnlinkAsset = async (assetId: string) => {
-    if (!db) return;
+    if (!db || isLinking) return;
+    setIsLinking(assetId);
     try {
         const woRef = doc(db, 'work_orders', workOrder.id);
         await updateDocumentNonBlocking(woRef, {
@@ -352,11 +344,15 @@ export function WorkOrderDetails({
         toast({ title: 'Asset Unlinked' });
     } catch (e) {
         // Handled globally
+    } finally {
+        setIsLinking(null);
     }
   };
   
   const isCurrentUserAssigned = workOrder.assignedTechnicianId === user?.uid;
   const canCompleteWorkOrder = isTechnician && isCurrentUserAssigned && (workOrder.status === 'In Progress' || workOrder.status === 'Open');
+
+  const linkedAssetIds = new Set(workOrder.assetIds || []);
 
   return (
     <>
@@ -595,55 +591,73 @@ export function WorkOrderDetails({
             <Card className="rounded-t-none">
               <CardHeader>
                 <div className="flex justify-between items-center">
-                  <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" />Equipment Worked On</CardTitle>
+                  <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" />Site Equipment Registry</CardTitle>
                   {!isCompleted && (
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setIsLinkAssetOpen(true)}>
-                        <LinkIcon className="mr-2 h-4 w-4" /> Link Asset
-                      </Button>
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/assets/new?siteId=${workOrder.workSiteId}`}>
-                          <PlusCircle className="mr-2 h-4 w-4" /> Register New
-                        </Link>
-                      </Button>
-                    </div>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/assets/new?siteId=${workOrder.workSiteId}`}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Register New Asset
+                      </Link>
+                    </Button>
                   )}
                 </div>
+                <CardDescription>Select the specific equipment being serviced on this job.</CardDescription>
               </CardHeader>
               <CardContent>
-                {linkedAssets.length > 0 ? (
+                {siteAssets.length > 0 ? (
                   <div className="space-y-3">
-                    {linkedAssets.map(asset => (
-                      <div key={asset.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30 transition-colors">
-                        <div className="flex-1">
+                    {siteAssets.map(asset => {
+                      const isLinked = linkedAssetIds.has(asset.id);
+                      const isLoading = isLinking === asset.id;
+
+                      return (
+                        <div key={asset.id} className={`flex items-center justify-between p-3 border rounded-lg transition-all ${isLinked ? 'bg-primary/5 border-primary/20 ring-1 ring-primary/10' : 'hover:bg-muted/30'}`}>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="font-bold">{asset.name}</p>
+                              <Badge variant="outline" className="font-mono text-[10px]">{asset.assetTag}</Badge>
+                              {isLinked && <Badge className="h-5 text-[10px] bg-primary text-primary-foreground">Linked to Job</Badge>}
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                              <span>{asset.manufacturer} {asset.model}</span>
+                              <span>•</span>
+                              <span className="capitalize">{asset.status}</span>
+                            </div>
+                          </div>
                           <div className="flex items-center gap-2">
-                            <p className="font-bold">{asset.name}</p>
-                            <Badge variant="outline" className="font-mono text-[10px]">{asset.assetTag}</Badge>
-                          </div>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                            <span>{asset.manufacturer} {asset.model}</span>
-                            <span>•</span>
-                            <span className="capitalize">{asset.status}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button asChild variant="ghost" size="sm">
-                            <Link href={`/assets/${asset.id}`}>View Details <ChevronRight className="ml-1 h-4 w-4" /></Link>
-                          </Button>
-                          {!isCompleted && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleUnlinkAsset(asset.id)}>
-                              <X className="h-4 w-4" />
+                            <Button asChild variant="ghost" size="icon" className="h-8 w-8" title="View History">
+                              <Link href={`/assets/${asset.id}`}><ChevronRight className="h-4 w-4" /></Link>
                             </Button>
-                          )}
+                            {!isCompleted && (
+                              <Button 
+                                variant={isLinked ? "ghost" : "outline"} 
+                                size="sm" 
+                                className={isLinked ? "text-destructive hover:bg-destructive/10" : "gap-2"}
+                                onClick={() => isLinked ? handleUnlinkAsset(asset.id) : handleLinkAsset(asset.id)}
+                                disabled={!!isLinking}
+                              >
+                                {isLoading ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : isLinked ? (
+                                  <><X className="h-4 w-4" /> Unlink</>
+                                ) : (
+                                  <><LinkIcon className="h-4 w-4" /> Link Asset</>
+                                )}
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-12 border-2 border-dashed rounded-lg">
                     <Package className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                    <p className="text-sm text-muted-foreground">No equipment linked to this work order yet.</p>
-                    {!isCompleted && <Button variant="link" onClick={() => setIsLinkAssetOpen(true)} className="mt-2">Link from site registry</Button>}
+                    <p className="text-sm text-muted-foreground">No equipment registered at this site yet.</p>
+                    {!isCompleted && (
+                      <Button asChild variant="link" className="mt-2">
+                        <Link href={`/assets/new?siteId=${workOrder.workSiteId}`}>Add the first asset</Link>
+                      </Button>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -737,35 +751,6 @@ export function WorkOrderDetails({
           </div>
         </TabsContent>
       </Tabs>
-
-      {/* Dialogs & Sheets */}
-      <Dialog open={isLinkAssetOpen} onOpenChange={setIsLinkAssetOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Link Equipment to Job</DialogTitle>
-            <DialogDescription>Associate a piece of equipment from this site with the current work order.</DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            {siteAssets.length > 0 ? (
-              <div className="space-y-2">
-                {siteAssets.filter(a => !(workOrder.assetIds || []).includes(a.id)).map(asset => (
-                  <Button key={asset.id} variant="outline" className="w-full justify-between h-auto py-3 px-4" onClick={() => handleLinkAsset(asset.id)} disabled={isLinking}>
-                    <div className="text-left">
-                      <p className="font-bold">{asset.name}</p>
-                      <p className="text-xs text-muted-foreground">{asset.assetTag} • {asset.manufacturer} {asset.model}</p>
-                    </div>
-                    {isLinking ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4" />}
-                  </Button>
-                ))}
-                {siteAssets.every(a => (workOrder.assetIds || []).includes(a.id)) && <p className="text-sm text-center text-muted-foreground">All site equipment is already linked.</p>}
-              </div>
-            ) : <p className="text-sm text-center text-muted-foreground">No equipment registered at this site yet.</p>}
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsLinkAssetOpen(false)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <AlertDialog open={!!noteToDelete} onOpenChange={(open) => !open && setNoteToDelete(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete this note.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteNote}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       <AlertDialog open={!!timeEntryToDelete} onOpenChange={(open) => !open && setTimeEntryToDelete(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete this time entry.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteTimeEntry}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>

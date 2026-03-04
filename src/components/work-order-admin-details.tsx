@@ -19,7 +19,7 @@ import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { getTechnicianById, getAssetsByIds } from '@/lib/data';
+import { getTechnicianById, getAssetsBySiteId } from '@/lib/data';
 import { AddTimeDialog } from './add-time-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from './ui/date-picker';
@@ -27,7 +27,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { doc, arrayRemove } from 'firebase/firestore';
+import { doc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { notifyTechnicianOfAttention } from '@/ai/flows/notify-technician-flow';
 import { Badge } from './ui/badge';
 
@@ -164,7 +164,6 @@ interface WorkOrderAdminDetailsProps {
   setContactInfo: (value: string) => void;
   onAddActivity: (activity: Omit<Activity, 'id' | 'createdDate' | 'workOrderId'>) => void;
   isAddingActivity: boolean;
-  onAddActivityToHistory?: (item: any) => void;
   onUpdateActivityStatus: (activityId: string, status: Activity['status']) => void;
   onDeleteActivity: (activityId: string) => void;
   technicians: Technician[];
@@ -233,7 +232,8 @@ export function WorkOrderAdminDetails({
   const [ackToDelete, setAckToDelete] = useState<Acknowledgement | null>(null);
 
   // Asset State
-  const [linkedAssets, setLinkedAssets] = useState<Asset[]>([]);
+  const [siteAssets, setSiteAssets] = useState<Asset[]>([]);
+  const [isLinking, setIsLinking] = useState<string | null>(null);
 
   // Admin-only state
   const [internalNotes, setInternalNotes] = useState(workOrder.internalNotes || '');
@@ -250,12 +250,10 @@ export function WorkOrderAdminDetails({
 
   useEffect(() => {
     setIsClient(true);
-    if (db && workOrder.assetIds && workOrder.assetIds.length > 0) {
-        getAssetsByIds(db, workOrder.assetIds).then(setLinkedAssets);
-    } else {
-        setLinkedAssets([]);
+    if (db && workOrder.workSiteId) {
+        getAssetsBySiteId(db, workOrder.workSiteId).then(setSiteAssets);
     }
-  }, [db, workOrder.assetIds]);
+  }, [db, workOrder.workSiteId]);
 
   const takePhotoInputRef = useRef<HTMLInputElement>(null);
   const chooseFromLibraryInputRef = useRef<HTMLInputElement>(null);
@@ -333,16 +331,31 @@ export function WorkOrderAdminDetails({
 
   const handleClearReplyStatus = async () => { if (onClearAttentionStatus) onClearAttentionStatus(); };
 
+  const handleLinkAsset = async (assetId: string) => {
+    if (!db || isLinking) return;
+    setIsLinking(assetId);
+    try {
+        const woRef = doc(db, 'work_orders', workOrder.id);
+        await updateDocumentNonBlocking(woRef, {
+            assetIds: arrayUnion(assetId)
+        });
+        toast({ title: 'Asset Linked to Job' });
+    } catch (e) { } finally { setIsLinking(null); }
+  };
+
   const handleUnlinkAsset = async (assetId: string) => {
-    if (!db) return;
+    if (!db || isLinking) return;
+    setIsLinking(assetId);
     try {
         const woRef = doc(db, 'work_orders', workOrder.id);
         await updateDocumentNonBlocking(woRef, {
             assetIds: arrayRemove(assetId)
         });
         toast({ title: 'Asset Unlinked' });
-    } catch (e) {}
+    } catch (e) { } finally { setIsLinking(null); }
   };
+
+  const linkedAssetIds = new Set(workOrder.assetIds || []);
 
   return (
     <>
@@ -468,27 +481,54 @@ export function WorkOrderAdminDetails({
         <TabsContent value="assets" className="mt-0">
           <div className="space-y-8">
             <Card className="rounded-t-none">
-              <CardHeader><CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" />Associated Equipment</CardTitle></CardHeader>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" />Site Equipment Registry</CardTitle>
+                  {!isCompleted && (
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/assets/new?siteId=${workOrder.workSiteId}`}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Register New Asset
+                      </Link>
+                    </Button>
+                  )}
+                </div>
+                <CardDescription>Select equipment from the site registry to associate it with this job.</CardDescription>
+              </CardHeader>
               <CardContent>
-                {linkedAssets.length > 0 ? (
+                {siteAssets.length > 0 ? (
                   <div className="space-y-3">
-                    {linkedAssets.map(asset => (
-                      <div key={asset.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-bold">{asset.name}</p>
-                            <Badge variant="outline" className="font-mono text-[10px]">{asset.assetTag}</Badge>
+                    {siteAssets.map(asset => {
+                      const isLinked = linkedAssetIds.has(asset.id);
+                      const isLoading = isLinking === asset.id;
+                      return (
+                        <div key={asset.id} className={`flex items-center justify-between p-3 border rounded-lg transition-all ${isLinked ? 'bg-primary/5 border-primary/20 ring-1 ring-primary/10' : 'hover:bg-muted/30'}`}>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="font-bold">{asset.name}</p>
+                              <Badge variant="outline" className="font-mono text-[10px]">{asset.assetTag}</Badge>
+                              {isLinked && <Badge className="h-5 text-[10px] bg-primary text-primary-foreground">Linked to Job</Badge>}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">{asset.manufacturer} {asset.model} • {asset.status}</p>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1">{asset.manufacturer} {asset.model} • {asset.status}</p>
+                          <div className="flex items-center gap-2">
+                            <Button asChild variant="ghost" size="icon" className="h-8 w-8"><Link href={`/assets/${asset.id}`}><ChevronRight className="h-4 w-4" /></Link></Button>
+                            {!isCompleted && (
+                              <Button 
+                                variant={isLinked ? "ghost" : "outline"} 
+                                size="sm" 
+                                className={isLinked ? "text-destructive hover:bg-destructive/10" : "gap-2"}
+                                onClick={() => isLinked ? handleUnlinkAsset(asset.id) : handleLinkAsset(asset.id)}
+                                disabled={!!isLinking}
+                              >
+                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : isLinked ? <><X className="h-4 w-4" /> Unlink</> : <><LinkIcon className="h-4 w-4" /> Link Asset</>}
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Button asChild variant="ghost" size="sm"><Link href={`/assets/${asset.id}`}>View Details <ChevronRight className="ml-1 h-4 w-4" /></Link></Button>
-                          {!isCompleted && <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleUnlinkAsset(asset.id)}><X className="h-4 w-4" /></Button>}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
-                ) : <p className="text-sm text-center text-muted-foreground py-8">No equipment linked to this job.</p>}
+                ) : <p className="text-sm text-center text-muted-foreground py-8">No equipment registered at this site yet.</p>}
               </CardContent>
             </Card>
           </div>
