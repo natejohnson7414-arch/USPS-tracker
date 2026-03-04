@@ -60,7 +60,8 @@ export const getWorkOrderById = async (db: any, id: string): Promise<WorkOrder |
         id: d.id, 
         text: d.data().notes, 
         photoUrls: d.data().photoUrls || [], 
-        createdAt: d.data().createdAt 
+        createdAt: d.data().createdAt,
+        excludeFromReport: d.data().excludeFromReport || false
       }));
       
       const activities = await getActivitiesByWorkOrderId(db, id).catch(() => []);
@@ -254,7 +255,16 @@ export const getTrainingRecordById = async (db: any, id: string): Promise<Traini
 export const getTimeEntriesByWorkOrder = async (db: any, workOrderId: string): Promise<TimeEntry[]> => {
     const q = query(collection(db, 'time_entries'), where('workOrderId', '==', workOrderId));
     const snapshot = await getCollectionNonBlocking(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TimeEntry));
+    const entries = await Promise.all(snapshot.docs.map(async (docRef) => {
+        const data = docRef.data();
+        const tech = await getTechnicianById(db, data.technicianId);
+        return { 
+            id: docRef.id, 
+            ...data, 
+            technicianName: tech?.name || 'Unknown User' 
+        } as TimeEntry;
+    }));
+    return entries;
 };
 
 export const deleteTrainingRecord = async (db: any, recordId: string) => {

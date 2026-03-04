@@ -265,3 +265,16 @@ export type AssetServiceHistory = {
   photos?: string[];
   followUpRequired?: boolean;
 };
+
+export type TimeEntry = {
+  id: string;
+  technicianId: string;
+  workOrderId: string | null;
+  date: string;
+  hours: number;
+  timeType: 'Regular' | 'Overtime' | 'Double Time';
+  notes?: string;
+  workOrder?: { id: string; jobName: string };
+  technicianName?: string;
+  excludeFromReport?: boolean;
+};

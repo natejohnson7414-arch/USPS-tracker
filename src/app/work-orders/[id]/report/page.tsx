@@ -5,8 +5,8 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, notFound, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { useFirestore } from '@/firebase';
-import { getWorkOrderById } from '@/lib/data';
-import type { WorkOrder } from '@/lib/types';
+import { getWorkOrderById, getTimeEntriesByWorkOrder } from '@/lib/data';
+import type { WorkOrder, TimeEntry } from '@/lib/types';
 import { summarizeNotes } from '@/ai/flows/summarize-notes-flow';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -41,7 +41,11 @@ export default function WorkOrderReportPage() {
             setIsLoading(true);
             setError(null);
             try {
-                const wo = await getWorkOrderById(db, id);
+                const [wo, timeEntries] = await Promise.all([
+                    getWorkOrderById(db, id),
+                    getTimeEntriesByWorkOrder(db, id)
+                ]);
+
                 if (!wo) {
                     notFound();
                     return;
@@ -59,7 +63,8 @@ export default function WorkOrderReportPage() {
                 const contentParts = [
                     `Job Specification: ${wo.description}`,
                     ...wo.notes.filter(n => !n.excludeFromReport).map(n => `Technician Note: ${n.text}`),
-                    ...wo.activities.filter(a => !a.excludeFromReport).map(a => `Activity Performed: ${a.description}`)
+                    ...wo.activities.filter(a => !a.excludeFromReport).map(a => `Activity Performed: ${a.description}`),
+                    ...timeEntries.filter(e => !e.excludeFromReport && e.notes).map(e => `Work Details (Labor Posting): ${e.notes}`)
                 ].filter(Boolean);
 
                 if (contentParts.length > 0) {
