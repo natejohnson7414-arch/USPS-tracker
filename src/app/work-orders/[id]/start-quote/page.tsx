@@ -71,7 +71,6 @@ export default function StartQuotePage() {
             .finally(() => setIsLoading(false));
     }, [db, workOrderId, router, toast]);
 
-    // Update person hours array when numPeople changes
     useEffect(() => {
         const count = parseInt(numPeople);
         setPersonHours(prev => {
@@ -99,7 +98,7 @@ export default function StartQuotePage() {
             setPhotos(prev => [...prev, ...imageFiles]);
             setVideos(prev => [...prev, ...videoFiles]);
         }
-        e.target.value = ''; // Reset input
+        e.target.value = ''; 
     };
 
     const removeMedia = (index: number, type: 'photo' | 'video') => {
@@ -118,10 +117,7 @@ export default function StartQuotePage() {
     
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!db || !user || !workOrder) {
-            console.error('Database or User context missing');
-            return;
-        }
+        if (!db || !user || !workOrder) return;
         
         if (!description || !modelNumber || !serialNumber) {
             toast({ title: 'Missing required fields', description: 'Description, Model, and Serial Number are required', variant: 'destructive' });
@@ -129,12 +125,10 @@ export default function StartQuotePage() {
         }
 
         setIsSubmitting(true);
-        console.log('Starting quote submission...');
-        
+        const isDebug = process.env.NEXT_PUBLIC_DEBUG_UPLOADS === '1';
         const progressToast = toast({ title: 'Processing...', description: 'Generating quote number.' });
 
         try {
-            // 1. Generate sequential quote number via server action
             const result = await generateQuoteNumber();
 
             if (result.error || !result.quoteNumber) {
@@ -142,30 +136,26 @@ export default function StartQuotePage() {
             }
             
             const quoteNumber = result.quoteNumber;
-            console.log('Received quote number:', quoteNumber);
 
-            // 2. Upload media if present
             let photoUrls: string[] = [];
             let videoUrls: string[] = [];
 
             if (photos.length > 0 || videos.length > 0) {
                 progressToast.update({ id: progressToast.id, title: 'Uploading Media...', description: `Uploading ${photos.length + videos.length} files.` });
                 
-                const uploadPromises = [
-                    ...photos.map(file => uploadImage(file, `quotes/${quoteNumber}/photos/${Date.now()}-${file.name}`)),
-                    ...videos.map(file => uploadImage(file, `quotes/${quoteNumber}/videos/${Date.now()}-${file.name}`))
-                ];
-                
-                const uploadedUrls = await Promise.all(uploadPromises);
-                photoUrls = uploadedUrls.slice(0, photos.length);
-                videoUrls = uploadedUrls.slice(photos.length);
-                console.log('Media upload complete.');
+                // FIX: Sequential uploads to avoid browser concurrency bottlenecks
+                for (const file of photos) {
+                    const url = await uploadImage(file, `quotes/${quoteNumber}/photos/${Date.now()}-${file.name}`);
+                    photoUrls.push(url);
+                }
+                for (const file of videos) {
+                    const url = await uploadImage(file, `quotes/${quoteNumber}/videos/${Date.now()}-${file.name}`);
+                    videoUrls.push(url);
+                }
             }
 
-            // 3. Save Quote document
             progressToast.update({ id: progressToast.id, title: 'Saving...', description: 'Finalizing quote record.' });
 
-            // Format labor description with individual hours
             const laborDetail = personHours.map((h, i) => `P${i + 1}: ${h || '0'}h`).join(', ');
             const formattedLabor = `${numPeople} ${parseInt(numPeople) === 1 ? 'person' : 'people'}: ${laborDetail}`;
 
@@ -191,33 +181,31 @@ export default function StartQuotePage() {
                 total: 0,
             };
 
-            // Use non-blocking mutation as per requirements (optimistic update)
+            if (isDebug) console.log("[Storage] Saving Quote Document:", quoteNumber);
+
             addDocumentNonBlocking(collection(db, 'quotes'), newQuote);
 
-            // 4. Update the parent work order status
             const workOrderRef = doc(db, 'work_orders', workOrder.id);
             updateDocumentNonBlocking(workOrderRef, { status: 'On Hold' });
 
             progressToast.dismiss();
-            toast({ title: 'Quote Submitted', description: `Quote ${quoteNumber} has been requested. Work order updated to "On Hold".` });
+            toast({ title: 'Quote Submitted', description: `Quote ${quoteNumber} has been requested.` });
             
-            // 5. Notify administrators (background task)
             notifyAdminsOfNewQuote({
                 quoteId: quoteNumber,
                 workOrderId: workOrder.id,
                 jobName: workOrder.jobName,
                 technicianName: user.displayName || user.email || 'Technician'
-            }).catch(e => console.warn('Notification background task failed:', e.message));
+            }).catch(e => console.warn('Notification failed:', e.message));
 
-            console.log('Quote submission successful.');
             router.push(`/work-orders/${workOrder.id}`);
 
         } catch (error: any) {
-            console.error("Critical error in quote submission:", error);
+            if (isDebug) console.error("[Storage] Quote Submission Chain Failed:", error);
             progressToast.dismiss();
             toast({ 
                 title: 'Submission Failed', 
-                description: error.message || 'An unexpected error occurred. Please try again.', 
+                description: error.message || 'An unexpected error occurred.', 
                 variant: 'destructive' 
             });
             setIsSubmitting(false);
@@ -269,7 +257,7 @@ export default function StartQuotePage() {
                                     rows={5}
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
-                                    placeholder={workOrder.description || "Describe the necessary work, materials, and any other important details..."}
+                                    placeholder={workOrder.description || "Describe the necessary work..."}
                                     required
                                     disabled={isSubmitting}
                                 />
@@ -380,7 +368,7 @@ export default function StartQuotePage() {
                                     rows={4}
                                     value={materialsNeeded}
                                     onChange={(e) => setMaterialsNeeded(e.target.value)}
-                                    placeholder="List all parts and materials required for the job..."
+                                    placeholder="List all parts and materials required..."
                                     disabled={isSubmitting}
                                 />
                             </div>

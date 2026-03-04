@@ -7,58 +7,58 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useTechnician } from '@/hooks/use-technician';
 
 /**
- * Background component that pre-caches data for technicians
- * to ensure offline availability.
+ * Background component that pre-caches data for technicians.
  * 
- * FIX: Now gated on technician profile readiness to ensure security rules pass.
- * FIX: Implemented sequential throttling to prevent IndexedDB/Network saturation.
+ * OPTIMIZATION: Implemented sequential throttling and concurrency capping 
+ * to ensure background sync doesn't block high-priority photo uploads.
  */
 export function SyncManager() {
   const db = useFirestore();
   const { user } = useUser();
   const { technician, role, isLoading: isProfileLoading } = useTechnician();
   const isSyncing = useRef(false);
+  const abortController = useRef<AbortController | null>(null);
 
   const performSync = useCallback(async () => {
-    // CRITICAL GATE: Only sync if auth is ready AND the technician profile (needed for rules) is loaded
     if (!db || !user || !technician || !role || isSyncing.current || !navigator.onLine) return;
 
     isSyncing.current = true;
-    console.log('[SyncManager] Starting throttled background sync for:', technician.name);
+    console.log('[SyncManager] Throttled background sync starting...');
 
     try {
-      // 1. Fetch assigned work orders first
       const q = query(
         collection(db, 'work_orders'), 
         where('assignedTechnicianId', '==', user.uid)
       );
       
       const snapshot = await getDocs(q);
-      console.log(`[SyncManager] Caching ${snapshot.docs.length} assigned work orders`);
       
-      // 2. Process subcollections SEQUENTIALLY with small delays
-      // This prevents "Breaking Uploads" by avoiding IndexedDB transaction saturation
+      // Process work orders one by one with a delay to yield to the UI thread and network
       for (const woDoc of snapshot.docs) {
+        // Yield check: Stop if component unmounted or user logged out
+        if (!isSyncing.current) break;
+
         const woId = woDoc.id;
         try {
-            // Sequential fetch for sub-data
+            // Fetch updates and activities with significant yielding
             await getDocs(collection(db, 'work_orders', woId, 'updates'));
-            await new Promise(resolve => setTimeout(resolve, 100)); // 100ms throttle
+            await new Promise(resolve => setTimeout(resolve, 500)); // Increased delay
+            
             await getDocs(collection(db, 'work_orders', woId, 'activities'));
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 500));
         } catch (e) {
-            console.warn(`[SyncManager] Could not sync subcollections for ${woId}`, e);
+            console.warn(`[SyncManager] Skip ${woId}:`, e);
         }
       }
       
-      // 3. Cache lookup data (sites, clients, techs)
+      // Cache base registries
       await getDocs(collection(db, 'work_sites'));
       await getDocs(collection(db, 'clients'));
       await getDocs(collection(db, 'technicians'));
 
-      console.log('[SyncManager] Sync complete. Local cache primed.');
+      console.log('[SyncManager] Sync cycle complete.');
     } catch (error) {
-      console.error('[SyncManager] Sync error:', error);
+      console.error('[SyncManager] Sync cycle failed:', error);
     } finally {
       isSyncing.current = false;
     }
@@ -66,13 +66,12 @@ export function SyncManager() {
 
   useEffect(() => {
     if (user && !isProfileLoading && technician && role) {
-      // Initial delay to let the UI settle and any immediate uploads start
-      const initialTimer = setTimeout(performSync, 2000);
-      
-      // Re-sync every 15 minutes
+      // Start delay: Wait 5 seconds after boot to allow initial uploads/renders
+      const initialTimer = setTimeout(performSync, 5000);
       const interval = setInterval(performSync, 15 * 60 * 1000);
       
       return () => {
+        isSyncing.current = false;
         clearTimeout(initialTimer);
         clearInterval(interval);
       };

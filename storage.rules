@@ -4,61 +4,44 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
     /**
      * Helper function to check if the authenticated user has a specific role.
-     * This performs a `get()` call to Firestore to check the user's role document.
      */
     function userHasRole(roleName) {
-      // CORRECTED: The path now correctly points to the 'technicians' collection.
       let userDocPath = /databases/$(database)/documents/technicians/$(request.auth.uid);
       let userDoc = get(userDocPath);
-      // **CRITICAL FIX**: Check that userDoc.data exists before trying to access its properties.
-      return request.auth != null && userDoc.data != null && userDoc.data.roleId != null &&
+      return isSignedIn() && userDoc.data != null && userDoc.data.roleId != null &&
         get(/databases/$(database)/documents/roles/$(userDoc.data.roleId)).data.name == roleName;
     }
 
-    /**
-     * Checks if the user is an Administrator.
-     */
     function isAdmin() {
-      // An email check is included as a fallback, similar to firestore.rules
-      return request.auth != null && (request.auth.token.email == 'admin@crawford-company.com' || userHasRole('Administrator'));
+      return isSignedIn() && (request.auth.token.email == 'admin@crawford-company.com' || userHasRole('Administrator'));
     }
-    
-     /**
-     * Checks if the user is a Technician.
-     */
-    function isTechnician() {
-      return userHasRole('Technician');
-    }
-    
-     /**
-     * Checks if the parent work order is in a completed state.
-     */
-     function isWorkOrderCompleted(workOrderId) {
-        let workOrderPath = /databases/$(database)/documents/work_orders/$(workOrderId);
-        return get(workOrderPath).data.status == 'Completed';
-     }
 
     /**
      * @description Secures all files related to work orders.
-     * @path /work-orders/{workOrderId}/{allPaths=**}
-     * @allow (read, write) Any authenticated user.
-     * @principle Aligns with Firestore rules allowing any user to add notes (and thus photos).
      */
     match /work-orders/{workOrderId}/{allPaths=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if isSignedIn();
     }
     
     /**
      * @description Secures signature files.
-     * @path /signatures/{allPaths=**}
-     * @allow (read, write) Any authenticated user can upload and read signatures.
-     * @principle Allows users to save signatures for training forms and work order sign-offs.
      */
     match /signatures/{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isSignedIn();
+    }
+
+    /**
+     * @description Secures quote-related media.
+     * FIX: Added missing rule for the /quotes/ path used by the Start Quote page.
+     */
+    match /quotes/{quoteId}/{allPaths=**} {
+      allow read, write: if isSignedIn();
     }
   }
 }

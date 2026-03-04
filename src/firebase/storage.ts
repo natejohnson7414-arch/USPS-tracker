@@ -1,55 +1,74 @@
 
 'use client';
 
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { initializeFirebase } from './init';
-import { getAuth } from 'firebase/auth';
+import { getAuth, getIdTokenResult } from 'firebase/auth';
 
 /**
- * Uploads an image file to Firebase Storage.
- * @param file The image file to upload.
- * @param path The path where the file should be stored.
- * @returns A promise that resolves with the download URL.
+ * Uploads an image file to Firebase Storage with resumable support and instrumentation.
  */
 export const uploadImage = async (file: Blob, path: string): Promise<string> => {
+  const isDebug = process.env.NEXT_PUBLIC_DEBUG_UPLOADS === '1';
+  
   try {
     const services = await initializeFirebase();
-    if (!services.storage) {
-        throw new Error("Firebase Storage service is not available.");
-    }
-
     const auth = getAuth(services.firebaseApp);
     
-    // CRITICAL: Ensure Auth state is resolved
+    // 1. Ensure Auth is ready
     await auth.authStateReady();
-    
-    if (!auth.currentUser) {
-      console.error("[Storage] Upload attempted while unauthenticated.");
+    const user = auth.currentUser;
+
+    if (!user) {
+      if (isDebug) console.error("[Storage] Upload blocked: No authenticated user.");
       throw new Error("Authentication required for upload.");
     }
 
-    console.log(`[Storage] Starting upload to: ${path}`, {
-      uid: auth.currentUser.uid,
-      size: file.size,
-      type: file.type
-    });
+    if (isDebug) {
+      const token = await getIdTokenResult(user);
+      console.log("[Storage] Starting Upload Debug:", {
+        path,
+        uid: user.uid,
+        claims: token.claims,
+        online: navigator.onLine,
+        size: file.size,
+        type: file.type
+      });
+    }
 
     const storageRef = ref(services.storage, path);
     
-    // Perform upload
-    const snapshot = await uploadBytes(storageRef, file);
-    
-    console.log(`[Storage] Upload successful: ${path}`);
-    
-    // Get download URL
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    return downloadURL;
-  } catch (error: any) {
-    console.error("[Storage] Upload failed:", {
-      code: error.code,
-      message: error.message,
-      path: path
+    // 2. Use Resumable Upload for better reliability in background
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    return new Promise((resolve, reject) => {
+      uploadTask.on('state_changed', 
+        (snapshot) => {
+          if (isDebug) {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log(`[Storage] Uploading ${path}: ${progress.toFixed(0)}%`);
+          }
+        }, 
+        (error) => {
+          if (isDebug) {
+            console.error("[Storage] Task Failed:", {
+              code: error.code,
+              message: error.message,
+              serverResponse: error.serverResponse
+            });
+          }
+          reject(error);
+        }, 
+        async () => {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          if (isDebug) console.log("[Storage] Upload Success:", downloadURL);
+          resolve(downloadURL);
+        }
+      );
     });
+
+  } catch (error: any) {
+    console.error("[Storage] Critical Upload Error:", error);
     throw error;
   }
 };
@@ -60,10 +79,6 @@ export const uploadImage = async (file: Blob, path: string): Promise<string> => 
 export const deleteImage = async (imageUrl: string): Promise<void> => {
     try {
         const services = await initializeFirebase();
-        if (!services.storage) {
-            throw new Error("Firebase Storage service is not available.");
-        }
-        
         const auth = getAuth(services.firebaseApp);
         await auth.authStateReady();
 
@@ -71,10 +86,8 @@ export const deleteImage = async (imageUrl: string): Promise<void> => {
         await deleteObject(imageRef);
     } catch (error: any) {
         if (error.code === 'storage/object-not-found') {
-            console.warn(`[Storage] File not found for deletion: ${imageUrl}`);
             return;
         }
-        console.error("[Storage] Deletion failed:", error);
         throw error;
     }
 };

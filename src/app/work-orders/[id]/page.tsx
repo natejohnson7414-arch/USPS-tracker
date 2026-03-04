@@ -113,7 +113,6 @@ export default function WorkOrderDetailPage() {
         setQuotes(fetchedQuotes);
         setActivities(fetchedActivities);
         
-        // Correctly join technician names to time entries using the registry
         const formattedTimeEntries = fetchedTimeEntries.map(entry => {
             const tech = fetchedTechnicians.find(t => t.id === entry.technicianId);
             return {
@@ -163,25 +162,26 @@ export default function WorkOrderDetailPage() {
     if (!db || !workOrder || files.length === 0) return;
     
     setIsSavingPhotos(true);
-    const toastId = toast({ title: `Uploading ${files.length} ${type} photo(s)...` });
+    const toastId = toast({ title: `Uploading ${files.length} photo(s)...` });
+    const isDebug = process.env.NEXT_PUBLIC_DEBUG_UPLOADS === '1';
 
     try {
-      const uploadPromises = files.map(file => 
-        uploadImage(file, `work-orders/${workOrder.id}/${type}/${Date.now()}-${file.name}`)
-      );
-      const uploadedUrls = await Promise.all(uploadPromises);
+      // FIX: Serialize uploads slightly to avoid browser concurrent request limits
+      const uploadedUrls: string[] = [];
+      for (const file of files) {
+        const url = await uploadImage(file, `work-orders/${workOrder.id}/${type}/${Date.now()}-${file.name}`);
+        uploadedUrls.push(url);
+      }
 
       let fieldToUpdate: 'beforePhotoUrls' | 'afterPhotoUrls' | 'receiptsAndPackingSlips';
-      if (type === 'before') {
-          fieldToUpdate = 'beforePhotoUrls';
-      } else if (type === 'after') {
-          fieldToUpdate = 'afterPhotoUrls';
-      } else {
-          fieldToUpdate = 'receiptsAndPackingSlips';
-      }
+      if (type === 'before') fieldToUpdate = 'beforePhotoUrls';
+      else if (type === 'after') fieldToUpdate = 'afterPhotoUrls';
+      else fieldToUpdate = 'receiptsAndPackingSlips';
 
       const currentUrls = workOrder[fieldToUpdate] || [];
       const newUrls = [...currentUrls, ...uploadedUrls];
+
+      if (isDebug) console.log(`[Storage] Updating Firestore ${fieldToUpdate} with ${newUrls.length} items`);
 
       updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), {
         [fieldToUpdate]: newUrls,
@@ -192,9 +192,10 @@ export default function WorkOrderDetailPage() {
       toastId.dismiss();
       toast({ title: "Photos Uploaded", description: `${files.length} photo(s) have been added.` });
 
-    } catch (error) {
+    } catch (error: any) {
+      if (isDebug) console.error("[Storage] Photo Add Handler Failed:", error);
       toastId.dismiss();
-      toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload photos." });
+      toast({ variant: "destructive", title: "Upload Failed", description: error.message || "Could not upload photos." });
     } finally {
       setIsSavingPhotos(false);
     }
@@ -204,13 +205,9 @@ export default function WorkOrderDetailPage() {
     if (!db || !workOrder) return;
 
     let fieldToUpdate: 'beforePhotoUrls' | 'afterPhotoUrls' | 'receiptsAndPackingSlips';
-    if (type === 'before') {
-        fieldToUpdate = 'beforePhotoUrls';
-    } else if (type === 'after') {
-        fieldToUpdate = 'afterPhotoUrls';
-    } else {
-        fieldToUpdate = 'receiptsAndPackingSlips';
-    }
+    if (type === 'before') fieldToUpdate = 'beforePhotoUrls';
+    else if (type === 'after') fieldToUpdate = 'afterPhotoUrls';
+    else fieldToUpdate = 'receiptsAndPackingSlips';
 
     const currentUrls = workOrder[fieldToUpdate] || [];
     const newUrls = currentUrls.filter(url => url !== urlToDelete);
@@ -222,8 +219,7 @@ export default function WorkOrderDetailPage() {
         await deleteImage(urlToDelete);
         toast({ title: "Photo Deleted" });
     } catch(error) {
-        // Error emitted by updateDocumentNonBlocking
-        setWorkOrder(prev => prev ? { ...prev, [fieldToUpdate]: currentUrls } : null); // Revert
+        setWorkOrder(prev => prev ? { ...prev, [fieldToUpdate]: currentUrls } : null);
     }
   };
 
@@ -234,18 +230,18 @@ export default function WorkOrderDetailPage() {
     const toastId = toast({ title: `Uploading ${files.length} file(s)...` });
 
     try {
-      const uploadPromises = files.map(file => {
+      const uploadedFiles: FileAttachment[] = [];
+      for (const file of files) {
         const path = `work-orders/${workOrder.id}/files/${Date.now()}-${file.name}`;
-        return uploadImage(file, path).then(url => ({
+        const url = await uploadImage(file, path);
+        uploadedFiles.push({
           name: file.name,
           url,
           type: file.type,
           size: file.size,
           uploadedAt: new Date().toISOString(),
-        }));
-      });
-
-      const uploadedFiles = await Promise.all(uploadPromises);
+        });
+      }
 
       const currentFiles = workOrder.uploadedFiles || [];
       const newFiles = [...currentFiles, ...uploadedFiles];
@@ -259,9 +255,9 @@ export default function WorkOrderDetailPage() {
       toastId.dismiss();
       toast({ title: "Files Uploaded", description: `${files.length} file(s) have been added.` });
 
-    } catch (error) {
+    } catch (error: any) {
       toastId.dismiss();
-      toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload files." });
+      toast({ variant: "destructive", title: "Upload Failed", description: error.message || "Could not upload files." });
     } finally {
       setIsUploadingFiles(false);
     }
@@ -273,15 +269,14 @@ export default function WorkOrderDetailPage() {
     const currentFiles = workOrder.uploadedFiles || [];
     const newFiles = currentFiles.filter(file => file.url !== fileToDelete.url);
 
-    setWorkOrder(prev => prev ? { ...prev, uploadedFiles: newFiles } : null); // Optimistic update
+    setWorkOrder(prev => prev ? { ...prev, uploadedFiles: newFiles } : null);
 
     try {
         updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { uploadedFiles: newFiles });
         await deleteImage(fileToDelete.url); 
         toast({ title: "File Deleted" });
     } catch(error) {
-        // Error emitted by updateDocumentNonBlocking
-        setWorkOrder(prev => prev ? { ...prev, uploadedFiles: currentFiles } : null); // Revert
+        setWorkOrder(prev => prev ? { ...prev, uploadedFiles: currentFiles } : null);
     }
   };
 
@@ -299,7 +294,6 @@ export default function WorkOrderDetailPage() {
             fetchData();
             setActiveTab('activity');
         } catch (e) {
-            // History error handling
         }
     };
   
@@ -350,7 +344,6 @@ export default function WorkOrderDetailPage() {
         toast({ title: "Signature Saved", description: "The signature has been saved." });
         setIsSignatureDialogOpen(false);
       } catch (error) {
-        // uploadImage handled manually, Firestore handled via non-blocking utils
         if (!(error instanceof Error && error.name === 'FirebaseError')) {
             toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not upload the signature.' });
         }
@@ -542,7 +535,6 @@ export default function WorkOrderDetailPage() {
             window.URL.revokeObjectURL(objectUrl);
             await new Promise(resolve => setTimeout(resolve, 200));
         } catch (error) {
-            // silent fail
         }
     }
     setIsDownloading(false);
@@ -572,7 +564,6 @@ export default function WorkOrderDetailPage() {
       toast({ title: "Work Order Submitted for Review" });
       fetchData(); 
     } catch (error) {
-        // non-blocking utils handle permission errors
     } finally {
         setIsSubmittingReview(false);
     }
@@ -602,7 +593,6 @@ export default function WorkOrderDetailPage() {
       toast({ title: "Work Order Completed" });
       fetchData(); 
     } catch (error) {
-        // non-blocking utils handle permission errors
     } finally {
         setIsCompleting(false);
     }
@@ -614,7 +604,7 @@ export default function WorkOrderDetailPage() {
     updateDocumentNonBlocking(woRef, {
         needsAttention: false,
         technicianReplied: true,
-        status: 'Review' // Technician fix means it's ready for review again
+        status: 'Review' 
     });
     toast({ title: 'Attention Acknowledged' });
     fetchData();
