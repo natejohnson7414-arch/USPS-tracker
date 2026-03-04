@@ -26,6 +26,7 @@ export interface UploadOptions {
 
 /**
  * Uploads a file to Firebase Storage with resumable support, timeouts, and stall detection.
+ * USES OFFICIAL SDK: firebase/storage
  */
 export const uploadImageResumable = async (
   file: Blob,
@@ -41,27 +42,16 @@ export const uploadImageResumable = async (
     const services = await initializeFirebase();
     const auth = getAuth(services.firebaseApp);
 
-    // 1. Auth Guard
+    // 1. Auth Guard - Critical for CORS preflights relying on Authorization headers
     if (isDebug) console.log(`[UPLOAD] Initializing: ${path}`);
     
-    // Explicitly wait for the auth state to be resolved to avoid rule denials
+    // Explicitly wait for the auth state to be resolved to avoid rule denials during preflight
     await auth.authStateReady();
     const user = auth.currentUser;
 
     if (!user) {
       if (isDebug) console.error("[UPLOAD] Aborted: No authenticated user.");
       throw new Error("Authentication required for upload.");
-    }
-
-    if (isDebug) {
-      const token = await getIdTokenResult(user);
-      console.log("[UPLOAD] Context:", {
-        path,
-        uid: user.uid,
-        online: navigator.onLine,
-        size: file.size,
-        origin: typeof window !== 'undefined' ? window.location.origin : 'unknown'
-      });
     }
 
     activeUploadCount++;
@@ -86,7 +76,7 @@ export const uploadImageResumable = async (
       if (elapsedSinceProgress > STALL_TIMEOUT) {
         clearInterval(watchdog);
         uploadTask.cancel();
-        if (isDebug) console.error(`[UPLOAD] Stalled: No progress for ${STALL_TIMEOUT}ms. Possible CORS block or network timeout.`);
+        if (isDebug) console.error(`[UPLOAD] Stalled: No progress for ${STALL_TIMEOUT}ms. CORS or network block detected.`);
       }
 
       if (elapsedTotal > HARD_TIMEOUT) {
@@ -117,9 +107,9 @@ export const uploadImageResumable = async (
             window.__UPLOAD_IN_PROGRESS__ = false;
           }
           if (isDebug) {
-            console.error("[UPLOAD] Error:", error.code, error.message);
+            console.error("[UPLOAD] SDK Error:", error.code, error.message);
             if (error.code === 'storage/unauthorized' || error.message.includes('CORS')) {
-              console.warn("[UPLOAD] DIAGNOSIS: This is likely a CORS block. Ensure the Storage bucket allows your origin.");
+              console.warn("[UPLOAD] ACTION REQUIRED: Configure Bucket CORS via Google Cloud Console.");
             }
           }
           reject(error);
@@ -142,7 +132,7 @@ export const uploadImageResumable = async (
     });
 
   } catch (error: any) {
-    if (isDebug) console.error("[UPLOAD] Critical Exception:", error);
+    if (isDebug) console.error("[UPLOAD] Initialization Exception:", error);
     throw error;
   }
 };

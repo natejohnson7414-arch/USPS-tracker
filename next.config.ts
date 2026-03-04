@@ -61,8 +61,8 @@ const withPWA = require('next-pwa')({
       },
     },
     {
-      // 5. General Page Caching
-      urlPattern: /\/.*$/i,
+      // 5. General Page Caching (Restricted to same-origin to avoid CORS interference)
+      urlPattern: ({ url }) => url.origin === self.location.origin && url.pathname.startsWith('/'),
       handler: 'StaleWhileRevalidate',
       options: {
         cacheName: 'next-pages',
