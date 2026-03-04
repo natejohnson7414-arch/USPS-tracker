@@ -58,11 +58,9 @@ export default function EditAssetPage() {
     <MainLayout>
       <div className="container mx-auto py-8">
         <div className="mb-8">
-          <Button asChild variant="ghost" className="mb-4">
-            <Link href={`/assets/${id}`}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Details
-            </Link>
+          <Button variant="ghost" className="mb-4" onClick={() => router.back()}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
           </Button>
           <h1 className="text-3xl font-bold tracking-tight">Edit Asset</h1>
           <p className="text-muted-foreground font-mono">Tag: {asset.assetTag}</p>

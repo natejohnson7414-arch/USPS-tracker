@@ -1,8 +1,9 @@
 
 'use client';
 
-import { useState, useEffect, Suspense, useMemo } from 'react';
+import { useState, useEffect, Suspense, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,9 +12,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
 import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { uploadImage, deleteImage } from '@/firebase/storage';
 import { collection, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, Ban, PlusCircle, Trash2, CalendarClock, Wrench } from 'lucide-react';
+import { Loader2, Save, Ban, PlusCircle, Trash2, CalendarClock, Wrench, Camera, X } from 'lucide-react';
 import type { Asset, WorkSite, AssetMaterial, Material } from '@/lib/types';
 import { getWorkSites, getMaterials, getAssets } from '@/lib/data';
 import { Separator } from '@/components/ui/separator';
@@ -36,10 +38,11 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
   const { toast } = useToast();
   
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
   const [workSites, setWorkSites] = useState<WorkSite[]>([]);
   const [materialSuggestions, setMaterialSuggestions] = useState<{name: string, category: string, uom: string}[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 1. Derive the initial form state from props or defaults
   const initialFormData = useMemo(() => {
     if (asset) {
       return {
@@ -61,6 +64,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
         pmMonth: asset.pmMonth ?? new Date().getMonth() + 1,
         customFields: asset.customFields || {},
         materials: asset.materials || [],
+        photoUrls: asset.photoUrls || [],
       };
     }
     return {
@@ -81,18 +85,16 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
       pmMonth: new Date().getMonth() + 1,
       customFields: {},
       materials: [],
+      photoUrls: [],
     };
   }, [asset, searchParams]);
 
-  // 2. Initialize state directly from the computed initial data
   const [formData, setFormData] = useState<Partial<Asset>>(initialFormData);
 
-  // 3. Keep local state in sync if the asset prop changes
   useEffect(() => {
     setFormData(initialFormData);
   }, [initialFormData]);
 
-  // Local state for adding new items (temporary UI state)
   const [newFieldName, setNewFieldName] = useState('');
   const [newFieldValue, setNewFieldValue] = useState('');
   
@@ -105,7 +107,6 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
     if (db) {
       getWorkSites(db).then(setWorkSites);
       
-      // Load suggestions from BOTH catalog and existing asset data (previously typed names)
       const loadSuggestions = async () => {
         try {
           const [catalog, allAssets] = await Promise.all([
@@ -115,12 +116,10 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
           
           const suggestions = new Map<string, {name: string, category: string, uom: string}>();
           
-          // Add from catalog
           catalog.forEach(m => {
             suggestions.set(m.name.toLowerCase(), { name: m.name, category: m.category, uom: m.uom });
           });
           
-          // Add from assets (previously typed names)
           allAssets.forEach(a => {
             a.materials?.forEach(m => {
               if (!suggestions.has(m.name.toLowerCase())) {
@@ -199,6 +198,48 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
     }));
   };
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploadingPhotos(true);
+    const toastId = toast({ title: `Uploading ${files.length} photo(s)...` });
+
+    try {
+      const uploadPromises = Array.from(files).map(file => {
+        const path = `assets/${formData.assetTag || 'new'}/${Date.now()}-${file.name}`;
+        return uploadImage(file, path);
+      });
+
+      const uploadedUrls = await Promise.all(uploadPromises);
+      setFormData(prev => ({
+        ...prev,
+        photoUrls: [...(prev.photoUrls || []), ...uploadedUrls]
+      }));
+
+      toastId.dismiss();
+      toast({ title: "Photos Uploaded" });
+    } catch (error) {
+      toastId.dismiss();
+      toast({ title: "Upload Failed", variant: "destructive" });
+    } finally {
+      setIsUploadingPhotos(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemovePhoto = async (url: string) => {
+    setFormData(prev => ({
+      ...prev,
+      photoUrls: (prev.photoUrls || []).filter(u => u !== url)
+    }));
+    try {
+      await deleteImage(url);
+    } catch (e) {
+      console.warn("Could not delete from storage, but removed from form.");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db) return;
@@ -228,7 +269,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
         toast({ title: 'Asset Created' });
       }
 
-      router.push('/assets');
+      router.back();
     } catch (error) {
       console.error('Error saving asset:', error);
       toast({ title: 'Error saving asset', variant: 'destructive' });
@@ -272,6 +313,52 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
           </Card>
 
           <Card>
+            <CardHeader><CardTitle>Equipment Photos</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {formData.photoUrls?.map((url, idx) => (
+                  <div key={idx} className="relative aspect-square rounded-md overflow-hidden border">
+                    <Image src={url} alt={`Asset photo ${idx + 1}`} fill className="object-cover" />
+                    <Button 
+                      type="button" 
+                      variant="destructive" 
+                      size="icon" 
+                      className="absolute top-1 right-1 h-6 w-6"
+                      onClick={() => handleRemovePhoto(url)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingPhotos}
+                  className="aspect-square border-2 border-dashed rounded-md flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/50 transition-colors"
+                >
+                  {isUploadingPhotos ? (
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  ) : (
+                    <>
+                      <Camera className="h-6 w-6 mb-2" />
+                      <span className="text-[10px] uppercase font-bold">Add Photo</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                multiple 
+                accept="image/*" 
+                capture="environment"
+                className="hidden" 
+                onChange={handlePhotoUpload} 
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
             <CardHeader><CardTitle>Location & Classification</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -311,7 +398,9 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
               </div>
             </CardContent>
           </Card>
+        </div>
 
+        <div className="space-y-8">
           <Card className="border-primary/20 bg-primary/5">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -364,13 +453,10 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
                   onChange={(e) => setFormData({ ...formData, pmLaborHours: parseFloat(e.target.value) || 0 })}
                   disabled={formData.pmFrequency === 'none'}
                 />
-                <p className="text-[10px] text-muted-foreground">This value is used for site-wide labor demand forecasting.</p>
               </div>
             </CardContent>
           </Card>
-        </div>
 
-        <div className="space-y-8">
           <Card>
             <CardHeader><CardTitle>PM Materials (Filters, Belts, etc.)</CardTitle></CardHeader>
             <CardContent className="space-y-4">
@@ -410,7 +496,6 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
                       onChange={(e) => {
                         const val = e.target.value;
                         setNewMatName(val);
-                        // Auto-select type and uom if matching an existing suggestion
                         const match = materialSuggestions.find(m => m.name.toLowerCase() === val.toLowerCase());
                         if (match) {
                           setNewMatUom(match.uom);

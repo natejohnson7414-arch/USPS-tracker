@@ -2,14 +2,15 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { History, CalendarClock, Settings, Wrench, ShieldCheck, Clock, FileText, Loader2, AlertCircle, Box, Tag, PlusCircle, Repeat, ArrowLeft } from 'lucide-react';
+import { History, CalendarClock, Settings, Wrench, ShieldCheck, Clock, FileText, Loader2, AlertCircle, Box, Tag, PlusCircle, Repeat, ArrowLeft, Camera } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { getAssetById, getAssetPmSchedules, getAssetServiceHistory, calculateAssetMetrics } from '@/lib/data';
 import type { Asset, AssetPmSchedule, AssetServiceHistory } from '@/lib/types';
@@ -19,6 +20,7 @@ import { AddPmScheduleDialog } from '@/components/add-pm-schedule-dialog';
 
 export default function AssetDetailsPage() {
   const { id } = useParams();
+  const router = useRouter();
   const db = useFirestore();
   const [asset, setAsset] = useState<Asset | null>(null);
   const [schedules, setSchedules] = useState<AssetPmSchedule[]>([]);
@@ -72,11 +74,9 @@ export default function AssetDetailsPage() {
     <MainLayout>
       <div className="container mx-auto py-8">
         <div className="mb-8">
-          <Button asChild variant="ghost" className="mb-4 -ml-4">
-            <Link href="/assets">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Assets
-            </Link>
+          <Button variant="ghost" className="mb-4 -ml-4" onClick={() => router.back()}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
           </Button>
           <div className="flex items-start justify-between">
             <div>
@@ -154,12 +154,38 @@ export default function AssetDetailsPage() {
           </div>
 
           <div className="lg:col-span-3">
-            <Tabs defaultValue="history">
+            <Tabs defaultValue="photos">
               <TabsList className="mb-4">
+                <TabsTrigger value="photos"><Camera className="mr-2 h-4 w-4" /> Photos</TabsTrigger>
                 <TabsTrigger value="history"><History className="mr-2 h-4 w-4" /> Service History</TabsTrigger>
                 <TabsTrigger value="pm"><CalendarClock className="mr-2 h-4 w-4" /> PM Schedules</TabsTrigger>
                 <TabsTrigger value="docs"><FileText className="mr-2 h-4 w-4" /> Documents</TabsTrigger>
               </TabsList>
+
+              <TabsContent value="photos">
+                <Card>
+                  <CardHeader><CardTitle>Asset Photos</CardTitle></CardHeader>
+                  <CardContent>
+                    {asset.photoUrls && asset.photoUrls.length > 0 ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                        {asset.photoUrls.map((url, idx) => (
+                          <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="relative aspect-square rounded-lg overflow-hidden border hover:opacity-90 transition-opacity">
+                            <Image src={url} alt={`Asset photo ${idx + 1}`} fill className="object-cover" />
+                          </a>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
+                        <Camera className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                        <p>No photos available for this asset.</p>
+                        <Button variant="link" asChild className="mt-2">
+                          <Link href={`/assets/${id}/edit`}>Add Photos</Link>
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
               <TabsContent value="history">
                 <Card>

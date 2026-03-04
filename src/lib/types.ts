@@ -189,6 +189,7 @@ export type Asset = {
   pmMonth?: number;
   customFields?: { [key: string]: string };
   materials?: AssetMaterial[];
+  photoUrls?: string[];
   // Denormalized for display
   siteName?: string;
 };

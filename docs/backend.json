@@ -42,6 +42,10 @@
               "uom": { "type": "string" }
             }
           }
+        },
+        "photoUrls": {
+          "type": "array",
+          "items": { "type": "string" }
         }
       },
       "required": ["id", "name", "assetTag", "siteId", "status", "criticality"]
