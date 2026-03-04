@@ -161,6 +161,7 @@ export default function WorkOrderDetailPage() {
     if (!db || !workOrder || files.length === 0) return;
     
     setIsSavingPhotos(true);
+    // Pause background sync
     if (typeof window !== 'undefined') window.__UPLOAD_IN_PROGRESS__ = true;
     
     const toastId = toast({ title: `Uploading ${files.length} photo(s)...`, duration: Infinity });
@@ -219,6 +220,7 @@ export default function WorkOrderDetailPage() {
       });
     } finally {
       setIsSavingPhotos(false);
+      // Resume background sync
       if (typeof window !== 'undefined') window.__UPLOAD_IN_PROGRESS__ = false;
     }
   };
