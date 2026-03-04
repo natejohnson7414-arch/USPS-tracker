@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useCallback, useRef } from 'react';
@@ -6,21 +5,33 @@ import { useFirestore, useUser } from '@/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useTechnician } from '@/hooks/use-technician';
 
+declare global {
+  interface Window {
+    __UPLOAD_IN_PROGRESS__?: boolean;
+  }
+}
+
 /**
  * Background component that pre-caches data for technicians.
  * 
  * OPTIMIZATION: Implemented sequential throttling and concurrency capping 
  * to ensure background sync doesn't block high-priority photo uploads.
+ * 
+ * PAUSE LOGIC: Sync skips iterations if an upload is active.
  */
 export function SyncManager() {
   const db = useFirestore();
   const { user } = useUser();
   const { technician, role, isLoading: isProfileLoading } = useTechnician();
   const isSyncing = useRef(false);
-  const abortController = useRef<AbortController | null>(null);
 
   const performSync = useCallback(async () => {
+    // Skip if already syncing, offline, or if an UPLOAD is in progress
     if (!db || !user || !technician || !role || isSyncing.current || !navigator.onLine) return;
+    if (typeof window !== 'undefined' && window.__UPLOAD_IN_PROGRESS__) {
+      console.log('[SyncManager] Pause: Active upload detected.');
+      return;
+    }
 
     isSyncing.current = true;
     console.log('[SyncManager] Throttled background sync starting...');
@@ -35,14 +46,14 @@ export function SyncManager() {
       
       // Process work orders one by one with a delay to yield to the UI thread and network
       for (const woDoc of snapshot.docs) {
-        // Yield check: Stop if component unmounted or user logged out
-        if (!isSyncing.current) break;
+        // Stop if component unmounted, user logged out, or UPLOAD started mid-sync
+        if (!isSyncing.current || (typeof window !== 'undefined' && window.__UPLOAD_IN_PROGRESS__)) break;
 
         const woId = woDoc.id;
         try {
             // Fetch updates and activities with significant yielding
             await getDocs(collection(db, 'work_orders', woId, 'updates'));
-            await new Promise(resolve => setTimeout(resolve, 500)); // Increased delay
+            await new Promise(resolve => setTimeout(resolve, 500));
             
             await getDocs(collection(db, 'work_orders', woId, 'activities'));
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -52,9 +63,11 @@ export function SyncManager() {
       }
       
       // Cache base registries
-      await getDocs(collection(db, 'work_sites'));
-      await getDocs(collection(db, 'clients'));
-      await getDocs(collection(db, 'technicians'));
+      if (!window.__UPLOAD_IN_PROGRESS__) {
+        await getDocs(collection(db, 'work_sites'));
+        await getDocs(collection(db, 'clients'));
+        await getDocs(collection(db, 'technicians'));
+      }
 
       console.log('[SyncManager] Sync cycle complete.');
     } catch (error) {

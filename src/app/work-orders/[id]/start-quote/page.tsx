@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -125,10 +124,15 @@ export default function StartQuotePage() {
         }
 
         setIsSubmitting(true);
+        if (typeof window !== 'undefined') window.__UPLOAD_IN_PROGRESS__ = true;
+        
         const isDebug = process.env.NEXT_PUBLIC_DEBUG_UPLOADS === '1';
-        const progressToast = toast({ title: 'Processing...', description: 'Generating quote number.' });
+        const progressToast = toast({ title: 'Initializing...', description: 'Starting quote submission.', duration: Infinity });
 
         try {
+            if (isDebug) console.log("[UPLOAD] Generating sequential quote ID...");
+            progressToast.update({ id: progressToast.id, title: 'Generating ID', description: 'Reserving your quote number.' });
+            
             const result = await generateQuoteNumber();
 
             if (result.error || !result.quoteNumber) {
@@ -136,20 +140,29 @@ export default function StartQuotePage() {
             }
             
             const quoteNumber = result.quoteNumber;
-
-            let photoUrls: string[] = [];
-            let videoUrls: string[] = [];
+            const photoUrls: string[] = [];
+            const videoUrls: string[] = [];
 
             if (photos.length > 0 || videos.length > 0) {
-                progressToast.update({ id: progressToast.id, title: 'Uploading Media...', description: `Uploading ${photos.length + videos.length} files.` });
-                
-                // FIX: Sequential uploads to avoid browser concurrency bottlenecks
+                const totalFiles = photos.length + videos.length;
+                let currentFile = 0;
+
+                // SEQUENTIAL UPLOADS to prevent connection saturation
                 for (const file of photos) {
-                    const url = await uploadImage(file, `quotes/${quoteNumber}/photos/${Date.now()}-${file.name}`);
+                    currentFile++;
+                    progressToast.update({ id: progressToast.id, title: `Uploading Photo ${currentFile}/${totalFiles}`, description: 'Connecting...' });
+                    const url = await uploadImage(file, `quotes/${quoteNumber}/photos/${Date.now()}-${file.name}`, (pct) => {
+                        progressToast.update({ id: progressToast.id, description: `Transferring... ${pct}%` });
+                    });
                     photoUrls.push(url);
                 }
+
                 for (const file of videos) {
-                    const url = await uploadImage(file, `quotes/${quoteNumber}/videos/${Date.now()}-${file.name}`);
+                    currentFile++;
+                    progressToast.update({ id: progressToast.id, title: `Uploading Video ${currentFile}/${totalFiles}`, description: 'Connecting...' });
+                    const url = await uploadImage(file, `quotes/${quoteNumber}/videos/${Date.now()}-${file.name}`, (pct) => {
+                        progressToast.update({ id: progressToast.id, description: `Transferring... ${pct}%` });
+                    });
                     videoUrls.push(url);
                 }
             }
@@ -181,16 +194,18 @@ export default function StartQuotePage() {
                 total: 0,
             };
 
-            if (isDebug) console.log("[Storage] Saving Quote Document:", quoteNumber);
+            if (isDebug) console.log("[UPLOAD] Saving Firestore record:", quoteNumber);
 
-            addDocumentNonBlocking(collection(db, 'quotes'), newQuote);
+            // Await the save so we know it's done before navigating
+            await addDocumentNonBlocking(collection(db, 'quotes'), newQuote);
 
             const workOrderRef = doc(db, 'work_orders', workOrder.id);
-            updateDocumentNonBlocking(workOrderRef, { status: 'On Hold' });
+            await updateDocumentNonBlocking(workOrderRef, { status: 'On Hold' });
 
             progressToast.dismiss();
             toast({ title: 'Quote Submitted', description: `Quote ${quoteNumber} has been requested.` });
             
+            // Non-essential notification triggered in background
             notifyAdminsOfNewQuote({
                 quoteId: quoteNumber,
                 workOrderId: workOrder.id,
@@ -201,14 +216,16 @@ export default function StartQuotePage() {
             router.push(`/work-orders/${workOrder.id}`);
 
         } catch (error: any) {
-            if (isDebug) console.error("[Storage] Quote Submission Chain Failed:", error);
+            if (isDebug) console.error("[UPLOAD] Process Error:", error);
             progressToast.dismiss();
             toast({ 
                 title: 'Submission Failed', 
-                description: error.message || 'An unexpected error occurred.', 
+                description: error.message || 'The connection was lost. Check your network and try again.', 
                 variant: 'destructive' 
             });
             setIsSubmitting(false);
+        } finally {
+            if (typeof window !== 'undefined') window.__UPLOAD_IN_PROGRESS__ = false;
         }
     };
     

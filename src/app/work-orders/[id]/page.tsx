@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
@@ -162,14 +161,31 @@ export default function WorkOrderDetailPage() {
     if (!db || !workOrder || files.length === 0) return;
     
     setIsSavingPhotos(true);
-    const toastId = toast({ title: `Uploading ${files.length} photo(s)...` });
+    if (typeof window !== 'undefined') window.__UPLOAD_IN_PROGRESS__ = true;
+    
+    const toastId = toast({ title: `Uploading ${files.length} photo(s)...`, duration: Infinity });
     const isDebug = process.env.NEXT_PUBLIC_DEBUG_UPLOADS === '1';
 
     try {
-      // FIX: Serialize uploads slightly to avoid browser concurrent request limits
       const uploadedUrls: string[] = [];
+      let currentIndex = 0;
+
+      // SEQUENTIAL UPLOADS to prevent connection saturation
       for (const file of files) {
-        const url = await uploadImage(file, `work-orders/${workOrder.id}/${type}/${Date.now()}-${file.name}`);
+        currentIndex++;
+        if (isDebug) console.log(`[UPLOAD] Starting file ${currentIndex}/${files.length}`);
+        
+        const path = `work-orders/${workOrder.id}/${type}/${Date.now()}-${file.name}`;
+        
+        // Use the new resumable uploader with progress
+        const url = await uploadImage(file, path, (pct) => {
+          toastId.update({ 
+            id: toastId.id, 
+            title: `Photo ${currentIndex}/${files.length}`, 
+            description: `Uploading... ${pct}%` 
+          });
+        });
+        
         uploadedUrls.push(url);
       }
 
@@ -181,23 +197,29 @@ export default function WorkOrderDetailPage() {
       const currentUrls = workOrder[fieldToUpdate] || [];
       const newUrls = [...currentUrls, ...uploadedUrls];
 
-      if (isDebug) console.log(`[Storage] Updating Firestore ${fieldToUpdate} with ${newUrls.length} items`);
-
-      updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), {
+      if (isDebug) console.log(`[UPLOAD] Finalizing Firestore metadata update...`);
+      
+      // CRITICAL: Await the Firestore update so the UI doesn't close the sheet while data is pending
+      await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), {
         [fieldToUpdate]: newUrls,
       });
 
       setWorkOrder(prev => prev ? { ...prev, [fieldToUpdate]: newUrls } : null);
       
       toastId.dismiss();
-      toast({ title: "Photos Uploaded", description: `${files.length} photo(s) have been added.` });
+      toast({ title: "Photos Saved", description: `${files.length} photo(s) have been added to the job.` });
 
     } catch (error: any) {
-      if (isDebug) console.error("[Storage] Photo Add Handler Failed:", error);
+      if (isDebug) console.error("[UPLOAD] Process Failed:", error);
       toastId.dismiss();
-      toast({ variant: "destructive", title: "Upload Failed", description: error.message || "Could not upload photos." });
+      toast({ 
+        variant: "destructive", 
+        title: "Upload Failed", 
+        description: error.message || "The connection was interrupted. Please try again." 
+      });
     } finally {
       setIsSavingPhotos(false);
+      if (typeof window !== 'undefined') window.__UPLOAD_IN_PROGRESS__ = false;
     }
   };
 
@@ -219,7 +241,7 @@ export default function WorkOrderDetailPage() {
         await deleteImage(urlToDelete);
         toast({ title: "Photo Deleted" });
     } catch(error) {
-        setWorkOrder(prev => prev ? { ...prev, [fieldToUpdate]: currentUrls } : null);
+        fetchData(); // Rollback
     }
   };
 
@@ -227,13 +249,21 @@ export default function WorkOrderDetailPage() {
     if (!db || !workOrder || files.length === 0) return;
     
     setIsUploadingFiles(true);
-    const toastId = toast({ title: `Uploading ${files.length} file(s)...` });
+    if (typeof window !== 'undefined') window.__UPLOAD_IN_PROGRESS__ = true;
+    
+    const toastId = toast({ title: `Uploading ${files.length} file(s)...`, duration: Infinity });
 
     try {
       const uploadedFiles: FileAttachment[] = [];
+      let i = 0;
       for (const file of files) {
+        i++;
         const path = `work-orders/${workOrder.id}/files/${Date.now()}-${file.name}`;
-        const url = await uploadImage(file, path);
+        
+        const url = await uploadImage(file, path, (pct) => {
+          toastId.update({ id: toastId.id, description: `File ${i}/${files.length}: ${pct}%` });
+        });
+
         uploadedFiles.push({
           name: file.name,
           url,
@@ -246,7 +276,7 @@ export default function WorkOrderDetailPage() {
       const currentFiles = workOrder.uploadedFiles || [];
       const newFiles = [...currentFiles, ...uploadedFiles];
 
-      updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), {
+      await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), {
         uploadedFiles: newFiles,
       });
 
@@ -257,9 +287,10 @@ export default function WorkOrderDetailPage() {
 
     } catch (error: any) {
       toastId.dismiss();
-      toast({ variant: "destructive", title: "Upload Failed", description: error.message || "Could not upload files." });
+      toast({ variant: "destructive", title: "Upload Failed", description: error.message || "Connection timed out." });
     } finally {
       setIsUploadingFiles(false);
+      if (typeof window !== 'undefined') window.__UPLOAD_IN_PROGRESS__ = false;
     }
   };
 
@@ -276,7 +307,7 @@ export default function WorkOrderDetailPage() {
         await deleteImage(fileToDelete.url); 
         toast({ title: "File Deleted" });
     } catch(error) {
-        setWorkOrder(prev => prev ? { ...prev, uploadedFiles: currentFiles } : null);
+        fetchData();
     }
   };
 
@@ -330,10 +361,11 @@ export default function WorkOrderDetailPage() {
       
       try {
         const signatureBlob = await (await fetch(signatureDataUrl)).blob();
+        // Use the new uploader for signatures too to prevent hangs
         const signatureUrl = await uploadImage(signatureBlob, signaturePath);
         const signatureDate = new Date().toISOString();
         
-        updateDocumentNonBlocking(workOrderDocRef, {
+        await updateDocumentNonBlocking(workOrderDocRef, {
             customerSignatureUrl: signatureUrl,
             signatureDate: signatureDate,
             contactInfo: contactInfo
@@ -344,9 +376,7 @@ export default function WorkOrderDetailPage() {
         toast({ title: "Signature Saved", description: "The signature has been saved." });
         setIsSignatureDialogOpen(false);
       } catch (error) {
-        if (!(error instanceof Error && error.name === 'FirebaseError')) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not upload the signature.' });
-        }
+        toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not upload the signature.' });
       } finally {
         setIsSavingPhotos(false);
       }
@@ -405,7 +435,7 @@ export default function WorkOrderDetailPage() {
         }
         toast({ title: 'Photo Deleted' });
     } catch (error) {
-        setWorkOrder(prev => prev ? ({...prev, notes: originalNotes}) : null);
+        fetchData();
     }
   };
 
@@ -429,7 +459,7 @@ export default function WorkOrderDetailPage() {
             toast({ title: 'Note Deleted' });
         })
         .catch(error => {
-            setWorkOrder(prev => prev ? ({...prev, notes: originalNotes}) : null);
+            fetchData();
         });
   };
 
@@ -556,7 +586,7 @@ export default function WorkOrderDetailPage() {
       };
 
       const workOrderRef = doc(db, 'work_orders', workOrder.id);
-      updateDocumentNonBlocking(workOrderRef, {
+      await updateDocumentNonBlocking(workOrderRef, {
         status: 'Review',
         work_history: arrayUnion(historyItem)
       });
@@ -585,7 +615,7 @@ export default function WorkOrderDetailPage() {
       };
 
       const workOrderRef = doc(db, 'work_orders', workOrder.id);
-      updateDocumentNonBlocking(workOrderRef, {
+      await updateDocumentNonBlocking(workOrderRef, {
         status: 'Completed',
         work_history: arrayUnion(historyItem)
       });
