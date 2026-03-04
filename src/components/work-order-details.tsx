@@ -628,21 +628,29 @@ export function WorkOrderDetails({
                               <Link href={`/assets/${asset.id}`}><ChevronRight className="h-4 w-4" /></Link>
                             </Button>
                             {!isCompleted && (
-                              <Button 
-                                variant={isLinked ? "ghost" : "outline"} 
-                                size="sm" 
-                                className={isLinked ? "text-destructive hover:bg-destructive/10" : "gap-2"}
-                                onClick={() => isLinked ? handleUnlinkAsset(asset.id) : handleLinkAsset(asset.id)}
-                                disabled={!!isLinking}
-                              >
-                                {isLoading ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : isLinked ? (
-                                  <><X className="h-4 w-4" /> Unlink</>
+                              <div className="flex items-center gap-2">
+                                {isLinked ? (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="text-destructive hover:bg-destructive/10"
+                                    onClick={() => handleUnlinkAsset(asset.id)}
+                                    disabled={!!isLinking}
+                                  >
+                                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><X className="h-4 w-4 mr-1" /> Unlink</>}
+                                  </Button>
                                 ) : (
-                                  <><LinkIcon className="h-4 w-4" /> Link Asset</>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="gap-2"
+                                    onClick={() => handleLinkAsset(asset.id)}
+                                    disabled={!!isLinking}
+                                  >
+                                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><LinkIcon className="h-4 w-4" /> Link Asset</>}
+                                  </Button>
                                 )}
-                              </Button>
+                              </div>
                             )}
                           </div>
                         </div>

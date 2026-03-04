@@ -45,16 +45,37 @@ export const seedDatabase = async (db: any) => {
 };
 
 export const getWorkOrderById = async (db: any, id: string): Promise<WorkOrder | undefined> => {
-  const workOrderRef = doc(db, 'work_orders', id);
-  const workOrderSnap = await getDocumentNonBlocking(workOrderRef);
-  if (workOrderSnap.exists()) {
-    const data = workOrderSnap.data();
-    let workSite = data.workSiteId ? await getWorkSiteById(db, data.workSiteId) : undefined;
-    let client = data.clientId ? await getClientById(db, data.clientId) : undefined;
-    const notesSnapshot = await getCollectionNonBlocking(collection(db, 'work_orders', id, 'updates'));
-    const notesList = notesSnapshot.docs.map(d => ({ id: d.id, text: d.data().notes, photoUrls: d.data().photoUrls || [], createdAt: d.data().createdAt }));
-    const activities = await getActivitiesByWorkOrderId(db, id);
-    return { ...data, id: workOrderSnap.id, workSite, client, notes: notesList, activities } as WorkOrder;
+  try {
+    const workOrderRef = doc(db, 'work_orders', id);
+    const workOrderSnap = await getDocumentNonBlocking(workOrderRef);
+    if (workOrderSnap.exists()) {
+      const data = workOrderSnap.data();
+      
+      // Attempt to load associated data but catch failures gracefully
+      let workSite = data.workSiteId ? await getWorkSiteById(db, data.workSiteId).catch(() => undefined) : undefined;
+      let client = data.clientId ? await getClientById(db, data.clientId).catch(() => undefined) : undefined;
+      
+      const notesSnapshot = await getCollectionNonBlocking(collection(db, 'work_orders', id, 'updates')).catch(() => ({ docs: [] }));
+      const notesList = notesSnapshot.docs.map((d: any) => ({ 
+        id: d.id, 
+        text: d.data().notes, 
+        photoUrls: d.data().photoUrls || [], 
+        createdAt: d.data().createdAt 
+      }));
+      
+      const activities = await getActivitiesByWorkOrderId(db, id).catch(() => []);
+      
+      return { 
+        ...data, 
+        id: workOrderSnap.id, 
+        workSite, 
+        client, 
+        notes: notesList, 
+        activities 
+      } as WorkOrder;
+    }
+  } catch (error) {
+    console.error(`Error in getWorkOrderById for ${id}:`, error);
   }
   return undefined;
 };

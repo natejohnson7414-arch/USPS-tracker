@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect, useState, useMemo, FormEvent } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { getTechnicians, getWorkOrderById, getWorkSites, getClients, getTrainingRecordsByWorkOrderId, getTimeEntriesByWorkOrder, getTechnicianById, deleteTrainingRecord, updateWorkOrderStatus, addWorkHistoryItem, getQuotesByWorkOrderId, getHvacStartupReportsByWorkOrderId, deleteHvacStartupReport, getActivitiesByWorkOrderId } from '@/lib/data';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -79,9 +79,9 @@ export default function WorkOrderDetailPage() {
     return doc(db, 'work_orders', id);
   }, [db, id]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
       if (!db || !user) return;
-      setIsLoading(true);
+      
       try {
         const [
             fetchedTechnicians, 
@@ -131,17 +131,18 @@ export default function WorkOrderDetailPage() {
         }
 
       } catch (error) {
-        // Standard data fetching error handling
-        setWorkOrder(null);
-        notFound();
+        console.error("Error in WorkOrder details fetchData:", error);
       } finally {
         setIsLoading(false);
       }
-    };
+    }, [db, id, user]);
 
   useEffect(() => {
-    fetchData();
-  }, [db, id, user]);
+    if (db && user) {
+        setIsLoading(true);
+        fetchData();
+    }
+  }, [db, id, user, fetchData]);
 
   const handleDirectionsClick = (workSite: WorkSite) => {
     if (!workSite.address) return;
@@ -617,8 +618,21 @@ export default function WorkOrderDetailPage() {
     fetchData();
   };
 
-  if (isLoading || !workOrder) {
-    return <MainLayout><div className="flex items-center justify-center h-full"><p>Loading work order details...</p></div></MainLayout>;
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="flex h-screen items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="text-muted-foreground font-medium">Loading work order details...</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (!workOrder) {
+    notFound();
   }
 
   const isTechnician = currentUserRole?.name === 'Technician';
