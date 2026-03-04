@@ -29,6 +29,7 @@ export type WorkOrderNote = {
   text: string;
   createdAt: string;
   photoUrls?: string[];
+  excludeFromReport?: boolean;
 };
 
 export type Activity = {
@@ -41,6 +42,7 @@ export type Activity = {
   description: string;
   technician?: Technician;
   parentWorkOrder?: Partial<WorkOrder>;
+  excludeFromReport?: boolean;
 };
 
 export type ActivityHistoryItem = {
@@ -106,6 +108,7 @@ export type WorkOrder = {
   needsAttention?: boolean;
   attentionMessage?: string;
   technicianReplied?: boolean;
+  customWorkPerformedSummary?: string;
   // Asset Integration
   assetId?: string;
   assetIds?: string[];

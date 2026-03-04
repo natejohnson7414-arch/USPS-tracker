@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -47,11 +48,18 @@ export default function WorkOrderReportPage() {
                 }
                 setWorkOrder(wo);
                 
-                // Aggregate all textual info for the AI
+                // 1. Check for manual override from the office
+                if (wo.customWorkPerformedSummary) {
+                    setSummarizedDescription(wo.customWorkPerformedSummary);
+                    setIsLoading(false);
+                    return;
+                }
+
+                // 2. Aggregate filtered info for the AI (excluding items marked by admin)
                 const contentParts = [
                     `Job Specification: ${wo.description}`,
-                    ...wo.notes.map(n => `Technician Note: ${n.text}`),
-                    ...wo.activities.map(a => `Activity Performed: ${a.description}`)
+                    ...wo.notes.filter(n => !n.excludeFromReport).map(n => `Technician Note: ${n.text}`),
+                    ...wo.activities.filter(a => !a.excludeFromReport).map(a => `Activity Performed: ${a.description}`)
                 ].filter(Boolean);
 
                 if (contentParts.length > 0) {
@@ -161,7 +169,7 @@ export default function WorkOrderReportPage() {
         return (
             <div className="flex h-screen items-center justify-center bg-gray-100">
                 <div className="p-8 bg-white shadow-lg rounded-lg text-center">
-                    <p className="text-lg font-medium">Generating AI Technical Summary...</p>
+                    <p className="text-lg font-medium">Generating Technical Summary...</p>
                     <Skeleton className="w-full h-96 mt-4" />
                 </div>
             </div>

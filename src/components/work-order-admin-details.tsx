@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText, Download, AlertCircle, Save, CheckCircle2, Package, ChevronRight } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText, Download, AlertCircle, Save, CheckCircle2, Package, ChevronRight, FileX, Sparkles } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
@@ -83,19 +83,27 @@ const AddActivityForm = ({ technicians, onAddActivity, isLoading }: {
     );
 };
 
-const ActivityItem = ({ activity, onUpdateStatus, technicians, onDeleteClick, isCompleted }: { 
+const ActivityItem = ({ activity, onUpdateStatus, onToggleReport, technicians, onDeleteClick, isCompleted }: { 
     activity: Activity, 
     onUpdateStatus: (id: string, status: Activity['status']) => void, 
+    onToggleReport: (id: string, excluded: boolean) => void,
     technicians: Technician[],
     onDeleteClick: () => void,
     isCompleted: boolean
 }) => {
     const assignedTechnician = activity.technician || technicians.find(t => t.id === activity.technicianId);
+    const isExcluded = activity.excludeFromReport || false;
     
     return (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg gap-4">
             <div className="flex-1 space-y-1">
-                <p className="font-medium">{activity.description}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{activity.description}</p>
+                  <Badge variant={isExcluded ? "outline" : "secondary"} className="h-5 text-[10px] uppercase font-bold gap-1">
+                    {isExcluded ? <FileX className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+                    {isExcluded ? "Hidden from PDF" : "Shown in PDF"}
+                  </Badge>
+                </div>
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                      {assignedTechnician && (
                         <div className="flex items-center gap-2">
@@ -110,6 +118,15 @@ const ActivityItem = ({ activity, onUpdateStatus, technicians, onDeleteClick, is
                 </div>
             </div>
             <div className="flex items-center gap-2">
+                 <div className="flex items-center gap-2 mr-4 bg-muted/50 p-1.5 rounded-md border">
+                    <Label htmlFor={`act-report-${activity.id}`} className="text-[10px] font-bold uppercase text-muted-foreground">Include in Report</Label>
+                    <Switch 
+                      id={`act-report-${activity.id}`} 
+                      checked={!isExcluded} 
+                      onCheckedChange={(checked) => onToggleReport(activity.id, !checked)}
+                      className="scale-75"
+                    />
+                 </div>
                  <Select value={activity.status} onValueChange={(status: Activity['status']) => onUpdateStatus(activity.id, status)} disabled={isCompleted}>
                     <SelectTrigger className="w-[180px]">
                         <SelectValue />
@@ -239,6 +256,7 @@ export function WorkOrderAdminDetails({
   const [internalNotes, setInternalNotes] = useState(workOrder.internalNotes || '');
   const [needsAttention, setNeedsAttention] = useState(workOrder.needsAttention || false);
   const [attentionMessage, setAttentionMessage] = useState(workOrder.attentionMessage || '');
+  const [customSummary, setCustomSummary] = useState(workOrder.customWorkPerformedSummary || '');
   const [isSavingAdminNotes, setIsSavingAdminNotes] = useState(false);
 
   const isCompleted = workOrder.status === 'Completed';
@@ -308,10 +326,10 @@ export function WorkOrderAdminDetails({
             internalNotes,
             needsAttention,
             attentionMessage: needsAttention ? attentionMessage : '',
+            customWorkPerformedSummary: customSummary,
             ...(needsAttention && { technicianReplied: false })
         };
 
-        // Automatic Status Revert: If flagged for attention, put back into In Progress
         if (needsAttention && workOrder.status !== 'Completed') {
             updateData.status = 'In Progress';
         }
@@ -333,6 +351,24 @@ export function WorkOrderAdminDetails({
     } finally {
         setIsSavingAdminNotes(false);
     }
+  };
+
+  const handleToggleNoteReportInclusion = async (noteId: string, excluded: boolean) => {
+    if (!db) return;
+    try {
+      const noteRef = doc(db, 'work_orders', workOrder.id, 'updates', noteId);
+      await updateDocumentNonBlocking(noteRef, { excludeFromReport: excluded });
+      toast({ title: excluded ? 'Note Hidden from Report' : 'Note Included in Report' });
+    } catch (e) {}
+  };
+
+  const handleToggleActivityReportInclusion = async (activityId: string, excluded: boolean) => {
+    if (!db) return;
+    try {
+      const actRef = doc(db, 'work_orders', workOrder.id, 'activities', activityId);
+      await updateDocumentNonBlocking(actRef, { excludeFromReport: excluded });
+      toast({ title: excluded ? 'Activity Hidden from Report' : 'Activity Included in Report' });
+    } catch (e) {}
   };
 
   const handleClearReplyStatus = async () => { if (onClearAttentionStatus) onClearAttentionStatus(); };
@@ -424,12 +460,23 @@ export function WorkOrderAdminDetails({
             </Card>
 
             <Card className="border-primary/20 bg-primary/5">
-                <CardHeader><CardTitle className="text-lg">Office Internal Notes & Priority</CardTitle><CardDescription>Only visible to administrators.</CardDescription></CardHeader>
+                <CardHeader><CardTitle className="text-lg">Office Internal Notes & Report Override</CardTitle><CardDescription>Only visible to administrators. Controls PDF documentation.</CardDescription></CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex items-center justify-between space-x-2 border p-3 rounded-md bg-background"><div className="space-y-0.5"><Label htmlFor="needs-attention">Flag: Needs Attention</Label><p className="text-xs text-muted-foreground">Highlights this job for the technician (Red Highlight).</p></div><Switch id="needs-attention" checked={needsAttention} onCheckedChange={setNeedsAttention}/></div>
                     {needsAttention && <div className="space-y-2"><Label htmlFor="attention-msg">Attention Instructions</Label><Textarea id="attention-msg" placeholder="Explain why this needs attention..." value={attentionMessage} onChange={(e) => setAttentionMessage(e.target.value)} className="bg-background"/></div>}
-                    <div className="space-y-2"><Label htmlFor="internal-notes">Internal Office Notes</Label><Textarea id="internal-notes" placeholder="Add private notes for the office..." value={internalNotes} onChange={(e) => setInternalNotes(e.target.value)} rows={4} className="bg-background"/></div>
-                    <Button onClick={handleSaveAdminNotes} disabled={isSavingAdminNotes} className="w-full">{isSavingAdminNotes ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save Internal Notes</Button>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="report-override" className="flex items-center gap-2"><Sparkles className="h-3.5 w-3.5" />Final Report Summary Override</Label>
+                      <CardDescription className="text-xs mb-1">If entered, this text replaces the AI summary in the PDF "Work Performed" field.</CardDescription>
+                      <Textarea id="report-override" placeholder="Manually enter the final technical summary for the customer report..." value={customSummary} onChange={(e) => setCustomSummary(e.target.value)} rows={4} className="bg-background"/>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="internal-notes">Internal Office Notes</Label>
+                      <Textarea id="internal-notes" placeholder="Add private notes for the office..." value={internalNotes} onChange={(e) => setInternalNotes(e.target.value)} rows={4} className="bg-background"/>
+                    </div>
+                    
+                    <Button onClick={handleSaveAdminNotes} disabled={isSavingAdminNotes} className="w-full">{isSavingAdminNotes ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save Internal Settings</Button>
                 </CardContent>
             </Card>
             
@@ -579,8 +626,44 @@ export function WorkOrderAdminDetails({
 
         <TabsContent value="activity" className="mt-0">
           <div className="space-y-8">
-            <Card className="rounded-t-none"><CardHeader><CardTitle className="flex items-center gap-2"><CalendarClock className="h-5 w-5" /> Scheduled Activities</CardTitle></CardHeader><CardContent className="space-y-6"><div className="space-y-4">{activities.length > 0 ? activities.map(activity => <ActivityItem key={activity.id} activity={activity} technicians={technicians} onUpdateStatus={onUpdateActivityStatus} onDeleteClick={() => setActivityToDelete(activity)} isCompleted={isCompleted} />) : <p className="text-center text-sm text-muted-foreground py-4">No scheduled activities.</p>}</div>{!isCompleted && <><Separator /><AddActivityForm technicians={technicians} onAddActivity={onAddActivity} isLoading={isAddingActivity} /></>}</CardContent></Card>
-            <Card><CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" /> Notes &amp; Time Postings</CardTitle></CardHeader><CardContent className="space-y-6"><div className="space-y-6">{isClient ? combinedActivity.map(activity => activity.type === 'note' ? <NoteActivityItem key={`note-${activity.id}`} note={activity} onPhotoDelete={isCompleted ? undefined : onNotePhotoDelete} onNoteDelete={isCompleted ? undefined : setNoteToDelete} showPhotos={false} /> : <TimeActivityItem key={`time-${activity.id}`} timeEntry={activity} onTimeEntryDelete={isCompleted ? undefined : setTimeEntryToDelete} />) : <p className="text-center text-sm text-muted-foreground py-4">Loading activity...</p>}{isClient && combinedActivity.length === 0 && <p className="text-center text-sm text-muted-foreground py-4">No notes or activity yet.</p>}</div></CardContent></Card>
+            <Card className="rounded-t-none">
+              <CardHeader><CardTitle className="flex items-center gap-2"><CalendarClock className="h-5 w-5" /> Scheduled Activities</CardTitle></CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  {activities.length > 0 ? activities.map(activity => (
+                    <ActivityItem 
+                      key={activity.id} 
+                      activity={activity} 
+                      technicians={technicians} 
+                      onUpdateStatus={onUpdateActivityStatus} 
+                      onToggleReport={handleToggleActivityReportInclusion}
+                      onDeleteClick={() => setActivityToDelete(activity)} 
+                      isCompleted={isCompleted} 
+                    />
+                  )) : <p className="text-center text-sm text-muted-foreground py-4">No scheduled activities.</p>}
+                </div>
+                {!isCompleted && <><Separator /><AddActivityForm technicians={technicians} onAddActivity={onAddActivity} isLoading={isAddingActivity} /></>}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" /> Notes &amp; Time Postings</CardTitle></CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-6">
+                  {isClient ? combinedActivity.map(activity => activity.type === 'note' ? (
+                    <NoteActivityItem 
+                      key={`note-${activity.id}`} 
+                      note={activity} 
+                      onPhotoDelete={isCompleted ? undefined : onNotePhotoDelete} 
+                      onNoteDelete={isCompleted ? undefined : setNoteToDelete} 
+                      onToggleReportInclusion={handleToggleNoteReportInclusion}
+                      showPhotos={false} 
+                      isAdmin={true}
+                    />
+                  ) : <TimeActivityItem key={`time-${activity.id}`} timeEntry={activity} onTimeEntryDelete={isCompleted ? undefined : setTimeEntryToDelete} />) : <p className="text-center text-sm text-muted-foreground py-4">Loading activity...</p>}
+                  {isClient && combinedActivity.length === 0 && <p className="text-center text-sm text-muted-foreground py-4">No notes or activity yet.</p>}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
       </Tabs>
