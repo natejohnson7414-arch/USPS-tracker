@@ -44,7 +44,7 @@ export default function StartQuotePage() {
     const [modelNumber, setModelNumber] = useState('');
     const [serialNumber, setSerialNumber] = useState('');
     const [numPeople, setNumPeople] = useState('1');
-    const [hoursPerPerson, setHoursPerPerson] = useState('');
+    const [personHours, setPersonHours] = useState<string[]>(['']);
     const [materialsNeeded, setMaterialsNeeded] = useState('');
     const [photos, setPhotos] = useState<File[]>([]);
     const [videos, setVideos] = useState<File[]>([]);
@@ -70,6 +70,20 @@ export default function StartQuotePage() {
             })
             .finally(() => setIsLoading(false));
     }, [db, workOrderId, router, toast]);
+
+    // Update person hours array when numPeople changes
+    useEffect(() => {
+        const count = parseInt(numPeople);
+        setPersonHours(prev => {
+            const newHours = [...prev];
+            if (newHours.length < count) {
+                while (newHours.length < count) newHours.push('');
+            } else {
+                return newHours.slice(0, count);
+            }
+            return newHours;
+        });
+    }, [numPeople]);
     
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
@@ -94,6 +108,12 @@ export default function StartQuotePage() {
         } else {
             setVideos(prev => prev.filter((_, i) => i !== index));
         }
+    };
+
+    const handlePersonHourChange = (index: number, value: string) => {
+        const newHours = [...personHours];
+        newHours[index] = value;
+        setPersonHours(newHours);
     };
     
     const handleSubmit = async (e: React.FormEvent) => {
@@ -145,7 +165,9 @@ export default function StartQuotePage() {
             // 3. Save Quote document
             progressToast.update({ id: progressToast.id, title: 'Saving...', description: 'Finalizing quote record.' });
 
-            const formattedLabor = `${numPeople} ${parseInt(numPeople) === 1 ? 'person' : 'people'}, ${hoursPerPerson || '0'} hours each`;
+            // Format labor description with individual hours
+            const laborDetail = personHours.map((h, i) => `P${i + 1}: ${h || '0'}h`).join(', ');
+            const formattedLabor = `${numPeople} ${parseInt(numPeople) === 1 ? 'person' : 'people'}: ${laborDetail}`;
 
             const newQuote: Omit<Quote, 'id'> = {
                 quoteNumber: quoteNumber,
@@ -313,33 +335,41 @@ export default function StartQuotePage() {
                                 )}
                             </div>
                             
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="quote-people">How many people?</Label>
-                                    <Select value={numPeople} onValueChange={setNumPeople} disabled={isSubmitting}>
-                                        <SelectTrigger id="quote-people">
-                                            <SelectValue placeholder="Select number of people" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="1">1 Person</SelectItem>
-                                            <SelectItem value="2">2 People</SelectItem>
-                                            <SelectItem value="3">3 People</SelectItem>
-                                            <SelectItem value="4">4 People</SelectItem>
-                                            <SelectItem value="5">5 People</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                            <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="quote-people">How many people?</Label>
+                                        <Select value={numPeople} onValueChange={setNumPeople} disabled={isSubmitting}>
+                                            <SelectTrigger id="quote-people">
+                                                <SelectValue placeholder="Select number of people" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="1">1 Person</SelectItem>
+                                                <SelectItem value="2">2 People</SelectItem>
+                                                <SelectItem value="3">3 People</SelectItem>
+                                                <SelectItem value="4">4 People</SelectItem>
+                                                <SelectItem value="5">5 People</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="quote-hours">How many hours per person needed?</Label>
-                                    <Input 
-                                        id="quote-hours"
-                                        type="number"
-                                        step="0.5"
-                                        value={hoursPerPerson}
-                                        onChange={(e) => setHoursPerPerson(e.target.value)}
-                                        placeholder="e.g. 4"
-                                        disabled={isSubmitting}
-                                    />
+
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                                    {personHours.map((hours, index) => (
+                                        <div key={index} className="space-y-2">
+                                            <Label htmlFor={`person-${index}-hours`} className="text-xs">Person {index + 1} Hours</Label>
+                                            <Input 
+                                                id={`person-${index}-hours`}
+                                                type="number"
+                                                step="0.5"
+                                                value={hours}
+                                                onChange={(e) => handlePersonHourChange(index, e.target.value)}
+                                                placeholder="e.g. 4"
+                                                disabled={isSubmitting}
+                                                className="h-8"
+                                            />
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
 
