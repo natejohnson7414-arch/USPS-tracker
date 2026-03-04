@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { History, CalendarClock, Settings, Wrench, ShieldCheck, Clock, FileText, Loader2, AlertCircle, Box, Tag, PlusCircle, Repeat } from 'lucide-react';
+import { History, CalendarClock, Settings, Wrench, ShieldCheck, Clock, FileText, Loader2, AlertCircle, Box, Tag, PlusCircle, Repeat, ArrowLeft } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { getAssetById, getAssetPmSchedules, getAssetServiceHistory, calculateAssetMetrics } from '@/lib/data';
 import type { Asset, AssetPmSchedule, AssetServiceHistory } from '@/lib/types';
@@ -71,22 +71,30 @@ export default function AssetDetailsPage() {
   return (
     <MainLayout>
       <div className="container mx-auto py-8">
-        <div className="flex items-start justify-between mb-8">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold">{asset.name}</h1>
-              <Badge variant={asset.status === 'active' ? 'default' : 'outline'}>{asset.status}</Badge>
-              <Badge variant={asset.criticality === 'high' ? 'destructive' : 'secondary'}>{asset.criticality} Criticality</Badge>
+        <div className="mb-8">
+          <Button asChild variant="ghost" className="mb-4 -ml-4">
+            <Link href="/assets">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Assets
+            </Link>
+          </Button>
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-3xl font-bold">{asset.name}</h1>
+                <Badge variant={asset.status === 'active' ? 'default' : 'outline'}>{asset.status}</Badge>
+                <Badge variant={asset.criticality === 'high' ? 'destructive' : 'secondary'}>{asset.criticality} Criticality</Badge>
+              </div>
+              <p className="text-muted-foreground font-mono">Tag: {asset.assetTag} | S/N: {asset.serialNumber}</p>
             </div>
-            <p className="text-muted-foreground font-mono">Tag: {asset.assetTag} | S/N: {asset.serialNumber}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" asChild>
-              <Link href={`/assets/${id}/edit`}>
-                <Settings className="mr-2 h-4 w-4" /> Edit Asset
-              </Link>
-            </Button>
-            <Button><Wrench className="mr-2 h-4 w-4" /> Record Service</Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" asChild>
+                <Link href={`/assets/${id}/edit`}>
+                  <Settings className="mr-2 h-4 w-4" /> Edit Asset
+                </Link>
+              </Button>
+              <Button><Wrench className="mr-2 h-4 w-4" /> Record Service</Button>
+            </div>
           </div>
         </div>
 
