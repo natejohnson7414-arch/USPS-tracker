@@ -5,7 +5,7 @@ import type {
   TrainingRecord, HvacStartupReport, TimeEntry, Activity, ActivityHistoryItem, 
   Quote, Asset, PmTemplate, AssetPmSchedule, AssetServiceHistory, Material
 } from '@/lib/types';
-import { collection, doc, query, where, arrayUnion, orderBy, collectionGroup } from 'firebase/firestore';
+import { collection, doc, query, where, arrayUnion, orderBy, collectionGroup, getDocs, documentId } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 import { sampleRoles, sampleTechnicians, sampleWorkOrders, sampleWorkSites, sampleClients } from './sample-data';
 import { setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
@@ -134,6 +134,14 @@ export const getAssets = async (db: any): Promise<Asset[]> => {
   const assets = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Asset));
   const sites = await getWorkSites(db);
   return assets.map(a => ({ ...a, siteName: sites.find(s => s.id === a.siteId)?.name }));
+};
+
+export const getAssetsByIds = async (db: any, ids: string[]): Promise<Asset[]> => {
+  if (!ids || ids.length === 0) return [];
+  // Firestore IN query limited to 10-30 items depending on SDK, but usually fine for assets on a job
+  const q = query(collection(db, 'assets'), where(documentId(), 'in', ids.slice(0, 10)));
+  const snapshot = await getCollectionNonBlocking(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Asset));
 };
 
 export const getAssetsBySiteId = async (db: any, siteId: string): Promise<Asset[]> => {

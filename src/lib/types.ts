@@ -108,6 +108,7 @@ export type WorkOrder = {
   technicianReplied?: boolean;
   // Asset Integration
   assetId?: string;
+  assetIds?: string[];
   pmScheduleId?: string;
   isPm?: boolean;
 };
