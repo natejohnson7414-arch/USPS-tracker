@@ -1,7 +1,9 @@
+
 'use client';
 
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { initializeFirebase } from './init';
+import { getAuth } from 'firebase/auth';
 
 /**
  * Uploads an image file to Firebase Storage.
@@ -11,17 +13,23 @@ import { initializeFirebase } from './init';
  */
 export const uploadImage = async (file: Blob, path: string): Promise<string> => {
   try {
-    // initializeFirebase is async and returns a promise of services
-    const { storage } = await initializeFirebase();
-    if (!storage) {
+    // 1. Ensure Firebase services are initialized
+    const services = await initializeFirebase();
+    if (!services.storage) {
         throw new Error("Firebase Storage service is not available.");
     }
-    const storageRef = ref(storage, path);
+
+    // 2. Critical: Wait for Auth to be ready before uploading
+    // This ensures request.auth is not null in security rules
+    const auth = getAuth(services.firebaseApp);
+    await auth.authStateReady();
+
+    const storageRef = ref(services.storage, path);
     
-    // 'file' comes from the Blob or File API
+    // 3. Perform upload
     const snapshot = await uploadBytes(storageRef, file);
     
-    // Get the download URL
+    // 4. Get the download URL
     const downloadURL = await getDownloadURL(snapshot.ref);
     return downloadURL;
   } catch (error) {
@@ -38,11 +46,15 @@ export const uploadImage = async (file: Blob, path: string): Promise<string> => 
  */
 export const deleteImage = async (imageUrl: string): Promise<void> => {
     try {
-        const { storage } = await initializeFirebase();
-        if (!storage) {
+        const services = await initializeFirebase();
+        if (!services.storage) {
             throw new Error("Firebase Storage service is not available.");
         }
-        const imageRef = ref(storage, imageUrl);
+        
+        const auth = getAuth(services.firebaseApp);
+        await auth.authStateReady();
+
+        const imageRef = ref(services.storage, imageUrl);
         await deleteObject(imageRef);
     } catch (error: any) {
          // It's okay if the file doesn't exist, we can ignore that error.
