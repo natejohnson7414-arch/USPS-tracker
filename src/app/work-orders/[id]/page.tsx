@@ -613,7 +613,8 @@ export default function WorkOrderDetailPage() {
     const woRef = doc(db, 'work_orders', workOrder.id);
     updateDocumentNonBlocking(woRef, {
         needsAttention: false,
-        technicianReplied: true
+        technicianReplied: true,
+        status: 'Review' // Technician fix means it's ready for review again
     });
     toast({ title: 'Attention Acknowledged' });
     fetchData();
