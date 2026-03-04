@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -56,7 +57,7 @@ export default function StartQuotePage() {
                 }
             })
             .catch(err => {
-                console.error(err);
+                console.error('Error fetching work order:', err);
                 toast({ title: 'Error fetching work order', variant: 'destructive' });
             })
             .finally(() => setIsLoading(false));
@@ -89,7 +90,10 @@ export default function StartQuotePage() {
     
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!db || !user || !workOrder) return;
+        if (!db || !user || !workOrder) {
+            console.error('Database or User context missing');
+            return;
+        }
         
         if (!description || !modelNumber || !serialNumber) {
             toast({ title: 'Missing required fields', description: 'Description, Model, and Serial Number are required', variant: 'destructive' });
@@ -97,29 +101,42 @@ export default function StartQuotePage() {
         }
 
         setIsSubmitting(true);
+        console.log('Starting quote submission...');
         
         try {
-            const progressToast = toast({ title: 'Generating Quote Number...', description: 'Please wait...' });
+            // 1. Generate sequential quote number via server action
+            const progressToast = toast({ title: 'Processing...', description: 'Generating quote number.' });
             
-            const { quoteNumber, error } = await generateQuoteNumber();
+            const result = await generateQuoteNumber();
 
-            if (error || !quoteNumber) {
+            if (result.error || !result.quoteNumber) {
                 progressToast.dismiss();
-                throw new Error(error || 'Could not generate quote number.');
+                throw new Error(result.error || 'The server failed to generate a quote number.');
             }
             
-            progressToast.update({ id: progressToast.id, title: 'Uploading Media...', description: `Uploading ${photos.length + videos.length} items.` });
+            const quoteNumber = result.quoteNumber;
+            console.log('Received quote number:', quoteNumber);
 
-            const uploadPromises = [
-                ...photos.map(file => uploadImage(file, `quotes/${quoteNumber}/photos/${file.name}`)),
-                ...videos.map(file => uploadImage(file, `quotes/${quoteNumber}/videos/${file.name}`))
-            ];
-            
-            const uploadedUrls = await Promise.all(uploadPromises);
-            const photoUrls = uploadedUrls.slice(0, photos.length);
-            const videoUrls = uploadedUrls.slice(photos.length);
+            // 2. Upload media if present
+            let photoUrls: string[] = [];
+            let videoUrls: string[] = [];
 
-            progressToast.update({ id: progressToast.id, title: 'Saving Quote...', description: 'Almost done.' });
+            if (photos.length > 0 || videos.length > 0) {
+                progressToast.update({ id: progressToast.id, title: 'Uploading Media...', description: `Uploading ${photos.length + videos.length} files.` });
+                
+                const uploadPromises = [
+                    ...photos.map(file => uploadImage(file, `quotes/${quoteNumber}/photos/${Date.now()}-${file.name}`)),
+                    ...videos.map(file => uploadImage(file, `quotes/${quoteNumber}/videos/${Date.now()}-${file.name}`))
+                ];
+                
+                const uploadedUrls = await Promise.all(uploadPromises);
+                photoUrls = uploadedUrls.slice(0, photos.length);
+                videoUrls = uploadedUrls.slice(photos.length);
+                console.log('Media upload complete.');
+            }
+
+            // 3. Save Quote document
+            progressToast.update({ id: progressToast.id, title: 'Saving...', description: 'Finalizing quote record.' });
 
             const newQuote: Omit<Quote, 'id'> = {
                 quoteNumber: quoteNumber,
@@ -145,32 +162,39 @@ export default function StartQuotePage() {
 
             await addDocumentNonBlocking(collection(db, 'quotes'), newQuote);
 
-            // Update the work order status to "On Hold"
+            // 4. Update the parent work order status
             const workOrderRef = doc(db, 'work_orders', workOrder.id);
             await updateDocumentNonBlocking(workOrderRef, { status: 'On Hold' });
 
             progressToast.dismiss();
-            toast({ title: 'Quote Submitted', description: 'The work order status has been set to "On Hold".' });
+            toast({ title: 'Quote Submitted', description: 'Request sent to office. Work order is now "On Hold".' });
             
-            // Notify administrators, but don't block the UI
+            // 5. Notify administrators (background task)
             notifyAdminsOfNewQuote({
                 quoteId: quoteNumber,
                 workOrderId: workOrder.id,
                 jobName: workOrder.jobName,
-                technicianName: user.displayName || user.email || 'Unknown Technician'
-            }).catch(e => console.warn('Admin notification failed:', e.message));
+                technicianName: user.displayName || user.email || 'Technician'
+            }).catch(e => console.warn('Notification background task failed:', e.message));
 
+            console.log('Quote submission successful.');
             router.push(`/work-orders/${workOrder.id}`);
 
         } catch (error: any) {
-            console.error("Error starting quote:", error);
+            console.error("Critical error in quote submission:", error);
             toast({ 
-                title: 'Failed to start quote', 
+                title: 'Submission Failed', 
                 description: error.message || 'An unexpected error occurred. Please try again.', 
                 variant: 'destructive' 
             });
+            setIsSubmitting(false); // Reset immediately on catch
         } finally {
-            setIsSubmitting(false);
+            // We only reset isSubmitting in finally if we didn't redirect
+            // But if we are still on the page, we need to unlock the button
+            const isStillHere = window.location.pathname.includes('/start-quote');
+            if (isStillHere) {
+                setIsSubmitting(false);
+            }
         }
     };
     
@@ -196,7 +220,7 @@ export default function StartQuotePage() {
     return (
         <MainLayout>
             <div className="container mx-auto py-8">
-                <Button asChild variant="outline" className="mb-6">
+                <Button asChild variant="outline" className="mb-6" disabled={isSubmitting}>
                     <Link href={`/work-orders/${workOrderId}`}>
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to Work Order

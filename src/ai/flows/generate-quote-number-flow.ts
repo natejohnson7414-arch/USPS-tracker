@@ -1,13 +1,16 @@
+
 'use server';
 /**
- * @fileOverview A server-side flow to generate a unique, sequential quote number.
+ * @fileOverview A server-side action to generate a unique, sequential quote number.
  */
 
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { z } from 'zod';
-import { ai } from '@/ai/genkit';
 
+/**
+ * Ensures Firebase Admin is initialized exactly once.
+ */
 function getAdminDb() {
   if (!getApps().length) {
     try {
@@ -16,7 +19,7 @@ function getAdminDb() {
       const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n').replace(/"/g, '');
 
       if (!projectId || !clientEmail || !privateKey) {
-        throw new Error('Missing Firebase Admin environment variables.');
+        throw new Error('Missing Firebase Admin environment variables (Project ID, Client Email, or Private Key).');
       }
 
       initializeApp({
@@ -26,6 +29,7 @@ function getAdminDb() {
           privateKey,
         }),
       });
+      console.log('Firebase Admin initialized successfully.');
     } catch (error: any) {
       console.error('Firebase Admin SDK initialization failed:', error.message);
       return null;
@@ -40,19 +44,15 @@ const GenerateQuoteNumberOutputSchema = z.object({
 });
 export type GenerateQuoteNumberOutput = z.infer<typeof GenerateQuoteNumberOutputSchema>;
 
+/**
+ * Generates a unique, sequential quote number using a Firestore transaction.
+ * Format: QT-YY-0001
+ */
 export async function generateQuoteNumber(): Promise<GenerateQuoteNumberOutput> {
-    return generateQuoteNumberFlow();
-}
-
-const generateQuoteNumberFlow = ai.defineFlow(
-  {
-    name: 'generateQuoteNumberFlow',
-    outputSchema: GenerateQuoteNumberOutputSchema,
-  },
-  async () => {
+    console.log('Generating new quote number...');
     const adminDb = getAdminDb();
     if (!adminDb) {
-      return { quoteNumber: '', error: 'Firebase Admin SDK is not initialized. Please check server environment variables.' };
+      return { quoteNumber: '', error: 'Server configuration error: Database connection failed.' };
     }
 
     const counterRef = adminDb.collection('counters').doc('quoteCounter');
@@ -74,6 +74,7 @@ const generateQuoteNumberFlow = ai.defineFlow(
         if (data.year === currentYear) {
           newLastNumber += 1;
         } else {
+          // Reset counter for a new year
           newLastNumber = 1;
         }
         
@@ -82,10 +83,10 @@ const generateQuoteNumberFlow = ai.defineFlow(
       });
 
       const formattedNumber = `QT-${yearShort}-${newNumber.toString().padStart(4, '0')}`;
+      console.log('Successfully generated quote number:', formattedNumber);
       return { quoteNumber: formattedNumber };
     } catch (error: any) {
       console.error("Transaction to generate quote number failed:", error.message);
-      return { quoteNumber: '', error: `Failed to generate quote number: ${error.message}` };
+      return { quoteNumber: '', error: `Database error: ${error.message}` };
     }
-  }
-);
+}
