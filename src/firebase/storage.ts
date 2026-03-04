@@ -1,29 +1,47 @@
 'use client';
 
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject, StorageError } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject, StorageError, UploadTask } from 'firebase/storage';
 import { initializeFirebase } from './init';
 import { getAuth, getIdTokenResult } from 'firebase/auth';
 
 /**
- * Uploads an image file to Firebase Storage with resumable support, timeouts, and stall detection.
- * 
- * @param file The file or blob to upload
- * @param path The destination path in storage
- * @param onProgress Optional callback for progress updates (0-100)
+ * Global counter for active uploads to allow background services (like SyncManager)
+ * to yield bandwidth to high-priority media transfers.
  */
-export const uploadImage = async (
-  file: Blob, 
-  path: string, 
-  onProgress?: (progress: number) => void
-): Promise<string> => {
+let activeUploadCount = 0;
+export const getActiveUploadCount = () => activeUploadCount;
+
+export interface UploadProgress {
+  bytesTransferred: number;
+  totalBytes: number;
+  pct: number;
+}
+
+export interface UploadOptions {
+  onProgress?: (p: UploadProgress) => void;
+  signal?: AbortSignal;
+  timeoutMs?: number;      // Default 120s
+  stallMs?: number;        // Default 30s
+}
+
+/**
+ * Uploads a file to Firebase Storage with resumable support, timeouts, and stall detection.
+ */
+export const uploadImageResumable = async (
+  file: Blob,
+  path: string,
+  opts?: UploadOptions
+): Promise<{ downloadURL: string; fullPath: string }> => {
   const isDebug = process.env.NEXT_PUBLIC_DEBUG_UPLOADS === '1';
+  const STALL_TIMEOUT = opts?.stallMs || 30000;
+  const HARD_TIMEOUT = opts?.timeoutMs || 120000;
   const startTime = Date.now();
-  
+
   try {
     const services = await initializeFirebase();
     const auth = getAuth(services.firebaseApp);
-    
-    // 1. Ensure Auth is fully hydrated and ready
+
+    // 1. Auth Guard
     if (isDebug) console.log(`[UPLOAD] Initializing: ${path}`);
     await auth.authStateReady();
     const user = auth.currentUser;
@@ -38,25 +56,29 @@ export const uploadImage = async (
       console.log("[UPLOAD] Context:", {
         path,
         uid: user.uid,
-        claims: token.claims,
         online: navigator.onLine,
-        size: file.size,
-        type: file.type
+        size: file.size
       });
     }
+
+    activeUploadCount++;
+    if (typeof window !== 'undefined') window.__UPLOAD_IN_PROGRESS__ = true;
 
     const storageRef = ref(services.storage, path);
     const uploadTask = uploadBytesResumable(storageRef, file);
 
-    // 2. Setup Timeout and Stall Detection
+    // 2. Watchdog for Stalls and Timeouts
     let lastProgressAt = Date.now();
-    const STALL_TIMEOUT = 30000; // 30 seconds of no progress
-    const HARD_TIMEOUT = 120000; // 2 minutes total limit
-
     const watchdog = setInterval(() => {
       const now = Date.now();
       const elapsedTotal = now - startTime;
       const elapsedSinceProgress = now - lastProgressAt;
+
+      if (opts?.signal?.aborted) {
+        clearInterval(watchdog);
+        uploadTask.cancel();
+        return;
+      }
 
       if (elapsedSinceProgress > STALL_TIMEOUT) {
         clearInterval(watchdog);
@@ -72,35 +94,38 @@ export const uploadImage = async (
     }, 5000);
 
     return new Promise((resolve, reject) => {
-      uploadTask.on('state_changed', 
+      uploadTask.on('state_changed',
         (snapshot) => {
           lastProgressAt = Date.now();
           const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-          
-          if (onProgress) onProgress(pct);
-          
-          if (isDebug) {
-            console.log(`[UPLOAD] Progress: ${pct}% (${snapshot.bytesTransferred}/${snapshot.totalBytes})`);
-          }
-        }, 
-        (error: StorageError) => {
-          clearInterval(watchdog);
-          if (isDebug) {
-            console.error("[UPLOAD] Error:", {
-              code: error.code,
-              message: error.message,
-              serverResponse: error.serverResponse
+          if (opts?.onProgress) {
+            opts.onProgress({
+              bytesTransferred: snapshot.bytesTransferred,
+              totalBytes: snapshot.totalBytes,
+              pct
             });
           }
+          if (isDebug) console.log(`[UPLOAD] Progress: ${pct}%`);
+        },
+        (error: StorageError) => {
+          clearInterval(watchdog);
+          activeUploadCount = Math.max(0, activeUploadCount - 1);
+          if (activeUploadCount === 0 && typeof window !== 'undefined') {
+            window.__UPLOAD_IN_PROGRESS__ = false;
+          }
+          if (isDebug) console.error("[UPLOAD] Error:", error.code);
           reject(error);
-        }, 
+        },
         async () => {
           clearInterval(watchdog);
+          activeUploadCount = Math.max(0, activeUploadCount - 1);
+          if (activeUploadCount === 0 && typeof window !== 'undefined') {
+            window.__UPLOAD_IN_PROGRESS__ = false;
+          }
           try {
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-            if (isDebug) console.log(`[UPLOAD] Success in ${duration}s:`, downloadURL);
-            resolve(downloadURL);
+            if (isDebug) console.log(`[UPLOAD] Success: ${downloadURL}`);
+            resolve({ downloadURL, fullPath: path });
           } catch (urlError) {
             reject(urlError);
           }
@@ -109,26 +134,38 @@ export const uploadImage = async (
     });
 
   } catch (error: any) {
-    console.error("[UPLOAD] Critical Exception:", error);
+    if (isDebug) console.error("[UPLOAD] Critical Exception:", error);
     throw error;
   }
+};
+
+/**
+ * Legacy wrapper for compatibility.
+ */
+export const uploadImage = async (
+  file: Blob,
+  path: string,
+  onProgress?: (progress: number) => void
+): Promise<string> => {
+  const result = await uploadImageResumable(file, path, {
+    onProgress: (p) => onProgress?.(p.pct)
+  });
+  return result.downloadURL;
 };
 
 /**
  * Deletes an image file from Firebase Storage.
  */
 export const deleteImage = async (imageUrl: string): Promise<void> => {
-    try {
-        const services = await initializeFirebase();
-        const auth = getAuth(services.firebaseApp);
-        await auth.authStateReady();
+  try {
+    const services = await initializeFirebase();
+    const auth = getAuth(services.firebaseApp);
+    await auth.authStateReady();
 
-        const imageRef = ref(services.storage, imageUrl);
-        await deleteObject(imageRef);
-    } catch (error: any) {
-        if (error.code === 'storage/object-not-found') {
-            return;
-        }
-        throw error;
-    }
+    const imageRef = ref(services.storage, imageUrl);
+    await deleteObject(imageRef);
+  } catch (error: any) {
+    if (error.code === 'storage/object-not-found') return;
+    throw error;
+  }
 };

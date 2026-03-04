@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { getTechnicians, getWorkOrderById, getWorkSites, getClients, getTrainingRecordsByWorkOrderId, getTimeEntriesByWorkOrder, getTechnicianById, deleteTrainingRecord, updateWorkOrderStatus, addWorkHistoryItem, getQuotesByWorkOrderId, getHvacStartupReportsByWorkOrderId, deleteHvacStartupReport, getActivitiesByWorkOrderId } from '@/lib/data';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -8,12 +8,12 @@ import { MainLayout } from '@/components/main-layout';
 import { WorkOrderDetails } from '@/components/work-order-details';
 import { WorkOrderAdminDetails } from '@/components/work-order-admin-details';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Ban, Pencil, Save, Printer, Download, Receipt, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Ban, Pencil, Save, Printer, Download, Receipt, CheckCircle2, Loader2 } from 'lucide-react';
 import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, ActivityHistoryItem, Quote, HvacStartupReport, FileAttachment, Acknowledgement } from '@/lib/types';
 import { doc, collection, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { uploadImage, deleteImage } from '@/firebase/storage';
+import { uploadImageResumable, deleteImage } from '@/firebase/storage';
 import { MapProviderSelection } from '@/components/map-provider-selection';
 import {
   Dialog,
@@ -33,7 +33,6 @@ import { SignaturePad } from '@/components/signature-pad';
 import { useTechnician as useRoleData } from '@/hooks/use-technician';
 import { WorkOrderEditForm } from '@/components/work-order-edit-form';
 import { ReportPreviewDialog } from '@/components/report-preview-dialog';
-import { Loader2 } from 'lucide-react';
 
 export default function WorkOrderDetailPage() {
   const params = useParams();
@@ -43,7 +42,6 @@ export default function WorkOrderDetailPage() {
   const { user } = useUser();
   const { toast } = useToast();
   const { role: currentUserRole } = useRoleData();
-
 
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [workSites, setWorkSites] = useState<WorkSite[]>([]);
@@ -72,6 +70,9 @@ export default function WorkOrderDetailPage() {
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Task Reference Map to prevent rerender cleanup from canceling active uploads
+  const activeUploadsRef = useRef<Set<string>>(new Set());
 
   const workOrderDocRef = useMemoFirebase(() => {
     if (!db) return null;
@@ -161,33 +162,32 @@ export default function WorkOrderDetailPage() {
     if (!db || !workOrder || files.length === 0) return;
     
     setIsSavingPhotos(true);
-    // Pause background sync
-    if (typeof window !== 'undefined') window.__UPLOAD_IN_PROGRESS__ = true;
-    
-    const toastId = toast({ title: `Uploading ${files.length} photo(s)...`, duration: Infinity });
+    const toastId = toast({ title: `Preparing ${files.length} photo(s)...`, duration: Infinity });
     const isDebug = process.env.NEXT_PUBLIC_DEBUG_UPLOADS === '1';
 
     try {
       const uploadedUrls: string[] = [];
-      let currentIndex = 0;
+      let i = 0;
 
-      // SEQUENTIAL UPLOADS to prevent connection saturation
       for (const file of files) {
-        currentIndex++;
-        if (isDebug) console.log(`[UPLOAD] Starting file ${currentIndex}/${files.length}`);
+        i++;
+        const uploadPath = `work-orders/${workOrder.id}/${type}/${Date.now()}-${file.name}`;
+        activeUploadsRef.current.add(uploadPath);
+
+        if (isDebug) console.log(`[UPLOAD] Start file ${i}/${files.length}: ${file.name}`);
         
-        const path = `work-orders/${workOrder.id}/${type}/${Date.now()}-${file.name}`;
-        
-        // Use the new resumable uploader with progress
-        const url = await uploadImage(file, path, (pct) => {
-          toastId.update({ 
-            id: toastId.id, 
-            title: `Photo ${currentIndex}/${files.length}`, 
-            description: `Uploading... ${pct}%` 
-          });
+        const { downloadURL } = await uploadImageResumable(file, uploadPath, {
+          onProgress: (p) => {
+            toastId.update({ 
+              id: toastId.id, 
+              title: `Photo ${i}/${files.length}`, 
+              description: `Uploading... ${p.pct}%` 
+            });
+          }
         });
         
-        uploadedUrls.push(url);
+        uploadedUrls.push(downloadURL);
+        activeUploadsRef.current.delete(uploadPath);
       }
 
       let fieldToUpdate: 'beforePhotoUrls' | 'afterPhotoUrls' | 'receiptsAndPackingSlips';
@@ -198,9 +198,9 @@ export default function WorkOrderDetailPage() {
       const currentUrls = workOrder[fieldToUpdate] || [];
       const newUrls = [...currentUrls, ...uploadedUrls];
 
-      if (isDebug) console.log(`[UPLOAD] Finalizing Firestore metadata update...`);
+      if (isDebug) console.log(`[UPLOAD] Saving Firestore metadata for job: ${workOrder.id}`);
       
-      // CRITICAL: Await the Firestore update so the UI doesn't close the sheet while data is pending
+      // CRITICAL: Await the Firestore update so the promise chain holds the interlock
       await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), {
         [fieldToUpdate]: newUrls,
       });
@@ -208,20 +208,18 @@ export default function WorkOrderDetailPage() {
       setWorkOrder(prev => prev ? { ...prev, [fieldToUpdate]: newUrls } : null);
       
       toastId.dismiss();
-      toast({ title: "Photos Saved", description: `${files.length} photo(s) have been added to the job.` });
+      toast({ title: "Photos Saved", description: `${files.length} photo(s) added successfully.` });
 
     } catch (error: any) {
-      if (isDebug) console.error("[UPLOAD] Process Failed:", error);
+      if (isDebug) console.error("[UPLOAD] Handler failed:", error.code || error.message);
       toastId.dismiss();
       toast({ 
         variant: "destructive", 
-        title: "Upload Failed", 
-        description: error.message || "The connection was interrupted. Please try again." 
+        title: "Upload Interrupted", 
+        description: error.code === 'storage/canceled' ? "The upload was cancelled or timed out." : "Please check your signal and try again." 
       });
     } finally {
       setIsSavingPhotos(false);
-      // Resume background sync
-      if (typeof window !== 'undefined') window.__UPLOAD_IN_PROGRESS__ = false;
     }
   };
 
@@ -239,11 +237,11 @@ export default function WorkOrderDetailPage() {
     setWorkOrder(prev => prev ? { ...prev, [fieldToUpdate]: newUrls } : null);
 
     try {
-        updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { [fieldToUpdate]: newUrls });
+        await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { [fieldToUpdate]: newUrls });
         await deleteImage(urlToDelete);
         toast({ title: "Photo Deleted" });
     } catch(error) {
-        fetchData(); // Rollback
+        fetchData(); // Rollback on fail
     }
   };
 
@@ -251,8 +249,6 @@ export default function WorkOrderDetailPage() {
     if (!db || !workOrder || files.length === 0) return;
     
     setIsUploadingFiles(true);
-    if (typeof window !== 'undefined') window.__UPLOAD_IN_PROGRESS__ = true;
-    
     const toastId = toast({ title: `Uploading ${files.length} file(s)...`, duration: Infinity });
 
     try {
@@ -262,13 +258,15 @@ export default function WorkOrderDetailPage() {
         i++;
         const path = `work-orders/${workOrder.id}/files/${Date.now()}-${file.name}`;
         
-        const url = await uploadImage(file, path, (pct) => {
-          toastId.update({ id: toastId.id, description: `File ${i}/${files.length}: ${pct}%` });
+        const { downloadURL } = await uploadImageResumable(file, path, {
+          onProgress: (p) => {
+            toastId.update({ id: toastId.id, description: `File ${i}/${files.length}: ${p.pct}%` });
+          }
         });
 
         uploadedFiles.push({
           name: file.name,
-          url,
+          url: downloadURL,
           type: file.type,
           size: file.size,
           uploadedAt: new Date().toISOString(),
@@ -285,14 +283,13 @@ export default function WorkOrderDetailPage() {
       setWorkOrder(prev => prev ? { ...prev, uploadedFiles: newFiles } : null);
       
       toastId.dismiss();
-      toast({ title: "Files Uploaded", description: `${files.length} file(s) have been added.` });
+      toast({ title: "Files Uploaded" });
 
     } catch (error: any) {
       toastId.dismiss();
-      toast({ variant: "destructive", title: "Upload Failed", description: error.message || "Connection timed out." });
+      toast({ variant: "destructive", title: "Upload Failed", description: "The transfer was interrupted." });
     } finally {
       setIsUploadingFiles(false);
-      if (typeof window !== 'undefined') window.__UPLOAD_IN_PROGRESS__ = false;
     }
   };
 
@@ -305,7 +302,7 @@ export default function WorkOrderDetailPage() {
     setWorkOrder(prev => prev ? { ...prev, uploadedFiles: newFiles } : null);
 
     try {
-        updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { uploadedFiles: newFiles });
+        await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { uploadedFiles: newFiles });
         await deleteImage(fileToDelete.url); 
         toast({ title: "File Deleted" });
     } catch(error) {
@@ -363,22 +360,21 @@ export default function WorkOrderDetailPage() {
       
       try {
         const signatureBlob = await (await fetch(signatureDataUrl)).blob();
-        // Use the new uploader for signatures too to prevent hangs
-        const signatureUrl = await uploadImage(signatureBlob, signaturePath);
+        const { downloadURL } = await uploadImageResumable(signatureBlob, signaturePath);
         const signatureDate = new Date().toISOString();
         
         await updateDocumentNonBlocking(workOrderDocRef, {
-            customerSignatureUrl: signatureUrl,
+            customerSignatureUrl: downloadURL,
             signatureDate: signatureDate,
             contactInfo: contactInfo
         });
         
-        setWorkOrder(prev => prev ? ({ ...prev, customerSignatureUrl: signatureUrl, signatureDate: signatureDate, contactInfo: contactInfo }) : null);
+        setWorkOrder(prev => prev ? ({ ...prev, customerSignatureUrl: downloadURL, signatureDate: signatureDate, contactInfo: contactInfo }) : null);
 
-        toast({ title: "Signature Saved", description: "The signature has been saved." });
+        toast({ title: "Signature Saved" });
         setIsSignatureDialogOpen(false);
       } catch (error) {
-        toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not upload the signature.' });
+        toast({ variant: 'destructive', title: 'Save Failed', description: 'Check your connection.' });
       } finally {
         setIsSavingPhotos(false);
       }
@@ -391,7 +387,7 @@ export default function WorkOrderDetailPage() {
         const oldUrl = workOrder.customerSignatureUrl;
         setWorkOrder(prev => prev ? ({ ...prev, customerSignatureUrl: undefined, signatureDate: undefined }) : null);
         try {
-            updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { 
+            await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { 
                 customerSignatureUrl: null, 
                 signatureDate: null 
             });
@@ -404,7 +400,7 @@ export default function WorkOrderDetailPage() {
         const updatedAcks = (workOrder.acknowledgements || []).filter(a => a.signatureUrl !== ack.signatureUrl);
         setWorkOrder(prev => prev ? ({ ...prev, acknowledgements: updatedAcks }) : null);
         try {
-            updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { 
+            await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { 
                 acknowledgements: updatedAcks 
             });
             await deleteImage(ack.signatureUrl);
@@ -420,7 +416,6 @@ export default function WorkOrderDetailPage() {
     
     const noteRef = doc(db, 'work_orders', workOrder.id, 'updates', noteId);
     
-    const originalNotes = workOrder.notes;
     const updatedNotes = workOrder.notes.map(note => {
       if (note.id === noteId) {
         return { ...note, photoUrls: note.photoUrls?.filter(url => url !== photoUrl) };
@@ -433,7 +428,7 @@ export default function WorkOrderDetailPage() {
         await deleteImage(photoUrl); 
         const updatedNote = updatedNotes.find(n => n.id === noteId);
         if(updatedNote) {
-            updateDocumentNonBlocking(noteRef, { photoUrls: updatedNote.photoUrls || [] }); 
+            await updateDocumentNonBlocking(noteRef, { photoUrls: updatedNote.photoUrls || [] }); 
         }
         toast({ title: 'Photo Deleted' });
     } catch (error) {
@@ -447,7 +442,6 @@ export default function WorkOrderDetailPage() {
     const noteToDelete = workOrder.notes.find(note => note.id === noteId);
     if (!noteToDelete) return;
 
-    const originalNotes = workOrder.notes;
     setWorkOrder(prev => prev ? ({ ...prev, notes: prev.notes.filter(n => n.id !== noteId) }) : null);
 
     const noteRef = doc(db, 'work_orders', workOrder.id, 'updates', noteId);
@@ -550,7 +544,7 @@ export default function WorkOrderDetailPage() {
         return;
     }
 
-    for (const [index, url] of allUrls.entries()) {
+    for (const url of allUrls) {
         try {
             const response = await fetch(`/api/image-proxy?url=${encodeURIComponent(url)}`);
             if (!response.ok) continue;
@@ -669,7 +663,6 @@ export default function WorkOrderDetailPage() {
 
   const isTechnician = currentUserRole?.name === 'Technician';
   const isAdmin = currentUserRole?.name === 'Administrator';
-  const isCompleted = workOrder.status === 'Completed';
 
   return (
     <MainLayout>
