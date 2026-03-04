@@ -21,6 +21,13 @@ import { collection, doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { notifyAdminsOfNewQuote } from '@/ai/flows/notify-admins-flow';
 import { generateQuoteNumber } from '@/ai/flows/generate-quote-number-flow';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export default function StartQuotePage() {
     const { id: workOrderId } = useParams();
@@ -36,7 +43,8 @@ export default function StartQuotePage() {
     const [description, setDescription] = useState('');
     const [modelNumber, setModelNumber] = useState('');
     const [serialNumber, setSerialNumber] = useState('');
-    const [estimatedLabor, setEstimatedLabor] = useState('');
+    const [numPeople, setNumPeople] = useState('1');
+    const [hoursPerPerson, setHoursPerPerson] = useState('');
     const [materialsNeeded, setMaterialsNeeded] = useState('');
     const [photos, setPhotos] = useState<File[]>([]);
     const [videos, setVideos] = useState<File[]>([]);
@@ -137,6 +145,8 @@ export default function StartQuotePage() {
             // 3. Save Quote document
             progressToast.update({ id: progressToast.id, title: 'Saving...', description: 'Finalizing quote record.' });
 
+            const formattedLabor = `${numPeople} ${parseInt(numPeople) === 1 ? 'person' : 'people'}, ${hoursPerPerson || '0'} hours each`;
+
             const newQuote: Omit<Quote, 'id'> = {
                 quoteNumber: quoteNumber,
                 status: 'Draft',
@@ -147,7 +157,7 @@ export default function StartQuotePage() {
                 description,
                 modelNumber,
                 serialNumber,
-                estimatedLabor,
+                estimatedLabor: formattedLabor,
                 materialsNeeded,
                 photos: photoUrls,
                 videos: videoUrls,
@@ -303,16 +313,34 @@ export default function StartQuotePage() {
                                 )}
                             </div>
                             
-                            <div className="space-y-2">
-                                <Label htmlFor="quote-labor">Estimated Labor (include second person if needed)</Label>
-                                <Textarea 
-                                    id="quote-labor" 
-                                    rows={3}
-                                    value={estimatedLabor}
-                                    onChange={(e) => setEstimatedLabor(e.target.value)}
-                                    placeholder="e.g., 2 hours for one person, 1 hour for second person for assistance."
-                                    disabled={isSubmitting}
-                                />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label htmlFor="quote-people">How many people?</Label>
+                                    <Select value={numPeople} onValueChange={setNumPeople} disabled={isSubmitting}>
+                                        <SelectTrigger id="quote-people">
+                                            <SelectValue placeholder="Select number of people" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="1">1 Person</SelectItem>
+                                            <SelectItem value="2">2 People</SelectItem>
+                                            <SelectItem value="3">3 People</SelectItem>
+                                            <SelectItem value="4">4 People</SelectItem>
+                                            <SelectItem value="5">5 People</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="quote-hours">How many hours per person needed?</Label>
+                                    <Input 
+                                        id="quote-hours"
+                                        type="number"
+                                        step="0.5"
+                                        value={hoursPerPerson}
+                                        onChange={(e) => setHoursPerPerson(e.target.value)}
+                                        placeholder="e.g. 4"
+                                        disabled={isSubmitting}
+                                    />
+                                </div>
                             </div>
 
                             <div className="space-y-2">
