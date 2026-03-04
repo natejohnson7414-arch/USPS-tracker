@@ -1,4 +1,3 @@
-
 'use client';
 
 import { format } from 'date-fns';
@@ -6,11 +5,6 @@ import type { TimeEntry } from '@/lib/types';
 import { Button } from './ui/button';
 import { Trash2, FileText, FileX } from 'lucide-react';
 import { Badge } from './ui/badge';
-import { Switch } from './ui/switch';
-import { Label } from './ui/label';
-import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
-import { doc } from 'firebase/firestore';
-import { useToast } from '@/hooks/use-toast';
 
 interface TimeActivityItemProps {
   timeEntry: TimeEntry & { technicianName?: string };
@@ -19,18 +13,7 @@ interface TimeActivityItemProps {
 }
 
 export function TimeActivityItem({ timeEntry, onTimeEntryDelete, isAdmin = false }: TimeActivityItemProps) {
-  const db = useFirestore();
-  const { toast } = useToast();
   const isExcluded = timeEntry.excludeFromReport || false;
-
-  const handleToggleReportInclusion = async (excluded: boolean) => {
-    if (!db) return;
-    try {
-      const entryRef = doc(db, 'time_entries', timeEntry.id);
-      await updateDocumentNonBlocking(entryRef, { excludeFromReport: excluded });
-      toast({ title: excluded ? 'Time detail hidden from report' : 'Time detail included in report' });
-    } catch (e) {}
-  };
 
   return (
     <div className="flex items-start justify-between gap-4 border-l-4 border-sky-500 pl-4 py-1">
@@ -41,7 +24,7 @@ export function TimeActivityItem({ timeEntry, onTimeEntryDelete, isAdmin = false
                 {isAdmin && (
                   <Badge variant={isExcluded ? "outline" : "secondary"} className="h-5 text-[10px] uppercase font-bold px-1.5 gap-1">
                     {isExcluded ? <FileX className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
-                    {isExcluded ? "Excluded" : "In Report"}
+                    {isExcluded ? "Excluded from Report" : "Included in Report"}
                   </Badge>
                 )}
             </div>
@@ -52,16 +35,6 @@ export function TimeActivityItem({ timeEntry, onTimeEntryDelete, isAdmin = false
         </div>
         
         <div className="flex items-center gap-2">
-          {isAdmin && (
-            <div className="flex items-center gap-2 mr-2">
-              <Switch 
-                id={`report-toggle-time-${timeEntry.id}`}
-                checked={!isExcluded}
-                onCheckedChange={(checked) => handleToggleReportInclusion(!checked)}
-                className="scale-75"
-              />
-            </div>
-          )}
           {onTimeEntryDelete && (
             <Button
                 variant="ghost"

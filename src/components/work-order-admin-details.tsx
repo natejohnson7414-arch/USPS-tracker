@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useRef, useEffect, FormEvent } from 'react';
+import { useState, useRef, useEffect, FormEvent, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -13,97 +12,37 @@ import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText, Download, AlertCircle, Save, CheckCircle2, Package, ChevronRight, FileX, Sparkles } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText, Download, AlertCircle, Save, CheckCircle2, Package, ChevronRight, FileX, Sparkles, Filter } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
 import { getTechnicianById, getAssetsBySiteId } from '@/lib/data';
-import { AddTimeDialog } from './add-time-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from './ui/date-picker';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { doc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { notifyTechnicianOfAttention } from '@/ai/flows/notify-technician-flow';
 import { Badge } from './ui/badge';
+import { ScrollArea } from './ui/scroll-area';
 
-
-const AddActivityForm = ({ technicians, onAddActivity, isLoading }: { 
-    technicians: Technician[], 
-    onAddActivity: (activity: any) => void, 
-    isLoading: boolean
-}) => {
-    const [description, setDescription] = useState('');
-    const [selectedTechnicianId, setSelectedTechnicianId] = useState<string | undefined>();
-    const [scheduledDate, setScheduledDate] = useState<Date | undefined>(new Date());
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!description || !selectedTechnicianId || !scheduledDate || isLoading) return;
-
-        onAddActivity({
-            description,
-            technicianId: selectedTechnicianId,
-            scheduled_date: scheduledDate.toISOString(),
-            status: 'scheduled'
-        });
-        setDescription('');
-        setSelectedTechnicianId(undefined);
-        setScheduledDate(new Date());
-    };
-
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <Textarea 
-                placeholder="Describe the new activity..." 
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                required
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                 <Select value={selectedTechnicianId} onValueChange={setSelectedTechnicianId} required>
-                    <SelectTrigger><SelectValue placeholder="Assign a technician" /></SelectTrigger>
-                    <SelectContent>
-                        {technicians.map(tech => (
-                            <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                 <DatePicker date={scheduledDate} setDate={setScheduledDate} />
-            </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Add Activity
-            </Button>
-        </form>
-    );
-};
-
-const ActivityItem = ({ activity, onUpdateStatus, onToggleReport, technicians, onDeleteClick, isCompleted }: { 
+const ActivityItem = ({ activity, technicians, onDeleteClick, isCompleted }: { 
     activity: Activity, 
-    onUpdateStatus: (id: string, status: Activity['status']) => void, 
-    onToggleReport: (id: string, excluded: boolean) => void,
     technicians: Technician[],
     onDeleteClick: () => void,
     isCompleted: boolean
 }) => {
     const assignedTechnician = activity.technician || technicians.find(t => t.id === activity.technicianId);
-    const isExcluded = activity.excludeFromReport || false;
     
     return (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg gap-4">
             <div className="flex-1 space-y-1">
-                <div className="flex items-center gap-2">
-                  <p className="font-medium">{activity.description}</p>
-                  <Badge variant={isExcluded ? "outline" : "secondary"} className="h-5 text-[10px] uppercase font-bold gap-1">
-                    {isExcluded ? <FileX className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
-                    {isExcluded ? "Hidden from PDF" : "Shown in PDF"}
-                  </Badge>
-                </div>
+                <p className="font-medium">{activity.description}</p>
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                      {assignedTechnician && (
                         <div className="flex items-center gap-2">
@@ -118,26 +57,6 @@ const ActivityItem = ({ activity, onUpdateStatus, onToggleReport, technicians, o
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                 <div className="flex items-center gap-2 mr-4 bg-muted/50 p-1.5 rounded-md border">
-                    <Label htmlFor={`act-report-${activity.id}`} className="text-[10px] font-bold uppercase text-muted-foreground">Include in Report</Label>
-                    <Switch 
-                      id={`act-report-${activity.id}`} 
-                      checked={!isExcluded} 
-                      onCheckedChange={(checked) => onToggleReport(activity.id, !checked)}
-                      className="scale-75"
-                    />
-                 </div>
-                 <Select value={activity.status} onValueChange={(status: Activity['status']) => onUpdateStatus(activity.id, status)} disabled={isCompleted}>
-                    <SelectTrigger className="w-[180px]">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="scheduled">Scheduled</SelectItem>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                </Select>
                 {!isCompleted && (
                   <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onDeleteClick}>
                       <Trash2 className="h-4 w-4" />
@@ -196,8 +115,6 @@ interface WorkOrderAdminDetailsProps {
 export function WorkOrderAdminDetails({
   workOrder,
   assignedTechnician,
-  isTechnician,
-  isAdmin,
   trainingRecords,
   onTrainingRecordDelete,
   hvacReports,
@@ -215,7 +132,6 @@ export function WorkOrderAdminDetails({
   onTimeEntryDelete,
   isSavingPhotos,
   onDirectionsClick,
-  onSignatureSave,
   onTempUpdate,
   tempOnArrival, setTempOnArrival,
   tempOnLeaving, setTempOnLeaving,
@@ -261,10 +177,12 @@ export function WorkOrderAdminDetails({
 
   const isCompleted = workOrder.status === 'Completed';
 
-  const combinedActivity = [
-    ...workOrder.notes.map(note => ({ ...note, type: 'note', date: note.createdAt || workOrder.createdDate })),
-    ...timeEntries.map(entry => ({ ...entry, type: 'time', date: entry.date }))
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const combinedActivity = useMemo(() => {
+    return [
+      ...workOrder.notes.map(note => ({ ...note, type: 'note' as const, date: note.createdAt || workOrder.createdDate })),
+      ...timeEntries.map(entry => ({ ...entry, type: 'time' as const, date: entry.date }))
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [workOrder.notes, timeEntries, workOrder.createdDate]);
 
   useEffect(() => {
     setIsClient(true);
@@ -358,7 +276,6 @@ export function WorkOrderAdminDetails({
     try {
       const noteRef = doc(db, 'work_orders', workOrder.id, 'updates', noteId);
       await updateDocumentNonBlocking(noteRef, { excludeFromReport: excluded });
-      toast({ title: excluded ? 'Note Hidden from Report' : 'Note Included in Report' });
     } catch (e) {}
   };
 
@@ -367,7 +284,14 @@ export function WorkOrderAdminDetails({
     try {
       const actRef = doc(db, 'work_orders', workOrder.id, 'activities', activityId);
       await updateDocumentNonBlocking(actRef, { excludeFromReport: excluded });
-      toast({ title: excluded ? 'Activity Hidden from Report' : 'Activity Included in Report' });
+    } catch (e) {}
+  };
+
+  const handleToggleTimeReportInclusion = async (timeEntryId: string, excluded: boolean) => {
+    if (!db) return;
+    try {
+      const entryRef = doc(db, 'time_entries', timeEntryId);
+      await updateDocumentNonBlocking(entryRef, { excludeFromReport: excluded });
     } catch (e) {}
   };
 
@@ -460,23 +384,25 @@ export function WorkOrderAdminDetails({
             </Card>
 
             <Card className="border-primary/20 bg-primary/5">
-                <CardHeader><CardTitle className="text-lg">Office Internal Notes & Report Override</CardTitle><CardDescription>Only visible to administrators. Controls PDF documentation.</CardDescription></CardHeader>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2"><Sparkles className="h-5 w-5" />Final Documentation Control</CardTitle>
+                  <CardDescription>Enter the official technical summary for the final PDF report. If filled, this text overrides all AI generation.</CardDescription>
+                </CardHeader>
                 <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="report-override" className="font-bold">Official Work Performed Description</Label>
+                      <Textarea id="report-override" placeholder="Manually enter the final technical summary for the customer report here..." value={customSummary} onChange={(e) => setCustomSummary(e.target.value)} rows={6} className="bg-background"/>
+                    </div>
+
                     <div className="flex items-center justify-between space-x-2 border p-3 rounded-md bg-background"><div className="space-y-0.5"><Label htmlFor="needs-attention">Flag: Needs Attention</Label><p className="text-xs text-muted-foreground">Highlights this job for the technician (Red Highlight).</p></div><Switch id="needs-attention" checked={needsAttention} onCheckedChange={setNeedsAttention}/></div>
                     {needsAttention && <div className="space-y-2"><Label htmlFor="attention-msg">Attention Instructions</Label><Textarea id="attention-msg" placeholder="Explain why this needs attention..." value={attentionMessage} onChange={(e) => setAttentionMessage(e.target.value)} className="bg-background"/></div>}
                     
                     <div className="space-y-2">
-                      <Label htmlFor="report-override" className="flex items-center gap-2"><Sparkles className="h-3.5 w-3.5" />Final Report Summary Override</Label>
-                      <CardDescription className="text-xs mb-1">If entered, this text replaces the AI summary in the PDF "Work Performed" field.</CardDescription>
-                      <Textarea id="report-override" placeholder="Manually enter the final technical summary for the customer report..." value={customSummary} onChange={(e) => setCustomSummary(e.target.value)} rows={4} className="bg-background"/>
-                    </div>
-
-                    <div className="space-y-2">
                       <Label htmlFor="internal-notes">Internal Office Notes</Label>
-                      <Textarea id="internal-notes" placeholder="Add private notes for the office..." value={internalNotes} onChange={(e) => setInternalNotes(e.target.value)} rows={4} className="bg-background"/>
+                      <Textarea id="internal-notes" placeholder="Add private notes for the office (not visible to customers)..." value={internalNotes} onChange={(e) => setInternalNotes(e.target.value)} rows={4} className="bg-background"/>
                     </div>
                     
-                    <Button onClick={handleSaveAdminNotes} disabled={isSavingAdminNotes} className="w-full">{isSavingAdminNotes ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save Internal Settings</Button>
+                    <Button onClick={handleSaveAdminNotes} disabled={isSavingAdminNotes} className="w-full">{isSavingAdminNotes ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save Office Updates</Button>
                 </CardContent>
             </Card>
             
@@ -503,29 +429,6 @@ export function WorkOrderAdminDetails({
                     )}
                     {!workOrder.customerSignatureUrl && (!workOrder.acknowledgements || workOrder.acknowledgements.length === 0) && <p className="text-sm text-center text-muted-foreground py-4">No signatures captured.</p>}
                   </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader><div className="flex items-center justify-between"><CardTitle className="flex items-center gap-2"><ClipboardCheck className="h-5 w-5" />Training Records</CardTitle></div></CardHeader>
-              <CardContent>
-                {trainingRecords.length > 0 ? (
-                  <ul className="space-y-2">
-                    {trainingRecords.map(record => (
-                      <li key={record.id} className="flex items-center justify-between p-2 rounded-md border gap-2"><div className='flex-1'><p className="font-medium">{record.trainingCourse}</p><p className="text-sm text-muted-foreground">{record.date ? format(new Date(record.date), 'MMM d, yyyy') : 'No date'}</p></div><div className="flex items-center gap-2"><Button asChild variant="outline" size="sm" className="hidden sm:flex"><Link href={`/training-attendance/${record.id}?action=download`}><Download className="h-4 w-4" /></Link></Button><Button asChild variant="outline" size="sm"><Link href={`/training-attendance/${record.id}`}>View</Link></Button>{!isCompleted && <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setTrainingRecordToDelete(record.id)}><Trash2 className="h-4 w-4" /></Button>}</div></li>))}
-                  </ul>
-                ) : <p className="text-sm text-muted-foreground text-center py-4">No training records for this work order.</p>}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader><div className="flex items-center justify-between"><CardTitle className="flex items-center gap-2"><FileCog className="h-5 w-5" />HVAC Start-up Reports</CardTitle></div></CardHeader>
-              <CardContent>
-                {hvacReports.length > 0 ? (
-                  <ul className="space-y-2">
-                    {hvacReports.map(report => (
-                      <li key={report.id} className="flex items-center justify-between p-2 rounded-md border gap-2"><div className='flex-1'><p className="font-medium">{report.equipmentType || `Report from ${format(new Date(report.date), 'PPP')}`}</p><p className="text-sm text-muted-foreground">{report.technician || 'N/A'}</p></div><div className="flex items-center gap-2"><Button asChild variant="outline" size="sm" className="hidden sm:flex"><Link href={`/hvac-startup-report/${report.id}?action=download`}><Download className="h-4 w-4" /></Link></Button><Button asChild variant="outline" size="sm"><Link href={`/hvac-startup-report/${report.id}`}>View</Link></Button>{!isCompleted && <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setHvacReportToDelete(report.id)}><Trash2 className="h-4 w-4" /></Button>}</div></li>))}
-                  </ul>
-                ) : <p className="text-sm text-muted-foreground text-center py-4">No HVAC start-up reports for this work order.</p>}
               </CardContent>
             </Card>
           </div>
@@ -635,18 +538,16 @@ export function WorkOrderAdminDetails({
                       key={activity.id} 
                       activity={activity} 
                       technicians={technicians} 
-                      onUpdateStatus={onUpdateActivityStatus} 
-                      onToggleReport={handleToggleActivityReportInclusion}
                       onDeleteClick={() => setActivityToDelete(activity)} 
                       isCompleted={isCompleted} 
                     />
                   )) : <p className="text-center text-sm text-muted-foreground py-4">No scheduled activities.</p>}
                 </div>
-                {!isCompleted && <><Separator /><AddActivityForm technicians={technicians} onAddActivity={onAddActivity} isLoading={isAddingActivity} /></>}
               </CardContent>
             </Card>
+            
             <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" /> Notes &amp; Time Postings</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" /> Field Notes & Time Feed</CardTitle></CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-6">
                   {isClient ? combinedActivity.map(activity => activity.type === 'note' ? (
@@ -655,12 +556,88 @@ export function WorkOrderAdminDetails({
                       note={activity} 
                       onPhotoDelete={isCompleted ? undefined : onNotePhotoDelete} 
                       onNoteDelete={isCompleted ? undefined : setNoteToDelete} 
-                      onToggleReportInclusion={handleToggleNoteReportInclusion}
                       showPhotos={false} 
                       isAdmin={true}
                     />
                   ) : <TimeActivityItem key={`time-${activity.id}`} timeEntry={activity} onTimeEntryDelete={isCompleted ? undefined : setTimeEntryToDelete} isAdmin={true} />) : <p className="text-center text-sm text-muted-foreground py-4">Loading activity...</p>}
                   {isClient && combinedActivity.length === 0 && <p className="text-center text-sm text-muted-foreground py-4">No notes or activity yet.</p>}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-sky-200 bg-sky-50/30">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2 text-sky-900"><Filter className="h-5 w-5" />PDF Report Documentation Selection</CardTitle>
+                <CardDescription>Select exactly which field updates will be used by the AI to generate the official Work Performed summary.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[400px] border rounded-md bg-white">
+                  <div className="p-4 space-y-4">
+                    {/* Activities Group */}
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Scheduled Activities</p>
+                      {activities.map(activity => (
+                        <div key={activity.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 border border-transparent hover:border-muted transition-all">
+                          <Checkbox 
+                            id={`report-act-${activity.id}`} 
+                            checked={!activity.excludeFromReport} 
+                            onCheckedChange={(checked) => handleToggleActivityReportInclusion(activity.id, !checked)} 
+                          />
+                          <Label htmlFor={`report-act-${activity.id}`} className="text-sm font-medium cursor-pointer leading-tight flex-1">
+                            {activity.description}
+                            <span className="block text-[10px] text-muted-foreground mt-0.5">{format(new Date(activity.scheduled_date), 'MMM d')} • {activity.status}</span>
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+
+                    <Separator />
+
+                    {/* Notes Group */}
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Technician Notes</p>
+                      {workOrder.notes.map(note => (
+                        <div key={note.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 border border-transparent hover:border-muted transition-all">
+                          <Checkbox 
+                            id={`report-note-${note.id}`} 
+                            checked={!note.excludeFromReport} 
+                            onCheckedChange={(checked) => handleToggleNoteReportInclusion(note.id, !checked)} 
+                          />
+                          <Label htmlFor={`report-note-${note.id}`} className="text-sm font-medium cursor-pointer leading-tight flex-1">
+                            {note.text}
+                            <span className="block text-[10px] text-muted-foreground mt-0.5">{format(new Date(note.createdAt), 'MMM d')}</span>
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+
+                    <Separator />
+
+                    {/* Time Postings Group */}
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Time Posting Descriptions</p>
+                      {timeEntries.filter(te => te.notes).map(entry => (
+                        <div key={entry.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 border border-transparent hover:border-muted transition-all">
+                          <Checkbox 
+                            id={`report-time-${entry.id}`} 
+                            checked={!entry.excludeFromReport} 
+                            onCheckedChange={(checked) => handleToggleTimeReportInclusion(entry.id, !checked)} 
+                          />
+                          <Label htmlFor={`report-time-${entry.id}`} className="text-sm font-medium cursor-pointer leading-tight flex-1">
+                            {entry.notes}
+                            <span className="block text-[10px] text-muted-foreground mt-0.5">{format(new Date(entry.date), 'MMM d')} • {entry.hours}h</span>
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </ScrollArea>
+                <div className="mt-4 flex justify-between items-center bg-muted/20 p-2 rounded-md">
+                  <p className="text-xs text-muted-foreground italic">Checking an item includes its description in the AI summary calculation.</p>
+                  <Button variant="ghost" size="sm" className="text-[10px] uppercase font-bold" onClick={async () => {
+                    if (!db) return;
+                    // Batch logic for "Deselect All" or "Select All" could be added here
+                  }}>Manage All</Button>
                 </div>
               </CardContent>
             </Card>

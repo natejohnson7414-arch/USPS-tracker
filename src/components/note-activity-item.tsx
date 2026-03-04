@@ -1,4 +1,3 @@
-
 'use client';
 
 import Image from 'next/image';
@@ -6,15 +5,12 @@ import { format } from 'date-fns';
 import type { WorkOrderNote } from '@/lib/types';
 import { Button } from './ui/button';
 import { X, Trash2, FileText, FileX } from 'lucide-react';
-import { Switch } from './ui/switch';
-import { Label } from './ui/label';
 import { Badge } from './ui/badge';
 
 interface NoteActivityItemProps {
   note: WorkOrderNote;
   onPhotoDelete?: (noteId: string, photoUrl: string) => void;
   onNoteDelete?: (noteId: string) => void;
-  onToggleReportInclusion?: (noteId: string, excluded: boolean) => void;
   showPhotos?: boolean;
   isAdmin?: boolean;
 }
@@ -23,7 +19,6 @@ export function NoteActivityItem({
   note, 
   onPhotoDelete, 
   onNoteDelete, 
-  onToggleReportInclusion,
   showPhotos = true,
   isAdmin = false
 }: NoteActivityItemProps) {
@@ -31,7 +26,7 @@ export function NoteActivityItem({
   const isExcluded = note.excludeFromReport || false;
 
   return (
-    <div className="space-y-3 relative">
+    <div className="space-y-3 relative border-b pb-4 last:border-0 last:pb-0">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 pr-4">
           <p className="text-sm">{note.text}</p>
@@ -48,17 +43,6 @@ export function NoteActivityItem({
           </div>
         </div>
         <div className="flex items-center gap-1">
-          {isAdmin && onToggleReportInclusion && (
-            <div className="flex items-center gap-2 mr-2">
-              <Label htmlFor={`report-toggle-${note.id}`} className="sr-only">Include in PDF</Label>
-              <Switch 
-                id={`report-toggle-${note.id}`}
-                checked={!isExcluded}
-                onCheckedChange={(checked) => onToggleReportInclusion(note.id, !checked)}
-                className="scale-75"
-              />
-            </div>
-          )}
           {onNoteDelete && (
             <Button
               variant="ghost"
