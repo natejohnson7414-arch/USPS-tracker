@@ -18,6 +18,9 @@ import { MapProviderSelection } from '@/components/map-provider-selection';
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -734,6 +737,10 @@ export default function WorkOrderDetailPage() {
        <MapProviderSelection address={selectedAddress} isOpen={!!selectedAddress} onOpenChange={() => setSelectedAddress(null)} />
         <Dialog open={isSignatureDialogOpen} onOpenChange={setIsSignatureDialogOpen}>
             <DialogContent className="fixed inset-0 h-[100dvh] w-screen max-w-none p-0 flex flex-col border-0 rounded-none shadow-none z-[100]">
+                <DialogHeader className="sr-only">
+                    <DialogTitle>Capture Signature</DialogTitle>
+                    <DialogDescription>Use your finger or stylus to provide a signature.</DialogDescription>
+                </DialogHeader>
                 <SignaturePad 
                     onSave={handleSignatureSave}
                     onClear={() => {}}

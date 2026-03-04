@@ -43,6 +43,8 @@ export const uploadImageResumable = async (
 
     // 1. Auth Guard
     if (isDebug) console.log(`[UPLOAD] Initializing: ${path}`);
+    
+    // Explicitly wait for the auth state to be resolved to avoid rule denials
     await auth.authStateReady();
     const user = auth.currentUser;
 
@@ -57,7 +59,8 @@ export const uploadImageResumable = async (
         path,
         uid: user.uid,
         online: navigator.onLine,
-        size: file.size
+        size: file.size,
+        origin: typeof window !== 'undefined' ? window.location.origin : 'unknown'
       });
     }
 
@@ -83,7 +86,7 @@ export const uploadImageResumable = async (
       if (elapsedSinceProgress > STALL_TIMEOUT) {
         clearInterval(watchdog);
         uploadTask.cancel();
-        if (isDebug) console.error(`[UPLOAD] Stalled: No progress for ${STALL_TIMEOUT}ms`);
+        if (isDebug) console.error(`[UPLOAD] Stalled: No progress for ${STALL_TIMEOUT}ms. Possible CORS block or network timeout.`);
       }
 
       if (elapsedTotal > HARD_TIMEOUT) {
@@ -113,7 +116,12 @@ export const uploadImageResumable = async (
           if (activeUploadCount === 0 && typeof window !== 'undefined') {
             window.__UPLOAD_IN_PROGRESS__ = false;
           }
-          if (isDebug) console.error("[UPLOAD] Error:", error.code);
+          if (isDebug) {
+            console.error("[UPLOAD] Error:", error.code, error.message);
+            if (error.code === 'storage/unauthorized' || error.message.includes('CORS')) {
+              console.warn("[UPLOAD] DIAGNOSIS: This is likely a CORS block. Ensure the Storage bucket allows your origin.");
+            }
+          }
           reject(error);
         },
         async () => {
