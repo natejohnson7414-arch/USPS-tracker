@@ -28,6 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { doc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from './ui/badge';
+import { WorkOrderReviewDialog } from './work-order-review-dialog';
 
 const AddActivityForm = ({ technicians, onAddActivity, isLoading, isTechnician, currentUserId }: { 
     technicians: Technician[], 
@@ -251,6 +252,7 @@ export function WorkOrderDetails({
   const [ackToDelete, setAckToDelete] = useState<Acknowledgement | null>(null);
   const [isDeletingSignature, setIsDeletingSignature] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
 
   // Asset State
   const [siteAssets, setSiteAssets] = useState<Asset[]>([]);
@@ -401,7 +403,7 @@ export function WorkOrderDetails({
             </div>
             <div className="flex flex-col items-end gap-2 ml-auto">
               {canCompleteWorkOrder && (
-                <Button onClick={onMarkForReview} disabled={isSubmittingReview} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                <Button onClick={() => setIsReviewOpen(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                   {isSubmittingReview && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Submit for Review
                 </Button>
@@ -759,6 +761,19 @@ export function WorkOrderDetails({
           </div>
         </TabsContent>
       </Tabs>
+
+      <WorkOrderReviewDialog
+        isOpen={isReviewOpen}
+        onOpenChange={setIsReviewOpen}
+        workOrder={workOrder}
+        timeEntries={timeEntries}
+        onNavigate={setActiveTab}
+        onSubmit={() => {
+          setIsReviewOpen(false);
+          onMarkForReview();
+        }}
+        isSubmitting={isSubmittingReview}
+      />
 
       <AlertDialog open={!!noteToDelete} onOpenChange={(open) => !open && setNoteToDelete(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete this note.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteNote}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       <AlertDialog open={!!timeEntryToDelete} onOpenChange={(open) => !open && setTimeEntryToDelete(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete this time entry.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteTimeEntry}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
