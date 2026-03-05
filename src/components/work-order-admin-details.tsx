@@ -643,11 +643,11 @@ export function WorkOrderAdminDetails({
                       key={`note-${activity.id}`} 
                       note={activity as any} 
                       onPhotoDelete={isCompleted ? undefined : onNotePhotoDelete} 
-                      onNoteDelete={isCompleted ? undefined : setNoteToDelete} 
+                      onNoteDelete={isCompleted ? undefined : onNoteDelete} 
                       showPhotos={false} 
                       isAdmin={true}
                     />
-                  ) : <TimeActivityItem key={`time-${activity.id}`} timeEntry={activity as any} onTimeEntryDelete={isCompleted ? undefined : setTimeEntryToDelete} isAdmin={true} />) : <p className="text-center text-sm text-muted-foreground py-4">Loading activity...</p>}
+                  ) : <TimeActivityItem key={`time-${activity.id}`} timeEntry={activity as any} onTimeEntryDelete={isCompleted ? undefined : onTimeEntryDelete} isAdmin={true} />) : <p className="text-center text-sm text-muted-foreground py-4">Loading activity...</p>}
                   {isClient && combinedActivity.length === 0 && <p className="text-center text-sm text-muted-foreground py-4">No notes or activity yet.</p>}
                 </div>
               </CardContent>

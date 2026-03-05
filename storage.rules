@@ -8,10 +8,10 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    // Prioritize Quotes for reliable preflight and technician submissions
-    // Simplified rule to ensure timing and helper function overhead don't cause 403s
+    // Top-level prioritized rule for Quotes to ensure reliable preflight
+    // Explicitly allows all authenticated users to read/write quote media
     match /quotes/{allPaths=**} {
-      allow read, write: if isSignedIn();
+      allow read, write: if request.auth != null;
     }
 
     function userHasRole(roleName) {

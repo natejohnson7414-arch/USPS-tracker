@@ -23,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { uploadImageResumable, deleteImage } from '@/firebase/storage';
 import type { Quote, QuoteLineItem } from '@/lib/types';
 import { Loader2, ArrowLeft, Trash2, PlusCircle, Video, FileText, Camera, Library, ImageIcon, X } from 'lucide-react';
-import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, arrayUnion } from 'firebase/firestore';
 
 const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
@@ -156,7 +156,7 @@ export default function QuoteDetailPage() {
             if (uploadedPhotoUrls.length > 0) updateData.photos = arrayUnion(...uploadedPhotoUrls);
             if (uploadedVideoUrls.length > 0) updateData.videos = arrayUnion(...uploadedVideoUrls);
 
-            await updateDoc(quoteRef, updateData);
+            await updateDocumentNonBlocking(quoteRef, updateData);
             
             setQuote(prev => {
                 if (!prev) return null;
@@ -187,7 +187,7 @@ export default function QuoteDetailPage() {
 
         try {
             const quoteRef = doc(db, 'quotes', quote.id);
-            await updateDoc(quoteRef, { [field]: updatedList });
+            await updateDocumentNonBlocking(quoteRef, { [field]: updatedList });
             await deleteImage(url);
             
             setQuote(prev => prev ? ({ ...prev, [field]: updatedList } as Quote) : null);
