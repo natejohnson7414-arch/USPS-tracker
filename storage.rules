@@ -39,8 +39,9 @@ service firebase.storage {
     /**
      * @description Secures quote-related media.
      * Allows all authenticated users to upload and view quote attachments.
+     * We use a recursive match to ensure all subfolders are covered.
      */
-    match /quotes/{quoteId}/{allPaths=**} {
+    match /quotes/{allPaths=**} {
       allow read, write: if isSignedIn();
     }
   }

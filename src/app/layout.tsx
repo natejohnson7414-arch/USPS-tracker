@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
@@ -8,12 +8,18 @@ import { SyncManager } from '@/components/sync-manager';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
+export const viewport: Viewport = {
+  themeColor: '#B63128',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export const metadata: Metadata = {
   title: 'USPS WO Tracker',
   description: 'A robust work order tracking app for managing and streamlining tasks for USPS.',
   manifest: '/manifest.json',
-  themeColor: '#B63128',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
