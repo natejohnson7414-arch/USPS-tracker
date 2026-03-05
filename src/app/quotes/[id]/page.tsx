@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -120,7 +119,7 @@ export default function QuoteDetailPage() {
             if (uploadedPhotoUrls.length > 0) updateData.photos = arrayUnion(...uploadedPhotoUrls);
             if (uploadedVideoUrls.length > 0) updateData.videos = arrayUnion(...uploadedVideoUrls);
             await updateDocumentNonBlocking(quoteRef, updateData);
-            setQuote(prev => prev ? ({ ...prev, photos: [...(prev.photos || []), ...uploadedPhotoUrls], videos: [...(prev.videos || []), ...uploadedVideoUrls] }) : null);
+            setQuote(prev => prev ? ({ ...prev, photos: [...(prev.photos || []), ...uploadedPhotoUrls], videos: [...(prev.videos || []), ...uploadedVideoUrls] } as Quote) : null);
             toastId.dismiss();
             toast({ title: "Media Added" });
         } catch (error: any) { toastId.dismiss(); toast({ variant: "destructive", title: "Upload Failed" }); } finally {
