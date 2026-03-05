@@ -23,6 +23,14 @@ service firebase.storage {
     }
 
     /**
+     * @description Secures quote-related media.
+     * Placed at top for priority and using direct auth check to avoid any helper issues.
+     */
+    match /quotes/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    /**
      * @description Secures all files related to work orders.
      */
     match /work-orders/{workOrderId}/{allPaths=**} {
@@ -33,15 +41,6 @@ service firebase.storage {
      * @description Secures signature files.
      */
     match /signatures/{allPaths=**} {
-      allow read, write: if isSignedIn();
-    }
-
-    /**
-     * @description Secures quote-related media.
-     * Allows all authenticated users to upload and view quote attachments.
-     * We use a recursive match to ensure all subfolders are covered.
-     */
-    match /quotes/{allPaths=**} {
       allow read, write: if isSignedIn();
     }
   }

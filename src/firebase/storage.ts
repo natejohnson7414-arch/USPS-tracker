@@ -1,8 +1,9 @@
+
 'use client';
 
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject, StorageError, UploadTask } from 'firebase/storage';
 import { initializeFirebase } from './init';
-import { getAuth, getIdTokenResult } from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 
 /**
  * Global counter for active uploads to allow background services (like SyncManager)
@@ -42,16 +43,20 @@ export const uploadImageResumable = async (
     const services = await initializeFirebase();
     const auth = getAuth(services.firebaseApp);
 
-    // 1. Auth Guard - Critical for CORS preflights relying on Authorization headers
     if (isDebug) console.log(`[UPLOAD] Initializing: ${path}`);
     
-    // Explicitly wait for the auth state to be resolved to avoid rule denials during preflight
+    // Ensure auth state is fully resolved
     await auth.authStateReady();
     const user = auth.currentUser;
 
     if (!user) {
-      if (isDebug) console.error("[UPLOAD] Aborted: No authenticated user.");
+      if (isDebug) console.error("[UPLOAD] Aborted: No authenticated user found at start of task.");
       throw new Error("Authentication required for upload.");
+    }
+
+    if (isDebug) {
+      console.log(`[UPLOAD] Auth active for user: ${user.uid}`);
+      console.log(`[UPLOAD] Online status: ${navigator.onLine ? 'YES' : 'NO'}`);
     }
 
     activeUploadCount++;
@@ -60,7 +65,7 @@ export const uploadImageResumable = async (
     const storageRef = ref(services.storage, path);
     const uploadTask = uploadBytesResumable(storageRef, file);
 
-    // 2. Watchdog for Stalls and Timeouts
+    // Watchdog for Stalls and Timeouts
     let lastProgressAt = Date.now();
     const watchdog = setInterval(() => {
       const now = Date.now();
@@ -76,13 +81,13 @@ export const uploadImageResumable = async (
       if (elapsedSinceProgress > STALL_TIMEOUT) {
         clearInterval(watchdog);
         uploadTask.cancel();
-        if (isDebug) console.error(`[UPLOAD] Stalled: No progress for ${STALL_TIMEOUT}ms. CORS or network block detected.`);
+        if (isDebug) console.error(`[UPLOAD] Stalled: No progress for ${STALL_TIMEOUT}ms. Path: ${path}`);
       }
 
       if (elapsedTotal > HARD_TIMEOUT) {
         clearInterval(watchdog);
         uploadTask.cancel();
-        if (isDebug) console.error(`[UPLOAD] Hard Timeout: Exceeded ${HARD_TIMEOUT}ms`);
+        if (isDebug) console.error(`[UPLOAD] Hard Timeout: Exceeded ${HARD_TIMEOUT}ms for path: ${path}`);
       }
     }, 5000);
 
@@ -98,7 +103,7 @@ export const uploadImageResumable = async (
               pct
             });
           }
-          if (isDebug) console.log(`[UPLOAD] Progress: ${pct}%`);
+          if (isDebug) console.log(`[UPLOAD] Progress for ${path}: ${pct}%`);
         },
         (error: StorageError) => {
           clearInterval(watchdog);
@@ -108,8 +113,8 @@ export const uploadImageResumable = async (
           }
           if (isDebug) {
             console.error("[UPLOAD] SDK Error:", error.code, error.message);
-            if (error.code === 'storage/unauthorized' || error.message.includes('CORS')) {
-              console.warn("[UPLOAD] ACTION REQUIRED: Configure Bucket CORS via Google Cloud Console.");
+            if (error.code === 'storage/unauthorized') {
+              console.warn("[UPLOAD] 403 Forbidden: Check storage.rules and authentication context.");
             }
           }
           reject(error);
