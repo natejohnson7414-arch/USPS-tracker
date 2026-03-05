@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText, Download, AlertCircle, Save, CheckCircle2, Package, ChevronRight, Filter, Receipt, Sparkles, Maximize2 } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText, Download, AlertCircle, Save, CheckCircle2, Package, ChevronRight, Filter, Receipt, Sparkles, Maximize2 } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
@@ -170,11 +170,9 @@ export function WorkOrderAdminDetails({
   const [ackToDelete, setAckToDelete] = useState<Acknowledgement | null>(null);
   const [viewingPhoto, setViewingPhoto] = useState<{ url: string, type: 'before' | 'after' | 'receipts' } | null>(null);
 
-  // Asset State
   const [siteAssets, setSiteAssets] = useState<Asset[]>([]);
   const [isLinking, setIsLinking] = useState<string | null>(null);
 
-  // Admin-only state
   const [internalNotes, setInternalNotes] = useState(workOrder.internalNotes || '');
   const [needsAttention, setNeedsAttention] = useState(workOrder.needsAttention || false);
   const [attentionMessage, setAttentionMessage] = useState(workOrder.attentionMessage || '');
@@ -253,11 +251,7 @@ export function WorkOrderAdminDetails({
             customWorkPerformedSummary: customSummary,
             ...(needsAttention && { technicianReplied: false })
         };
-
-        if (needsAttention && workOrder.status !== 'Completed') {
-            updateData.status = 'In Progress';
-        }
-
+        if (needsAttention && workOrder.status !== 'Completed') updateData.status = 'In Progress';
         await updateDocumentNonBlocking(woRef, updateData);
         toast({ title: 'Admin Notes Saved' });
         if (needsAttention && !workOrder.needsAttention && assignedTechnician) {
@@ -269,12 +263,7 @@ export function WorkOrderAdminDetails({
                 message: attentionMessage
             });
         }
-    } catch (error) {
-        console.error("Error saving admin notes:", error);
-        toast({ title: "Failed to save admin notes", variant: 'destructive' });
-    } finally {
-        setIsSavingAdminNotes(false);
-    }
+    } catch (error) { toast({ title: "Failed to save admin notes", variant: 'destructive' }); } finally { setIsSavingAdminNotes(false); }
   };
 
   const handleToggleNoteReportInclusion = async (noteId: string, excluded: boolean) => {
@@ -308,9 +297,7 @@ export function WorkOrderAdminDetails({
     setIsLinking(assetId);
     try {
         const woRef = doc(db, 'work_orders', workOrder.id);
-        await updateDocumentNonBlocking(woRef, {
-            assetIds: arrayUnion(assetId)
-        });
+        await updateDocumentNonBlocking(woRef, { assetIds: arrayUnion(assetId) });
         toast({ title: 'Asset Linked to Job' });
     } catch (e) { } finally { setIsLinking(null); }
   };
@@ -320,9 +307,7 @@ export function WorkOrderAdminDetails({
     setIsLinking(assetId);
     try {
         const woRef = doc(db, 'work_orders', workOrder.id);
-        await updateDocumentNonBlocking(woRef, {
-            assetIds: arrayRemove(assetId)
-        });
+        await updateDocumentNonBlocking(woRef, { assetIds: arrayRemove(assetId) });
         toast({ title: 'Asset Unlinked' });
     } catch (e) { } finally { setIsLinking(null); }
   };
@@ -350,9 +335,7 @@ export function WorkOrderAdminDetails({
           <TabsTrigger value="assets" variant="folder">Assets</TabsTrigger>
           <TabsTrigger value="media" variant="folder">Media</TabsTrigger>
           <TabsTrigger value="activity" variant="folder">Activity</TabsTrigger>
-          {quotes.length > 0 && (
-            <TabsTrigger value="quotes" variant="folder">Quotes ({quotes.length})</TabsTrigger>
-          )}
+          {quotes.length > 0 && <TabsTrigger value="quotes" variant="folder">Quotes ({quotes.length})</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="overview" className="mt-0">
@@ -403,22 +386,13 @@ export function WorkOrderAdminDetails({
             <Card className="border-primary/20 bg-primary/5">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2"><Sparkles className="h-5 w-5" />Final Documentation Control</CardTitle>
-                  <CardDescription>Enter the official technical summary for the final PDF report. If filled, this text overrides all AI generation.</CardDescription>
+                  <CardDescription>Enter the official technical summary for the final PDF report.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="report-override" className="font-bold">Official Work Performed Description</Label>
-                      <Textarea id="report-override" placeholder="Manually enter the final technical summary for the customer report here..." value={customSummary} onChange={(e) => setCustomSummary(e.target.value)} rows={6} className="bg-background"/>
-                    </div>
-
+                    <div className="space-y-2"><Label htmlFor="report-override" className="font-bold">Official Work Performed Description</Label><Textarea id="report-override" placeholder="Manually enter the final technical summary for the customer report here..." value={customSummary} onChange={(e) => setCustomSummary(e.target.value)} rows={6} className="bg-background"/></div>
                     <div className="flex items-center justify-between space-x-2 border p-3 rounded-md bg-background"><div className="space-y-0.5"><Label htmlFor="needs-attention">Flag: Needs Attention</Label><p className="text-xs text-muted-foreground">Highlights this job for the technician (Red Highlight).</p></div><Switch id="needs-attention" checked={needsAttention} onCheckedChange={setNeedsAttention}/></div>
                     {needsAttention && <div className="space-y-2"><Label htmlFor="attention-msg">Attention Instructions</Label><Textarea id="attention-msg" placeholder="Explain why this needs attention..." value={attentionMessage} onChange={(e) => setAttentionMessage(e.target.value)} className="bg-background"/></div>}
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="internal-notes">Internal Office Notes</Label>
-                      <Textarea id="internal-notes" placeholder="Add private notes for the office (not visible to customers)..." value={internalNotes} onChange={(e) => setInternalNotes(e.target.value)} rows={4} className="bg-background"/>
-                    </div>
-                    
+                    <div className="space-y-2"><Label htmlFor="internal-notes">Internal Office Notes</Label><Textarea id="internal-notes" placeholder="Add private notes for the office (not visible to customers)..." value={internalNotes} onChange={(e) => setInternalNotes(e.target.value)} rows={4} className="bg-background"/></div>
                     <Button onClick={handleSaveAdminNotes} disabled={isSavingAdminNotes} className="w-full">{isSavingAdminNotes ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save Office Updates</Button>
                 </CardContent>
             </Card>
@@ -431,16 +405,7 @@ export function WorkOrderAdminDetails({
                         <div className="flex items-center justify-between p-3 border rounded-md">
                             <div><p className="font-medium">{workOrder.contactInfo || 'Signed'}</p><p className="text-xs text-muted-foreground">{workOrder.signatureDate ? format(new Date(workOrder.signatureDate), 'PP p') : ''}</p></div>
                             <div className="flex items-center gap-2">
-                              <div className="bg-muted p-1 rounded-md">
-                                <Image 
-                                  src={workOrder.customerSignatureUrl} 
-                                  alt="Signature" 
-                                  width={120} 
-                                  height={40} 
-                                  sizes="120px"
-                                  className="object-contain" 
-                                />
-                              </div>
+                              <div className="bg-muted p-1 rounded-md"><Image src={workOrder.customerSignatureUrl} alt="Signature" width={120} height={40} sizes="120px" className="object-contain" /></div>
                               {!isCompleted && <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => { setAckToDelete(undefined); setIsDeletingSignature(true); }}><Trash2 className="h-4 w-4"/></Button>}
                             </div>
                         </div>
@@ -452,16 +417,7 @@ export function WorkOrderAdminDetails({
                                 <div key={index} className="flex items-center justify-between p-3 border rounded-md bg-muted/30">
                                     <div><p className="font-medium">{ack.name}</p><p className="text-xs text-muted-foreground">{ack.date ? format(new Date(ack.date), 'PP p') : ''}</p></div>
                                     <div className="flex items-center gap-2">
-                                      <div className="bg-white p-1 rounded-md border">
-                                        <Image 
-                                          src={ack.signatureUrl} 
-                                          alt={`Signature ${index}`} 
-                                          width={100} 
-                                          height={35} 
-                                          sizes="100px"
-                                          className="object-contain" 
-                                        />
-                                      </div>
+                                      <div className="bg-white p-1 rounded-md border"><Image src={ack.signatureUrl} alt={`Signature ${index}`} width={100} height={35} sizes="100px" className="object-contain" /></div>
                                       {!isCompleted && <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => { setAckToDelete(ack); setIsDeletingSignature(true); }}><Trash2 className="h-4 w-4"/></Button>}
                                     </div>
                                 </div>
@@ -479,16 +435,7 @@ export function WorkOrderAdminDetails({
           <div className="space-y-8">
             <Card className="rounded-t-none">
               <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" />Site Equipment Registry</CardTitle>
-                  {!isCompleted && (
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/assets/new?siteId=${workOrder.workSiteId}`}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Register New Asset
-                      </Link>
-                    </Button>
-                  )}
-                </div>
+                <div className="flex justify-between items-center"><CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" />Site Equipment Registry</CardTitle>{!isCompleted && <Button variant="outline" size="sm" asChild><Link href={`/assets/new?siteId=${workOrder.workSiteId}`}><PlusCircle className="mr-2 h-4 w-4" /> Register New Asset</Link></Button>}</div>
                 <CardDescription>Select equipment from the site registry to assign it to this job.</CardDescription>
               </CardHeader>
               <CardContent>
@@ -499,42 +446,8 @@ export function WorkOrderAdminDetails({
                       const isLoading = isLinking === asset.id;
                       return (
                         <div key={asset.id} className={`flex items-center justify-between p-3 border rounded-lg transition-all ${isLinked ? 'bg-primary/5 border-primary/20 ring-1 ring-primary/10' : 'hover:bg-muted/30'}`}>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className="font-bold">{asset.name}</p>
-                              <Badge variant="outline" className="font-mono text-[10px]">{asset.assetTag}</Badge>
-                              {isLinked && <Badge className="h-5 text-[10px] bg-primary text-primary-foreground">Linked to Job</Badge>}
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">{asset.manufacturer} {asset.model} • {asset.status}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button asChild variant="ghost" size="icon" className="h-8 w-8"><Link href={`/assets/${asset.id}`}><ChevronRight className="h-4 w-4" /></Link></Button>
-                            {!isCompleted && (
-                              <div className="flex items-center gap-2">
-                                {isLinked ? (
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="text-destructive hover:bg-destructive/10"
-                                    onClick={() => handleUnlinkAsset(asset.id)}
-                                    disabled={!!isLinking}
-                                  >
-                                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><X className="h-4 w-4 mr-1" /> Unlink</>}
-                                  </Button>
-                                ) : (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="gap-2"
-                                    onClick={() => handleLinkAsset(asset.id)}
-                                    disabled={!!isLinking}
-                                  >
-                                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><LinkIcon className="h-4 w-4" /> Link Asset</>}
-                                  </Button>
-                                )}
-                              </div>
-                            )}
-                          </div>
+                          <div className="flex-1"><div className="flex items-center gap-2"><p className="font-bold">{asset.name}</p><Badge variant="outline" className="font-mono text-[10px]">{asset.assetTag}</Badge>{isLinked && <Badge className="h-5 text-[10px] bg-primary text-primary-foreground">Linked to Job</Badge>}</div><p className="text-xs text-muted-foreground mt-1">{asset.manufacturer} {asset.model} • {asset.status}</p></div>
+                          <div className="flex items-center gap-2"><Button asChild variant="ghost" size="icon" className="h-8 w-8"><Link href={`/assets/${asset.id}`}><ChevronRight className="h-4 w-4" /></Link></Button>{!isCompleted && <div className="flex items-center gap-2">{isLinked ? <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => handleUnlinkAsset(asset.id)} disabled={!!isLinking}>{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><X className="h-4 w-4 mr-1" /> Unlink</>}</Button> : <Button variant="outline" size="sm" className="gap-2" onClick={() => handleLinkAsset(asset.id)} disabled={!!isLinking}>{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><LinkIcon className="h-4 w-4" /> Link Asset</>}</Button>}</div>}</div>
                         </div>
                       );
                     })}
@@ -552,46 +465,26 @@ export function WorkOrderAdminDetails({
                   <CardContent className="space-y-6">
                       <div>
                           <h3 className="font-medium mb-2">Before Photos</h3>
-                           <div className="relative">
-                             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 mb-4">
-                               {(workOrder.beforePhotoUrls || []).map((url) => (
-                                 <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url, type: 'before' })}>
-                                   <Image 
-                                     src={url} 
-                                     alt={`Before photo`} 
-                                     fill 
-                                     sizes="(max-width: 768px) 33vw, 15vw"
-                                     className="object-cover" 
-                                   />
-                                   <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                     <Maximize2 className="text-white h-5 w-5" />
-                                   </div>
-                                 </div>
-                               ))}
-                             </div>
-                           </div>
+                          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 mb-4">
+                            {(workOrder.beforePhotoUrls || []).map((url) => (
+                              <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url, type: 'before' })}>
+                                <Image src={url} alt={`Before photo`} fill sizes="(max-width: 768px) 25vw, 12vw" className="object-cover" />
+                                <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Maximize2 className="text-white h-5 w-5" /></div>
+                              </div>
+                            ))}
+                          </div>
                           {!isCompleted && <Button variant="outline" onClick={() => setPhotoSheetTarget('before')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add Before Photos</Button>}
                       </div>
                       <Separator />
                       <div>
                           <h3 className="font-medium mb-2">After Photos</h3>
-                          <div className="relative">
-                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 mb-4">
-                              {(workOrder.afterPhotoUrls || []).map((url) => (
-                                <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url, type: 'after' })}>
-                                  <Image 
-                                    src={url} 
-                                    alt={`After photo`} 
-                                    fill 
-                                    sizes="(max-width: 768px) 33vw, 15vw"
-                                    className="object-cover" 
-                                  />
-                                  <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Maximize2 className="text-white h-5 w-5" />
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 mb-4">
+                            {(workOrder.afterPhotoUrls || []).map((url) => (
+                              <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url, type: 'after' })}>
+                                <Image src={url} alt={`After photo`} fill sizes="(max-width: 768px) 25vw, 12vw" className="object-cover" />
+                                <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Maximize2 className="text-white h-5 w-5" /></div>
+                              </div>
+                            ))}
                           </div>
                           {!isCompleted && <Button variant="outline" onClick={() => setPhotoSheetTarget('after')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add After Photos</Button>}
                       </div>
@@ -600,23 +493,13 @@ export function WorkOrderAdminDetails({
               <Card>
                 <CardHeader><CardTitle className="flex items-center gap-2"><ReceiptText /> Receipts &amp; Packing Slips</CardTitle></CardHeader>
                 <CardContent>
-                  <div className="relative">
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 mb-4">
-                      {(workOrder.receiptsAndPackingSlips || []).map((url) => (
-                        <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url, type: 'receipts' })}>
-                          <Image 
-                            src={url} 
-                            alt={`Receipt or packing slip`} 
-                            fill 
-                            sizes="(max-width: 768px) 33vw, 15vw"
-                            className="object-cover" 
-                          />
-                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Maximize2 className="text-white h-5 w-5" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 mb-4">
+                    {(workOrder.receiptsAndPackingSlips || []).map((url) => (
+                      <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url, type: 'receipts' })}>
+                        <Image src={url} alt={`Receipt or packing slip`} fill sizes="(max-width: 768px) 25vw, 12vw" className="object-cover" />
+                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Maximize2 className="text-white h-5 w-5" /></div>
+                      </div>
+                    ))}
                   </div>
                   {!isCompleted && <Button variant="outline" onClick={() => setPhotoSheetTarget('receipts')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add Photos</Button>}
                 </CardContent>
@@ -632,13 +515,7 @@ export function WorkOrderAdminDetails({
               <CardContent className="space-y-6">
                 <div className="space-y-4">
                   {activities.length > 0 ? activities.map(activity => (
-                    <ActivityItem 
-                      key={activity.id} 
-                      activity={activity} 
-                      technicians={technicians} 
-                      onDeleteClick={() => setActivityToDelete(activity)} 
-                      isCompleted={isCompleted} 
-                    />
+                    <ActivityItem key={activity.id} activity={activity} technicians={technicians} onDeleteClick={() => setActivityToDelete(activity)} isCompleted={isCompleted} />
                   )) : <p className="text-center text-sm text-muted-foreground py-4">No scheduled activities.</p>}
                 </div>
               </CardContent>
@@ -649,14 +526,7 @@ export function WorkOrderAdminDetails({
               <CardContent className="space-y-6">
                 <div className="space-y-6">
                   {isClient ? combinedActivity.map(activity => (activity as any).type === 'note' ? (
-                    <NoteActivityItem 
-                      key={`note-${activity.id}`} 
-                      note={activity as any} 
-                      onPhotoDelete={isCompleted ? undefined : onNotePhotoDelete} 
-                      onNoteDelete={isCompleted ? undefined : onNoteDelete} 
-                      showPhotos={false} 
-                      isAdmin={true}
-                    />
+                    <NoteActivityItem key={`note-${activity.id}`} note={activity as any} onPhotoDelete={isCompleted ? undefined : onNotePhotoDelete} onNoteDelete={isCompleted ? undefined : onNoteDelete} showPhotos={false} isAdmin={true} />
                   ) : <TimeActivityItem key={`time-${activity.id}`} timeEntry={activity as any} onTimeEntryDelete={isCompleted ? undefined : onTimeEntryDelete} isAdmin={true} />) : <p className="text-center text-sm text-muted-foreground py-4">Loading activity...</p>}
                   {isClient && combinedActivity.length === 0 && <p className="text-center text-sm text-muted-foreground py-4">No notes or activity yet.</p>}
                 </div>
@@ -666,7 +536,7 @@ export function WorkOrderAdminDetails({
             <Card className="border-sky-200 bg-sky-50/30">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2 text-sky-900"><Filter className="h-5 w-5" />PDF Report Documentation Selection</CardTitle>
-                <CardDescription>Select exactly which field updates will be used by the AI to generate the official Work Performed summary.</CardDescription>
+                <CardDescription>Select which field updates will be used by the AI to generate the technical summary.</CardDescription>
               </CardHeader>
               <CardContent>
                 <ScrollArea className="h-[400px] border rounded-md bg-white">
@@ -675,61 +545,33 @@ export function WorkOrderAdminDetails({
                       <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Scheduled Activities</p>
                       {activities.map(activity => (
                         <div key={activity.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 border border-transparent hover:border-muted transition-all">
-                          <Checkbox 
-                            id={`report-act-${activity.id}`} 
-                            checked={!activity.excludeFromReport} 
-                            onCheckedChange={(checked) => handleToggleActivityReportInclusion(activity.id, !checked)} 
-                          />
-                          <Label htmlFor={`report-act-${activity.id}`} className="text-sm font-medium cursor-pointer leading-tight flex-1">
-                            {activity.description}
-                            <span className="block text-[10px] text-muted-foreground mt-0.5">{format(new Date(activity.scheduled_date), 'MMM d')} • {activity.status}</span>
-                          </Label>
+                          <Checkbox id={`report-act-${activity.id}`} checked={!activity.excludeFromReport} onCheckedChange={(checked) => handleToggleActivityReportInclusion(activity.id, !checked)} />
+                          <Label htmlFor={`report-act-${activity.id}`} className="text-sm font-medium cursor-pointer leading-tight flex-1">{activity.description}<span className="block text-[10px] text-muted-foreground mt-0.5">{format(new Date(activity.scheduled_date), 'MMM d')} • {activity.status}</span></Label>
                         </div>
                       ))}
                     </div>
-
                     <Separator />
-
                     <div className="space-y-2">
                       <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Technician Notes</p>
                       {workOrder.notes.map(note => (
                         <div key={note.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 border border-transparent hover:border-muted transition-all">
-                          <Checkbox 
-                            id={`report-note-${note.id}`} 
-                            checked={!note.excludeFromReport} 
-                            onCheckedChange={(checked) => handleToggleNoteReportInclusion(note.id, !checked)} 
-                          />
-                          <Label htmlFor={`report-note-${note.id}`} className="text-sm font-medium cursor-pointer leading-tight flex-1">
-                            {note.text}
-                            <span className="block text-[10px] text-muted-foreground mt-0.5">{format(new Date(note.createdAt), 'MMM d')}</span>
-                          </Label>
+                          <Checkbox id={`report-note-${note.id}`} checked={!note.excludeFromReport} onCheckedChange={(checked) => handleToggleNoteReportInclusion(note.id, !checked)} />
+                          <Label htmlFor={`report-note-${note.id}`} className="text-sm font-medium cursor-pointer leading-tight flex-1">{note.text}<span className="block text-[10px] text-muted-foreground mt-0.5">{format(new Date(note.createdAt), 'MMM d')}</span></Label>
                         </div>
                       ))}
                     </div>
-
                     <Separator />
-
                     <div className="space-y-2">
                       <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Time Posting Descriptions</p>
                       {timeEntries.filter(te => te.notes).map(entry => (
                         <div key={entry.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 border border-transparent hover:border-muted transition-all">
-                          <Checkbox 
-                            id={`report-time-${entry.id}`} 
-                            checked={!entry.excludeFromReport} 
-                            onCheckedChange={(checked) => handleToggleTimeReportInclusion(entry.id, !checked)} 
-                          />
-                          <Label htmlFor={`report-time-${entry.id}`} className="text-sm font-medium cursor-pointer leading-tight flex-1">
-                            {entry.notes}
-                            <span className="block text-[10px] text-muted-foreground mt-0.5">{format(new Date(entry.date), 'MMM d')} • {entry.hours}h</span>
-                          </Label>
+                          <Checkbox id={`report-time-${entry.id}`} checked={!entry.excludeFromReport} onCheckedChange={(checked) => handleToggleTimeReportInclusion(entry.id, !checked)} />
+                          <Label htmlFor={`report-time-${entry.id}`} className="text-sm font-medium cursor-pointer leading-tight flex-1">{entry.notes}<span className="block text-[10px] text-muted-foreground mt-0.5">{format(new Date(entry.date), 'MMM d')} • {entry.hours}h</span></Label>
                         </div>
                       ))}
                     </div>
                   </div>
                 </ScrollArea>
-                <div className="mt-4 flex justify-between items-center bg-muted/20 p-2 rounded-md">
-                  <p className="text-xs text-muted-foreground italic">Checking an item includes its description in the AI summary calculation.</p>
-                </div>
               </CardContent>
             </Card>
           </div>
@@ -744,14 +586,8 @@ export function WorkOrderAdminDetails({
                   {quotes.map(quote => (
                     <Link key={quote.id} href={`/quotes/${quote.id}`}>
                       <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                        <div>
-                          <p className="font-bold">{quote.quoteNumber}</p>
-                          <p className="text-xs text-muted-foreground">{format(new Date(quote.createdDate), 'MMM d, yyyy')}</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Badge variant="outline">{quote.status}</Badge>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                        </div>
+                        <div><p className="font-bold">{quote.quoteNumber}</p><p className="text-xs text-muted-foreground">{format(new Date(quote.createdDate), 'MMM d, yyyy')}</p></div>
+                        <div className="flex items-center gap-3"><Badge variant="outline">{quote.status}</Badge><ChevronRight className="h-4 w-4 text-muted-foreground" /></div>
                       </div>
                     </Link>
                   ))}
@@ -764,37 +600,13 @@ export function WorkOrderAdminDetails({
 
       <Dialog open={!!viewingPhoto} onOpenChange={() => setViewingPhoto(null)}>
         <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/95 border-0 flex flex-col items-stretch h-[90vh]">
-          <DialogHeader className="p-4 bg-background/10 backdrop-blur-sm border-b border-white/10 absolute top-0 w-full z-10">
-            <DialogTitle className="text-white text-sm font-bold uppercase tracking-widest">
-              {viewingPhoto?.type === 'before' ? 'Before Work' : viewingPhoto?.type === 'after' ? 'After Work' : 'Receipt / Packing Slip'}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 relative flex items-center justify-center p-4">
-            {viewingPhoto && (
-              <Image 
-                src={viewingPhoto.url} 
-                alt="High resolution documentation" 
-                fill 
-                className="object-contain" 
-                priority
-              />
-            )}
-          </div>
+          <DialogHeader className="p-4 bg-background/10 backdrop-blur-sm border-b border-white/10 absolute top-0 w-full z-10"><DialogTitle className="text-white text-sm font-bold uppercase tracking-widest">{viewingPhoto?.type === 'before' ? 'Before Work' : viewingPhoto?.type === 'after' ? 'After Work' : 'Receipt / Packing Slip'}</DialogTitle></DialogHeader>
+          <div className="flex-1 relative flex items-center justify-center p-4">{viewingPhoto && <Image src={viewingPhoto.url} alt="High resolution documentation" fill className="object-contain" priority />}</div>
           <div className="p-4 bg-background flex justify-between items-center border-t">
             <Button variant="outline" size="sm" onClick={() => setViewingPhoto(null)}>Close</Button>
             <div className="flex items-center gap-2">
-                {viewingPhoto && (
-                    <Button variant="outline" size="sm" asChild>
-                        <a href={`/api/image-proxy?url=${encodeURIComponent(viewingPhoto.url)}`} download>
-                            <Download className="h-4 w-4 mr-2" /> Download
-                        </a>
-                    </Button>
-                )}
-                {!isCompleted && viewingPhoto && (
-                <Button variant="destructive" size="sm" onClick={handleDeletePhotoInViewer}>
-                    <Trash2 className="h-4 w-4 mr-2" /> Delete Documentation
-                </Button>
-                )}
+                {viewingPhoto && <Button variant="outline" size="sm" asChild><a href={`/api/image-proxy?url=${encodeURIComponent(viewingPhoto.url)}`} download><Download className="h-4 w-4 mr-2" /> Download</a></Button>}
+                {!isCompleted && viewingPhoto && <Button variant="destructive" size="sm" onClick={handleDeletePhotoInViewer}><Trash2 className="h-4 w-4 mr-2" /> Delete Documentation</Button>}
             </div>
           </div>
         </DialogContent>

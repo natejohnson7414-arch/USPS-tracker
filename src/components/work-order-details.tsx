@@ -9,11 +9,10 @@ import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRe
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, ReceiptText, AlertCircle, CheckCircle2, Package, ChevronRight, Receipt, Maximize2, Download } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, ReceiptText, AlertCircle, CheckCircle2, Package, ChevronRight, Receipt, Maximize2, Download } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
@@ -258,7 +257,6 @@ export function WorkOrderDetails({
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [viewingPhoto, setViewingPhoto] = useState<{ url: string, type: 'before' | 'after' | 'receipts' } | null>(null);
 
-  // Asset State
   const [siteAssets, setSiteAssets] = useState<Asset[]>([]);
   const [isLinking, setIsLinking] = useState<string | null>(null);
 
@@ -328,15 +326,9 @@ export function WorkOrderDetails({
     setIsLinking(assetId);
     try {
         const woRef = doc(db, 'work_orders', workOrder.id);
-        await updateDocumentNonBlocking(woRef, {
-            assetIds: arrayUnion(assetId)
-        });
+        await updateDocumentNonBlocking(woRef, { assetIds: arrayUnion(assetId) });
         toast({ title: 'Asset Linked to Job' });
-    } catch (e) {
-        // Handled globally
-    } finally {
-        setIsLinking(null);
-    }
+    } catch (e) { } finally { setIsLinking(null); }
   };
 
   const handleUnlinkAsset = async (assetId: string) => {
@@ -344,15 +336,9 @@ export function WorkOrderDetails({
     setIsLinking(assetId);
     try {
         const woRef = doc(db, 'work_orders', workOrder.id);
-        await updateDocumentNonBlocking(woRef, {
-            assetIds: arrayRemove(assetId)
-        });
+        await updateDocumentNonBlocking(woRef, { assetIds: arrayRemove(assetId) });
         toast({ title: 'Asset Unlinked' });
-    } catch (e) {
-        // Handled globally
-    } finally {
-        setIsLinking(null);
-    }
+    } catch (e) { } finally { setIsLinking(null); }
   };
   
   const isCurrentUserAssigned = workOrder.assignedTechnicianId === user?.uid;
@@ -382,10 +368,7 @@ export function WorkOrderDetails({
               <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex items-start gap-3">
                     <AlertCircle className="h-6 w-6 text-destructive shrink-0" />
-                    <div>
-                        <p className="font-bold text-destructive">OFFICE ALERT: NEEDS ATTENTION</p>
-                        <p className="text-sm font-medium">{workOrder.attentionMessage}</p>
-                    </div>
+                    <div><p className="font-bold text-destructive">OFFICE ALERT: NEEDS ATTENTION</p><p className="text-sm font-medium">{workOrder.attentionMessage}</p></div>
                   </div>
                   <Button variant="destructive" size="sm" className="shrink-0" onClick={handleReplyToAttention} disabled={isReplying}>
                     {isReplying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
@@ -399,10 +382,7 @@ export function WorkOrderDetails({
           <Card className="mb-6 border-green-600 bg-green-50">
               <CardContent className="p-4 flex items-center gap-3">
                   <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0" />
-                  <div>
-                      <p className="font-bold text-green-700">Replied to Office</p>
-                      <p className="text-sm">You have acknowledged the office instruction.</p>
-                  </div>
+                  <div><p className="font-bold text-green-700">Replied to Office</p><p className="text-sm">You have acknowledged the office instruction.</p></div>
               </CardContent>
           </Card>
       )}
@@ -410,9 +390,7 @@ export function WorkOrderDetails({
       <Card className="mb-8">
         <CardHeader>
           <div className="flex justify-between items-start">
-            <div className="flex flex-col items-start gap-2">
-              <StatusBadge status={workOrder.status} />
-            </div>
+            <div className="flex flex-col items-start gap-2"><StatusBadge status={workOrder.status} /></div>
             <div className="flex flex-col items-end gap-2 ml-auto">
               {canCompleteWorkOrder && (
                 <Button onClick={() => setIsReviewOpen(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
@@ -428,25 +406,11 @@ export function WorkOrderDetails({
                    <div className="flex items-center gap-2">
                       {workOrder.checkInOutURL && (
                           <div className="flex flex-col items-center">
-                              <Button asChild variant="outline" size="icon">
-                                  <a href={getLinkUrl(workOrder.checkInOutURL)} target="_blank" rel="noopener noreferrer">
-                                      <LinkIcon className="h-4 w-4" />
-                                      <span className="sr-only">Check-in</span>
-                                  </a>
-                              </Button>
-                              {workOrder.checkInWorkOrderNumber && (
-                                  <p className="text-xs text-muted-foreground mt-1 max-w-[60px] truncate" title={workOrder.checkInWorkOrderNumber}>
-                                      WO: {workOrder.checkInWorkOrderNumber}
-                                  </p>
-                              )}
+                              <Button asChild variant="outline" size="icon"><a href={getLinkUrl(workOrder.checkInOutURL)} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /><span className="sr-only">Check-in</span></a></Button>
+                              {workOrder.checkInWorkOrderNumber && <p className="text-xs text-muted-foreground mt-1 max-w-[60px] truncate" title={workOrder.checkInWorkOrderNumber}>WO: {workOrder.checkInWorkOrderNumber}</p>}
                           </div>
                       )}
-                      {workOrder.workSite && (
-                        <Button variant="outline" size="icon" onClick={() => onDirectionsClick(workOrder.workSite!)}>
-                            <Map className="h-4 w-4" />
-                            <span className="sr-only">Get Directions</span>
-                        </Button>
-                      )}
+                      {workOrder.workSite && <Button variant="outline" size="icon" onClick={() => onDirectionsClick(workOrder.workSite!)}><Map className="h-4 w-4" /><span className="sr-only">Get Directions</span></Button>}
                      </div>
               </div>
           )}
@@ -454,14 +418,8 @@ export function WorkOrderDetails({
         <CardContent>
           <p className="text-muted-foreground mt-1">{workOrder.description}</p>
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 text-sm">
-                <div className="space-y-2">
-                    <Label htmlFor="temp-arrival">Temp on Arrival</Label>
-                    <Input id="temp-arrival" value={tempOnArrival} onChange={e => setTempOnArrival(e.target.value)} onBlur={onTempUpdate} disabled={isCompleted} />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="temp-leaving">Temp on Leaving</Label>
-                    <Input id="temp-leaving" value={tempOnLeaving} onChange={e => setTempOnLeaving(e.target.value)} onBlur={onTempUpdate} disabled={isCompleted} />
-                </div>
+                <div className="space-y-2"><Label htmlFor="temp-arrival">Temp on Arrival</Label><Input id="temp-arrival" value={tempOnArrival} onChange={e => setTempOnArrival(e.target.value)} onBlur={onTempUpdate} disabled={isCompleted} /></div>
+                <div className="space-y-2"><Label htmlFor="temp-leaving">Temp on Leaving</Label><Input id="temp-leaving" value={tempOnLeaving} onChange={e => setTempOnLeaving(e.target.value)} onBlur={onTempUpdate} disabled={isCompleted} /></div>
             </div>
         </CardContent>
       </Card>
@@ -472,9 +430,7 @@ export function WorkOrderDetails({
           <TabsTrigger value="assets" variant="folder">Assets</TabsTrigger>
           <TabsTrigger value="media" variant="folder">Media</TabsTrigger>
           <TabsTrigger value="activity" variant="folder">Activity</TabsTrigger>
-          {quotes && quotes.length > 0 && (
-            <TabsTrigger value="quotes" variant="folder">Quotes ({quotes.length})</TabsTrigger>
-          )}
+          {quotes && quotes.length > 0 && <TabsTrigger value="quotes" variant="folder">Quotes ({quotes.length})</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="overview" className="mt-0">
@@ -485,26 +441,12 @@ export function WorkOrderDetails({
                   <div className="space-y-4">
                     {workOrder.customerSignatureUrl && (
                       <div className="flex items-center justify-between p-3 border rounded-md">
-                        <div>
-                          <p className="font-medium">{workOrder.contactInfo || 'Signed'}</p>
-                          <p className="text-xs text-muted-foreground">{workOrder.signatureDate ? format(new Date(workOrder.signatureDate), 'PP p') : ''}</p>
-                        </div>
+                        <div><p className="font-medium">{workOrder.contactInfo || 'Signed'}</p><p className="text-xs text-muted-foreground">{workOrder.signatureDate ? format(new Date(workOrder.signatureDate), 'PP p') : ''}</p></div>
                         <div className="flex items-center gap-2">
                           <div className="bg-muted p-1 rounded-md">
-                            <Image 
-                              src={workOrder.customerSignatureUrl} 
-                              alt="Signature" 
-                              width={120} 
-                              height={40} 
-                              sizes="120px"
-                              className="object-contain"
-                            />
+                            <Image src={workOrder.customerSignatureUrl} alt="Signature" width={120} height={40} sizes="120px" className="object-contain" />
                           </div>
-                          {!isCompleted && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => { setAckToDelete(undefined); setIsDeletingSignature(true); }}>
-                              <Trash2 className="h-4 w-4"/>
-                            </Button>
-                          )}
+                          {!isCompleted && <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => { setAckToDelete(undefined); setIsDeletingSignature(true); }}><Trash2 className="h-4 w-4"/></Button>}
                         </div>
                       </div>
                     )}
@@ -513,26 +455,10 @@ export function WorkOrderDetails({
                             <p className="text-sm font-semibold text-muted-foreground">Previous Signatures</p>
                             {workOrder.acknowledgements.map((ack, index) => (
                                 <div key={index} className="flex items-center justify-between p-3 border rounded-md bg-muted/30">
-                                    <div>
-                                        <p className="font-medium">{ack.name}</p>
-                                        <p className="text-xs text-muted-foreground">{ack.date ? format(new Date(ack.date), 'PP p') : ''}</p>
-                                    </div>
+                                    <div><p className="font-medium">{ack.name}</p><p className="text-xs text-muted-foreground">{ack.date ? format(new Date(ack.date), 'PP p') : ''}</p></div>
                                     <div className="flex items-center gap-2">
-                                        <div className="bg-white p-1 rounded-md border">
-                                            <Image 
-                                              src={ack.signatureUrl} 
-                                              alt={`Signature ${index}`} 
-                                              width={100} 
-                                              height={35} 
-                                              sizes="100px"
-                                              className="object-contain"
-                                            />
-                                        </div>
-                                        {!isCompleted && (
-                                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => { setAckToDelete(ack); setIsDeletingSignature(true); }}>
-                                              <Trash2 className="h-4 w-4"/>
-                                          </Button>
-                                        )}
+                                        <div className="bg-white p-1 rounded-md border"><Image src={ack.signatureUrl} alt={`Signature ${index}`} width={100} height={35} sizes="100px" className="object-contain" /></div>
+                                        {!isCompleted && <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => { setAckToDelete(ack); setIsDeletingSignature(true); }}><Trash2 className="h-4 w-4"/></Button>}
                                     </div>
                                 </div>
                             ))}
@@ -540,15 +466,8 @@ export function WorkOrderDetails({
                     )}
                     {!workOrder.customerSignatureUrl && (
                       <div className="space-y-4 pt-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="customer-name">Signer's Name</Label>
-                          <Input id="customer-name" placeholder="Enter printed name" value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} onBlur={onContactInfoUpdate} disabled={isCompleted} />
-                        </div>
-                        {!isCompleted && (
-                          <Button type="button" onClick={onSignatureSave} className="w-full">
-                            <PlusCircle className="mr-2 h-4 w-4" /> Add Signature
-                          </Button>
-                        )}
+                        <div className="space-y-2"><Label htmlFor="customer-name">Signer's Name</Label><Input id="customer-name" placeholder="Enter printed name" value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} onBlur={onContactInfoUpdate} disabled={isCompleted} /></div>
+                        {!isCompleted && <Button type="button" onClick={onSignatureSave} className="w-full"><PlusCircle className="mr-2 h-4 w-4" /> Add Signature</Button>}
                       </div>
                     )}
                   </div>
@@ -559,9 +478,7 @@ export function WorkOrderDetails({
               <CardHeader>
                 <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2"><ClipboardCheck className="h-5 w-5" />Training Records</CardTitle>
-                    {!isCompleted && (
-                      <Button asChild variant="outline" size="sm"><Link href={`/training-attendance?workOrderId=${workOrder.id}`}><PlusCircle className="mr-2 h-4 w-4" />Add Training</Link></Button>
-                    )}
+                    {!isCompleted && <Button asChild variant="outline" size="sm"><Link href={`/training-attendance?workOrderId=${workOrder.id}`}><PlusCircle className="mr-2 h-4 w-4" />Add Training</Link></Button>}
                 </div>
               </CardHeader>
               <CardContent>
@@ -569,14 +486,8 @@ export function WorkOrderDetails({
                   <ul className="space-y-2">
                     {trainingRecords.map(record => (
                       <li key={record.id} className="flex items-center justify-between p-2 rounded-md border gap-2">
-                          <div className='flex-1'>
-                              <p className="font-medium">{record.trainingCourse}</p>
-                              <p className="text-sm text-muted-foreground">{record.date ? format(new Date(record.date), 'MMM d, yyyy') : 'No date'}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button asChild variant="outline" size="sm"><Link href={`/training-attendance/${record.id}`}>View</Link></Button>
-                            {!isCompleted && <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setTrainingRecordToDelete(record.id)}><Trash2 className="h-4 w-4" /></Button>}
-                          </div>
+                          <div className='flex-1'><p className="font-medium">{record.trainingCourse}</p><p className="text-sm text-muted-foreground">{record.date ? format(new Date(record.date), 'MMM d, yyyy') : 'No date'}</p></div>
+                          <div className="flex items-center gap-2"><Button asChild variant="outline" size="sm"><Link href={`/training-attendance/${record.id}`}>View</Link></Button>{!isCompleted && <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setTrainingRecordToDelete(record.id)}><Trash2 className="h-4 w-4" /></Button>}</div>
                       </li>
                     ))}
                   </ul>
@@ -588,9 +499,7 @@ export function WorkOrderDetails({
               <CardHeader>
                 <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2"><FileCog className="h-5 w-5" />HVAC Start-up Reports</CardTitle>
-                    {!isCompleted && (
-                      <Button asChild variant="outline" size="sm"><Link href={`/hvac-startup-report?workOrderId=${workOrder.id}`}><PlusCircle className="mr-2 h-4 w-4" />Add Report</Link></Button>
-                    )}
+                    {!isCompleted && <Button asChild variant="outline" size="sm"><Link href={`/hvac-startup-report?workOrderId=${workOrder.id}`}><PlusCircle className="mr-2 h-4 w-4" />Add Report</Link></Button>}
                 </div>
               </CardHeader>
               <CardContent>
@@ -598,14 +507,8 @@ export function WorkOrderDetails({
                   <ul className="space-y-2">
                     {hvacReports.map(report => (
                       <li key={report.id} className="flex items-center justify-between p-2 rounded-md border gap-2">
-                          <div className='flex-1'>
-                              <p className="font-medium">{report.equipmentType || `Report from ${format(new Date(report.date), 'PPP')}`}</p>
-                              <p className="text-sm text-muted-foreground">{report.technician || 'N/A'}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button asChild variant="outline" size="sm"><Link href={`/hvac-startup-report/${report.id}`}>View</Link></Button>
-                            {!isCompleted && <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setHvacReportToDelete(report.id)}><Trash2 className="h-4 w-4" /></Button>}
-                          </div>
+                          <div className='flex-1'><p className="font-medium">{report.equipmentType || `Report from ${format(new Date(report.date), 'PPP')}`}</p><p className="text-sm text-muted-foreground">{report.technician || 'N/A'}</p></div>
+                          <div className="flex items-center gap-2"><Button asChild variant="outline" size="sm"><Link href={`/hvac-startup-report/${report.id}`}>View</Link></Button>{!isCompleted && <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setHvacReportToDelete(report.id)}><Trash2 className="h-4 w-4" /></Button>}</div>
                       </li>
                     ))}
                   </ul>
@@ -619,16 +522,7 @@ export function WorkOrderDetails({
           <div className="space-y-8">
             <Card className="rounded-t-none">
               <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" />Site Equipment Registry</CardTitle>
-                  {!isCompleted && (
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/assets/new?siteId=${workOrder.workSiteId}`}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Register New Asset
-                      </Link>
-                    </Button>
-                  )}
-                </div>
+                <div className="flex justify-between items-center"><CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" />Site Equipment Registry</CardTitle>{!isCompleted && <Button variant="outline" size="sm" asChild><Link href={`/assets/new?siteId=${workOrder.workSiteId}`}><PlusCircle className="mr-2 h-4 w-4" /> Register New Asset</Link></Button>}</div>
                 <CardDescription>Select the specific equipment being serviced on this job.</CardDescription>
               </CardHeader>
               <CardContent>
@@ -637,66 +531,15 @@ export function WorkOrderDetails({
                     {siteAssets.map(asset => {
                       const isLinked = linkedAssetIds.has(asset.id);
                       const isLoading = isLinking === asset.id;
-
                       return (
                         <div key={asset.id} className={`flex items-center justify-between p-3 border rounded-lg transition-all ${isLinked ? 'bg-primary/5 border-primary/20 ring-1 ring-primary/10' : 'hover:bg-muted/30'}`}>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className="font-bold">{asset.name}</p>
-                              <Badge variant="outline" className="font-mono text-[10px]">{asset.assetTag}</Badge>
-                              {isLinked && <Badge className="h-5 text-[10px] bg-primary text-primary-foreground">Linked to Job</Badge>}
-                            </div>
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                              <span>{asset.manufacturer} {asset.model}</span>
-                              <span>•</span>
-                              <span className="capitalize">{asset.status}</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button asChild variant="ghost" size="icon" className="h-8 w-8" title="View History">
-                              <Link href={`/assets/${asset.id}`}><ChevronRight className="h-4 w-4" /></Link>
-                            </Button>
-                            {!isCompleted && (
-                              <div className="flex items-center gap-2">
-                                {isLinked ? (
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="text-destructive hover:bg-destructive/10"
-                                    onClick={() => handleUnlinkAsset(asset.id)}
-                                    disabled={!!isLinking}
-                                  >
-                                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><X className="h-4 w-4 mr-1" /> Unlink</>}
-                                  </Button>
-                                ) : (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="gap-2"
-                                    onClick={() => handleLinkAsset(asset.id)}
-                                    disabled={!!isLinking}
-                                  >
-                                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><LinkIcon className="h-4 w-4" /> Link Asset</>}
-                                  </Button>
-                                )}
-                              </div>
-                            )}
-                          </div>
+                          <div className="flex-1"><div className="flex items-center gap-2"><p className="font-bold">{asset.name}</p><Badge variant="outline" className="font-mono text-[10px]">{asset.assetTag}</Badge>{isLinked && <Badge className="h-5 text-[10px] bg-primary text-primary-foreground">Linked to Job</Badge>}</div><p className="text-xs text-muted-foreground mt-1">{asset.manufacturer} {asset.model} • <span className="capitalize">{asset.status}</span></p></div>
+                          <div className="flex items-center gap-2"><Button asChild variant="ghost" size="icon" className="h-8 w-8" title="View History"><Link href={`/assets/${asset.id}`}><ChevronRight className="h-4 w-4" /></Link></Button>{!isCompleted && <div className="flex items-center gap-2">{isLinked ? <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => handleUnlinkAsset(asset.id)} disabled={!!isLinking}>{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><X className="h-4 w-4 mr-1" /> Unlink</>}</Button> : <Button variant="outline" size="sm" className="gap-2" onClick={() => handleLinkAsset(asset.id)} disabled={!!isLinking}>{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><LinkIcon className="h-4 w-4" /> Link Asset</>}</Button>}</div>}</div>
                         </div>
                       );
                     })}
                   </div>
-                ) : (
-                  <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                    <Package className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                    <p className="text-sm text-muted-foreground">No equipment registered at this site yet.</p>
-                    {!isCompleted && (
-                      <Button asChild variant="link" className="mt-2">
-                        <Link href={`/assets/new?siteId=${workOrder.workSiteId}`}>Add the first asset</Link>
-                      </Button>
-                    )}
-                  </div>
-                )}
+                ) : <div className="text-center py-12 border-2 border-dashed rounded-lg"><Package className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><p className="text-sm text-muted-foreground">No equipment registered at this site yet.</p>{!isCompleted && <Button asChild variant="link" className="mt-2"><Link href={`/assets/new?siteId=${workOrder.workSiteId}`}>Add the first asset</Link></Button>}</div>}
               </CardContent>
             </Card>
           </div>
@@ -709,71 +552,41 @@ export function WorkOrderDetails({
                 <CardContent className="space-y-6">
                     <div>
                         <h3 className="font-medium mb-2">Before Photos</h3>
-                        <div className="relative">
-                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 mb-4">
-                                {(workOrder.beforePhotoUrls || []).map((url) => (
-                                    <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url, type: 'before' })}>
-                                        <Image 
-                                          src={url} 
-                                          alt={`Before photo`} 
-                                          fill 
-                                          sizes="(max-width: 768px) 33vw, 15vw"
-                                          className="object-cover" 
-                                        />
-                                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Maximize2 className="text-white h-5 w-5" />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 mb-4">
+                            {(workOrder.beforePhotoUrls || []).map((url) => (
+                                <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url, type: 'before' })}>
+                                    <Image src={url} alt={`Before photo`} fill sizes="(max-width: 768px) 25vw, 12vw" className="object-cover" />
+                                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Maximize2 className="text-white h-5 w-5" /></div>
+                                </div>
+                            ))}
                         </div>
                         {!isCompleted && <Button variant="outline" onClick={() => setPhotoSheetTarget('before')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add Before Photos</Button>}
                     </div>
                     <Separator />
                     <div>
                         <h3 className="font-medium mb-2">After Photos</h3>
-                        <div className="relative">
-                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 mb-4">
-                                {(workOrder.afterPhotoUrls || []).map((url) => (
-                                    <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url, type: 'after' })}>
-                                        <Image 
-                                          src={url} 
-                                          alt={`After photo`} 
-                                          fill 
-                                          sizes="(max-width: 768px) 33vw, 15vw"
-                                          className="object-cover" 
-                                        />
-                                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Maximize2 className="text-white h-5 w-5" />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 mb-4">
+                            {(workOrder.afterPhotoUrls || []).map((url) => (
+                                <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url, type: 'after' })}>
+                                    <Image src={url} alt={`After photo`} fill sizes="(max-width: 768px) 25vw, 12vw" className="object-cover" />
+                                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Maximize2 className="text-white h-5 w-5" /></div>
+                                </div>
+                            ))}
                         </div>
                         {!isCompleted && <Button variant="outline" onClick={() => setPhotoSheetTarget('after')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add After Photos</Button>}
                     </div>
                 </CardContent>
               </Card>
               <Card>
-                <CardHeader><CardTitle className="flex items-center gap-2"><ReceiptText /> Receipts &amp; Packing Slips</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="flex items-center gap-2"><ReceiptText className="h-5 w-5" /> Receipts &amp; Packing Slips</CardTitle></CardHeader>
                 <CardContent>
-                    <div className="relative">
-                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 mb-4">
-                            {(workOrder.receiptsAndPackingSlips || []).map((url) => (
-                                <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url, type: 'receipts' })}>
-                                    <Image 
-                                      src={url} 
-                                      alt={`Receipt or packing slip`} 
-                                      fill 
-                                      sizes="(max-width: 768px) 33vw, 15vw"
-                                      className="object-cover" 
-                                    />
-                                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Maximize2 className="text-white h-5 w-5" />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                    <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 mb-4">
+                        {(workOrder.receiptsAndPackingSlips || []).map((url) => (
+                            <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url, type: 'receipts' })}>
+                                <Image src={url} alt={`Receipt or packing slip`} fill sizes="(max-width: 768px) 25vw, 12vw" className="object-cover" />
+                                <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Maximize2 className="text-white h-5 w-5" /></div>
+                            </div>
+                        ))}
                     </div>
                   {!isCompleted && <Button variant="outline" onClick={() => setPhotoSheetTarget('receipts')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add Photos</Button>}
                 </CardContent>
@@ -788,50 +601,17 @@ export function WorkOrderDetails({
               <CardContent className="space-y-6">
                 <div className="space-y-4">
                   {filteredActivities.length > 0 ? filteredActivities.map(activity => (
-                    <ActivityItem 
-                      key={activity.id} 
-                      activity={activity} 
-                      technicians={technicians} 
-                      onUpdateStatus={onUpdateActivityStatus} 
-                      isTechnician={isTechnician} 
-                      currentUserId={user?.uid} 
-                      onAddTimeClick={() => handleAddTimeClick(activity)} 
-                      isAdmin={isAdmin} 
-                      onDeleteClick={() => setActivityToDelete(activity)} 
-                      isCompleted={isCompleted} 
-                    />
-                  )) : (
-                    <p className="text-center text-sm text-muted-foreground py-4">
-                      {isTechnician ? "No activities scheduled for today." : "No scheduled activities."}
-                    </p>
-                  )}
+                    <ActivityItem key={activity.id} activity={activity} technicians={technicians} onUpdateStatus={onUpdateActivityStatus} isTechnician={isTechnician} currentUserId={user?.uid} onAddTimeClick={() => handleAddTimeClick(activity)} isAdmin={isAdmin} onDeleteClick={() => setActivityToDelete(activity)} isCompleted={isCompleted} />
+                  )) : <p className="text-center text-sm text-muted-foreground py-4">{isTechnician ? "No activities scheduled for today." : "No scheduled activities."}</p>}
                 </div>
-                {(isAdmin || (isTechnician && !isCompleted && workOrder.status !== 'Review')) && (
-                  <>
-                    <Separator />
-                    <AddActivityForm technicians={technicians} onAddActivity={onAddActivity} isLoading={isAddingActivity} isTechnician={isTechnician} currentUserId={user?.uid} />
-                  </>
-                )}
+                {(isAdmin || (isTechnician && !isCompleted && workOrder.status !== 'Review')) && <><Separator /><AddActivityForm technicians={technicians} onAddActivity={onAddActivity} isLoading={isAddingActivity} isTechnician={isTechnician} currentUserId={user?.uid} /></>}
               </CardContent>
             </Card>
             <Card>
               <CardHeader><div className="flex items-center justify-between"><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" /> Notes &amp; Activity</CardTitle></div></CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-6">
-                  {isClient ? combinedActivity.map((activity: any) => activity.type === 'note' ? (
-                    <NoteActivityItem 
-                      key={`note-${activity.id}`} 
-                      note={activity} 
-                      onPhotoDelete={isCompleted ? undefined : onNotePhotoDelete} 
-                      onNoteDelete={isCompleted ? undefined : onNoteDelete} 
-                    />
-                  ) : (
-                    <TimeActivityItem 
-                      key={`time-${activity.id}`} 
-                      timeEntry={activity} 
-                      onTimeEntryDelete={isCompleted ? undefined : onTimeEntryDelete} 
-                    />
-                  )) : <p className="text-center text-sm text-muted-foreground py-4">Loading activity...</p>}
+                  {isClient ? combinedActivity.map((activity: any) => activity.type === 'note' ? <NoteActivityItem key={`note-${activity.id}`} note={activity} onPhotoDelete={isCompleted ? undefined : onNotePhotoDelete} onNoteDelete={isCompleted ? undefined : onNoteDelete} /> : <TimeActivityItem key={`time-${activity.id}`} timeEntry={activity} onTimeEntryDelete={isCompleted ? undefined : onTimeEntryDelete} />) : <p className="text-center text-sm text-muted-foreground py-4">Loading activity...</p>}
                   {isClient && combinedActivity.length === 0 && <p className="text-center text-sm text-muted-foreground py-4">No notes or activity yet.</p>}
                 </div>
               </CardContent>
@@ -848,14 +628,8 @@ export function WorkOrderDetails({
                   {quotes.map(quote => (
                     <Link key={quote.id} href={`/quotes/${quote.id}`}>
                       <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                        <div>
-                          <p className="font-bold">{quote.quoteNumber}</p>
-                          <p className="text-xs text-muted-foreground">{format(new Date(quote.createdDate), 'MMM d, yyyy')}</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Badge variant="outline">{quote.status}</Badge>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                        </div>
+                        <div><p className="font-bold">{quote.quoteNumber}</p><p className="text-xs text-muted-foreground">{format(new Date(quote.createdDate), 'MMM d, yyyy')}</p></div>
+                        <div className="flex items-center gap-3"><Badge variant="outline">{quote.status}</Badge><ChevronRight className="h-4 w-4 text-muted-foreground" /></div>
                       </div>
                     </Link>
                   ))}
@@ -866,44 +640,18 @@ export function WorkOrderDetails({
         )}
       </Tabs>
 
-      <WorkOrderReviewDialog
-        isOpen={isReviewOpen}
-        onOpenChange={setIsReviewOpen}
-        workOrder={workOrder}
-        timeEntries={timeEntries}
-        onNavigate={setActiveTab}
-        onSubmit={() => {
-          setIsReviewOpen(false);
-          onMarkForReview();
-        }}
-        isSubmitting={isSubmittingReview}
-      />
+      <WorkOrderReviewDialog isOpen={isReviewOpen} onOpenChange={setIsReviewOpen} workOrder={workOrder} timeEntries={timeEntries} onNavigate={setActiveTab} onSubmit={() => { setIsReviewOpen(false); onMarkForReview(); }} isSubmitting={isSubmittingReview} />
 
       <Dialog open={!!viewingPhoto} onOpenChange={() => setViewingPhoto(null)}>
         <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/95 border-0 flex flex-col items-stretch h-[90vh]">
-          <DialogHeader className="p-4 bg-background/10 backdrop-blur-sm border-b border-white/10 absolute top-0 w-full z-10">
-            <DialogTitle className="text-white text-sm font-bold uppercase tracking-widest">
-              {viewingPhoto?.type === 'before' ? 'Before Work' : viewingPhoto?.type === 'after' ? 'After Work' : 'Receipt / Packing Slip'}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 relative flex items-center justify-center p-4">
-            {viewingPhoto && (
-              <Image 
-                src={viewingPhoto.url} 
-                alt="High resolution documentation" 
-                fill 
-                className="object-contain" 
-                priority
-              />
-            )}
-          </div>
+          <DialogHeader className="p-4 bg-background/10 backdrop-blur-sm border-b border-white/10 absolute top-0 w-full z-10"><DialogTitle className="text-white text-sm font-bold uppercase tracking-widest">{viewingPhoto?.type === 'before' ? 'Before Work' : viewingPhoto?.type === 'after' ? 'After Work' : 'Receipt / Packing Slip'}</DialogTitle></DialogHeader>
+          <div className="flex-1 relative flex items-center justify-center p-4">{viewingPhoto && <Image src={viewingPhoto.url} alt="High resolution documentation" fill className="object-contain" priority />}</div>
           <div className="p-4 bg-background flex justify-between items-center border-t">
             <Button variant="outline" size="sm" onClick={() => setViewingPhoto(null)}>Close</Button>
-            {!isCompleted && viewingPhoto && (
-              <Button variant="destructive" size="sm" onClick={handleDeletePhotoInViewer}>
-                <Trash2 className="h-4 w-4 mr-2" /> Delete Documentation
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+                {viewingPhoto && <Button variant="outline" size="sm" asChild><a href={`/api/image-proxy?url=${encodeURIComponent(viewingPhoto.url)}`} download><Download className="h-4 w-4 mr-2" /> Download</a></Button>}
+                {!isCompleted && viewingPhoto && <Button variant="destructive" size="sm" onClick={handleDeletePhotoInViewer}><Trash2 className="h-4 w-4 mr-2" /> Delete Documentation</Button>}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

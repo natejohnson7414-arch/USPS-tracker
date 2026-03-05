@@ -18,9 +18,6 @@ interface NoteActivityItemProps {
   isAdmin?: boolean;
 }
 
-/**
- * Memoized Note Activity Item to prevent unnecessary re-renders during background syncs.
- */
 export const NoteActivityItem = React.memo(({ 
   note, 
   onPhotoDelete, 
@@ -51,12 +48,7 @@ export const NoteActivityItem = React.memo(({
         </div>
         <div className="flex items-center gap-1">
           {onNoteDelete && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-              onClick={() => onNoteDelete(note.id)}
-            >
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => onNoteDelete(note.id)}>
               <Trash2 className="h-4 w-4" />
               <span className="sr-only">Delete Note</span>
             </Button>
@@ -64,19 +56,11 @@ export const NoteActivityItem = React.memo(({
         </div>
       </div>
       {showPhotos && note.photoUrls && note.photoUrls.length > 0 && (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
           {note.photoUrls.map((url, index) => (
             <div key={index} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto(url)}>
-              <Image 
-                src={url} 
-                alt={`Work photo ${index + 1}`} 
-                fill 
-                sizes="(max-width: 768px) 33vw, 15vw"
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <Maximize2 className="text-white h-5 w-5" />
-              </div>
+              <Image src={url} alt={`Work photo ${index + 1}`} fill sizes="(max-width: 768px) 25vw, 12vw" className="object-cover" />
+              <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Maximize2 className="text-white h-5 w-5" /></div>
             </div>
           ))}
         </div>
@@ -84,35 +68,13 @@ export const NoteActivityItem = React.memo(({
 
       <Dialog open={!!viewingPhoto} onOpenChange={() => setViewingPhoto(null)}>
         <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/95 border-0 flex flex-col items-stretch h-[90vh]">
-          <DialogHeader className="p-4 bg-background/10 backdrop-blur-sm border-b border-white/10 absolute top-0 w-full z-10">
-            <DialogTitle className="text-white text-sm font-bold uppercase tracking-widest">Field Note Image Preview</DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 relative flex items-center justify-center p-4">
-            {viewingPhoto && (
-              <Image 
-                src={viewingPhoto} 
-                alt="Field documentation preview" 
-                fill 
-                className="object-contain" 
-                priority
-              />
-            )}
-          </div>
+          <DialogHeader className="p-4 bg-background/10 backdrop-blur-sm border-b border-white/10 absolute top-0 w-full z-10"><DialogTitle className="text-white text-sm font-bold uppercase tracking-widest">Field Note Image Preview</DialogTitle></DialogHeader>
+          <div className="flex-1 relative flex items-center justify-center p-4">{viewingPhoto && <Image src={viewingPhoto} alt="Field documentation preview" fill className="object-contain" priority />}</div>
           <div className="p-4 bg-background flex justify-between items-center border-t">
             <Button variant="outline" size="sm" onClick={() => setViewingPhoto(null)}>Close</Button>
             <div className="flex items-center gap-2">
-                {viewingPhoto && (
-                    <Button variant="outline" size="sm" asChild>
-                        <a href={`/api/image-proxy?url=${encodeURIComponent(viewingPhoto)}`} download>
-                            <Download className="h-4 w-4 mr-2" /> Download
-                        </a>
-                    </Button>
-                )}
-                {onPhotoDelete && viewingPhoto && (
-                <Button variant="destructive" size="sm" onClick={() => { onPhotoDelete(note.id, viewingPhoto); setViewingPhoto(null); }}>
-                    <Trash2 className="h-4 w-4 mr-2" /> Delete Documentation
-                </Button>
-                )}
+                {viewingPhoto && <Button variant="outline" size="sm" asChild><a href={`/api/image-proxy?url=${encodeURIComponent(viewingPhoto)}`} download><Download className="h-4 w-4 mr-2" /> Download</a></Button>}
+                {onPhotoDelete && viewingPhoto && <Button variant="destructive" size="sm" onClick={() => { onPhotoDelete(note.id, viewingPhoto); setViewingPhoto(null); }}><Trash2 className="h-4 w-4 mr-2" /> Delete Documentation</Button>}
             </div>
           </div>
         </DialogContent>
