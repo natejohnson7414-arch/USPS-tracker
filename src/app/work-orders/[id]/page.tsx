@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
@@ -74,7 +75,6 @@ export default function WorkOrderDetailPage() {
   
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Task Reference Map to prevent rerender cleanup from canceling active uploads
   const activeUploadsRef = useRef<Set<string>>(new Set());
 
   const workOrderDocRef = useMemoFirebase(() => {
@@ -177,8 +177,6 @@ export default function WorkOrderDetailPage() {
         const uploadPath = `work-orders/${workOrder.id}/${type}/${Date.now()}-${file.name}`;
         activeUploadsRef.current.add(uploadPath);
 
-        if (isDebug) console.log(`[UPLOAD] Start file ${i}/${files.length}: ${file.name}`);
-        
         const { downloadURL } = await uploadImageResumable(file, uploadPath, {
           onProgress: (p) => {
             toastId.update({ 
@@ -201,9 +199,6 @@ export default function WorkOrderDetailPage() {
       const currentUrls = workOrder[fieldToUpdate] || [];
       const newUrls = [...currentUrls, ...uploadedUrls];
 
-      if (isDebug) console.log(`[UPLOAD] Saving Firestore metadata for job: ${workOrder.id}`);
-      
-      // CRITICAL: Await the Firestore update so the promise chain holds the interlock
       await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), {
         [fieldToUpdate]: newUrls,
       });
@@ -214,7 +209,6 @@ export default function WorkOrderDetailPage() {
       toast({ title: "Photos Saved", description: `${files.length} photo(s) added successfully.` });
 
     } catch (error: any) {
-      if (isDebug) console.error("[UPLOAD] Handler failed:", error.code || error.message);
       toastId.dismiss();
       toast({ 
         variant: "destructive", 
@@ -244,7 +238,7 @@ export default function WorkOrderDetailPage() {
         await deleteImage(urlToDelete);
         toast({ title: "Photo Deleted" });
     } catch(error) {
-        fetchData(); // Rollback on fail
+        fetchData();
     }
   };
 

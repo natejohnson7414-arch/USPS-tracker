@@ -17,6 +17,12 @@ service cloud.firestore {
         get(/databases/$(database)/documents/roles/$(get(userDocPath).data.roleId)).data.name == roleName;
     }
 
+    // Quotes: Accessible to all authenticated users for field submissions
+    match /quotes/{quoteId} {
+      allow get, list, create, update: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+
     // Asset Management
     match /assets/{assetId} {
       allow read: if isSignedIn();
@@ -59,7 +65,6 @@ service cloud.firestore {
       }
     }
     
-    // Support for collection group queries on activities (required for global Dispatch Board)
     match /{path=**}/activities/{activityId} {
       allow read: if isSignedIn();
       allow write: if isSignedIn();
@@ -98,12 +103,6 @@ service cloud.firestore {
     match /time_entries/{entryId} {
       allow read: if isSignedIn();
       allow write: if isSignedIn();
-    }
-    
-    match /quotes/{quoteId} {
-      allow get, list: if isSignedIn();
-      allow create, update: if isSignedIn();
-      allow delete: if isAdmin();
     }
 
     match /counters/{counterId} {
