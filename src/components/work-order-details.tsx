@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -356,6 +357,10 @@ export function WorkOrderDetails({
   const canCompleteWorkOrder = isTechnician && isCurrentUserAssigned && (workOrder.status === 'In Progress' || workOrder.status === 'Open');
 
   const linkedAssetIds = new Set(workOrder.assetIds || []);
+
+  const linkedAssets = useMemo(() => {
+    return siteAssets.filter(a => linkedAssetIds.has(a.id));
+  }, [siteAssets, linkedAssetIds]);
 
   return (
     <>
@@ -807,18 +812,18 @@ export function WorkOrderDetails({
               <CardHeader><div className="flex items-center justify-between"><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" /> Notes &amp; Activity</CardTitle></div></CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-6">
-                  {isClient ? combinedActivity.map(activity => (activity as any).type === 'note' ? (
+                  {isClient ? combinedActivity.map((activity: any) => activity.type === 'note' ? (
                     <NoteActivityItem 
                       key={`note-${activity.id}`} 
-                      note={activity as any} 
+                      note={activity} 
                       onPhotoDelete={isCompleted ? undefined : onNotePhotoDelete} 
-                      onNoteDelete={isCompleted ? undefined : setNoteToDelete} 
+                      onNoteDelete={isCompleted ? undefined : onNoteDelete} 
                     />
                   ) : (
                     <TimeActivityItem 
                       key={`time-${activity.id}`} 
-                      timeEntry={activity as any} 
-                      onTimeEntryDelete={isCompleted ? undefined : setTimeEntryToDelete} 
+                      timeEntry={activity} 
+                      onTimeEntryDelete={isCompleted ? undefined : onTimeEntryDelete} 
                     />
                   )) : <p className="text-center text-sm text-muted-foreground py-4">Loading activity...</p>}
                   {isClient && combinedActivity.length === 0 && <p className="text-center text-sm text-muted-foreground py-4">No notes or activity yet.</p>}

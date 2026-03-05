@@ -21,7 +21,7 @@ import { useTechnician } from '@/hooks/use-technician';
 import { getQuoteById } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import type { Quote, QuoteLineItem } from '@/lib/types';
-import { Loader2, ArrowLeft, Trash2, PlusCircle, Video } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, PlusCircle, Video, FileText } from 'lucide-react';
 import { doc } from 'firebase/firestore';
 
 const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
