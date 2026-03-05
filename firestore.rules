@@ -26,22 +26,22 @@ service cloud.firestore {
     // Asset Management
     match /assets/{assetId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSignedIn();
     }
 
     match /materials/{materialId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSignedIn();
     }
 
     match /pm_templates/{templateId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSignedIn();
     }
 
     match /asset_pm_schedules/{scheduleId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSignedIn();
     }
 
     match /asset_service_history/{historyId} {
@@ -82,7 +82,7 @@ service cloud.firestore {
 
     match /work_sites/{siteId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSignedIn();
     }
 
     match /clients/{clientId} {
