@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useRef, useEffect, FormEvent, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -12,14 +12,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText, Download, AlertCircle, Save, CheckCircle2, Package, ChevronRight, FileX, Sparkles, Filter, Receipt } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText, Download, AlertCircle, Save, CheckCircle2, Package, ChevronRight, Filter, Receipt, Sparkles } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { getTechnicianById, getAssetsBySiteId } from '@/lib/data';
+import { getAssetsBySiteId } from '@/lib/data';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from './ui/date-picker';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -726,29 +726,31 @@ export function WorkOrderAdminDetails({
           </div>
         </TabsContent>
 
-        <TabsContent value="quotes" className="mt-0">
-          <Card className="rounded-t-none">
-            <CardHeader><CardTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" />Associated Quotes</CardTitle></CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {quotes.map(quote => (
-                  <Link key={quote.id} href={`/quotes/${quote.id}`}>
-                    <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                      <div>
-                        <p className="font-bold">{quote.quoteNumber}</p>
-                        <p className="text-xs text-muted-foreground">{format(new Date(quote.createdDate), 'MMM d, yyyy')}</p>
+        {quotes.length > 0 && (
+          <TabsContent value="quotes" className="mt-0">
+            <Card className="rounded-t-none">
+              <CardHeader><CardTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" />Associated Quotes</CardTitle></CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {quotes.map(quote => (
+                    <Link key={quote.id} href={`/quotes/${quote.id}`}>
+                      <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div>
+                          <p className="font-bold">{quote.quoteNumber}</p>
+                          <p className="text-xs text-muted-foreground">{format(new Date(quote.createdDate), 'MMM d, yyyy')}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Badge variant="outline">{quote.status}</Badge>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline">{quote.status}</Badge>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    </Link>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
       
       <AlertDialog open={!!noteToDelete} onOpenChange={(open) => !open && setNoteToDelete(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete this note.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteNote}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>

@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useRef, useEffect, FormEvent, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format, isSameDay } from 'date-fns';
@@ -12,14 +12,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, ReceiptText, Download, AlertCircle, CheckCircle2, Package, ChevronRight, Receipt } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, ReceiptText, AlertCircle, CheckCircle2, Package, ChevronRight, Receipt } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { getTechnicianById, getAssetsBySiteId } from '@/lib/data';
+import { getAssetsBySiteId } from '@/lib/data';
 import { AddTimeDialog } from './add-time-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from './ui/date-picker';
@@ -48,7 +48,6 @@ const AddActivityForm = ({ technicians, onAddActivity, isLoading, isTechnician, 
             setSelectedTechnicianId(currentUserId);
         }
     }, [isTechnician, currentUserId]);
-
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -221,8 +220,6 @@ export function WorkOrderDetails({
   onTimeEntryDelete,
   isSavingPhotos,
   onDirectionsClick,
-  onSignatureSave,
-  onSignatureDelete,
   onTempUpdate,
   tempOnArrival, setTempOnArrival,
   tempOnLeaving, setTempOnLeaving,
@@ -441,7 +438,7 @@ export function WorkOrderDetails({
                      </div>
               </div>
           )}
-        </Header>
+        </CardHeader>
         <CardContent>
           <p className="text-muted-foreground mt-1">{workOrder.description}</p>
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 text-sm">
@@ -565,7 +562,6 @@ export function WorkOrderDetails({
                               <p className="text-sm text-muted-foreground">{record.date ? format(new Date(record.date), 'MMM d, yyyy') : 'No date'}</p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Button asChild variant="outline" size="sm" className="hidden sm:flex"><Link href={`/training-attendance/${record.id}?action=download`}><Download className="h-4 w-4" /></Link></Button>
                             <Button asChild variant="outline" size="sm"><Link href={`/training-attendance/${record.id}`}>View</Link></Button>
                             {!isCompleted && <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setTrainingRecordToDelete(record.id)}><Trash2 className="h-4 w-4" /></Button>}
                           </div>
@@ -595,7 +591,6 @@ export function WorkOrderDetails({
                               <p className="text-sm text-muted-foreground">{report.technician || 'N/A'}</p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Button asChild variant="outline" size="sm" className="hidden sm:flex"><Link href={`/hvac-startup-report/${report.id}?action=download`}><Download className="h-4 w-4" /></Link></Button>
                             <Button asChild variant="outline" size="sm"><Link href={`/hvac-startup-report/${report.id}`}>View</Link></Button>
                             {!isCompleted && <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setHvacReportToDelete(report.id)}><Trash2 className="h-4 w-4" /></Button>}
                           </div>
@@ -780,10 +775,30 @@ export function WorkOrderDetails({
               <CardHeader><CardTitle className="flex items-center gap-2"><CalendarClock className="h-5 w-5" /> Scheduled Activities</CardTitle></CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
-                  {filteredActivities.length > 0 ? filteredActivities.map(activity => <ActivityItem key={activity.id} activity={activity} technicians={technicians} onUpdateStatus={onUpdateActivityStatus} isTechnician={isTechnician} currentUserId={user?.uid} onAddTimeClick={() => handleAddTimeClick(activity)} isAdmin={isAdmin} onDeleteClick={() => setActivityToDelete(activity)} isCompleted={isCompleted} />) : <p className="text-center text-sm text-muted-foreground py-4">{isTechnician ? "No activities scheduled for today." : "No scheduled activities."}</p>}
+                  {filteredActivities.length > 0 ? filteredActivities.map(activity => (
+                    <ActivityItem 
+                      key={activity.id} 
+                      activity={activity} 
+                      technicians={technicians} 
+                      onUpdateStatus={onUpdateActivityStatus} 
+                      isTechnician={isTechnician} 
+                      currentUserId={user?.uid} 
+                      onAddTimeClick={() => handleAddTimeClick(activity)} 
+                      isAdmin={isAdmin} 
+                      onDeleteClick={() => setActivityToDelete(activity)} 
+                      isCompleted={isCompleted} 
+                    />
+                  )) : (
+                    <p className="text-center text-sm text-muted-foreground py-4">
+                      {isTechnician ? "No activities scheduled for today." : "No scheduled activities."}
+                    </p>
+                  )}
                 </div>
                 {(isAdmin || (isTechnician && !isCompleted && workOrder.status !== 'Review')) && (
-                  <><Separator /><AddActivityForm technicians={technicians} onAddActivity={onAddActivity} isLoading={isAddingActivity} isTechnician={isTechnician} currentUserId={user?.uid} /></>
+                  <>
+                    <Separator />
+                    <AddActivityForm technicians={technicians} onAddActivity={onAddActivity} isLoading={isAddingActivity} isTechnician={isTechnician} currentUserId={user?.uid} />
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -812,29 +827,31 @@ export function WorkOrderDetails({
           </div>
         </TabsContent>
 
-        <TabsContent value="quotes" className="mt-0">
-          <Card className="rounded-t-none">
-            <CardHeader><CardTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" />Associated Quotes</CardTitle></CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {quotes.map(quote => (
-                  <Link key={quote.id} href={`/quotes/${quote.id}`}>
-                    <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                      <div>
-                        <p className="font-bold">{quote.quoteNumber}</p>
-                        <p className="text-xs text-muted-foreground">{format(new Date(quote.createdDate), 'MMM d, yyyy')}</p>
+        {quotes.length > 0 && (
+          <TabsContent value="quotes" className="mt-0">
+            <Card className="rounded-t-none">
+              <CardHeader><CardTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" />Associated Quotes</CardTitle></CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {quotes.map(quote => (
+                    <Link key={quote.id} href={`/quotes/${quote.id}`}>
+                      <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div>
+                          <p className="font-bold">{quote.quoteNumber}</p>
+                          <p className="text-xs text-muted-foreground">{format(new Date(quote.createdDate), 'MMM d, yyyy')}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Badge variant="outline">{quote.status}</Badge>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline">{quote.status}</Badge>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    </Link>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
 
       <WorkOrderReviewDialog

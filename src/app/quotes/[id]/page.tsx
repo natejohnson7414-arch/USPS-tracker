@@ -16,13 +16,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
+import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
 import { useTechnician } from '@/hooks/use-technician';
 import { getQuoteById } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import type { Quote, QuoteLineItem } from '@/lib/types';
-import { Loader2, ArrowLeft, Ban, Trash2, PlusCircle, FileText, Video } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Loader2, ArrowLeft, Trash2, PlusCircle, Video } from 'lucide-react';
 import { doc } from 'firebase/firestore';
 
 const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
@@ -265,7 +264,7 @@ export default function QuoteDetailPage() {
                                         <div>
                                             <h3 className="font-medium mb-2">Photos</h3>
                                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                                                {quote.photos.map((url, i) => <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="aspect-video relative"><Image src={url} alt={`Photo ${i+1}`} fill className="object-cover rounded-lg border" /></a>)}
+                                                {quote.photos.map((url, i) => <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="aspect-video relative"><Image src={url} alt={`Photo ${i+1}`} fill className="object-cover rounded-lg border" sizes="(max-width: 768px) 50vw, 33vw" /></a>)}
                                             </div>
                                         </div>
                                     )}

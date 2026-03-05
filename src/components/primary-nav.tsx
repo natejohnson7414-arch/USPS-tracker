@@ -55,17 +55,15 @@ export function PrimaryNav({ technicians, workSites, clients, onWorkSiteAdded }:
                     </Button>
                 )}
                 {!isTechnician && (
-                    <>
-                        <Button asChild variant="ghost" className={cn(
-                            "font-semibold",
-                            pathname.startsWith('/assets') && "bg-muted"
-                        )}>
-                            <Link href="/assets">
-                                <Package className="mr-2 h-4 w-4" />
-                                Assets & PM
-                            </Link>
-                        </Button>
-                    </>
+                    <Button asChild variant="ghost" className={cn(
+                        "font-semibold",
+                        pathname.startsWith('/assets') && "bg-muted"
+                    )}>
+                        <Link href="/assets">
+                            <Package className="mr-2 h-4 w-4" />
+                            Assets & PM
+                        </Link>
+                    </Button>
                 )}
             </div>
             {!isTechnician && (
