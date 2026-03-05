@@ -5,7 +5,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format, isSameDay } from 'date-fns';
-import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, HvacStartupReport, Acknowledgement, Asset, Quote } from '@/lib/types';
+import type { WorkOrder, Technician, TimeEntry, Activity, HvacStartupReport, Acknowledgement, Asset, Quote, WorkSite } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from './status-badge';
@@ -530,11 +530,11 @@ export function WorkOrderDetails({
                   <div className="space-y-3">
                     {siteAssets.map(asset => {
                       const isLinked = linkedAssetIds.has(asset.id);
-                      const isLoading = isLinking === asset.id;
+                      const isL = isLinking === asset.id;
                       return (
                         <div key={asset.id} className={`flex items-center justify-between p-3 border rounded-lg transition-all ${isLinked ? 'bg-primary/5 border-primary/20 ring-1 ring-primary/10' : 'hover:bg-muted/30'}`}>
                           <div className="flex-1"><div className="flex items-center gap-2"><p className="font-bold">{asset.name}</p><Badge variant="outline" className="font-mono text-[10px]">{asset.assetTag}</Badge>{isLinked && <Badge className="h-5 text-[10px] bg-primary text-primary-foreground">Linked to Job</Badge>}</div><p className="text-xs text-muted-foreground mt-1">{asset.manufacturer} {asset.model} • <span className="capitalize">{asset.status}</span></p></div>
-                          <div className="flex items-center gap-2"><Button asChild variant="ghost" size="icon" className="h-8 w-8" title="View History"><Link href={`/assets/${asset.id}`}><ChevronRight className="h-4 w-4" /></Link></Button>{!isCompleted && <div className="flex items-center gap-2">{isLinked ? <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => handleUnlinkAsset(asset.id)} disabled={!!isLinking}>{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><X className="h-4 w-4 mr-1" /> Unlink</>}</Button> : <Button variant="outline" size="sm" className="gap-2" onClick={() => handleLinkAsset(asset.id)} disabled={!!isLinking}>{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><LinkIcon className="h-4 w-4" /> Link Asset</>}</Button>}</div>}</div>
+                          <div className="flex items-center gap-2"><Button asChild variant="ghost" size="icon" className="h-8 w-8" title="View History"><Link href={`/assets/${asset.id}`}><ChevronRight className="h-4 w-4" /></Link></Button>{!isCompleted && <div className="flex items-center gap-2">{isLinked ? <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => handleUnlinkAsset(asset.id)} disabled={!!isLinking}>{isL ? <Loader2 className="h-4 w-4 animate-spin" /> : <><X className="h-4 w-4 mr-1" /> Unlink</>}</Button> : <Button variant="outline" size="sm" className="gap-2" onClick={() => handleLinkAsset(asset.id)} disabled={!!isLinking}>{isL ? <Loader2 className="h-4 w-4 animate-spin" /> : <><LinkIcon className="h-4 w-4" /> Link Asset</>}</Button>}</div>}</div>
                         </div>
                       );
                     })}
@@ -655,7 +655,7 @@ export function WorkOrderDetails({
           </div>
         </DialogContent>
       </Dialog>
-
+      
       <AlertDialog open={!!noteToDelete} onOpenChange={(open) => !open && setNoteToDelete(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete this note.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteNote}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       <AlertDialog open={!!timeEntryToDelete} onOpenChange={(open) => !open && setTimeEntryToDelete(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete this time entry.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteTimeEntry}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       <AlertDialog open={!!trainingRecordToDelete} onOpenChange={(open) => !open && setTrainingRecordToDelete(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete this training record.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteTrainingRecord}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>

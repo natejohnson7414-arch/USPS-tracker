@@ -21,8 +21,8 @@ import { useTechnician } from '@/hooks/use-technician';
 import { getQuoteById } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImageResumable, deleteImage } from '@/firebase/storage';
-import type { Quote, QuoteLineItem, Acknowledgement } from '@/lib/types';
-import { Loader2, ArrowLeft, Trash2, PlusCircle, Video, FileText, Camera, Library, ImageIcon, X, Maximize2, Download } from 'lucide-react';
+import type { Quote, QuoteLineItem } from '@/lib/types';
+import { Loader2, ArrowLeft, Trash2, PlusCircle, Video, FileText, Camera, ImageIcon, Maximize2, Download } from 'lucide-react';
 import { doc, arrayUnion } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 

@@ -526,40 +526,75 @@ export default function WorkOrderDetailPage() {
     if (!workOrder) return;
     setIsDownloading(true);
 
-    const allUrls = [
-        ...(workOrder.beforePhotoUrls || []),
-        ...(workOrder.afterPhotoUrls || []),
-        ...(workOrder.notes?.flatMap(note => note.photoUrls || []) || []),
-        ...(quotes.flatMap(quote => quote.photos || [])),
-        ...(quotes.flatMap(quote => quote.videos || []))
+    const JSZip = (await import('jszip')).default;
+    const { saveAs } = await import('file-saver');
+
+    const zip = new JSZip();
+    const mediaFolder = zip.folder("media");
+    const documentsFolder = zip.folder("documents");
+
+    const mediaItems = [
+        ...(workOrder.beforePhotoUrls || []).map(url => ({ url, subfolder: 'before' })),
+        ...(workOrder.afterPhotoUrls || []).map(url => ({ url, subfolder: 'after' })),
+        ...(workOrder.notes?.flatMap(note => (note.photoUrls || []).map(url => ({ url, subfolder: 'notes' }))) || []),
+        ...(quotes.flatMap(quote => (quote.photos || []).map(url => ({ url, subfolder: `quotes/${quote.quoteNumber}/photos` })))),
+        ...(quotes.flatMap(quote => (quote.videos || []).map(url => ({ url, subfolder: `quotes/${quote.quoteNumber}/videos` }))))
     ];
 
-    if (allUrls.length === 0) {
+    const documentFiles = workOrder.uploadedFiles || [];
+
+    if (mediaItems.length === 0 && documentFiles.length === 0) {
         toast({ title: "No media to download." });
         setIsDownloading(false);
         return;
     }
 
-    for (const url of allUrls) {
-        try {
-            const response = await fetch(`/api/image-proxy?url=${encodeURIComponent(url)}`);
-            if (!response.ok) continue;
-            const blob = await response.blob();
-            const objectUrl = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = objectUrl;
-            const urlParts = new URL(url);
-            const pathParts = urlParts.pathname.split('/');
-            a.download = decodeURIComponent(pathParts[pathParts.length - 1]);
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(objectUrl);
-            await new Promise(resolve => setTimeout(resolve, 200));
-        } catch (error) {
+    const toastId = toast({ title: "Preparing Media ZIP", description: "Starting compression...", duration: Infinity });
+
+    try {
+        // Fetch and add media items
+        for (let i = 0; i < mediaItems.length; i++) {
+            const item = mediaItems[i];
+            toastId.update({ id: toastId.id, description: `Bundling media ${i + 1}/${mediaItems.length}...` });
+            try {
+                const response = await fetch(`/api/image-proxy?url=${encodeURIComponent(item.url)}`);
+                if (!response.ok) continue;
+                const blob = await response.blob();
+                const urlParts = new URL(item.url);
+                const fileName = decodeURIComponent(urlParts.pathname.split('/').pop() || `media-${i}`);
+                mediaFolder?.folder(item.subfolder)?.file(fileName, blob);
+            } catch (e) {
+                console.warn("Failed to add media to zip:", item.url, e);
+            }
         }
+
+        // Fetch and add document files
+        for (let i = 0; i < documentFiles.length; i++) {
+            const file = documentFiles[i];
+            toastId.update({ id: toastId.id, description: `Bundling document ${i + 1}/${documentFiles.length}...` });
+            try {
+                const response = await fetch(`/api/image-proxy?url=${encodeURIComponent(file.url)}`);
+                if (!response.ok) continue;
+                const blob = await response.blob();
+                documentsFolder?.file(file.name, blob);
+            } catch (e) {
+                console.warn("Failed to add document to zip:", file.url, e);
+            }
+        }
+
+        toastId.update({ id: toastId.id, description: "Generating archive..." });
+        const content = await zip.generateAsync({ type: "blob" });
+        saveAs(content, `Work-Order-${workOrder.id}-Export.zip`);
+        
+        toastId.dismiss();
+        toast({ title: "Download Started", description: "Your zip archive is downloading." });
+    } catch (error) {
+        console.error("ZIP Error:", error);
+        toastId.dismiss();
+        toast({ title: "Bundling Failed", description: "Could not create zip archive.", variant: "destructive" });
+    } finally {
+        setIsDownloading(false);
     }
-    setIsDownloading(false);
 };
 
   const handleMarkForReview = async () => {
@@ -681,7 +716,7 @@ export default function WorkOrderDetailPage() {
                 {!isTechnician && (
                     <Button variant="outline" onClick={handleDownloadMedia} disabled={isDownloading}>
                         {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                        Download Media
+                        Download Media ZIP
                     </Button>
                 )}
                 {!isTechnician && (
