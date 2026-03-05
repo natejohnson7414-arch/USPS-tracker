@@ -38,7 +38,7 @@ service firebase.storage {
 
     /**
      * @description Secures quote-related media.
-     * FIX: Added missing rule for the /quotes/ path used by the Start Quote page.
+     * Allows all authenticated users to upload and view quote attachments.
      */
     match /quotes/{quoteId}/{allPaths=**} {
       allow read, write: if isSignedIn();
