@@ -545,7 +545,7 @@ export function WorkOrderAdminDetails({
                     <div className="space-y-2">
                       <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Scheduled Activities</p>
                       {activities.map(activity => (
-                        <div key={activity.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 border border-transparent hover:border-muted transition-all">
+                        <div key={activity.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 border border-muted transition-all">
                           <Checkbox id={`report-act-${activity.id}`} checked={!activity.excludeFromReport} onCheckedChange={(checked) => handleToggleActivityReportInclusion(activity.id, !checked)} />
                           <Label htmlFor={`report-act-${activity.id}`} className="text-sm font-medium cursor-pointer leading-tight flex-1">{activity.description}<span className="block text-[10px] text-muted-foreground mt-0.5">{format(new Date(activity.scheduled_date), 'MMM d')} • {activity.status}</span></Label>
                         </div>
@@ -555,7 +555,7 @@ export function WorkOrderAdminDetails({
                     <div className="space-y-2">
                       <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Technician Notes</p>
                       {workOrder.notes.map(note => (
-                        <div key={note.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 border border-transparent hover:border-muted transition-all">
+                        <div key={note.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 border border-muted transition-all">
                           <Checkbox id={`report-note-${note.id}`} checked={!note.excludeFromReport} onCheckedChange={(checked) => handleToggleNoteReportInclusion(note.id, !checked)} />
                           <Label htmlFor={`report-note-${note.id}`} className="text-sm font-medium cursor-pointer leading-tight flex-1">{note.text}<span className="block text-[10px] text-muted-foreground mt-0.5">{format(new Date(note.createdAt), 'MMM d')}</span></Label>
                         </div>
@@ -565,7 +565,7 @@ export function WorkOrderAdminDetails({
                     <div className="space-y-2">
                       <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Time Posting Descriptions</p>
                       {timeEntries.filter(te => te.notes).map(entry => (
-                        <div key={entry.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 border border-transparent hover:border-muted transition-all">
+                        <div key={entry.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 border border-muted transition-all">
                           <Checkbox id={`report-time-${entry.id}`} checked={!entry.excludeFromReport} onCheckedChange={(checked) => handleToggleTimeReportInclusion(entry.id, !checked)} />
                           <Label htmlFor={`report-time-${entry.id}`} className="text-sm font-medium cursor-pointer leading-tight flex-1">{entry.notes}<span className="block text-[10px] text-muted-foreground mt-0.5">{format(new Date(entry.date), 'MMM d')} • {entry.hours}h</span></Label>
                         </div>

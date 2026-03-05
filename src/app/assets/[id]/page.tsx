@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -9,18 +9,25 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { History, CalendarClock, Settings, Wrench, ShieldCheck, Clock, FileText, Loader2, AlertCircle, Box, Tag, PlusCircle, Repeat, ArrowLeft, Camera } from 'lucide-react';
-import { useFirestore } from '@/firebase';
+import { History, CalendarClock, Settings, Wrench, Clock, Loader2, AlertCircle, Box, PlusCircle, Repeat, ArrowLeft, Camera, Library, Maximize2, Download, Trash2, X } from 'lucide-react';
+import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
 import { getAssetById, getAssetPmSchedules, getAssetServiceHistory, calculateAssetMetrics } from '@/lib/data';
 import type { Asset, AssetPmSchedule, AssetServiceHistory } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { AddPmScheduleDialog } from '@/components/add-pm-schedule-dialog';
+import { uploadImageResumable, deleteImage } from '@/firebase/storage';
+import { doc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export default function AssetDetailsPage() {
   const { id } = useParams();
   const router = useRouter();
   const db = useFirestore();
+  const { toast } = useToast();
+  
   const [asset, setAsset] = useState<Asset | null>(null);
   const [schedules, setSchedules] = useState<AssetPmSchedule[]>([]);
   const [history, setHistory] = useState<AssetServiceHistory[]>([]);
@@ -28,6 +35,12 @@ export default function AssetDetailsPage() {
   
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState<AssetPmSchedule | null>(null);
+  const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
+  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
+  const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
+
+  const takePhotoInputRef = useRef<HTMLInputElement>(null);
+  const chooseFromLibraryInputRef = useRef<HTMLInputElement>(null);
 
   const fetchAssetData = useCallback(async () => {
     if (db && id && id !== 'new') {
@@ -50,6 +63,63 @@ export default function AssetDetailsPage() {
     }
   }, [db, id, fetchAssetData]);
 
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0 || !db || !asset) return;
+
+    setIsUploadingPhotos(true);
+    setPhotoSheetOpen(false);
+    const toastId = toast({ title: `Uploading ${files.length} photo(s)...`, duration: Infinity });
+
+    try {
+      const uploadedUrls: string[] = [];
+      let i = 0;
+      for (const file of Array.from(files)) {
+        i++;
+        const path = `assets/${asset.assetTag}/${Date.now()}-${file.name}`;
+        const { downloadURL } = await uploadImageResumable(file, path, {
+          onProgress: (p) => {
+            toastId.update({ id: toastId.id, description: `File ${i}/${files.length}: ${p.pct}%` });
+          }
+        });
+        uploadedUrls.push(downloadURL);
+      }
+
+      const assetRef = doc(db, 'assets', asset.id);
+      await updateDocumentNonBlocking(assetRef, {
+        photoUrls: arrayUnion(...uploadedUrls)
+      });
+
+      setAsset(prev => prev ? ({ ...prev, photoUrls: [...(prev.photoUrls || []), ...uploadedUrls] } as Asset) : null);
+      toastId.dismiss();
+      toast({ title: "Photos Added" });
+    } catch (error) {
+      toastId.dismiss();
+      toast({ variant: 'destructive', title: 'Upload Failed' });
+    } finally {
+      setIsUploadingPhotos(false);
+      if (event.target) event.target.value = '';
+    }
+  };
+
+  const handleDeletePhoto = async () => {
+    if (!viewingPhoto || !db || !asset) return;
+    const urlToDelete = viewingPhoto;
+    setViewingPhoto(null);
+
+    try {
+      const assetRef = doc(db, 'assets', asset.id);
+      await updateDocumentNonBlocking(assetRef, {
+        photoUrls: arrayRemove(urlToDelete)
+      });
+      await deleteImage(urlToDelete);
+      setAsset(prev => prev ? ({ ...prev, photoUrls: (prev.photoUrls || []).filter(u => u !== urlToDelete) } as Asset) : null);
+      toast({ title: "Photo Deleted" });
+    } catch (error) {
+      toast({ title: "Delete Failed", variant: 'destructive' });
+    }
+  };
+
   const handleEditSchedule = (s: AssetPmSchedule) => {
     setSelectedSchedule(s);
     setIsScheduleDialogOpen(true);
@@ -71,6 +141,13 @@ export default function AssetDetailsPage() {
 
   return (
     <MainLayout>
+      {(isUploadingPhotos) && (
+        <div className="fixed inset-0 bg-background/80 z-50 flex flex-col items-center justify-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="mt-4 text-lg font-medium">Uploading Photos...</p>
+        </div>
+      )}
+
       <div className="container mx-auto py-8">
         <div className="mb-8">
           <Button variant="ghost" className="mb-4 -ml-4" onClick={() => router.back()}>
@@ -89,10 +166,10 @@ export default function AssetDetailsPage() {
             <div className="flex items-center gap-2">
               <Button variant="outline" asChild>
                 <Link href={`/assets/${id}/edit`}>
-                  <Settings className="mr-2 h-4 w-4" /> Edit Asset
+                  <Settings className="mr-2 h-4 w-4" /> Edit Specs
                 </Link>
               </Button>
-              <Button><Wrench className="mr-2 h-4 w-4" /> Record Service</Button>
+              <Button onClick={() => setPhotoSheetOpen(true)}><Camera className="mr-2 h-4 w-4" /> Add Photo</Button>
             </div>
           </div>
         </div>
@@ -158,33 +235,35 @@ export default function AssetDetailsPage() {
                 <TabsTrigger value="photos"><Camera className="mr-2 h-4 w-4" /> Photos</TabsTrigger>
                 <TabsTrigger value="history"><History className="mr-2 h-4 w-4" /> Service History</TabsTrigger>
                 <TabsTrigger value="pm"><CalendarClock className="mr-2 h-4 w-4" /> PM Schedules</TabsTrigger>
-                <TabsTrigger value="docs"><FileText className="mr-2 h-4 w-4" /> Documents</TabsTrigger>
               </TabsList>
 
               <TabsContent value="photos">
                 <Card>
-                  <CardHeader><CardTitle>Asset Photos</CardTitle></CardHeader>
+                  <CardHeader><CardTitle>Asset Documentation</CardTitle></CardHeader>
                   <CardContent>
                     {asset.photoUrls && asset.photoUrls.length > 0 ? (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
                         {asset.photoUrls.map((url, idx) => (
-                          <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="relative aspect-square rounded-lg overflow-hidden border hover:opacity-90 transition-opacity">
+                          <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto(url)}>
                             <Image 
                               src={url} 
                               alt={`Asset photo ${idx + 1}`} 
                               fill 
-                              sizes="(max-width: 768px) 50vw, 25vw"
+                              sizes="(max-width: 768px) 25vw, 12vw"
                               className="object-cover" 
                             />
-                          </a>
+                            <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Maximize2 className="text-white h-5 w-5" />
+                            </div>
+                          </div>
                         ))}
                       </div>
                     ) : (
                       <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
                         <Camera className="h-12 w-12 mx-auto mb-4 opacity-20" />
                         <p>No photos available for this asset.</p>
-                        <Button variant="link" asChild className="mt-2">
-                          <Link href={`/assets/${id}/edit`}>Add Photos</Link>
+                        <Button variant="link" onClick={() => setPhotoSheetOpen(true)} className="mt-2">
+                          Add Photo Now
                         </Button>
                       </div>
                     )}
@@ -266,6 +345,51 @@ export default function AssetDetailsPage() {
         schedule={selectedSchedule}
         onScheduleAdded={handleScheduleSaved}
       />
+
+      <Sheet open={photoSheetOpen} onOpenChange={setPhotoSheetOpen}>
+        <SheetContent side="bottom">
+          <SheetHeader><SheetTitle>Add Asset Photos</SheetTitle></SheetHeader>
+          <div className="grid gap-4 py-6">
+            <Button variant="outline" className="justify-start h-14" onClick={() => takePhotoInputRef.current?.click()}>
+              <Camera className="mr-4 h-6 w-6" /> Take Photo
+            </Button>
+            <Button variant="outline" className="justify-start h-14" onClick={() => chooseFromLibraryInputRef.current?.click()}>
+              <Library className="mr-4 h-6 w-6" /> Choose from Library
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <input type="file" ref={takePhotoInputRef} onChange={handlePhotoUpload} className="hidden" accept="image/*" capture="environment" multiple />
+      <input type="file" ref={chooseFromLibraryInputRef} onChange={handlePhotoUpload} className="hidden" accept="image/*" multiple />
+
+      <Dialog open={!!viewingPhoto} onOpenChange={() => setViewingPhoto(null)}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/95 border-0 flex flex-col items-stretch h-[90vh]">
+          <DialogHeader className="p-4 bg-background/10 backdrop-blur-sm border-b border-white/10 absolute top-0 w-full z-10">
+            <DialogTitle className="text-white text-sm font-bold uppercase tracking-widest">Asset Documentation Preview</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 relative flex items-center justify-center p-4">
+            {viewingPhoto && <Image src={viewingPhoto} alt="Asset photo preview" fill className="object-contain" priority />}
+          </div>
+          <div className="p-4 bg-background flex justify-between items-center border-t">
+            <Button variant="outline" size="sm" onClick={() => setViewingPhoto(null)}>Close</Button>
+            <div className="flex items-center gap-2">
+              {viewingPhoto && (
+                <Button variant="outline" size="sm" asChild>
+                  <a href={`/api/image-proxy?url=${encodeURIComponent(viewingPhoto)}`} download>
+                    <Download className="h-4 w-4 mr-2" /> Download
+                  </a>
+                </Button>
+              )}
+              {viewingPhoto && (
+                <Button variant="destructive" size="sm" onClick={handleDeletePhoto}>
+                  <Trash2 className="h-4 w-4 mr-2" /> Delete Documentation
+                </Button>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
