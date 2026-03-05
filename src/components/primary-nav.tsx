@@ -43,6 +43,15 @@ export function PrimaryNav({ technicians, workSites, clients, onWorkSiteAdded }:
                         Dispatch
                     </Link>
                 </Button>
+                <Button asChild variant="ghost" className={cn(
+                    "font-semibold",
+                    pathname.startsWith('/quotes') && "bg-muted"
+                )}>
+                    <Link href="/quotes">
+                        <Receipt className="mr-2 h-4 w-4" />
+                        Quotes
+                    </Link>
+                </Button>
                 {!isTechnician && (
                     <>
                         <Button asChild variant="ghost" className={cn(
@@ -52,15 +61,6 @@ export function PrimaryNav({ technicians, workSites, clients, onWorkSiteAdded }:
                             <Link href="/assets">
                                 <Package className="mr-2 h-4 w-4" />
                                 Assets & PM
-                            </Link>
-                        </Button>
-                        <Button asChild variant="ghost" className={cn(
-                            "font-semibold",
-                            pathname.startsWith('/quotes') && "bg-muted"
-                        )}>
-                            <Link href="/quotes">
-                                <Receipt className="mr-2 h-4 w-4" />
-                                Quotes
                             </Link>
                         </Button>
                     </>

@@ -59,12 +59,10 @@ export default function QuotesPage() {
     useEffect(() => {
         if (!db || isRoleLoading) return;
         
-        if(role?.name !== 'Technician') {
-            getQuotes(db).then(setQuotes).finally(() => setIsLoading(false));
-        } else {
-            setIsLoading(false);
-        }
-    }, [db, role, isRoleLoading]);
+        getQuotes(db)
+            .then(setQuotes)
+            .finally(() => setIsLoading(false));
+    }, [db, isRoleLoading]);
 
     const filteredQuotes = useMemo(() => {
         if (statusFilter === 'All') {
@@ -80,23 +78,6 @@ export default function QuotesPage() {
                 <div className="flex items-center justify-center h-full">
                     <Loader2 className="h-8 w-8 animate-spin" />
                     <p className="ml-4">Loading Quotes...</p>
-                </div>
-            </MainLayout>
-        )
-    }
-
-    if (role?.name === 'Technician') {
-        return (
-             <MainLayout>
-                <div className="container mx-auto py-8 text-center">
-                    <div className="flex flex-col items-center gap-4">
-                        <Ban className="h-16 w-16 text-destructive" />
-                        <h1 className="text-2xl font-bold">Unauthorized Access</h1>
-                        <p className="text-muted-foreground">You do not have permission to view this page.</p>
-                         <Button asChild>
-                            <a href="/">Go to Dashboard</a>
-                        </Button>
-                    </div>
                 </div>
             </MainLayout>
         )
@@ -172,4 +153,3 @@ export default function QuotesPage() {
     </MainLayout>
   );
 }
-    

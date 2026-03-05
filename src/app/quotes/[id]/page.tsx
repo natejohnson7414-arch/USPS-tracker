@@ -48,11 +48,6 @@ export default function QuoteDetailPage() {
     useEffect(() => {
         if (!db || typeof id !== 'string' || isRoleLoading) return;
 
-        if (role?.name === 'Technician') {
-            setIsLoading(false);
-            return;
-        }
-
         setIsLoading(true);
         getQuoteById(db, id)
             .then(q => {
@@ -126,11 +121,9 @@ export default function QuoteDetailPage() {
         return <MainLayout><div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div></MainLayout>;
     }
     
-    if (role?.name === 'Technician') {
-        return <MainLayout><div className="container py-8 text-center"><Ban className="h-16 w-16 mx-auto text-destructive" /><h1 className="mt-4 text-2xl font-bold">Unauthorized</h1></div></MainLayout>;
-    }
-    
     if (!quote) return null;
+
+    const isAdmin = role?.name === 'Administrator';
 
     return (
         <MainLayout>
@@ -142,10 +135,12 @@ export default function QuoteDetailPage() {
                         Back to Quotes
                       </Link>
                     </Button>
-                     <Button onClick={handleSave} disabled={isSaving}>
-                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
-                        Save Quote
-                    </Button>
+                     {isAdmin && (
+                        <Button onClick={handleSave} disabled={isSaving}>
+                            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+                            Save Quote
+                        </Button>
+                     )}
                 </div>
                 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -163,32 +158,48 @@ export default function QuoteDetailPage() {
                                             <TableHead className="w-[100px]">Qty</TableHead>
                                             <TableHead className="w-[150px]">Unit Price</TableHead>
                                             <TableHead className="w-[150px] text-right">Total</TableHead>
-                                            <TableHead className="w-[50px]"></TableHead>
+                                            {isAdmin && <TableHead className="w-[50px]"></TableHead>}
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {lineItems.map((item, index) => (
                                             <TableRow key={item.id}>
                                                 <TableCell>
-                                                    <Input value={item.description} onChange={(e) => handleLineItemChange(index, 'description', e.target.value)} />
+                                                    {isAdmin ? (
+                                                        <Input value={item.description} onChange={(e) => handleLineItemChange(index, 'description', e.target.value)} />
+                                                    ) : (
+                                                        <span>{item.description}</span>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Input type="number" value={item.quantity} onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)} />
+                                                    {isAdmin ? (
+                                                        <Input type="number" value={item.quantity} onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)} />
+                                                    ) : (
+                                                        <span>{item.quantity}</span>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Input type="number" value={item.unitPrice} onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)} />
+                                                    {isAdmin ? (
+                                                        <Input type="number" value={item.unitPrice} onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)} />
+                                                    ) : (
+                                                        <span>{currencyFormatter.format(item.unitPrice)}</span>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-right font-mono">{currencyFormatter.format(item.quantity * item.unitPrice)}</TableCell>
-                                                <TableCell>
-                                                    <Button variant="ghost" size="icon" onClick={() => handleRemoveLineItem(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-                                                </TableCell>
+                                                {isAdmin && (
+                                                    <TableCell>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveLineItem(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                                                    </TableCell>
+                                                )}
                                             </TableRow>
                                         ))}
                                     </TableBody>
                                 </Table>
-                                <Button variant="outline" size="sm" className="mt-4" onClick={handleAddLineItem}>
-                                    <PlusCircle className="mr-2 h-4 w-4" /> Add Line Item
-                                </Button>
+                                {isAdmin && (
+                                    <Button variant="outline" size="sm" className="mt-4" onClick={handleAddLineItem}>
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Add Line Item
+                                    </Button>
+                                )}
                                 <Separator className="my-6" />
                                 <div className="w-full sm:w-1/2 ml-auto space-y-3">
                                     <div className="flex justify-between items-center">
@@ -197,7 +208,11 @@ export default function QuoteDetailPage() {
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <Label htmlFor="tax-percent">Tax (%)</Label>
-                                        <Input id="tax-percent" type="number" value={tax} onChange={(e) => setTax(Number(e.target.value))} className="w-24 h-8" />
+                                        {isAdmin ? (
+                                            <Input id="tax-percent" type="number" value={tax} onChange={(e) => setTax(Number(e.target.value))} className="w-24 h-8" />
+                                        ) : (
+                                            <span className="font-mono">{tax}%</span>
+                                        )}
                                     </div>
                                      <div className="flex justify-between items-center font-bold text-lg">
                                         <p>Total</p>
@@ -272,20 +287,28 @@ export default function QuoteDetailPage() {
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
                                     <Label>Status</Label>
-                                     <Select value={status} onValueChange={(v: Quote['status']) => setStatus(v)}>
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Draft">Draft</SelectItem>
-                                            <SelectItem value="Sent">Sent</SelectItem>
-                                            <SelectItem value="Accepted">Accepted</SelectItem>
-                                            <SelectItem value="Rejected">Rejected</SelectItem>
-                                            <SelectItem value="Archived">Archived</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                     {isAdmin ? (
+                                        <Select value={status} onValueChange={(v: Quote['status']) => setStatus(v)}>
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Draft">Draft</SelectItem>
+                                                <SelectItem value="Sent">Sent</SelectItem>
+                                                <SelectItem value="Accepted">Accepted</SelectItem>
+                                                <SelectItem value="Rejected">Rejected</SelectItem>
+                                                <SelectItem value="Archived">Archived</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                     ) : (
+                                        <Badge variant="outline" className="text-sm">{status}</Badge>
+                                     )}
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Admin Notes</Label>
-                                    <Textarea value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} rows={4} placeholder="Internal notes..."/>
+                                    {isAdmin ? (
+                                        <Textarea value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} rows={4} placeholder="Internal notes..."/>
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground italic">Administrative eyes only.</p>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>
@@ -305,5 +328,3 @@ export default function QuoteDetailPage() {
         </MainLayout>
     );
 }
-
-    
