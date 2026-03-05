@@ -119,6 +119,8 @@ interface WorkOrderAdminDetailsProps {
 export function WorkOrderAdminDetails({
   workOrder,
   assignedTechnician,
+  isTechnician,
+  isAdmin,
   trainingRecords,
   onTrainingRecordDelete,
   hvacReports,
@@ -515,7 +517,7 @@ export function WorkOrderAdminDetails({
               <CardContent className="space-y-6">
                 <div className="space-y-4">
                   {activities.length > 0 ? activities.map(activity => (
-                    <ActivityItem key={activity.id} activity={activity} technicians={technicians} onDeleteClick={() => setActivityToDelete(activity)} isCompleted={isCompleted} onUpdateStatus={onUpdateActivityStatus} isTechnician={isTechnician} isAdmin={isAdmin} onAddTimeClick={() => {}} />
+                    <ActivityItem key={activity.id} activity={activity} technicians={technicians} onDeleteClick={() => setActivityToDelete(activity)} isCompleted={isCompleted} />
                   )) : <p className="text-center text-sm text-muted-foreground py-4">No scheduled activities.</p>}
                 </div>
               </CardContent>
