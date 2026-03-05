@@ -40,7 +40,7 @@ export const NoteActivityItem = React.memo(({
             {isAdmin && (
               <Badge variant={isExcluded ? "outline" : "secondary"} className="h-5 text-[10px] uppercase font-bold px-1.5 gap-1">
                 {isExcluded ? <FileX className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
-                {isExcluded ? "Excluded from Report" : "Included in Report"}
+                {isExcluded ? "Excluded" : "Included"}
               </Badge>
             )}
           </div>

@@ -7,10 +7,13 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    // Top-level prioritized rule for Quotes to ensure reliable preflight
-    // Explicitly allows all authenticated users to read/write quote media
+    // High-priority paths for field documentation to ensure reliable preflight
     match /quotes/{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isSignedIn();
+    }
+    
+    match /assets/{allPaths=**} {
+      allow read, write: if isSignedIn();
     }
 
     function userHasRole(roleName) {
@@ -29,10 +32,6 @@ service firebase.storage {
     }
     
     match /signatures/{allPaths=**} {
-      allow read, write: if isSignedIn();
-    }
-    
-    match /assets/{allPaths=**} {
       allow read, write: if isSignedIn();
     }
   }
