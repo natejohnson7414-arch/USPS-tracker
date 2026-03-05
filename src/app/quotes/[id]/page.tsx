@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -20,9 +20,10 @@ import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
 import { useTechnician } from '@/hooks/use-technician';
 import { getQuoteById } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
+import { uploadImageResumable, deleteImage } from '@/firebase/storage';
 import type { Quote, QuoteLineItem } from '@/lib/types';
-import { Loader2, ArrowLeft, Trash2, PlusCircle, Video, FileText } from 'lucide-react';
-import { doc } from 'firebase/firestore';
+import { Loader2, ArrowLeft, Trash2, PlusCircle, Video, FileText, Camera, Library, ImageIcon, X } from 'lucide-react';
+import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 
 const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
@@ -36,6 +37,7 @@ export default function QuoteDetailPage() {
     const [quote, setQuote] = useState<Quote | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [isUploadingMedia, setIsUploadingMedia] = useState(false);
 
     // Editable fields
     const [lineItems, setLineItems] = useState<QuoteLineItem[]>([]);
@@ -44,6 +46,8 @@ export default function QuoteDetailPage() {
     const [adminNotes, setAdminNotes] = useState<string>('');
     const [subtotal, setSubtotal] = useState(0);
     const [total, setTotal] = useState(0);
+
+    const mediaInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (!db || typeof id !== 'string' || isRoleLoading) return;
@@ -73,7 +77,7 @@ export default function QuoteDetailPage() {
     }, [lineItems, tax]);
 
     const handleAddLineItem = () => {
-        setLineItems([...lineItems, { id: `new-${Date.now()}`, description: '', quantity: 1, unitPrice: 0 }]);
+        setLineItems([...lineItems, { id: `line-${Date.now()}`, description: '', quantity: 1, unitPrice: 0 }]);
     };
 
     const handleRemoveLineItem = (index: number) => {
@@ -117,6 +121,82 @@ export default function QuoteDetailPage() {
         }
     };
 
+    const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0 || !db || !quote) return;
+
+        setIsUploadingMedia(true);
+        const toastId = toast({ title: `Uploading ${files.length} file(s)...`, duration: Infinity });
+
+        try {
+            const uploadedPhotoUrls: string[] = [];
+            const uploadedVideoUrls: string[] = [];
+            
+            let i = 0;
+            for (const file of Array.from(files)) {
+                i++;
+                const isVideo = file.type.startsWith('video/');
+                const folder = isVideo ? 'videos' : 'photos';
+                const path = `quotes/${quote.quoteNumber}/${folder}/${Date.now()}-${file.name}`;
+                
+                toastId.update({ id: toastId.id, description: `File ${i}/${files.length}: Uploading...` });
+
+                const { downloadURL } = await uploadImageResumable(file, path, {
+                    onProgress: (p) => {
+                        toastId.update({ id: toastId.id, description: `File ${i}/${files.length}: ${p.pct}%` });
+                    }
+                });
+
+                if (isVideo) uploadedVideoUrls.push(downloadURL);
+                else uploadedPhotoUrls.push(downloadURL);
+            }
+
+            const quoteRef = doc(db, 'quotes', quote.id);
+            const updateData: any = {};
+            if (uploadedPhotoUrls.length > 0) updateData.photos = arrayUnion(...uploadedPhotoUrls);
+            if (uploadedVideoUrls.length > 0) updateData.videos = arrayUnion(...uploadedVideoUrls);
+
+            await updateDoc(quoteRef, updateData);
+            
+            setQuote(prev => {
+                if (!prev) return null;
+                return {
+                    ...prev,
+                    photos: [...(prev.photos || []), ...uploadedPhotoUrls],
+                    videos: [...(prev.videos || []), ...uploadedVideoUrls]
+                };
+            });
+
+            toastId.dismiss();
+            toast({ title: "Media Added", description: `${files.length} file(s) successfully attached to quote.` });
+
+        } catch (error: any) {
+            toastId.dismiss();
+            toast({ variant: "destructive", title: "Upload Failed", description: "The transfer was interrupted." });
+        } finally {
+            setIsUploadingMedia(false);
+            if (e.target) e.target.value = '';
+        }
+    };
+
+    const handleMediaDelete = async (url: string, type: 'photo' | 'video') => {
+        if (!db || !quote) return;
+
+        const field = type === 'photo' ? 'photos' : 'videos';
+        const updatedList = (quote[field] || []).filter(u => u !== url);
+
+        try {
+            const quoteRef = doc(db, 'quotes', quote.id);
+            await updateDoc(quoteRef, { [field]: updatedList });
+            await deleteImage(url);
+            
+            setQuote(prev => prev ? ({ ...prev, [field]: updatedList } as Quote) : null);
+            toast({ title: "Media Deleted" });
+        } catch (error) {
+            toast({ title: "Delete Failed", variant: 'destructive' });
+        }
+    };
+
     if (isLoading || isRoleLoading) {
         return <MainLayout><div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div></MainLayout>;
     }
@@ -124,6 +204,7 @@ export default function QuoteDetailPage() {
     if (!quote) return null;
 
     const isAdmin = role?.name === 'Administrator';
+    const isCompleted = quote.status === 'Accepted' || quote.status === 'Archived';
 
     return (
         <MainLayout>
@@ -223,58 +304,113 @@ export default function QuoteDetailPage() {
                         </Card>
                         
                         <Card>
-                            <CardHeader><CardTitle>Technician's Submission</CardTitle></CardHeader>
+                            <CardHeader>
+                                <CardTitle>Technician's Submission</CardTitle>
+                            </CardHeader>
                             <CardContent>
                                 <div className="space-y-4">
                                     <div>
-                                        <h3 className="font-medium text-sm text-muted-foreground">Description of Work to be Quoted</h3>
-                                        <p className="text-sm whitespace-pre-wrap">{quote.description}</p>
+                                        <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wider text-[10px]">Description of Work to be Quoted</h3>
+                                        <p className="text-sm whitespace-pre-wrap mt-1">{quote.description}</p>
                                     </div>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
-                                            <h3 className="font-medium text-sm text-muted-foreground">Model Number</h3>
-                                            <p className="text-sm">{quote.modelNumber}</p>
+                                            <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wider text-[10px]">Model Number</h3>
+                                            <p className="text-sm font-medium mt-1">{quote.modelNumber}</p>
                                         </div>
                                         <div>
-                                            <h3 className="font-medium text-sm text-muted-foreground">Serial Number</h3>
-                                            <p className="text-sm">{quote.serialNumber}</p>
+                                            <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wider text-[10px]">Serial Number</h3>
+                                            <p className="text-sm font-medium mt-1">{quote.serialNumber}</p>
                                         </div>
                                     </div>
 
                                     {quote.estimatedLabor && (
                                     <div>
-                                        <h3 className="font-medium text-sm text-muted-foreground">Estimated Labor</h3>
-                                        <p className="text-sm whitespace-pre-wrap">{quote.estimatedLabor}</p>
+                                        <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wider text-[10px]">Estimated Labor</h3>
+                                        <p className="text-sm mt-1 whitespace-pre-wrap">{quote.estimatedLabor}</p>
                                     </div>
                                     )}
 
                                     {quote.materialsNeeded && (
                                     <div>
-                                        <h3 className="font-medium text-sm text-muted-foreground">Materials Needed</h3>
-                                        <p className="text-sm whitespace-pre-wrap">{quote.materialsNeeded}</p>
+                                        <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wider text-[10px]">Materials Needed</h3>
+                                        <p className="text-sm mt-1 whitespace-pre-wrap">{quote.materialsNeeded}</p>
                                     </div>
                                     )}
                                 </div>
                                 
                                 <Separator className="my-6" />
 
-                                <div className="space-y-4">
-                                    {quote.photos.length > 0 && (
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="font-bold flex items-center gap-2"><ImageIcon className="h-4 w-4" /> Quote Media</h3>
+                                        {!isCompleted && (
+                                            <div>
+                                                <input 
+                                                    type="file" 
+                                                    ref={mediaInputRef} 
+                                                    multiple 
+                                                    accept="image/*,video/*" 
+                                                    className="hidden" 
+                                                    onChange={handleMediaUpload} 
+                                                />
+                                                <Button size="sm" variant="outline" onClick={() => mediaInputRef.current?.click()} disabled={isUploadingMedia}>
+                                                    {isUploadingMedia ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
+                                                    Add Photos/Video
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {quote.photos && quote.photos.length > 0 && (
                                         <div>
-                                            <h3 className="font-medium mb-2">Photos</h3>
+                                            <p className="text-[10px] uppercase font-bold text-muted-foreground mb-3 tracking-widest">Photos</p>
                                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                                                {quote.photos.map((url, i) => <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="aspect-video relative"><Image src={url} alt={`Photo ${i+1}`} fill className="object-cover rounded-lg border" sizes="(max-width: 768px) 50vw, 33vw" /></a>)}
+                                                {quote.photos.map((url, i) => (
+                                                    <div key={i} className="relative group aspect-square rounded-lg overflow-hidden border">
+                                                        <Image src={url} alt={`Quote photo ${i+1}`} fill className="object-cover" sizes="(max-width: 768px) 50vw, 33vw" />
+                                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <div className="flex items-center gap-2">
+                                                                <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full" asChild>
+                                                                    <a href={url} target="_blank" rel="noopener noreferrer"><ImageIcon className="h-4 w-4" /></a>
+                                                                </Button>
+                                                                {!isCompleted && (
+                                                                    <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => handleMediaDelete(url, 'photo')}>
+                                                                        <X className="h-4 w-4" />
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
                                     )}
-                                     {quote.videos.length > 0 && (
+
+                                    {quote.videos && quote.videos.length > 0 && (
                                         <div>
-                                            <h3 className="font-medium mb-2">Videos</h3>
+                                            <p className="text-[10px] uppercase font-bold text-muted-foreground mb-3 tracking-widest">Videos</p>
                                             <div className="space-y-2">
-                                                {quote.videos.map((url, i) => <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary hover:underline"><Video className="h-4 w-4" /> Video {i+1}</a>)}
+                                                {quote.videos.map((url, i) => (
+                                                    <div key={i} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30 transition-colors">
+                                                        <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-sm font-medium text-primary hover:underline">
+                                                            <Video className="h-4 w-4" /> 
+                                                            Video Submission {i+1}
+                                                        </a>
+                                                        {!isCompleted && (
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleMediaDelete(url, 'video')}>
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
+                                    )}
+
+                                    {(!quote.photos || quote.photos.length === 0) && (!quote.videos || quote.videos.length === 0) && (
+                                        <p className="text-sm text-center text-muted-foreground py-8 border-2 border-dashed rounded-lg">No media attached to this quote submission.</p>
                                     )}
                                 </div>
                             </CardContent>
@@ -299,15 +435,15 @@ export default function QuoteDetailPage() {
                                             </SelectContent>
                                         </Select>
                                      ) : (
-                                        <Badge variant="outline" className="text-sm">{status}</Badge>
+                                        <Badge variant="outline" className="text-sm w-full py-2 justify-center">{status}</Badge>
                                      )}
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Admin Notes</Label>
                                     {isAdmin ? (
-                                        <Textarea value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} rows={4} placeholder="Internal notes..."/>
+                                        <Textarea value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} rows={4} placeholder="Internal office notes..."/>
                                     ) : (
-                                        <p className="text-sm text-muted-foreground italic">Administrative eyes only.</p>
+                                        <p className="text-sm text-muted-foreground italic bg-muted/30 p-3 rounded-md">Administrative eyes only.</p>
                                     )}
                                 </div>
                             </CardContent>
@@ -315,11 +451,11 @@ export default function QuoteDetailPage() {
                          <Card>
                             <CardHeader><CardTitle>Context</CardTitle></CardHeader>
                             <CardContent className="text-sm space-y-3">
-                                 <p><strong className="text-muted-foreground">Work Order:</strong> <Link href={`/work-orders/${quote.workOrderId}`} className="text-primary hover:underline">{quote.workOrderId}</Link></p>
-                                <p><strong className="text-muted-foreground">Client:</strong> {quote.client?.name || 'N/A'}</p>
-                                <p><strong className="text-muted-foreground">Work Site:</strong> {quote.workSite?.name || 'N/A'}</p>
-                                <p><strong className="text-muted-foreground">Initiated By:</strong> {quote.createdBy_technician?.name || 'N/A'}</p>
-                                <p><strong className="text-muted-foreground">Date Initiated:</strong> {format(new Date(quote.createdDate), 'PPP')}</p>
+                                 <div className="flex justify-between border-b pb-2"><strong className="text-muted-foreground">Work Order</strong><Link href={`/work-orders/${quote.workOrderId}`} className="text-primary hover:underline font-medium">#{quote.workOrderId}</Link></div>
+                                 <div className="flex justify-between border-b pb-2"><strong className="text-muted-foreground">Client</strong><span className="text-right">{quote.client?.name || 'N/A'}</span></div>
+                                 <div className="flex justify-between border-b pb-2"><strong className="text-muted-foreground">Work Site</strong><span className="text-right">{quote.workSite?.name || 'N/A'}</span></div>
+                                 <div className="flex justify-between border-b pb-2"><strong className="text-muted-foreground">Initiated By</strong><span className="text-right">{quote.createdBy_technician?.name || 'N/A'}</span></div>
+                                 <div className="flex justify-between"><strong className="text-muted-foreground">Date</strong><span>{format(new Date(quote.createdDate), 'MMM d, yyyy')}</span></div>
                             </CardContent>
                         </Card>
                     </div>

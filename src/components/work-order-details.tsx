@@ -358,10 +358,6 @@ export function WorkOrderDetails({
 
   const linkedAssetIds = new Set(workOrder.assetIds || []);
 
-  const linkedAssets = useMemo(() => {
-    return siteAssets.filter(a => linkedAssetIds.has(a.id));
-  }, [siteAssets, linkedAssetIds]);
-
   return (
     <>
       {isSavingPhotos && (
@@ -466,7 +462,7 @@ export function WorkOrderDetails({
           <TabsTrigger value="assets" variant="folder">Assets</TabsTrigger>
           <TabsTrigger value="media" variant="folder">Media</TabsTrigger>
           <TabsTrigger value="activity" variant="folder">Activity</TabsTrigger>
-          {quotes.length > 0 && (
+          {quotes && quotes.length > 0 && (
             <TabsTrigger value="quotes" variant="folder">Quotes ({quotes.length})</TabsTrigger>
           )}
         </TabsList>
@@ -833,7 +829,7 @@ export function WorkOrderDetails({
           </div>
         </TabsContent>
 
-        {quotes.length > 0 && (
+        {quotes && quotes.length > 0 && (
           <TabsContent value="quotes" className="mt-0">
             <Card className="rounded-t-none">
               <CardHeader><CardTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" />Associated Quotes</CardTitle></CardHeader>
