@@ -8,7 +8,6 @@ import { format, isSameDay } from 'date-fns';
 import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, HvacStartupReport, Acknowledgement, Asset, Quote } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -29,6 +28,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from './ui/badge';
 import { WorkOrderReviewDialog } from './work-order-review-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Textarea } from './ui/textarea';
 
 const AddActivityForm = ({ technicians, onAddActivity, isLoading, isTechnician, currentUserId }: { 
     technicians: Technician[], 

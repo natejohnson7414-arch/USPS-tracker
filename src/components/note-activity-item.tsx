@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import type { WorkOrderNote } from '@/lib/types';
 import { Button } from './ui/button';
-import { X, Trash2, FileText, FileX, Maximize2, Download } from 'lucide-react';
+import { Trash2, FileText, FileX, Maximize2, Download } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 

@@ -335,7 +335,7 @@ export function WorkOrderAdminDetails({
           <TabsTrigger value="assets" variant="folder">Assets</TabsTrigger>
           <TabsTrigger value="media" variant="folder">Media</TabsTrigger>
           <TabsTrigger value="activity" variant="folder">Activity</TabsTrigger>
-          {quotes.length > 0 && <TabsTrigger value="quotes" variant="folder">Quotes ({quotes.length})</TabsTrigger>}
+          {quotes && quotes.length > 0 && <TabsTrigger value="quotes" variant="folder">Quotes ({quotes.length})</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="overview" className="mt-0">
@@ -406,7 +406,7 @@ export function WorkOrderAdminDetails({
                             <div><p className="font-medium">{workOrder.contactInfo || 'Signed'}</p><p className="text-xs text-muted-foreground">{workOrder.signatureDate ? format(new Date(workOrder.signatureDate), 'PP p') : ''}</p></div>
                             <div className="flex items-center gap-2">
                               <div className="bg-muted p-1 rounded-md"><Image src={workOrder.customerSignatureUrl} alt="Signature" width={120} height={40} sizes="120px" className="object-contain" /></div>
-                              {!isCompleted && <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => { setAckToDelete(undefined); setIsDeletingSignature(true); }}><Trash2 className="h-4 w-4"/></Button>}
+                              {!isCompleted && <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => { setAckToDelete(null); setIsDeletingSignature(true); }}><Trash2 className="h-4 w-4"/></Button>}
                             </div>
                         </div>
                     )}
@@ -515,7 +515,7 @@ export function WorkOrderAdminDetails({
               <CardContent className="space-y-6">
                 <div className="space-y-4">
                   {activities.length > 0 ? activities.map(activity => (
-                    <ActivityItem key={activity.id} activity={activity} technicians={technicians} onDeleteClick={() => setActivityToDelete(activity)} isCompleted={isCompleted} />
+                    <ActivityItem key={activity.id} activity={activity} technicians={technicians} onDeleteClick={() => setActivityToDelete(activity)} isCompleted={isCompleted} onUpdateStatus={onUpdateActivityStatus} isTechnician={isTechnician} isAdmin={isAdmin} onAddTimeClick={() => {}} />
                   )) : <p className="text-center text-sm text-muted-foreground py-4">No scheduled activities.</p>}
                 </div>
               </CardContent>
@@ -577,7 +577,7 @@ export function WorkOrderAdminDetails({
           </div>
         </TabsContent>
 
-        {quotes.length > 0 && (
+        {quotes && quotes.length > 0 && (
           <TabsContent value="quotes" className="mt-0">
             <Card className="rounded-t-none">
               <CardHeader><CardTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" />Associated Quotes</CardTitle></CardHeader>
