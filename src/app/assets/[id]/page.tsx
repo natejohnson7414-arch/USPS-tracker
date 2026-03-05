@@ -20,7 +20,7 @@ import { uploadImageResumable, deleteImage } from '@/firebase/storage';
 import { doc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 export default function AssetDetailsPage() {
   const { id } = useParams();
@@ -367,9 +367,10 @@ export default function AssetDetailsPage() {
         <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/95 border-0 flex flex-col items-stretch h-[90vh]">
           <DialogHeader className="p-4 bg-background/10 backdrop-blur-sm border-b border-white/10 absolute top-0 w-full z-10">
             <DialogTitle className="text-white text-sm font-bold uppercase tracking-widest">Asset Documentation Preview</DialogTitle>
+            <DialogDescription className="sr-only">High resolution preview of asset documentation</DialogDescription>
           </DialogHeader>
           <div className="flex-1 relative flex items-center justify-center p-4">
-            {viewingPhoto && <Image src={viewingPhoto} alt="Asset photo preview" fill className="object-contain" priority />}
+            {viewingPhoto && <Image src={viewingPhoto} alt="Asset photo preview" fill className="object-contain" style={{ width: 'auto', height: 'auto' }} priority />}
           </div>
           <div className="p-4 bg-background flex justify-between items-center border-t">
             <Button variant="outline" size="sm" onClick={() => setViewingPhoto(null)}>Close</Button>

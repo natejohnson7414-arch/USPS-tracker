@@ -30,7 +30,7 @@ import { doc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { notifyTechnicianOfAttention } from '@/ai/flows/notify-technician-flow';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 const ActivityItem = React.memo(({ activity, technicians, onDeleteClick, isCompleted }: { 
     activity: Activity, 
@@ -601,8 +601,13 @@ export function WorkOrderAdminDetails({
 
       <Dialog open={!!viewingPhoto} onOpenChange={() => setViewingPhoto(null)}>
         <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/95 border-0 flex flex-col items-stretch h-[90vh]">
-          <DialogHeader className="p-4 bg-background/10 backdrop-blur-sm border-b border-white/10 absolute top-0 w-full z-10"><DialogTitle className="text-white text-sm font-bold uppercase tracking-widest">{viewingPhoto?.type === 'before' ? 'Before Work' : viewingPhoto?.type === 'after' ? 'After Work' : 'Receipt / Packing Slip'}</DialogTitle></DialogHeader>
-          <div className="flex-1 relative flex items-center justify-center p-4">{viewingPhoto && <Image src={viewingPhoto.url} alt="High resolution documentation" fill className="object-contain" priority />}</div>
+          <DialogHeader className="p-4 bg-background/10 backdrop-blur-sm border-b border-white/10 absolute top-0 w-full z-10">
+            <DialogTitle className="text-white text-sm font-bold uppercase tracking-widest">{viewingPhoto?.type === 'before' ? 'Before Work' : viewingPhoto?.type === 'after' ? 'After Work' : 'Receipt / Packing Slip'}</DialogTitle>
+            <DialogDescription className="sr-only">High resolution preview of work order documentation</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 relative flex items-center justify-center p-4">
+            {viewingPhoto && <Image src={viewingPhoto.url} alt="High resolution documentation" fill className="object-contain" style={{ width: 'auto', height: 'auto' }} priority />}
+          </div>
           <div className="p-4 bg-background flex justify-between items-center border-t">
             <Button variant="outline" size="sm" onClick={() => setViewingPhoto(null)}>Close</Button>
             <div className="flex items-center gap-2">

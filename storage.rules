@@ -8,6 +8,7 @@ service firebase.storage {
     }
 
     // High-priority paths for field documentation to ensure reliable preflight
+    // These paths match the working pattern of work-orders/
     match /quotes/{allPaths=**} {
       allow read, write: if isSignedIn();
     }
