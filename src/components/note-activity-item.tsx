@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import type { WorkOrderNote } from '@/lib/types';
 import { Button } from './ui/button';
-import { X, Trash2, FileText, FileX, Maximize2 } from 'lucide-react';
+import { X, Trash2, FileText, FileX, Maximize2, Download } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -71,7 +71,7 @@ export const NoteActivityItem = React.memo(({
                 src={url} 
                 alt={`Work photo ${index + 1}`} 
                 fill 
-                sizes="(max-width: 768px) 33vw, 20vw"
+                sizes="(max-width: 768px) 33vw, 15vw"
                 className="object-cover"
               />
               <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -100,11 +100,20 @@ export const NoteActivityItem = React.memo(({
           </div>
           <div className="p-4 bg-background flex justify-between items-center border-t">
             <Button variant="outline" size="sm" onClick={() => setViewingPhoto(null)}>Close</Button>
-            {onPhotoDelete && viewingPhoto && (
-              <Button variant="destructive" size="sm" onClick={() => { onPhotoDelete(note.id, viewingPhoto); setViewingPhoto(null); }}>
-                <Trash2 className="h-4 w-4 mr-2" /> Delete Documentation
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+                {viewingPhoto && (
+                    <Button variant="outline" size="sm" asChild>
+                        <a href={`/api/image-proxy?url=${encodeURIComponent(viewingPhoto)}`} download>
+                            <Download className="h-4 w-4 mr-2" /> Download
+                        </a>
+                    </Button>
+                )}
+                {onPhotoDelete && viewingPhoto && (
+                <Button variant="destructive" size="sm" onClick={() => { onPhotoDelete(note.id, viewingPhoto); setViewingPhoto(null); }}>
+                    <Trash2 className="h-4 w-4 mr-2" /> Delete Documentation
+                </Button>
+                )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

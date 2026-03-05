@@ -22,7 +22,7 @@ import { getQuoteById } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImageResumable, deleteImage } from '@/firebase/storage';
 import type { Quote, QuoteLineItem } from '@/lib/types';
-import { Loader2, ArrowLeft, Trash2, PlusCircle, Video, FileText, Camera, Library, ImageIcon, X, Maximize2 } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, PlusCircle, Video, FileText, Camera, Library, ImageIcon, X, Maximize2, Download } from 'lucide-react';
 import { doc, arrayUnion } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -473,11 +473,20 @@ export default function QuoteDetailPage() {
                     </div>
                     <div className="p-4 bg-background flex justify-between items-center border-t">
                         <Button variant="outline" size="sm" onClick={() => setViewingPhoto(null)}>Close</Button>
-                        {!isCompleted && viewingPhoto && (
-                            <Button variant="destructive" size="sm" onClick={() => { handleMediaDelete(viewingPhoto, 'photo'); setViewingPhoto(null); }}>
-                                <Trash2 className="h-4 w-4 mr-2" /> Delete Documentation
-                            </Button>
-                        )}
+                        <div className="flex items-center gap-2">
+                            {viewingPhoto && (
+                                <Button variant="outline" size="sm" asChild>
+                                    <a href={`/api/image-proxy?url=${encodeURIComponent(viewingPhoto)}`} download>
+                                        <Download className="h-4 w-4 mr-2" /> Download
+                                    </a>
+                                </Button>
+                            )}
+                            {!isCompleted && viewingPhoto && (
+                                <Button variant="destructive" size="sm" onClick={() => { handleMediaDelete(viewingPhoto, 'photo'); setViewingPhoto(null); }}>
+                                    <Trash2 className="h-4 w-4 mr-2" /> Delete Documentation
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </DialogContent>
             </Dialog>

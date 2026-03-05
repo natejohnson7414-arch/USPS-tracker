@@ -782,11 +782,20 @@ export function WorkOrderAdminDetails({
           </div>
           <div className="p-4 bg-background flex justify-between items-center border-t">
             <Button variant="outline" size="sm" onClick={() => setViewingPhoto(null)}>Close</Button>
-            {!isCompleted && viewingPhoto && (
-              <Button variant="destructive" size="sm" onClick={handleDeletePhotoInViewer}>
-                <Trash2 className="h-4 w-4 mr-2" /> Delete Documentation
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+                {viewingPhoto && (
+                    <Button variant="outline" size="sm" asChild>
+                        <a href={`/api/image-proxy?url=${encodeURIComponent(viewingPhoto.url)}`} download>
+                            <Download className="h-4 w-4 mr-2" /> Download
+                        </a>
+                    </Button>
+                )}
+                {!isCompleted && viewingPhoto && (
+                <Button variant="destructive" size="sm" onClick={handleDeletePhotoInViewer}>
+                    <Trash2 className="h-4 w-4 mr-2" /> Delete Documentation
+                </Button>
+                )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
