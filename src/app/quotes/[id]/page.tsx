@@ -22,8 +22,9 @@ import { getQuoteById } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImageResumable, deleteImage } from '@/firebase/storage';
 import type { Quote, QuoteLineItem } from '@/lib/types';
-import { Loader2, ArrowLeft, Trash2, PlusCircle, Video, FileText, Camera, Library, ImageIcon, X } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, PlusCircle, Video, FileText, Camera, Library, ImageIcon, X, Maximize2 } from 'lucide-react';
 import { doc, arrayUnion } from 'firebase/firestore';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
@@ -38,6 +39,7 @@ export default function QuoteDetailPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+    const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
 
     // Editable fields
     const [lineItems, setLineItems] = useState<QuoteLineItem[]>([]);
@@ -366,21 +368,12 @@ export default function QuoteDetailPage() {
                                     {quote.photos && quote.photos.length > 0 && (
                                         <div>
                                             <p className="text-[10px] uppercase font-bold text-muted-foreground mb-3 tracking-widest">Photos</p>
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
                                                 {quote.photos.map((url, i) => (
-                                                    <div key={i} className="relative group aspect-square rounded-lg overflow-hidden border">
-                                                        <Image src={url} alt={`Quote photo ${i+1}`} fill className="object-cover" sizes="(max-width: 768px) 50vw, 33vw" />
-                                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <div className="flex items-center gap-2">
-                                                                <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full" asChild>
-                                                                    <a href={url} target="_blank" rel="noopener noreferrer"><ImageIcon className="h-4 w-4" /></a>
-                                                                </Button>
-                                                                {!isCompleted && (
-                                                                    <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => handleMediaDelete(url, 'photo')}>
-                                                                        <X className="h-4 w-4" />
-                                                                    </Button>
-                                                                )}
-                                                            </div>
+                                                    <div key={i} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto(url)}>
+                                                        <Image src={url} alt={`Quote photo ${i+1}`} fill className="object-cover" sizes="(max-width: 768px) 33vw, 20vw" />
+                                                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <Maximize2 className="text-white h-5 w-5" />
                                                         </div>
                                                     </div>
                                                 ))}
@@ -461,6 +454,33 @@ export default function QuoteDetailPage() {
                     </div>
                 </div>
             </div>
+
+            <Dialog open={!!viewingPhoto} onOpenChange={() => setViewingPhoto(null)}>
+                <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/95 border-0 flex flex-col items-stretch h-[90vh]">
+                    <DialogHeader className="p-4 bg-background/10 backdrop-blur-sm border-b border-white/10 absolute top-0 w-full z-10">
+                        <DialogTitle className="text-white text-sm font-bold uppercase tracking-widest">Quote Documentation Preview</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex-1 relative flex items-center justify-center p-4">
+                        {viewingPhoto && (
+                            <Image 
+                                src={viewingPhoto} 
+                                alt="Quote photo preview" 
+                                fill 
+                                className="object-contain" 
+                                priority
+                            />
+                        )}
+                    </div>
+                    <div className="p-4 bg-background flex justify-between items-center border-t">
+                        <Button variant="outline" size="sm" onClick={() => setViewingPhoto(null)}>Close</Button>
+                        {!isCompleted && viewingPhoto && (
+                            <Button variant="destructive" size="sm" onClick={() => { handleMediaDelete(viewingPhoto, 'photo'); setViewingPhoto(null); }}>
+                                <Trash2 className="h-4 w-4 mr-2" /> Delete Documentation
+                            </Button>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </MainLayout>
     );
 }

@@ -1,12 +1,14 @@
+
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import type { WorkOrderNote } from '@/lib/types';
 import { Button } from './ui/button';
-import { X, Trash2, FileText, FileX } from 'lucide-react';
+import { X, Trash2, FileText, FileX, Maximize2 } from 'lucide-react';
 import { Badge } from './ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface NoteActivityItemProps {
   note: WorkOrderNote;
@@ -26,6 +28,7 @@ export const NoteActivityItem = React.memo(({
   showPhotos = true,
   isAdmin = false
 }: NoteActivityItemProps) => {
+  const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
   const isValidDate = note.createdAt && !isNaN(new Date(note.createdAt).getTime());
   const isExcluded = note.excludeFromReport || false;
 
@@ -61,33 +64,50 @@ export const NoteActivityItem = React.memo(({
         </div>
       </div>
       {showPhotos && note.photoUrls && note.photoUrls.length > 0 && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
           {note.photoUrls.map((url, index) => (
-            <div key={index} className="relative group aspect-video rounded-lg overflow-hidden border">
+            <div key={index} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto(url)}>
               <Image 
                 src={url} 
                 alt={`Work photo ${index + 1}`} 
                 fill 
-                sizes="(max-width: 768px) 50vw, 33vw"
+                sizes="(max-width: 768px) 33vw, 20vw"
                 className="object-cover"
               />
-              {onPhotoDelete && (
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="h-8 w-8 rounded-full"
-                    onClick={() => onPhotoDelete(note.id, url)}
-                  >
-                    <X className="h-4 w-4" />
-                    <span className="sr-only">Delete Photo</span>
-                  </Button>
-                </div>
-              )}
+              <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Maximize2 className="text-white h-5 w-5" />
+              </div>
             </div>
           ))}
         </div>
       )}
+
+      <Dialog open={!!viewingPhoto} onOpenChange={() => setViewingPhoto(null)}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/95 border-0 flex flex-col items-stretch h-[90vh]">
+          <DialogHeader className="p-4 bg-background/10 backdrop-blur-sm border-b border-white/10 absolute top-0 w-full z-10">
+            <DialogTitle className="text-white text-sm font-bold uppercase tracking-widest">Field Note Image Preview</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 relative flex items-center justify-center p-4">
+            {viewingPhoto && (
+              <Image 
+                src={viewingPhoto} 
+                alt="Field documentation preview" 
+                fill 
+                className="object-contain" 
+                priority
+              />
+            )}
+          </div>
+          <div className="p-4 bg-background flex justify-between items-center border-t">
+            <Button variant="outline" size="sm" onClick={() => setViewingPhoto(null)}>Close</Button>
+            {onPhotoDelete && viewingPhoto && (
+              <Button variant="destructive" size="sm" onClick={() => { onPhotoDelete(note.id, viewingPhoto); setViewingPhoto(null); }}>
+                <Trash2 className="h-4 w-4 mr-2" /> Delete Documentation
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 });

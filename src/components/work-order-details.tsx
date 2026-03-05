@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, ReceiptText, AlertCircle, CheckCircle2, Package, ChevronRight, Receipt } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, ReceiptText, AlertCircle, CheckCircle2, Package, ChevronRight, Receipt, Maximize2 } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
@@ -29,6 +29,7 @@ import { doc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from './ui/badge';
 import { WorkOrderReviewDialog } from './work-order-review-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const AddActivityForm = ({ technicians, onAddActivity, isLoading, isTechnician, currentUserId }: { 
     technicians: Technician[], 
@@ -255,6 +256,7 @@ export function WorkOrderDetails({
   const [isDeletingSignature, setIsDeletingSignature] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [viewingPhoto, setViewingPhoto] = useState<{ url: string, type: 'before' | 'after' | 'receipts' } | null>(null);
 
   // Asset State
   const [siteAssets, setSiteAssets] = useState<Asset[]>([]);
@@ -357,6 +359,14 @@ export function WorkOrderDetails({
   const canCompleteWorkOrder = isTechnician && isCurrentUserAssigned && (workOrder.status === 'In Progress' || workOrder.status === 'Open');
 
   const linkedAssetIds = new Set(workOrder.assetIds || []);
+
+  const handleDeletePhotoInViewer = () => {
+    if (!viewingPhoto) return;
+    if (viewingPhoto.type === 'before') onBeforePhotoDelete(viewingPhoto.url);
+    else if (viewingPhoto.type === 'after') onAfterPhotoDelete(viewingPhoto.url);
+    else onReceiptsAndPackingSlipsPhotoDelete(viewingPhoto.url);
+    setViewingPhoto(null);
+  };
 
   return (
     <>
@@ -700,18 +710,18 @@ export function WorkOrderDetails({
                     <div>
                         <h3 className="font-medium mb-2">Before Photos</h3>
                         <div className="relative">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
+                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 mb-4">
                                 {(workOrder.beforePhotoUrls || []).map((url) => (
-                                    <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
+                                    <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url, type: 'before' })}>
                                         <Image 
                                           src={url} 
                                           alt={`Before photo`} 
                                           fill 
-                                          sizes="(max-width: 768px) 50vw, 25vw"
+                                          sizes="(max-width: 768px) 33vw, 15vw"
                                           className="object-cover" 
                                         />
-                                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            {!isCompleted && <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onBeforePhotoDelete(url)}><X className="h-4 w-4" /></Button>}
+                                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Maximize2 className="text-white h-5 w-5" />
                                         </div>
                                     </div>
                                 ))}
@@ -723,18 +733,18 @@ export function WorkOrderDetails({
                     <div>
                         <h3 className="font-medium mb-2">After Photos</h3>
                         <div className="relative">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
+                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 mb-4">
                                 {(workOrder.afterPhotoUrls || []).map((url) => (
-                                    <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
+                                    <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url, type: 'after' })}>
                                         <Image 
                                           src={url} 
                                           alt={`After photo`} 
                                           fill 
-                                          sizes="(max-width: 768px) 50vw, 25vw"
+                                          sizes="(max-width: 768px) 33vw, 15vw"
                                           className="object-cover" 
                                         />
-                                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            {!isCompleted && <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onAfterPhotoDelete(url)}><X className="h-4 w-4" /></Button>}
+                                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Maximize2 className="text-white h-5 w-5" />
                                         </div>
                                     </div>
                                 ))}
@@ -748,18 +758,18 @@ export function WorkOrderDetails({
                 <CardHeader><CardTitle className="flex items-center gap-2"><ReceiptText /> Receipts &amp; Packing Slips</CardTitle></CardHeader>
                 <CardContent>
                     <div className="relative">
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 mb-4">
                             {(workOrder.receiptsAndPackingSlips || []).map((url) => (
-                                <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
+                                <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url, type: 'receipts' })}>
                                     <Image 
                                       src={url} 
                                       alt={`Receipt or packing slip`} 
                                       fill 
-                                      sizes="(max-width: 768px) 50vw, 25vw"
+                                      sizes="(max-width: 768px) 33vw, 15vw"
                                       className="object-cover" 
                                     />
-                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        {!isCompleted && <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onReceiptsAndPackingSlipsPhotoDelete(url)}><X className="h-4 w-4" /></Button>}
+                                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Maximize2 className="text-white h-5 w-5" />
                                     </div>
                                 </div>
                             ))}
@@ -868,6 +878,35 @@ export function WorkOrderDetails({
         }}
         isSubmitting={isSubmittingReview}
       />
+
+      <Dialog open={!!viewingPhoto} onOpenChange={() => setViewingPhoto(null)}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/95 border-0 flex flex-col items-stretch h-[90vh]">
+          <DialogHeader className="p-4 bg-background/10 backdrop-blur-sm border-b border-white/10 absolute top-0 w-full z-10">
+            <DialogTitle className="text-white text-sm font-bold uppercase tracking-widest">
+              {viewingPhoto?.type === 'before' ? 'Before Work' : viewingPhoto?.type === 'after' ? 'After Work' : 'Receipt / Packing Slip'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 relative flex items-center justify-center p-4">
+            {viewingPhoto && (
+              <Image 
+                src={viewingPhoto.url} 
+                alt="High resolution documentation" 
+                fill 
+                className="object-contain" 
+                priority
+              />
+            )}
+          </div>
+          <div className="p-4 bg-background flex justify-between items-center border-t">
+            <Button variant="outline" size="sm" onClick={() => setViewingPhoto(null)}>Close</Button>
+            {!isCompleted && viewingPhoto && (
+              <Button variant="destructive" size="sm" onClick={handleDeletePhotoInViewer}>
+                <Trash2 className="h-4 w-4 mr-2" /> Delete Documentation
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!noteToDelete} onOpenChange={(open) => !open && setNoteToDelete(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete this note.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteNote}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       <AlertDialog open={!!timeEntryToDelete} onOpenChange={(open) => !open && setTimeEntryToDelete(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete this time entry.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteTimeEntry}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
