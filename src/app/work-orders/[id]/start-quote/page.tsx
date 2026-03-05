@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -12,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useFirestore, useUser, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { getWorkOrderById } from '@/lib/data';
-import { uploadImage } from '@/firebase/storage';
+import { uploadImageResumable } from '@/firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import type { WorkOrder, Quote } from '@/lib/types';
 import { Loader2, ArrowLeft, Upload, Video, Image as ImageIcon, Trash2 } from 'lucide-react';
@@ -28,6 +29,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+/**
+ * Rebuilt Quote logic following the proven Work Order patterns.
+ * Uses sequential resilient uploads and waited Firestore persistence.
+ */
 export default function StartQuotePage() {
     const { id: workOrderId } = useParams();
     const router = useRouter();
@@ -126,48 +131,44 @@ export default function StartQuotePage() {
         setIsSubmitting(true);
         if (typeof window !== 'undefined') window.__UPLOAD_IN_PROGRESS__ = true;
         
-        const isDebug = process.env.NEXT_PUBLIC_DEBUG_UPLOADS === '1';
         const progressToast = toast({ title: 'Initializing...', description: 'Starting quote submission.', duration: Infinity });
 
         try {
-            if (isDebug) console.log("[UPLOAD] Generating sequential quote ID...");
             progressToast.update({ id: progressToast.id, title: 'Generating ID', description: 'Reserving your quote number.' });
             
+            // 1. Get official sequential number
             const result = await generateQuoteNumber();
-
-            if (result.error || !result.quoteNumber) {
-                throw new Error(result.error || 'The server failed to generate a quote number.');
-            }
+            if (result.error || !result.quoteNumber) throw new Error(result.error || 'Quote number generation failed.');
             
             const quoteNumber = result.quoteNumber;
             const photoUrls: string[] = [];
             const videoUrls: string[] = [];
 
-            if (photos.length > 0 || videos.length > 0) {
-                const totalFiles = photos.length + videos.length;
-                let currentFile = 0;
+            // 2. Sequential Resilient Uploads (Same pattern as Work Order photos)
+            const allFiles = [...photos.map(f => ({ file: f, type: 'photo' })), ...videos.map(f => ({ file: f, type: 'video' }))];
+            
+            for (let i = 0; i < allFiles.length; i++) {
+                const item = allFiles[i];
+                const folder = item.type === 'photo' ? 'photos' : 'videos';
+                const path = `quotes/${quoteNumber}/${folder}/${Date.now()}-${item.file.name}`;
+                
+                progressToast.update({ 
+                    id: progressToast.id, 
+                    title: `Transferring Media ${i + 1}/${allFiles.length}`, 
+                    description: `Connecting...` 
+                });
 
-                // SEQUENTIAL UPLOADS to prevent connection saturation
-                for (const file of photos) {
-                    currentFile++;
-                    progressToast.update({ id: progressToast.id, title: `Uploading Photo ${currentFile}/${totalFiles}`, description: 'Connecting...' });
-                    const url = await uploadImage(file, `quotes/${quoteNumber}/photos/${Date.now()}-${file.name}`, (pct) => {
-                        progressToast.update({ id: progressToast.id, description: `Transferring... ${pct}%` });
-                    });
-                    photoUrls.push(url);
-                }
+                const { downloadURL } = await uploadImageResumable(item.file, path, {
+                    onProgress: (p) => {
+                        progressToast.update({ id: progressToast.id, description: `Uploading... ${p.pct}%` });
+                    }
+                });
 
-                for (const file of videos) {
-                    currentFile++;
-                    progressToast.update({ id: progressToast.id, title: `Uploading Video ${currentFile}/${totalFiles}`, description: 'Connecting...' });
-                    const url = await uploadImage(file, `quotes/${quoteNumber}/videos/${Date.now()}-${file.name}`, (pct) => {
-                        progressToast.update({ id: progressToast.id, description: `Transferring... ${pct}%` });
-                    });
-                    videoUrls.push(url);
-                }
+                if (item.type === 'photo') photoUrls.push(downloadURL);
+                else videoUrls.push(downloadURL);
             }
 
-            progressToast.update({ id: progressToast.id, title: 'Saving...', description: 'Finalizing quote record.' });
+            progressToast.update({ id: progressToast.id, title: 'Saving Data...', description: 'Updating quote and work order records.' });
 
             const laborDetail = personHours.map((h, i) => `P${i + 1}: ${h || '0'}h`).join(', ');
             const formattedLabor = `${numPeople} ${parseInt(numPeople) === 1 ? 'person' : 'people'}: ${laborDetail}`;
@@ -194,33 +195,28 @@ export default function StartQuotePage() {
                 total: 0,
             };
 
-            if (isDebug) console.log("[UPLOAD] Saving Firestore record:", quoteNumber);
-
-            // Await the save so we know it's done before navigating
+            // 3. Persist Quote and update Work Order status (Explicitly Awaited)
             await addDocumentNonBlocking(collection(db, 'quotes'), newQuote);
-
-            const workOrderRef = doc(db, 'work_orders', workOrder.id);
-            await updateDocumentNonBlocking(workOrderRef, { status: 'On Hold' });
+            await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { status: 'On Hold' });
 
             progressToast.dismiss();
-            toast({ title: 'Quote Submitted', description: `Quote ${quoteNumber} has been requested.` });
+            toast({ title: 'Quote Submitted', description: `Quote ${quoteNumber} has been created successfully.` });
             
-            // Non-essential notification triggered in background
+            // Background notification
             notifyAdminsOfNewQuote({
                 quoteId: quoteNumber,
                 workOrderId: workOrder.id,
                 jobName: workOrder.jobName,
                 technicianName: user.displayName || user.email || 'Technician'
-            }).catch(e => console.warn('Notification failed:', e.message));
+            }).catch(e => console.warn('Admin notification failed:', e.message));
 
             router.push(`/work-orders/${workOrder.id}`);
 
         } catch (error: any) {
-            if (isDebug) console.error("[UPLOAD] Process Error:", error);
             progressToast.dismiss();
             toast({ 
                 title: 'Submission Failed', 
-                description: error.message || 'The connection was lost. Check your network and try again.', 
+                description: error.message || 'The connection was lost or permissions were denied. Please try again.', 
                 variant: 'destructive' 
             });
             setIsSubmitting(false);

@@ -19,7 +19,7 @@ import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { getTechnicianById, getAssetsBySiteId, getAssetsByIds } from '@/lib/data';
+import { getTechnicianById, getAssetsBySiteId } from '@/lib/data';
 import { AddTimeDialog } from './add-time-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from './ui/date-picker';
@@ -75,6 +75,7 @@ const AddActivityForm = ({ technicians, onAddActivity, isLoading, isTechnician, 
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <Select value={displayTechnicianId} onValueChange={setSelectedTechnicianId} required disabled={isTechnician}>
+                    <SelectTrigger><SelectValue placeholder="Assign a technician" /></SelectTrigger>
                     <SelectTrigger><SelectValue placeholder="Assign a technician" /></SelectTrigger>
                     <SelectContent>
                         {technicians.map(tech => (
