@@ -1,7 +1,7 @@
 
 'use client';
 
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject, StorageError, UploadTask } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject, StorageError } from 'firebase/storage';
 import { initializeFirebase } from './init';
 import { getAuth } from 'firebase/auth';
 
@@ -57,6 +57,7 @@ export const uploadImageResumable = async (
     if (isDebug) {
       console.log(`[UPLOAD] Auth active for user: ${user.uid}`);
       console.log(`[UPLOAD] Online status: ${navigator.onLine ? 'YES' : 'NO'}`);
+      console.log(`[UPLOAD] Target Path: ${path}`);
     }
 
     activeUploadCount++;

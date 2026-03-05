@@ -9,6 +9,14 @@ service firebase.storage {
     }
 
     /**
+     * @description Secures quote-related media.
+     * Placed at top for priority and using direct auth check.
+     */
+    match /quotes/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    /**
      * Helper function to check if the authenticated user has a specific role.
      */
     function userHasRole(roleName) {
@@ -20,14 +28,6 @@ service firebase.storage {
 
     function isAdmin() {
       return isSignedIn() && (request.auth.token.email == 'admin@crawford-company.com' || userHasRole('Administrator'));
-    }
-
-    /**
-     * @description Secures quote-related media.
-     * Placed at top for priority and using direct auth check to avoid any helper issues.
-     */
-    match /quotes/{allPaths=**} {
-      allow read, write: if request.auth != null;
     }
 
     /**
