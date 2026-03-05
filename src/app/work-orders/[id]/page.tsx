@@ -166,7 +166,6 @@ export default function WorkOrderDetailPage() {
     
     setIsSavingPhotos(true);
     const toastId = toast({ title: `Preparing ${files.length} photo(s)...`, duration: Infinity });
-    const isDebug = process.env.NEXT_PUBLIC_DEBUG_UPLOADS === '1';
 
     try {
       const uploadedUrls: string[] = [];
@@ -733,7 +732,7 @@ export default function WorkOrderDetailPage() {
             <DialogContent className="fixed inset-0 h-[100dvh] w-screen max-w-none p-0 flex flex-col border-0 rounded-none shadow-none z-[100]">
                 <DialogHeader className="sr-only">
                     <DialogTitle>Capture Signature</DialogTitle>
-                    <DialogDescription>Use your finger or stylus to provide a signature.</DialogDescription>
+                    <DialogDescription>Use your finger or stylus to provide a signature for this work order.</DialogDescription>
                 </DialogHeader>
                 <SignaturePad 
                     onSave={handleSignatureSave}

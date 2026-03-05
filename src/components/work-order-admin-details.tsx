@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect, FormEvent, useMemo } from 'react';
@@ -422,6 +423,7 @@ export function WorkOrderAdminDetails({
                                   alt="Signature" 
                                   width={120} 
                                   height={40} 
+                                  sizes="120px"
                                   className="object-contain" 
                                 />
                               </div>
@@ -442,6 +444,7 @@ export function WorkOrderAdminDetails({
                                           alt={`Signature ${index}`} 
                                           width={100} 
                                           height={35} 
+                                          sizes="100px"
                                           className="object-contain" 
                                         />
                                       </div>
