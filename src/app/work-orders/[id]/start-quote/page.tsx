@@ -29,10 +29,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-/**
- * Rebuilt Quote logic following the proven Work Order patterns.
- * Uses sequential resilient uploads and waited Firestore persistence.
- */
 export default function StartQuotePage() {
     const { id: workOrderId } = useParams();
     const router = useRouter();
@@ -134,17 +130,47 @@ export default function StartQuotePage() {
         const progressToast = toast({ title: 'Initializing...', description: 'Starting quote submission.', duration: Infinity });
 
         try {
-            progressToast.update({ id: progressToast.id, title: 'Generating ID', description: 'Reserving your quote number.' });
+            progressToast.update({ id: progressToast.id, title: 'Generating Quote #', description: 'Reserving your quote number.' });
             
-            // 1. Get official sequential number
             const result = await generateQuoteNumber();
             if (result.error || !result.quoteNumber) throw new Error(result.error || 'Quote number generation failed.');
             
             const quoteNumber = result.quoteNumber;
+
+            // 1. Create the Quote document Metadata FIRST to ensure it exists
+            progressToast.update({ id: progressToast.id, title: 'Saving Quote', description: 'Creating the job record...' });
+
+            const laborDetail = personHours.map((h, i) => `P${i + 1}: ${h || '0'}h`).join(', ');
+            const formattedLabor = `${numPeople} ${parseInt(numPeople) === 1 ? 'person' : 'people'}: ${laborDetail}`;
+
+            const initialQuote: Omit<Quote, 'id'> = {
+                quoteNumber: quoteNumber,
+                status: 'Draft',
+                workOrderId: workOrder.id,
+                clientId: workOrder.clientId,
+                workSiteId: workOrder.workSiteId,
+                jobName: workOrder.jobName,
+                description,
+                modelNumber,
+                serialNumber,
+                estimatedLabor: formattedLabor,
+                materialsNeeded,
+                photos: [], 
+                videos: [],
+                createdDate: new Date().toISOString(),
+                createdBy_technicianId: user.uid,
+                lineItems: [],
+                subtotal: 0,
+                tax: 0,
+                total: 0,
+            };
+
+            // Use the awaited reference to update later
+            const quoteRef = await addDocumentNonBlocking(collection(db, 'quotes'), initialQuote);
+
+            // 2. Sequential Media Uploads
             const photoUrls: string[] = [];
             const videoUrls: string[] = [];
-
-            // 2. Sequential Resilient Uploads (Same pattern as Work Order photos)
             const allFiles = [...photos.map(f => ({ file: f, type: 'photo' })), ...videos.map(f => ({ file: f, type: 'video' }))];
             
             for (let i = 0; i < allFiles.length; i++) {
@@ -154,8 +180,8 @@ export default function StartQuotePage() {
                 
                 progressToast.update({ 
                     id: progressToast.id, 
-                    title: `Transferring Media ${i + 1}/${allFiles.length}`, 
-                    description: `Connecting...` 
+                    title: `Media ${i + 1}/${allFiles.length}`, 
+                    description: `Uploading ${item.file.name}...` 
                 });
 
                 const { downloadURL } = await uploadImageResumable(item.file, path, {
@@ -168,55 +194,36 @@ export default function StartQuotePage() {
                 else videoUrls.push(downloadURL);
             }
 
-            progressToast.update({ id: progressToast.id, title: 'Saving Data...', description: 'Updating quote and work order records.' });
+            // 3. Final Updates
+            progressToast.update({ id: progressToast.id, title: 'Finalizing...', description: 'Attaching media to quote.' });
 
-            const laborDetail = personHours.map((h, i) => `P${i + 1}: ${h || '0'}h`).join(', ');
-            const formattedLabor = `${numPeople} ${parseInt(numPeople) === 1 ? 'person' : 'people'}: ${laborDetail}`;
+            if (photoUrls.length > 0 || videoUrls.length > 0) {
+                await updateDocumentNonBlocking(quoteRef, {
+                    photos: photoUrls,
+                    videos: videoUrls
+                });
+            }
 
-            const newQuote: Omit<Quote, 'id'> = {
-                quoteNumber: quoteNumber,
-                status: 'Draft',
-                workOrderId: workOrder.id,
-                clientId: workOrder.clientId,
-                workSiteId: workOrder.workSiteId,
-                jobName: workOrder.jobName,
-                description,
-                modelNumber,
-                serialNumber,
-                estimatedLabor: formattedLabor,
-                materialsNeeded,
-                photos: photoUrls,
-                videos: videoUrls,
-                createdDate: new Date().toISOString(),
-                createdBy_technicianId: user.uid,
-                lineItems: [],
-                subtotal: 0,
-                tax: 0,
-                total: 0,
-            };
-
-            // 3. Persist Quote and update Work Order status (Explicitly Awaited)
-            await addDocumentNonBlocking(collection(db, 'quotes'), newQuote);
+            // Move Work Order to On Hold
             await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { status: 'On Hold' });
 
             progressToast.dismiss();
-            toast({ title: 'Quote Submitted', description: `Quote ${quoteNumber} has been created successfully.` });
+            toast({ title: 'Quote Created', description: `Quote ${quoteNumber} submitted successfully.` });
             
-            // Background notification
             notifyAdminsOfNewQuote({
                 quoteId: quoteNumber,
                 workOrderId: workOrder.id,
                 jobName: workOrder.jobName,
                 technicianName: user.displayName || user.email || 'Technician'
-            }).catch(e => console.warn('Admin notification failed:', e.message));
+            }).catch(e => console.warn('Admin notification deferred:', e.message));
 
             router.push(`/work-orders/${workOrder.id}`);
 
         } catch (error: any) {
             progressToast.dismiss();
             toast({ 
-                title: 'Submission Failed', 
-                description: error.message || 'The connection was lost or permissions were denied. Please try again.', 
+                title: 'Submission Error', 
+                description: error.message || 'An unexpected error occurred. Please try again.', 
                 variant: 'destructive' 
             });
             setIsSubmitting(false);
@@ -304,7 +311,7 @@ export default function StartQuotePage() {
                                     <Label>Photos & Videos</Label>
                                     <div className="flex gap-2">
                                         <Button type="button" variant="outline" onClick={() => mediaInputRef.current?.click()} disabled={isSubmitting}>
-                                            <Upload className="mr-2 h-4 w-4" /> Upload Media
+                                            <ImageIcon className="mr-2 h-4 w-4" /> Add Media
                                         </Button>
                                     </div>
                                     <input type="file" ref={mediaInputRef} multiple accept="image/*,video/*" className="hidden" onChange={handleFileChange} />
@@ -313,7 +320,7 @@ export default function StartQuotePage() {
                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                                         {photos.map((file, index) => (
                                             <div key={index} className="relative group aspect-square">
-                                                <Image src={URL.createObjectURL(file)} alt={file.name} fill className="object-cover rounded-lg border" />
+                                                <Image src={URL.createObjectURL(file)} alt={file.name} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover rounded-lg border" />
                                                 <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => removeMedia(index, 'photo')} disabled={isSubmitting}>
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
@@ -324,10 +331,12 @@ export default function StartQuotePage() {
                                 {videos.length > 0 && (
                                      <div className="space-y-2">
                                         {videos.map((file, index) => (
-                                            <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
-                                                <Video className="h-5 w-5 text-muted-foreground" />
-                                                <p className="text-sm flex-1 truncate">{file.name}</p>
-                                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => removeMedia(index, 'video')} disabled={isSubmitting}>
+                                            <div key={index} className="flex items-center justify-between p-2 border rounded-md">
+                                                <div className="flex items-center gap-2">
+                                                    <Video className="h-5 w-5 text-muted-foreground" />
+                                                    <p className="text-sm truncate max-w-[200px]">{file.name}</p>
+                                                </div>
+                                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => removeMedia(index, 'video')} disabled={isSubmitting}>
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
                                             </div>
@@ -389,7 +398,7 @@ export default function StartQuotePage() {
                              <div className="flex justify-end pt-4">
                                 <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
                                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    {isSubmitting ? 'Processing Quote...' : 'Submit Quote Request'}
+                                    {isSubmitting ? 'Submitting Quote...' : 'Submit Quote Request'}
                                 </Button>
                             </div>
                         </CardContent>
