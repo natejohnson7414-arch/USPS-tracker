@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import type { WorkOrderNote } from '@/lib/types';
@@ -15,13 +16,16 @@ interface NoteActivityItemProps {
   isAdmin?: boolean;
 }
 
-export function NoteActivityItem({ 
+/**
+ * Memoized Note Activity Item to prevent unnecessary re-renders during background syncs.
+ */
+export const NoteActivityItem = React.memo(({ 
   note, 
   onPhotoDelete, 
   onNoteDelete, 
   showPhotos = true,
   isAdmin = false
-}: NoteActivityItemProps) {
+}: NoteActivityItemProps) => {
   const isValidDate = note.createdAt && !isNaN(new Date(note.createdAt).getTime());
   const isExcluded = note.excludeFromReport || false;
 
@@ -60,7 +64,13 @@ export function NoteActivityItem({
         <div className="grid grid-cols-2 gap-4">
           {note.photoUrls.map((url, index) => (
             <div key={index} className="relative group aspect-video rounded-lg overflow-hidden border">
-              <Image src={url} alt={`Work photo ${index + 1}`} fill style={{ objectFit: 'cover' }} />
+              <Image 
+                src={url} 
+                alt={`Work photo ${index + 1}`} 
+                fill 
+                sizes="(max-width: 768px) 50vw, 33vw"
+                className="object-cover"
+              />
               {onPhotoDelete && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button
@@ -80,4 +90,6 @@ export function NoteActivityItem({
       )}
     </div>
   );
-}
+});
+
+NoteActivityItem.displayName = 'NoteActivityItem';

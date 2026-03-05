@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { format } from 'date-fns';
 import type { TimeEntry } from '@/lib/types';
 import { Button } from './ui/button';
@@ -12,7 +13,10 @@ interface TimeActivityItemProps {
   isAdmin?: boolean;
 }
 
-export function TimeActivityItem({ timeEntry, onTimeEntryDelete, isAdmin = false }: TimeActivityItemProps) {
+/**
+ * Memoized Time Activity Item to prevent unnecessary re-renders.
+ */
+export const TimeActivityItem = React.memo(({ timeEntry, onTimeEntryDelete, isAdmin = false }: TimeActivityItemProps) => {
   const isExcluded = timeEntry.excludeFromReport || false;
 
   return (
@@ -49,4 +53,6 @@ export function TimeActivityItem({ timeEntry, onTimeEntryDelete, isAdmin = false
         </div>
     </div>
   );
-}
+});
+
+TimeActivityItem.displayName = 'TimeActivityItem';

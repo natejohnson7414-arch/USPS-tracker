@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useRef, useEffect, FormEvent, useMemo } from 'react';
+import React, { useState, useRef, useEffect, FormEvent, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format, isSameDay } from 'date-fns';
@@ -92,7 +91,7 @@ const AddActivityForm = ({ technicians, onAddActivity, isLoading, isTechnician, 
     );
 };
 
-const ActivityItem = ({ activity, onUpdateStatus, isTechnician, technicians, currentUserId, onAddTimeClick, isAdmin, onDeleteClick, isCompleted }: { 
+const ActivityItem = React.memo(({ activity, onUpdateStatus, isTechnician, technicians, currentUserId, onAddTimeClick, isAdmin, onDeleteClick, isCompleted }: { 
     activity: Activity, 
     onUpdateStatus: (id: string, status: Activity['status']) => void, 
     isTechnician: boolean, 
@@ -150,7 +149,8 @@ const ActivityItem = ({ activity, onUpdateStatus, isTechnician, technicians, cur
             </div>
         </div>
     );
-}
+});
+ActivityItem.displayName = 'ActivityItem';
 
 interface WorkOrderDetailsProps {
   workOrder: WorkOrder;
@@ -264,10 +264,10 @@ export function WorkOrderDetails({
     ? activities.filter(activity => isSameDay(new Date(activity.scheduled_date), new Date()))
     : activities;
 
-  const combinedActivity = [
+  const combinedActivity = useMemo(() => [
     ...workOrder.notes.map(note => ({ ...note, type: 'note', date: note.createdAt || workOrder.createdDate })),
     ...timeEntries.map(entry => ({ ...entry, type: 'time', date: entry.date }))
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [workOrder.notes, timeEntries, workOrder.createdDate]);
 
   useEffect(() => {
     setIsClient(true);
@@ -476,7 +476,13 @@ export function WorkOrderDetails({
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="bg-muted p-1 rounded-md">
-                            <Image src={workOrder.customerSignatureUrl} alt="Signature" width={120} height={40} style={{ objectFit: 'contain' }} />
+                            <Image 
+                              src={workOrder.customerSignatureUrl} 
+                              alt="Signature" 
+                              width={120} 
+                              height={40} 
+                              className="object-contain"
+                            />
                           </div>
                           {!isCompleted && (
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => { setAckToDelete(undefined); setIsDeletingSignature(true); }}>
@@ -497,7 +503,13 @@ export function WorkOrderDetails({
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <div className="bg-white p-1 rounded-md border">
-                                            <Image src={ack.signatureUrl} alt={`Signature ${index}`} width={100} height={35} style={{ objectFit: 'contain' }} />
+                                            <Image 
+                                              src={ack.signatureUrl} 
+                                              alt={`Signature ${index}`} 
+                                              width={100} 
+                                              height={35} 
+                                              className="object-contain"
+                                            />
                                         </div>
                                         {!isCompleted && (
                                           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => { setAckToDelete(ack); setIsDeletingSignature(true); }}>
@@ -686,7 +698,13 @@ export function WorkOrderDetails({
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
                                 {(workOrder.beforePhotoUrls || []).map((url) => (
                                     <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
-                                        <Image src={url} alt={`Before photo`} fill style={{ objectFit: 'cover' }} />
+                                        <Image 
+                                          src={url} 
+                                          alt={`Before photo`} 
+                                          fill 
+                                          sizes="(max-width: 768px) 50vw, 25vw"
+                                          className="object-cover" 
+                                        />
                                         <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                             {!isCompleted && <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onBeforePhotoDelete(url)}><X className="h-4 w-4" /></Button>}
                                         </div>
@@ -703,7 +721,13 @@ export function WorkOrderDetails({
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
                                 {(workOrder.afterPhotoUrls || []).map((url) => (
                                     <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
-                                        <Image src={url} alt={`After photo`} fill style={{ objectFit: 'cover' }} />
+                                        <Image 
+                                          src={url} 
+                                          alt={`After photo`} 
+                                          fill 
+                                          sizes="(max-width: 768px) 50vw, 25vw"
+                                          className="object-cover" 
+                                        />
                                         <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                             {!isCompleted && <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onAfterPhotoDelete(url)}><X className="h-4 w-4" /></Button>}
                                         </div>
@@ -722,7 +746,13 @@ export function WorkOrderDetails({
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
                             {(workOrder.receiptsAndPackingSlips || []).map((url) => (
                                 <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border">
-                                    <Image src={url} alt={`Receipt or packing slip`} fill style={{ objectFit: 'cover' }} />
+                                    <Image 
+                                      src={url} 
+                                      alt={`Receipt or packing slip`} 
+                                      fill 
+                                      sizes="(max-width: 768px) 50vw, 25vw"
+                                      className="object-cover" 
+                                    />
                                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                         {!isCompleted && <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => onReceiptsAndPackingSlipsPhotoDelete(url)}><X className="h-4 w-4" /></Button>}
                                     </div>
@@ -753,7 +783,20 @@ export function WorkOrderDetails({
               <CardHeader><div className="flex items-center justify-between"><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" /> Notes &amp; Activity</CardTitle></div></CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-6">
-                  {isClient ? combinedActivity.map(activity => activity.type === 'note' ? <NoteActivityItem key={`note-${activity.id}`} note={activity} onPhotoDelete={isCompleted ? undefined : onNotePhotoDelete} onNoteDelete={isCompleted ? undefined : setNoteToDelete} /> : <TimeActivityItem key={`time-${activity.id}`} timeEntry={activity} onTimeEntryDelete={isCompleted ? undefined : setTimeEntryToDelete} />) : <p className="text-center text-sm text-muted-foreground py-4">Loading activity...</p>}
+                  {isClient ? combinedActivity.map(activity => (activity as any).type === 'note' ? (
+                    <NoteActivityItem 
+                      key={`note-${activity.id}`} 
+                      note={activity as any} 
+                      onPhotoDelete={isCompleted ? undefined : onNotePhotoDelete} 
+                      onNoteDelete={isCompleted ? undefined : setNoteToDelete} 
+                    />
+                  ) : (
+                    <TimeActivityItem 
+                      key={`time-${activity.id}`} 
+                      timeEntry={activity as any} 
+                      onTimeEntryDelete={isCompleted ? undefined : setTimeEntryToDelete} 
+                    />
+                  )) : <p className="text-center text-sm text-muted-foreground py-4">Loading activity...</p>}
                   {isClient && combinedActivity.length === 0 && <p className="text-center text-sm text-muted-foreground py-4">No notes or activity yet.</p>}
                 </div>
               </CardContent>

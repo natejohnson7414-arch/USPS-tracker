@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -170,7 +169,13 @@ export default function AssetDetailsPage() {
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {asset.photoUrls.map((url, idx) => (
                           <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="relative aspect-square rounded-lg overflow-hidden border hover:opacity-90 transition-opacity">
-                            <Image src={url} alt={`Asset photo ${idx + 1}`} fill className="object-cover" />
+                            <Image 
+                              src={url} 
+                              alt={`Asset photo ${idx + 1}`} 
+                              fill 
+                              sizes="(max-width: 768px) 50vw, 25vw"
+                              className="object-cover" 
+                            />
                           </a>
                         ))}
                       </div>
