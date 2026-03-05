@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -220,6 +219,8 @@ export function WorkOrderDetails({
   onTimeEntryDelete,
   isSavingPhotos,
   onDirectionsClick,
+  onSignatureSave,
+  onSignatureDelete,
   onTempUpdate,
   tempOnArrival, setTempOnArrival,
   tempOnLeaving, setTempOnLeaving,
