@@ -5,7 +5,7 @@ import React, { useState, useRef, useEffect, FormEvent, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, HvacStartupReport, FileAttachment, Acknowledgement, Asset } from '@/lib/types';
+import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, HvacStartupReport, FileAttachment, Acknowledgement, Asset, Quote } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText, Download, AlertCircle, Save, CheckCircle2, Package, ChevronRight, FileX, Sparkles, Filter } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText, Download, AlertCircle, Save, CheckCircle2, Package, ChevronRight, FileX, Sparkles, Filter, Receipt } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
@@ -81,6 +81,7 @@ interface WorkOrderAdminDetailsProps {
   onHvacReportDelete: (reportId: string) => void;
   timeEntries: TimeEntry[];
   activities: Activity[];
+  quotes: Quote[];
   onNotePhotoDelete: (noteId: string, photoUrl: string) => void;
   onNoteDelete: (noteId: string) => void;
   onBeforePhotosAdded: (files: File[]) => void;
@@ -124,6 +125,7 @@ export function WorkOrderAdminDetails({
   onHvacReportDelete,
   timeEntries,
   activities,
+  quotes,
   onNotePhotoDelete,
   onNoteDelete,
   onBeforePhotosAdded,
@@ -339,6 +341,9 @@ export function WorkOrderAdminDetails({
           <TabsTrigger value="assets" variant="folder">Assets</TabsTrigger>
           <TabsTrigger value="media" variant="folder">Media</TabsTrigger>
           <TabsTrigger value="activity" variant="folder">Activity</TabsTrigger>
+          {quotes.length > 0 && (
+            <TabsTrigger value="quotes" variant="folder">Quotes ({quotes.length})</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="overview" className="mt-0">
@@ -475,7 +480,7 @@ export function WorkOrderAdminDetails({
                     </Button>
                   )}
                 </div>
-                <CardDescription>Select equipment from the site registry to associate it with this job.</CardDescription>
+                <CardDescription>Select equipment from the site registry to assign it to this job.</CardDescription>
               </CardHeader>
               <CardContent>
                 {siteAssets.length > 0 ? (
@@ -719,6 +724,30 @@ export function WorkOrderAdminDetails({
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="quotes" className="mt-0">
+          <Card className="rounded-t-none">
+            <CardHeader><CardTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" />Associated Quotes</CardTitle></CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {quotes.map(quote => (
+                  <Link key={quote.id} href={`/quotes/${quote.id}`}>
+                    <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div>
+                        <p className="font-bold">{quote.quoteNumber}</p>
+                        <p className="text-xs text-muted-foreground">{format(new Date(quote.createdDate), 'MMM d, yyyy')}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline">{quote.status}</Badge>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
       

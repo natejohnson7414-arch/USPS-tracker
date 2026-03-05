@@ -5,7 +5,7 @@ import React, { useState, useRef, useEffect, FormEvent, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format, isSameDay } from 'date-fns';
-import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, HvacStartupReport, Acknowledgement, Asset } from '@/lib/types';
+import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, HvacStartupReport, Acknowledgement, Asset, Quote } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, ReceiptText, Download, AlertCircle, CheckCircle2, Package, ChevronRight } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, Thermometer, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, ReceiptText, Download, AlertCircle, CheckCircle2, Package, ChevronRight, Receipt } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
@@ -75,7 +75,6 @@ const AddActivityForm = ({ technicians, onAddActivity, isLoading, isTechnician, 
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <Select value={displayTechnicianId} onValueChange={setSelectedTechnicianId} required disabled={isTechnician}>
-                    <SelectTrigger><SelectValue placeholder="Assign a technician" /></SelectTrigger>
                     <SelectTrigger><SelectValue placeholder="Assign a technician" /></SelectTrigger>
                     <SelectContent>
                         {technicians.map(tech => (
@@ -164,6 +163,7 @@ interface WorkOrderDetailsProps {
   onHvacReportDelete: (reportId: string) => void;
   timeEntries: TimeEntry[];
   activities: Activity[];
+  quotes: Quote[];
   onTimeEntriesSaved: () => void;
   onNotePhotoDelete: (noteId: string, photoUrl: string) => void;
   onNoteDelete: (noteId: string) => void;
@@ -208,6 +208,7 @@ export function WorkOrderDetails({
   onHvacReportDelete,
   timeEntries,
   activities,
+  quotes,
   onTimeEntriesSaved,
   onNotePhotoDelete,
   onNoteDelete,
@@ -440,7 +441,7 @@ export function WorkOrderDetails({
                      </div>
               </div>
           )}
-        </CardHeader>
+        </Header>
         <CardContent>
           <p className="text-muted-foreground mt-1">{workOrder.description}</p>
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 text-sm">
@@ -462,6 +463,9 @@ export function WorkOrderDetails({
           <TabsTrigger value="assets" variant="folder">Assets</TabsTrigger>
           <TabsTrigger value="media" variant="folder">Media</TabsTrigger>
           <TabsTrigger value="activity" variant="folder">Activity</TabsTrigger>
+          {quotes.length > 0 && (
+            <TabsTrigger value="quotes" variant="folder">Quotes ({quotes.length})</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="overview" className="mt-0">
@@ -806,6 +810,30 @@ export function WorkOrderDetails({
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="quotes" className="mt-0">
+          <Card className="rounded-t-none">
+            <CardHeader><CardTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" />Associated Quotes</CardTitle></CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {quotes.map(quote => (
+                  <Link key={quote.id} href={`/quotes/${quote.id}`}>
+                    <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div>
+                        <p className="font-bold">{quote.quoteNumber}</p>
+                        <p className="text-xs text-muted-foreground">{format(new Date(quote.createdDate), 'MMM d, yyyy')}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline">{quote.status}</Badge>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
