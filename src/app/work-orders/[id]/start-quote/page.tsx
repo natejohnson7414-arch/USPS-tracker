@@ -138,6 +138,7 @@ export default function StartQuotePage() {
             const quoteNumber = result.quoteNumber;
 
             // 1. Create the Quote document Metadata FIRST to ensure it exists
+            // This matches the pattern used in Work Order creation which we know is reliable.
             progressToast.update({ id: progressToast.id, title: 'Saving Quote', description: 'Creating the job record...' });
 
             const laborDetail = personHours.map((h, i) => `P${i + 1}: ${h || '0'}h`).join(', ');
@@ -165,10 +166,10 @@ export default function StartQuotePage() {
                 total: 0,
             };
 
-            // Use the awaited reference to update later
             const quoteRef = await addDocumentNonBlocking(collection(db, 'quotes'), initialQuote);
 
             // 2. Sequential Media Uploads
+            // Processing one by one prevents connection pool exhaustion and timing errors.
             const photoUrls: string[] = [];
             const videoUrls: string[] = [];
             const allFiles = [...photos.map(f => ({ file: f, type: 'photo' })), ...videos.map(f => ({ file: f, type: 'video' }))];

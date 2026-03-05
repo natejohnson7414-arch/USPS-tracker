@@ -101,7 +101,6 @@ interface WorkOrderAdminDetailsProps {
   setTempOnLeaving: (value: string) => void;
   contactInfo: string;
   setContactInfo: (value: string) => void;
-  onContactInfoUpdate: () => void;
   onAddActivity: (activity: Omit<Activity, 'id' | 'createdDate' | 'workOrderId'>) => void;
   isAddingActivity: boolean;
   onUpdateActivityStatus: (activityId: string, status: Activity['status']) => void;

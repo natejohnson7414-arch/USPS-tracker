@@ -9,6 +9,7 @@ service firebase.storage {
     }
 
     // Prioritize Quotes for reliable preflight and technician submissions
+    // Simplified rule to ensure timing and helper function overhead don't cause 403s
     match /quotes/{allPaths=**} {
       allow read, write: if isSignedIn();
     }
