@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
 import { useTechnician } from '@/hooks/use-technician';
 import { getQuoteById } from '@/lib/data';
