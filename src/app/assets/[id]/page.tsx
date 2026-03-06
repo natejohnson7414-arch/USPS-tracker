@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -10,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { History, CalendarClock, Settings, Wrench, Clock, Loader2, AlertCircle, Box, PlusCircle, Repeat, ArrowLeft, Camera, Library, Maximize2, Download, Trash2, X } from 'lucide-react';
-import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
+import { useFirestore, updateDocumentNonBlocking, useUser } from '@/firebase';
 import { getAssetById, getAssetPmSchedules, getAssetServiceHistory, calculateAssetMetrics } from '@/lib/data';
 import type { Asset, AssetPmSchedule, AssetServiceHistory } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -26,6 +27,7 @@ export default function AssetDetailsPage() {
   const { id } = useParams();
   const router = useRouter();
   const db = useFirestore();
+  const { user } = useUser();
   const { toast } = useToast();
   
   const [asset, setAsset] = useState<Asset | null>(null);
@@ -43,7 +45,7 @@ export default function AssetDetailsPage() {
   const chooseFromLibraryInputRef = useRef<HTMLInputElement>(null);
 
   const fetchAssetData = useCallback(async () => {
-    if (db && id && id !== 'new') {
+    if (db && user && id && id !== 'new') {
       const [a, s, h] = await Promise.all([
         getAssetById(db, id as string),
         getAssetPmSchedules(db, id as string),
@@ -53,15 +55,15 @@ export default function AssetDetailsPage() {
       setSchedules(s);
       setHistory(h);
     }
-  }, [db, id]);
+  }, [db, user, id]);
 
   useEffect(() => {
-    if (db && id && id !== 'new') {
+    if (db && user && id && id !== 'new') {
       fetchAssetData().finally(() => setIsLoading(false));
     } else if (id === 'new') {
         setIsLoading(false);
     }
-  }, [db, id, fetchAssetData]);
+  }, [db, user, id, fetchAssetData]);
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;

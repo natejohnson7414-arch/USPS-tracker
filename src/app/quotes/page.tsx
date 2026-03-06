@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Ban, Loader2, Receipt } from 'lucide-react';
+import { Ban, Loader2, Receipt, useUser } from '@/firebase'; // added useUser
 import { useFirestore } from '@/firebase';
 import { useTechnician } from '@/hooks/use-technician';
 import { getQuotes } from '@/lib/data';
@@ -51,18 +51,19 @@ const quoteStatuses: (Quote['status'] | 'All')[] = ['All', 'Draft', 'Sent', 'Acc
 
 export default function QuotesPage() {
     const db = useFirestore();
+    const { user } = useUser();
     const { role, isLoading: isRoleLoading } = useTechnician();
     const [quotes, setQuotes] = useState<Quote[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState<Quote['status'] | 'All'>('All');
 
     useEffect(() => {
-        if (!db || isRoleLoading) return;
+        if (!db || !user || isRoleLoading) return;
         
         getQuotes(db)
             .then(setQuotes)
             .finally(() => setIsLoading(false));
-    }, [db, isRoleLoading]);
+    }, [db, user, isRoleLoading]);
 
     const filteredQuotes = useMemo(() => {
         if (statusFilter === 'All') {

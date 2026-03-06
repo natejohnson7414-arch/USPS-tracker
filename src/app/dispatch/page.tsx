@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
-import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, useUser } from '@/firebase';
 import { getAllActivitiesWithDetails, getTechnicians, updateWorkOrderStatus, getWorkSites, getClients } from '@/lib/data';
 import type { Activity, Technician, WorkOrder, WorkSite, Client } from '@/lib/types';
 import { startOfWeek, addDays, format, isSameDay, subDays, addWeeks, subWeeks, isToday, getMonth } from 'date-fns';
@@ -247,7 +247,7 @@ function ScheduleActivityDialog({
                                 <Badge variant="outline" className="text-[10px]">{scheduledDates.length} selected</Badge>
                             </Label>
                             <ScrollArea className="h-[180px] border rounded-md p-2 bg-muted/5">
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex wrap gap-2">
                                     {scheduledDates.length > 0 ? (
                                         scheduledDates.sort((a, b) => a.getTime() - b.getTime()).map((date, i) => (
                                             <Badge key={i} variant="secondary" className="flex items-center gap-1.5 px-2 py-1 pr-1">
@@ -346,6 +346,7 @@ function CalendarDay({ day, dayActivities, techColorMap, view, index, totalDays,
 
 export default function DispatchBoardPage() {
     const db = useFirestore();
+    const { user } = useUser();
     const { toast } = useToast();
     const { role, technician, isLoading: isRoleLoading } = useRole();
     const [activities, setActivities] = useState<Activity[]>([]);
@@ -401,9 +402,9 @@ export default function DispatchBoardPage() {
     );
 
     const incompleteWorkOrdersQuery = useMemoFirebase(() => {
-        if (!db || role?.name === 'Technician') return null;
+        if (!db || !user || role?.name === 'Technician') return null;
         return query(collection(db, 'work_orders'), where("status", "!=", "Completed"));
-    }, [db, role]);
+    }, [db, user, role]);
 
     const { data: fetchedWorkOrders, isLoading: areWorkOrdersLoading } = useCollection<WorkOrder>(incompleteWorkOrdersQuery);
 
@@ -417,7 +418,7 @@ export default function DispatchBoardPage() {
     }, [fetchedWorkOrders]);
 
     useEffect(() => {
-        if (!db || isRoleLoading) return;
+        if (!db || !user || isRoleLoading) return;
         
         async function fetchCoreData() {
             setIsCoreDataLoading(true);
@@ -440,7 +441,7 @@ export default function DispatchBoardPage() {
         }
 
         fetchCoreData();
-    }, [db, isRoleLoading]);
+    }, [db, user, isRoleLoading]);
 
     const techColorMap = useMemo(() => {
         const map = new Map<string, string>();

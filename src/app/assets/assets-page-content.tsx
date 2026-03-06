@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Package, PlusCircle, Search, CalendarClock, TrendingUp, AlertTriangle, Loader2, FileBarChart, ChevronRight, MapPin, Wrench, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase'; // added useUser
 import { getAssets, getAssetPmSchedules } from '@/lib/data';
 import type { Asset, AssetPmSchedule } from '@/lib/types';
 import { generateLaborForecast, type LaborForecast } from '@/lib/reporting-service';
@@ -24,6 +24,7 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from 
 
 export default function AssetsPageContent() {
   const db = useFirestore();
+  const { user } = useUser();
   const { toast } = useToast();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [schedules, setSchedules] = useState<AssetPmSchedule[]>([]);
@@ -33,7 +34,7 @@ export default function AssetsPageContent() {
   const [isReportOpen, setIsReportOpen] = useState(false);
 
   useEffect(() => {
-    if (db) {
+    if (db && user) {
       setIsLoading(true);
       Promise.all([
         getAssets(db),
@@ -45,7 +46,7 @@ export default function AssetsPageContent() {
         setLaborForecast(l);
       }).finally(() => setIsLoading(false));
     }
-  }, [db]);
+  }, [db, user]);
 
   const filteredAssets = assets.filter(a => 
     a.name.toLowerCase().includes(searchTerm.toLowerCase()) || 

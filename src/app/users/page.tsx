@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, Ban } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { UserEditDialog } from '@/components/user-edit-dialog';
-import { useFirestore, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { useFirestore, updateDocumentNonBlocking, deleteDocumentNonBlocking, useUser } from '@/firebase';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +25,7 @@ import { useTechnician } from '@/hooks/use-technician';
 
 export default function UsersPage() {
   const db = useFirestore();
+  const { user } = useUser();
   const { role, isLoading: isRoleLoading } = useTechnician();
   const [users, setUsers] = useState<AppUser[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -35,7 +36,7 @@ export default function UsersPage() {
   const [deletingUser, setDeletingUser] = useState<AppUser | null>(null);
 
   const fetchAndSetData = async () => {
-    if (!db) return;
+    if (!db || !user) return;
     setIsLoading(true);
     try {
       const fetchedRoles = await getRoles(db);
@@ -52,12 +53,12 @@ export default function UsersPage() {
   };
 
   useEffect(() => {
-    if (db && role?.name !== 'Technician') {
+    if (db && user && role?.name !== 'Technician') {
         fetchAndSetData();
     } else if (role?.name === 'Technician') {
         setIsLoading(false);
     }
-  }, [db, role]);
+  }, [db, user, role]);
 
   const handleUserSaved = () => {
     // Refetch all data to ensure the UI is consistent with the database

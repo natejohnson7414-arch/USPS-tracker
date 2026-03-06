@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Package, PlusCircle, Search, Settings, Loader2, Trash2, Edit } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { useFirestore, deleteDocumentNonBlocking } from '@/firebase';
+import { useFirestore, deleteDocumentNonBlocking, useUser } from '@/firebase';
 import { getMaterials } from '@/lib/data';
 import type { Material } from '@/lib/types';
 import { MaterialForm } from '@/components/material-form';
@@ -28,6 +28,7 @@ import {
 
 export default function MaterialsPage() {
   const db = useFirestore();
+  const { user } = useUser();
   const { toast } = useToast();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,7 +38,7 @@ export default function MaterialsPage() {
   const [deletingMaterial, setDeletingMaterial] = useState<Material | null>(null);
 
   const fetchMaterials = async () => {
-    if (db) {
+    if (db && user) {
       setIsLoading(true);
       try {
         const fetched = await getMaterials(db);
@@ -51,8 +52,10 @@ export default function MaterialsPage() {
   };
 
   useEffect(() => {
-    fetchMaterials();
-  }, [db]);
+    if (db && user) {
+      fetchMaterials();
+    }
+  }, [db, user]);
 
   const handleEdit = (m: Material) => {
     setEditingMaterial(m);

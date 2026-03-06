@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { List, PlusCircle, MoreHorizontal, Ban, Search, MapPin } from 'lucide-react';
 import { WorkSiteForm } from '@/components/work-site-form';
 import type { WorkSite } from '@/lib/types';
-import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, useUser } from '@/firebase';
 import { collection, query, doc, orderBy } from 'firebase/firestore';
 import Link from 'next/link';
 import {
@@ -78,6 +78,7 @@ function WorkSiteItem({ site, onEdit, onDelete }: { site: WorkSite, onEdit: () =
 
 export default function WorkSitesPage() {
     const db = useFirestore();
+    const { user } = useUser();
     const { role, isLoading: isRoleLoading } = useTechnician();
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingSite, setEditingSite] = useState<WorkSite | null>(null);
@@ -86,9 +87,9 @@ export default function WorkSitesPage() {
     const [sortBy, setSortBy] = useState('name');
     
     const workSitesQuery = useMemoFirebase(() => {
-        if (!db) return null;
+        if (!db || !user) return null;
         return query(collection(db, 'work_sites'), orderBy('name', 'asc'));
-    }, [db]);
+    }, [db, user]);
 
     const { data: workSites, isLoading: areSitesLoading } = useCollection<WorkSite>(workSitesQuery);
     

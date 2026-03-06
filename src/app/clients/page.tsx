@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { List, PlusCircle } from 'lucide-react';
 import { ClientForm } from '@/components/client-form';
 import type { Client } from '@/lib/types';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useTechnician } from '@/hooks/use-technician';
 import { Ban } from 'lucide-react';
@@ -27,13 +28,14 @@ function ClientItem({ site }: { site: Client }) {
 
 export default function ClientsPage() {
     const db = useFirestore();
+    const { user } = useUser();
     const { role, isLoading: isRoleLoading } = useTechnician();
     const [isFormOpen, setIsFormOpen] = useState(false);
     
     const clientsQuery = useMemoFirebase(() => {
-        if (!db) return null;
+        if (!db || !user) return null;
         return query(collection(db, 'clients'), orderBy('name', 'asc'));
-    }, [db]);
+    }, [db, user]);
 
     const { data: clients, isLoading: areClientsLoading } = useCollection<Client>(clientsQuery);
 

@@ -41,7 +41,7 @@ export function Header() {
 
   useEffect(() => {
     const fetchCoreData = async () => {
-      if (!db) return;
+      if (!db || !user) return;
        try {
         const [fetchedTechnicians, fetchedWorkSites, fetchedClients] = await Promise.all([
           getTechnicians(db),
@@ -56,10 +56,10 @@ export function Header() {
       }
     };
     
-    if(db) {
+    if(db && user) {
         fetchCoreData();
     }
-  }, [db]);
+  }, [db, user]);
 
 
   const handleLogout = async () => {
