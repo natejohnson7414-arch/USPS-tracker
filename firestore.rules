@@ -72,7 +72,9 @@ service cloud.firestore {
 
     match /technicians/{techId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      // Allow users to update their own profile (for settings like defaultDispatchView)
+      allow update: if isSignedIn() && (request.auth.uid == techId || isAdmin());
+      allow create, delete: if isAdmin();
     }
 
     match /roles/{roleId} {

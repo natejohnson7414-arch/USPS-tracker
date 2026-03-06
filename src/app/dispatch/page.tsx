@@ -247,7 +247,7 @@ function ScheduleActivityDialog({
                                 <Badge variant="outline" className="text-[10px]">{scheduledDates.length} selected</Badge>
                             </Label>
                             <ScrollArea className="h-[180px] border rounded-md p-2 bg-muted/5">
-                                <div className="flex wrap gap-2">
+                                <div className="flex flex-wrap gap-2">
                                     {scheduledDates.length > 0 ? (
                                         scheduledDates.sort((a, b) => a.getTime() - b.getTime()).map((date, i) => (
                                             <Badge key={i} variant="secondary" className="flex items-center gap-1.5 px-2 py-1 pr-1">
