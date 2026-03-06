@@ -8,7 +8,7 @@ import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { getAllActivitiesWithDetails, getTechnicians, updateWorkOrderStatus, getWorkSites, getClients } from '@/lib/data';
 import type { Activity, Technician, WorkOrder, WorkSite, Client } from '@/lib/types';
 import { startOfWeek, addDays, format, isSameDay, subDays, addWeeks, subWeeks, isToday, endOfMonth, eachDayOfInterval, getMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, Loader2, Search, Coffee } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Search, Coffee, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -20,7 +20,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { DatePicker } from '@/components/ui/date-picker';
+import { Calendar } from '@/components/ui/calendar';
+import { Badge } from '@/components/ui/badge';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { collection, doc, query, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -190,11 +191,11 @@ function ScheduleActivityDialog({
     onOpenChange: (open: boolean) => void,
     technicians: Technician[] | null,
     workOrder: WorkOrder | null,
-    onSubmit: (data: { description: string, scheduledDate: Date }) => void,
+    onSubmit: (data: { description: string, scheduledDates: Date[] }) => void,
     isSubmitting: boolean,
 }) {
     const [description, setDescription] = useState('');
-    const [scheduledDate, setScheduledDate] = useState<Date | undefined>(new Date());
+    const [scheduledDates, setScheduledDates] = useState<Date[]>([]);
     
     useEffect(() => {
         if(isOpen && technicians && technicians.length > 0) {
@@ -204,40 +205,88 @@ function ScheduleActivityDialog({
              } else {
                 setDescription(`Schedule ${techNames} for job: ${workOrder?.jobName}`);
              }
-            setScheduledDate(new Date());
+            setScheduledDates([new Date()]);
         }
     }, [isOpen, technicians, workOrder]);
 
     const handleSubmit = () => {
-        if (description && scheduledDate) {
-            onSubmit({ description, scheduledDate });
+        if (description && scheduledDates && scheduledDates.length > 0) {
+            onSubmit({ description, scheduledDates });
         }
+    };
+
+    const removeDate = (dateToRemove: Date) => {
+        setScheduledDates(prev => prev.filter(d => !isSameDay(d, dateToRemove)));
     };
 
     return (
          <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent>
+            <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Schedule New Activity</DialogTitle>
+                    <DialogTitle>Schedule Multiple Activities</DialogTitle>
                     <DialogDescription>
-                        Assign <span className="font-semibold">{technicians?.map(t => t.name).join(', ')}</span> to work order <span className="font-semibold">#{workOrder?.id}</span>.
+                        Assign <span className="font-bold text-foreground">{technicians?.map(t => t.name).join(', ')}</span> to work order <span className="font-bold text-foreground">#{workOrder?.id}</span>.
+                        Select as many days as needed on the calendar.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="activity-description">Description</Label>
-                        <Textarea id="activity-description" value={description} onChange={e => setDescription(e.target.value)} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="activity-description">Description</Label>
+                            <Textarea 
+                                id="activity-description" 
+                                value={description} 
+                                onChange={e => setDescription(e.target.value)}
+                                placeholder="What needs to be done?"
+                                className="min-h-[100px]"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="flex justify-between items-center">
+                                <span>Selected Dates</span>
+                                <Badge variant="outline" className="text-[10px]">{scheduledDates.length} selected</Badge>
+                            </Label>
+                            <ScrollArea className="h-[180px] border rounded-md p-2 bg-muted/5">
+                                <div className="flex flex-wrap gap-2">
+                                    {scheduledDates.length > 0 ? (
+                                        scheduledDates.sort((a, b) => a.getTime() - b.getTime()).map((date, i) => (
+                                            <Badge key={i} variant="secondary" className="flex items-center gap-1.5 px-2 py-1 pr-1">
+                                                {format(date, 'MMM d, yyyy')}
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-4 w-4 hover:bg-destructive hover:text-white rounded-full" 
+                                                    onClick={(e) => { e.stopPropagation(); removeDate(date); }}
+                                                >
+                                                    <X className="h-2 w-2" />
+                                                </Button>
+                                            </Badge>
+                                        ))
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center h-full w-full py-8 text-muted-foreground italic text-sm">
+                                            <p>No dates selected.</p>
+                                            <p className="text-[10px]">Click days on the calendar to add them.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </ScrollArea>
+                        </div>
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="activity-date">Scheduled Date</Label>
-                        <DatePicker date={scheduledDate} setDate={setScheduledDate} />
+                    <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-muted/20">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4">Pick Schedule Dates</Label>
+                        <Calendar
+                            mode="multiple"
+                            selected={scheduledDates}
+                            onSelect={(dates) => setScheduledDates(dates || [])}
+                            className="rounded-md border bg-white shadow-sm"
+                        />
                     </div>
                 </div>
-                <DialogFooter>
+                <DialogFooter className="gap-2">
                     <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Cancel</Button>
-                    <Button onClick={handleSubmit} disabled={isSubmitting}>
+                    <Button onClick={handleSubmit} disabled={isSubmitting || scheduledDates.length === 0 || !description}>
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Schedule
+                        Schedule {scheduledDates.length} Service Day{scheduledDates.length !== 1 ? 's' : ''}
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -540,32 +589,36 @@ export default function DispatchBoardPage() {
         }
     }
 
-    async function handleScheduleActivity(data: { description: string, scheduledDate: Date }) {
+    async function handleScheduleActivity(data: { description: string, scheduledDates: Date[] }) {
         if (!db || !techniciansToSchedule || techniciansToSchedule.length === 0 || !selectedWorkOrder) return;
 
         setIsSubmitting(true);
 
         try {
-            const createActivityPromises = techniciansToSchedule.map(tech => {
-                const activityData = {
-                    description: data.description,
-                    scheduled_date: data.scheduledDate.toISOString(),
-                    technicianId: tech.id,
-                    workOrderId: selectedWorkOrder.id,
-                    createdDate: new Date().toISOString(),
-                    status: 'scheduled' as const,
-                };
-                const activitiesColRef = collection(db, 'work_orders', selectedWorkOrder.id, 'activities');
-                return addDocumentNonBlocking(activitiesColRef, activityData).then(docRef => ({
-                    ...activityData,
-                    id: docRef.id,
-                    technician: tech,
-                     parentWorkOrder: {
-                        id: selectedWorkOrder.id,
-                        jobName: selectedWorkOrder.jobName,
-                        workSite: workOrders.find(wo => wo.id === selectedWorkOrder.id)?.workSite
-                    }
-                }));
+            const createActivityPromises: Promise<any>[] = [];
+            
+            data.scheduledDates.forEach(date => {
+                techniciansToSchedule.forEach(tech => {
+                    const activityData = {
+                        description: data.description,
+                        scheduled_date: date.toISOString(),
+                        technicianId: tech.id,
+                        workOrderId: selectedWorkOrder.id,
+                        createdDate: new Date().toISOString(),
+                        status: 'scheduled' as const,
+                    };
+                    const activitiesColRef = collection(db, 'work_orders', selectedWorkOrder.id, 'activities');
+                    createActivityPromises.push(addDocumentNonBlocking(activitiesColRef, activityData).then(docRef => ({
+                        ...activityData,
+                        id: docRef.id,
+                        technician: tech,
+                         parentWorkOrder: {
+                            id: selectedWorkOrder.id,
+                            jobName: selectedWorkOrder.jobName,
+                            workSite: workOrders.find(wo => wo.id === selectedWorkOrder.id)?.workSite
+                        }
+                    })));
+                });
             });
             
             const newActivities = await Promise.all(createActivityPromises);
@@ -836,4 +889,3 @@ export default function DispatchBoardPage() {
         </MainLayout>
     );
 }
-
