@@ -688,7 +688,6 @@ export default function DispatchBoardPage() {
         try {
             const techRef = doc(db, 'technicians', technician.id);
             await updateDocumentNonBlocking(techRef, { defaultDispatchView: view });
-            toast({ title: 'Default View Set', description: `Your Dispatch Board will now default to ${view} view.` });
         } catch (error) {
             console.error("Error setting default view:", error);
             toast({ title: 'Error', description: 'Failed to save view preference.', variant: 'destructive' });
@@ -737,8 +736,8 @@ export default function DispatchBoardPage() {
                                 disabled={isSettingDefault || isCurrentViewDefault}
                                 className="hidden sm:flex"
                             >
-                                {isSettingDefault ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Pin className="h-3 w-3 mr-2" />}
-                                {isCurrentViewDefault ? 'Default' : 'Set Default'}
+                                {isSettingDefault ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Pin className={cn("h-3 w-3 mr-2", isCurrentViewDefault && "fill-current")} />}
+                                {isCurrentViewDefault ? 'Default View' : 'Set Default'}
                             </Button>
                             <div className="flex items-center gap-1">
                                 <Button variant="outline" size="icon" onClick={handlePrev}><ChevronLeft className="h-4 w-4" /></Button>
