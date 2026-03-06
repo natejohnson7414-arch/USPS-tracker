@@ -22,6 +22,7 @@ export type Technician = {
   roleId?: string;
   disabled?: boolean;
   passwordChangeRequired?: boolean;
+  defaultDispatchView?: 'day' | 'week' | 'two-week' | 'month';
 };
 
 export type WorkOrderNote = {

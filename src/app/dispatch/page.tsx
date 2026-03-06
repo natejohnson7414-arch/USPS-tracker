@@ -4,11 +4,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { getAllActivitiesWithDetails, getTechnicians, updateWorkOrderStatus, getWorkSites, getClients } from '@/lib/data';
 import type { Activity, Technician, WorkOrder, WorkSite, Client } from '@/lib/types';
-import { startOfWeek, addDays, format, isSameDay, subDays, addWeeks, subWeeks, isToday, endOfMonth, eachDayOfInterval, getMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, Loader2, Search, Coffee, X } from 'lucide-react';
+import { startOfWeek, addDays, format, isSameDay, subDays, addWeeks, subWeeks, isToday, getMonth } from 'date-fns';
+import { ChevronLeft, ChevronRight, Loader2, Search, Coffee, X, Pin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -22,7 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
-import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { addDocumentNonBlocking } from '@/firebase';
 import { collection, doc, query, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useTechnician as useRole } from '@/hooks/use-technician';
@@ -347,7 +347,7 @@ function CalendarDay({ day, dayActivities, techColorMap, view, index, totalDays,
 export default function DispatchBoardPage() {
     const db = useFirestore();
     const { toast } = useToast();
-    const { role, isLoading: isRoleLoading } = useRole();
+    const { role, technician, isLoading: isRoleLoading } = useRole();
     const [activities, setActivities] = useState<Activity[]>([]);
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [workSites, setWorkSites] = useState<WorkSite[]>([]);
@@ -365,18 +365,24 @@ export default function DispatchBoardPage() {
 
     const [isMultiSelect, setIsMultiSelect] = useState(false);
     const [selectedTechIds, setSelectedTechIds] = useState<string[]>([]);
+    const [isSettingDefault, setIsSettingDefault] = useState(false);
 
     const [view, setView] = useState<'week' | 'day' | 'two-week' | 'month' | null>(null);
 
     useEffect(() => {
         if (!isRoleLoading && view === null) {
-            if (role?.name === 'Technician') {
+            // Priority 1: User's saved preference
+            if (technician?.defaultDispatchView) {
+                setView(technician.defaultDispatchView);
+            } 
+            // Priority 2: Role-based fallback
+            else if (role?.name === 'Technician') {
                 setView('month');
             } else {
                 setView('week');
             }
         }
-    }, [isRoleLoading, role, view]);
+    }, [isRoleLoading, role, technician, view]);
 
 
     const sensors = useSensors(
@@ -675,6 +681,23 @@ export default function DispatchBoardPage() {
         );
     };
 
+    const handleSetDefaultView = async () => {
+        if (!db || !technician || !view) return;
+        setIsSettingDefault(true);
+        try {
+            const techRef = doc(db, 'technicians', technician.id);
+            await updateDocumentNonBlocking(techRef, { defaultDispatchView: view });
+            toast({ title: 'Default View Set', description: `Your Dispatch Board will now default to ${view} view.` });
+        } catch (error) {
+            console.error("Error setting default view:", error);
+            toast({ title: 'Error', description: 'Failed to save view preference.', variant: 'destructive' });
+        } finally {
+            setIsSettingDefault(false);
+        }
+    };
+
+    const isCurrentViewDefault = technician?.defaultDispatchView === view;
+
     const isLoading = isCoreDataLoading || isRoleLoading || areWorkOrdersLoading || view === null;
 
     if (isLoading) {
@@ -706,9 +729,21 @@ export default function DispatchBoardPage() {
                                     <SelectItem value="month">Month</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <Button variant="outline" size="icon" onClick={handlePrev}><ChevronLeft className="h-4 w-4" /></Button>
-                            <Button variant="outline" onClick={goToToday}>Today</Button>
-                            <Button variant="outline" size="icon" onClick={handleNext}><ChevronRight className="h-4 w-4" /></Button>
+                            <Button 
+                                variant={isCurrentViewDefault ? "secondary" : "outline"} 
+                                size="sm" 
+                                onClick={handleSetDefaultView}
+                                disabled={isSettingDefault || isCurrentViewDefault}
+                                className="hidden sm:flex"
+                            >
+                                {isSettingDefault ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Pin className="h-3 w-3 mr-2" />}
+                                {isCurrentViewDefault ? 'Default' : 'Set Default'}
+                            </Button>
+                            <div className="flex items-center gap-1">
+                                <Button variant="outline" size="icon" onClick={handlePrev}><ChevronLeft className="h-4 w-4" /></Button>
+                                <Button variant="outline" onClick={goToToday}>Today</Button>
+                                <Button variant="outline" size="icon" onClick={handleNext}><ChevronRight className="h-4 w-4" /></Button>
+                            </div>
                              <div className="hidden sm:block ml-4 font-semibold text-lg">
                                 {headerDateDisplay}
                             </div>
