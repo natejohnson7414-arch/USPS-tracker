@@ -10,7 +10,7 @@ import { collection, doc, query, where, arrayUnion, orderBy, collectionGroup, ge
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 import { sampleRoles, sampleTechnicians, sampleWorkOrders, sampleWorkSites, sampleClients } from './sample-data';
 import { setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { differenceInMonths } from 'date-fns';
+import { differenceInMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
 
 export const seedDatabase = async (db: any) => {
     const rolesSnapshot = await getCollectionNonBlocking(collection(db, 'roles'));
@@ -129,72 +129,74 @@ export const savePmSchedule = async (db: any, assetId: string, schedule: Omit<Pm
   await addDoc(collection(db, 'assets', assetId, 'pmSchedules'), schedule);
 };
 
-/**
- * Generates Consolidated Site-Level PM Work Orders for a specific month.
- * Includes recurrence logic to ensure Quarterly/Semi-Annual tasks are captured.
- */
+const getSeasonalTemplate = (month: number, templates: PmTaskTemplate[]) => {
+  let season: 'spring' | 'summer' | 'fall' | 'winter';
+  if (month >= 3 && month <= 5) season = 'spring';
+  else if (month >= 6 && month <= 8) season = 'summer';
+  else if (month >= 9 && month <= 11) season = 'fall';
+  else season = 'winter';
+  
+  return templates.find(t => t.season === season) || templates[0];
+};
+
 export const generatePmWorkOrdersForMonth = async (db: any, month: number, year: number) => {
-  console.log(`Starting consolidated PM generation for Month: ${month}, Year: ${year}`);
+  console.log(`Starting consolidated Cycle-Aware PM generation for Month: ${month}, Year: ${year}`);
   
   const targetDate = new Date(year, month - 1, 1);
-  const schedulesSnap = await getDocs(collectionGroup(db, 'pmSchedules'));
+  const start = startOfMonth(targetDate);
+  const end = endOfMonth(targetDate);
+
+  // 1. Get ALL schedules (explicit subcollections + derived asset fields)
+  const allSchedules = await getAssetPmSchedules(db);
   
-  // 1. Filter by recurrence logic
-  const dueSchedules = schedulesSnap.docs.filter(d => {
-    const data = d.data() as PmSchedule;
-    if (!data.active) return false;
-
-    // Direct match
-    if (data.dueMonth === month) return true;
-
-    // Recurrence match (calculated from anchor month)
-    const diff = (month - data.dueMonth + 12) % 12;
+  // 2. Project which ones are due this month based on recurrence
+  const dueSchedules = allSchedules.filter(s => {
+    if (s.status !== 'active') return false;
     
-    // We need to fetch the asset to know its frequency if using 'built-in' logic
-    // but the schedule object in the subcollection usually has this if generated via add-pm-schedule-dialog
-    // For now we'll assume standard frequencies
-    switch ((data as any).recurrence || 'yearly') {
+    const startDueDate = parseISO(s.nextDueDate);
+    
+    // Direct Month Match
+    if (isWithinInterval(startDueDate, { start, end })) return true;
+
+    // Recurrence Logic (consistent with calendar view)
+    if (startDueDate < start) {
+      const monthsDiff = differenceInMonths(start, startDueDate);
+      const freq = (s.frequencyType || 'annual').toLowerCase();
+      
+      switch (freq) {
         case 'monthly': return true;
-        case 'quarterly': return diff % 3 === 0;
-        case 'semiannual': return diff % 6 === 0;
-        default: return false; // yearly only hits on exact month
+        case 'quarterly': return monthsDiff % 3 === 0;
+        case 'semiannual': return monthsDiff % 6 === 0;
+        case 'annual': return monthsDiff % 12 === 0;
+        default: return false;
+      }
     }
+    return false;
   });
   
   if (dueSchedules.length === 0) {
-    console.log("No active PM schedules found for this month.");
+    console.log("No projected PM schedules due for this month.");
     return 0;
   }
 
-  // 2. Fetch templates
+  // 3. Fetch task templates
   let templates = await getPmTaskTemplates(db);
   if (templates.length === 0) {
     await seedPmTemplates(db);
     templates = await getPmTaskTemplates(db);
   }
 
-  // 3. Group due schedules by siteId
+  // 4. Group due schedules by siteId
   const siteGroups = new Map<string, { siteName: string, schedules: any[] }>();
 
-  for (const scheduleDoc of dueSchedules) {
-    const schedule = scheduleDoc.data() as PmSchedule;
-    const assetId = scheduleDoc.ref.parent.parent!.id;
-    
-    const assetSnap = await getDoc(doc(db, 'assets', assetId));
-    if (!assetSnap.exists()) continue;
-    const assetData = assetSnap.data() as Asset;
-    const siteId = assetData.siteId;
-
-    if (!siteGroups.has(siteId)) {
-      const siteSnap = await getDoc(doc(db, 'work_sites', siteId));
-      const siteName = siteSnap.exists() ? siteSnap.data().name : 'Unknown Site';
-      siteGroups.set(siteId, { siteName, schedules: [] });
+  for (const schedule of dueSchedules) {
+    if (!siteGroups.has(schedule.siteId!)) {
+      siteGroups.set(schedule.siteId!, { siteName: schedule.siteName || 'Unknown Site', schedules: [] });
     }
-    
-    siteGroups.get(siteId)!.schedules.push({ ...schedule, assetId, assetData });
+    siteGroups.get(schedule.siteId!)!.schedules.push(schedule);
   }
 
-  // 4. Create one work order per site
+  // 5. Check existing Master PMs to avoid duplicates
   const existingWoSnap = await getDocs(collection(db, 'pm_work_orders'));
   const existingWos = existingWoSnap.docs.filter(d => {
     const data = d.data();
@@ -210,13 +212,16 @@ export const generatePmWorkOrdersForMonth = async (db: any, month: number, year:
     const assetTasks: PmAssetTaskGroup[] = [];
 
     for (const s of group.schedules) {
-      const template = templates.find(t => t.id === s.templateId);
-      if (!template) continue;
+      // Find template: use explicit template if linked, otherwise find seasonal default for month
+      let template = templates.find(t => t.id === s.templateId);
+      if (!template || s.templateId === 'built-in') {
+        template = getSeasonalTemplate(month, templates);
+      }
 
       assetTasks.push({
         assetId: s.assetId,
-        assetName: s.assetData.name,
-        assetTag: s.assetData.assetTag,
+        assetName: s.assetName || 'Unknown Asset',
+        assetTag: s.assetTag || 'NO-TAG',
         templateName: template.name,
         tasks: template.tasks.map(t => ({
           text: t,
