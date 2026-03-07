@@ -305,18 +305,22 @@ export type PmTask = {
   photoUrls: string[];
 };
 
+export type PmAssetTaskGroup = {
+  assetId: string;
+  assetName: string;
+  assetTag: string;
+  templateName: string;
+  tasks: PmTask[];
+};
+
 export type PmWorkOrder = {
   id: string;
   status: 'Scheduled' | 'In Progress' | 'Submitted For Review' | 'Completed';
-  assetId: string;
-  assetName?: string;
-  assetTag?: string;
-  workSiteId?: string;
-  workSiteName?: string;
-  templateName: string;
+  workSiteId: string;
+  workSiteName: string;
   scheduledMonth: number;
   scheduledYear: number;
-  tasks: PmTask[];
+  assetTasks: PmAssetTaskGroup[];
   assignedTechnicianId?: string;
   createdAt: string;
   updatedAt: string;

@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 interface PmTaskItemProps {
   task: PmTask;
   index: number;
-  onUpdate: (index: number, updatedTask: PmTask) => void;
+  onUpdate: (updatedTask: PmTask) => void;
   assetTag: string;
   isCompletedWorkOrder: boolean;
 }
@@ -32,7 +32,7 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
     if (checked && task.photoUrls.length === 0) {
       toast({
         title: "Photo Reminder",
-        description: "Please take photos for this task.",
+        description: `Please take photos for: ${task.text}`,
         action: (
           <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
             Add Photo
@@ -40,7 +40,7 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
         )
       });
     }
-    onUpdate(index, { ...task, completed: checked });
+    onUpdate({ ...task, completed: checked });
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,7 +57,7 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
         uploadedUrls.push(downloadURL);
       }
 
-      onUpdate(index, {
+      onUpdate({
         ...task,
         photoUrls: [...task.photoUrls, ...uploadedUrls]
       });
@@ -71,7 +71,7 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
   };
 
   const removePhoto = async (url: string) => {
-    onUpdate(index, {
+    onUpdate({
       ...task,
       photoUrls: task.photoUrls.filter(u => u !== url)
     });
@@ -87,7 +87,7 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
     )}>
       <div className="flex items-start gap-3">
         <Checkbox 
-          id={`task-${index}`} 
+          id={`task-${assetTag}-${index}`} 
           checked={task.completed} 
           onCheckedChange={handleToggle}
           disabled={isCompletedWorkOrder}
@@ -95,7 +95,7 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
         />
         <div className="flex-1 space-y-1">
           <Label 
-            htmlFor={`task-${index}`}
+            htmlFor={`task-${assetTag}-${index}`}
             className={cn(
               "text-sm font-bold leading-tight cursor-pointer",
               task.completed && "text-green-800"
@@ -106,7 +106,7 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
           <Input 
             placeholder="Technical notes..."
             value={task.notes}
-            onChange={(e) => onUpdate(index, { ...task, notes: e.target.value })}
+            onChange={(e) => onUpdate({ ...task, notes: e.target.value })}
             className="h-8 text-xs mt-2"
             disabled={isCompletedWorkOrder}
           />

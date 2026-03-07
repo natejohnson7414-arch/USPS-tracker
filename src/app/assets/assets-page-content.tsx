@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Package, PlusCircle, Search, CalendarClock, TrendingUp, AlertTriangle, Loader2, FileBarChart, ChevronRight, MapPin, Wrench, Users, Sparkles } from 'lucide-react';
+import { Package, PlusCircle, Search, CalendarClock, TrendingUp, AlertTriangle, Loader2, FileBarChart, ChevronRight, MapPin, Wrench, Users, Sparkles, Building } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useFirestore, useUser } from '@/firebase';
 import { getAssets, getAssetPmSchedules, generatePmWorkOrdersForMonth, getPmWorkOrders, seedDatabase } from '@/lib/data';
@@ -68,7 +68,7 @@ export default function AssetsPageContent() {
       const count = await generatePmWorkOrdersForMonth(db, now.getMonth() + 1, now.getFullYear());
       
       if (count > 0) {
-        toast({ title: "PM Generation Complete", description: `Created ${count} new PM work orders.` });
+        toast({ title: "PM Generation Complete", description: `Created ${count} master site work orders.` });
       } else {
         toast({ title: "No Action Needed", description: "All PMs for this month are already scheduled or none are due." });
       }
@@ -163,7 +163,7 @@ export default function AssetsPageContent() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Active PM Orders</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Active Master PMs</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-primary">{pmWorkOrders.filter(wo => wo.status !== 'Completed').length}</div>
@@ -182,7 +182,7 @@ export default function AssetsPageContent() {
         <Tabs defaultValue="calendar">
           <TabsList className="mb-4">
             <TabsTrigger value="calendar">PM Planning Calendar</TabsTrigger>
-            <TabsTrigger value="active-pms">Current PM Work Orders</TabsTrigger>
+            <TabsTrigger value="active-pms">Current Master PMs</TabsTrigger>
             <TabsTrigger value="registry">Equipment Registry</TabsTrigger>
             <TabsTrigger value="reports">Labor Projections</TabsTrigger>
           </TabsList>
@@ -190,17 +190,16 @@ export default function AssetsPageContent() {
           <TabsContent value="active-pms">
             <Card>
               <CardHeader>
-                <CardTitle>Open Preventative Maintenance Jobs</CardTitle>
-                <CardDescription>Documentation-intensive seasonal tasks currently in progress.</CardDescription>
+                <CardTitle>Open Master Preventative Maintenance Jobs</CardTitle>
+                <CardDescription>Site-level master records containing all unit checklists for the period.</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Job Status</TableHead>
-                      <TableHead>Equipment</TableHead>
-                      <TableHead>Site</TableHead>
-                      <TableHead>Type</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Scope</TableHead>
                       <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -209,20 +208,31 @@ export default function AssetsPageContent() {
                       <TableRow key={wo.id}>
                         <TableCell><Badge variant={wo.status === 'In Progress' ? 'default' : 'secondary'}>{wo.status}</Badge></TableCell>
                         <TableCell>
-                          <div className="font-medium">{wo.assetName}</div>
-                          <div className="text-xs text-muted-foreground">{wo.assetTag}</div>
+                          <div className="font-medium flex items-center gap-2">
+                            <Building className="h-4 w-4 text-muted-foreground" />
+                            {wo.workSiteName}
+                          </div>
                         </TableCell>
-                        <TableCell>{wo.workSiteName}</TableCell>
-                        <TableCell>{wo.templateName}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-sm font-bold">{wo.assetTasks.length} Units</span>
+                            <div className="flex flex-wrap gap-1">
+                              {wo.assetTasks.slice(0, 3).map((g, i) => (
+                                <Badge key={i} variant="outline" className="text-[10px] py-0">{g.assetTag}</Badge>
+                              ))}
+                              {wo.assetTasks.length > 3 && <span className="text-[10px] text-muted-foreground">+{wo.assetTasks.length - 3} more</span>}
+                            </div>
+                          </div>
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button asChild size="sm">
-                            <Link href={`/pm-work-orders/${wo.id}`}>Execute PM</Link>
+                            <Link href={`/pm-work-orders/${wo.id}`}>Open Master Checklists</Link>
                           </Button>
                         </TableCell>
                       </TableRow>
                     ))}
                     {pmWorkOrders.filter(wo => wo.status !== 'Completed').length === 0 && (
-                      <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No active PM work orders.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No master PM work orders generated for the current period.</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
@@ -268,7 +278,7 @@ export default function AssetsPageContent() {
                               <div className="flex wrap items-center gap-2">
                                 {sitesDue.length > 0 && (
                                   <>
-                                    <Badge variant="secondary">{sitesDue.length} Sites Due</Badge>
+                                    <Badge variant="secondary">{sitesDue.length} Master Site Jobs</Badge>
                                     <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary">
                                       <Wrench className="h-3 w-3 mr-1" /> {totalMonthHours} Hours
                                     </Badge>
@@ -393,7 +403,7 @@ export default function AssetsPageContent() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5" /> Estimated Labor Demand</CardTitle>
-                  <CardDescription>Projected man-hours required for scheduled PM cycles over the next 12 months.</CardDescription>
+                  <CardDescription>Projected man-hours required for scheduled Master PM cycles over the next 12 months.</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[400px] pt-10">
                   {laborForecast.length > 0 ? (
@@ -473,12 +483,11 @@ export default function AssetsPageContent() {
                 </Card>
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-sm font-bold flex items-center gap-2"><MapPin className="h-4 w-4" /> Distribution</CardTitle>
+                    <CardTitle className="text-sm font-bold flex items-center gap-2"><Building className="h-4 w-4" /> Logistics</CardTitle>
                   </CardHeader>
                   <CardContent className="text-sm">
                     <p className="text-muted-foreground">
-                      Maintenance is distributed across <span className="font-bold text-foreground">{new Set(schedules.map(s => s.siteId)).size} sites</span>. 
-                      Consolidated site visits are recommended for months with high site density.
+                      Maintenance is grouped by Master Site Job. Consolidated master work orders reduce call-in/out overhead.
                     </p>
                   </CardContent>
                 </Card>

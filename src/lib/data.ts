@@ -4,7 +4,7 @@ import type {
   AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client, 
   TrainingRecord, HvacStartupReport, TimeEntry, Activity, ActivityHistoryItem, 
   Quote, Asset, PmTemplate, AssetPmSchedule, AssetServiceHistory, Material,
-  PmTaskTemplate, PmSchedule, PmWorkOrder, PmTask
+  PmTaskTemplate, PmSchedule, PmWorkOrder, PmTask, PmAssetTaskGroup
 } from '@/lib/types';
 import { collection, doc, query, where, arrayUnion, orderBy, collectionGroup, getDocs, documentId, setDoc, addDoc, getDoc } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
@@ -129,14 +129,12 @@ export const savePmSchedule = async (db: any, assetId: string, schedule: Omit<Pm
 };
 
 /**
- * Generates PM Work Orders for a specific month.
- * Uses client-side filtering for the Collection Group query to avoid index requirement errors.
+ * Generates Consolidated Site-Level PM Work Orders for a specific month.
  */
 export const generatePmWorkOrdersForMonth = async (db: any, month: number, year: number) => {
-  console.log(`Starting PM generation for Month: ${month}, Year: ${year}`);
+  console.log(`Starting consolidated PM generation for Month: ${month}, Year: ${year}`);
   
   // 1. Fetch all PM schedules across all assets
-  // We use client-side filtering to avoid requiring a composite index for 'dueMonth' + 'active'
   const schedulesSnap = await getDocs(collectionGroup(db, 'pmSchedules'));
   const dueSchedules = schedulesSnap.docs.filter(d => {
     const data = d.data();
@@ -155,8 +153,28 @@ export const generatePmWorkOrdersForMonth = async (db: any, month: number, year:
     templates = await getPmTaskTemplates(db);
   }
 
-  // 3. Fetch existing PM work orders for this month to prevent duplicates
-  // Filter client-side to avoid index requirement
+  // 3. Group due schedules by siteId
+  const siteGroups = new Map<string, { siteName: string, schedules: any[] }>();
+
+  for (const scheduleDoc of dueSchedules) {
+    const schedule = scheduleDoc.data() as PmSchedule;
+    const assetId = scheduleDoc.ref.parent.parent!.id;
+    
+    const assetSnap = await getDoc(doc(db, 'assets', assetId));
+    if (!assetSnap.exists()) continue;
+    const assetData = assetSnap.data() as Asset;
+    const siteId = assetData.siteId;
+
+    if (!siteGroups.has(siteId)) {
+      const siteSnap = await getDoc(doc(db, 'work_sites', siteId));
+      const siteName = siteSnap.exists() ? siteSnap.data().name : 'Unknown Site';
+      siteGroups.set(siteId, { siteName, schedules: [] });
+    }
+    
+    siteGroups.get(siteId)!.schedules.push({ ...schedule, assetId, assetData });
+  }
+
+  // 4. Create one work order per site
   const existingWoSnap = await getDocs(collection(db, 'pm_work_orders'));
   const existingWos = existingWoSnap.docs.filter(d => {
     const data = d.data();
@@ -165,50 +183,40 @@ export const generatePmWorkOrdersForMonth = async (db: any, month: number, year:
 
   let createdCount = 0;
 
-  for (const scheduleDoc of dueSchedules) {
-    const schedule = scheduleDoc.data() as PmSchedule;
-    const assetId = scheduleDoc.ref.parent.parent!.id;
-    
-    // Check if a work order already exists for this specific asset + template this month
-    const alreadyExists = existingWos.some(wo => {
-      const data = wo.data();
-      return data.assetId === assetId && data.templateName === schedule.templateName;
-    });
+  for (const [siteId, group] of siteGroups.entries()) {
+    // Check if a site-level PM already exists for this site/month/year
+    const alreadyExists = existingWos.some(wo => wo.data().workSiteId === siteId);
+    if (alreadyExists) continue;
 
-    if (alreadyExists) {
-      console.log(`Skipping: PM already generated for ${schedule.templateName} on Asset ${assetId}`);
-      continue;
+    const assetTasks: PmAssetTaskGroup[] = [];
+
+    for (const s of group.schedules) {
+      const template = templates.find(t => t.id === s.templateId);
+      if (!template) continue;
+
+      assetTasks.push({
+        assetId: s.assetId,
+        assetName: s.assetData.name,
+        assetTag: s.assetData.assetTag,
+        templateName: template.name,
+        tasks: template.tasks.map(t => ({
+          text: t,
+          completed: false,
+          notes: '',
+          photoUrls: []
+        }))
+      });
     }
 
-    const template = templates.find(t => t.id === schedule.templateId);
-    if (!template) continue;
-
-    // Fetch full asset and site details for the Work Order header
-    const assetSnap = await getDoc(doc(db, 'assets', assetId));
-    if (!assetSnap.exists()) continue;
-    const assetData = assetSnap.data() as Asset;
-    
-    const siteSnap = await getDoc(doc(db, 'work_sites', assetData.siteId));
-    const siteData = siteSnap.exists() ? siteSnap.data() as WorkSite : { name: 'Unknown Site' };
-
-    const tasks: PmTask[] = template.tasks.map(t => ({
-      text: t,
-      completed: false,
-      notes: '',
-      photoUrls: []
-    }));
+    if (assetTasks.length === 0) continue;
 
     const pmWorkOrder: Omit<PmWorkOrder, 'id'> = {
       status: 'Scheduled',
-      assetId,
-      assetName: assetData.name,
-      assetTag: assetData.assetTag,
-      workSiteId: assetData.siteId,
-      workSiteName: siteData.name,
-      templateName: template.name,
+      workSiteId: siteId,
+      workSiteName: group.siteName,
       scheduledMonth: month,
       scheduledYear: year,
-      tasks,
+      assetTasks,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
