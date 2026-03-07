@@ -3,9 +3,10 @@
 import type { 
   AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client, 
   TrainingRecord, HvacStartupReport, TimeEntry, Activity, ActivityHistoryItem, 
-  Quote, Asset, PmTemplate, AssetPmSchedule, AssetServiceHistory, Material
+  Quote, Asset, PmTemplate, AssetPmSchedule, AssetServiceHistory, Material,
+  PmTaskTemplate, PmSchedule, PmWorkOrder
 } from '@/lib/types';
-import { collection, doc, query, where, arrayUnion, orderBy, collectionGroup, getDocs, documentId } from 'firebase/firestore';
+import { collection, doc, query, where, arrayUnion, orderBy, collectionGroup, getDocs, documentId, setDoc, addDoc, getDoc } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 import { sampleRoles, sampleTechnicians, sampleWorkOrders, sampleWorkSites, sampleClients } from './sample-data';
 import { setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
@@ -42,8 +43,164 @@ export const seedDatabase = async (db: any) => {
             setDocumentNonBlocking(doc(db, 'work_orders', wo.id), { ...wo, assignedTechnicianId: assignedTechnician.id }, { merge: false });
         }
     }
+    
+    // Seed PM Templates if missing
+    await seedPmTemplates(db);
 };
 
+export const seedPmTemplates = async (db: any) => {
+  const templatesRef = collection(db, 'pm_task_templates');
+  const snap = await getDocs(templatesRef);
+  if (!snap.empty) return;
+
+  const templates: Omit<PmTaskTemplate, 'id'>[] = [
+    {
+      name: "Spring PM",
+      season: "spring",
+      tasks: [
+        "Clean/Inspect Outdoor Condenser Coils", "Clean/Inspect Condensate Drain Lines", "Inspect Electrical Connections", 
+        "Measure Refrigerant Levels/Pressure/Temp", "Lubricate Moving Parts", "Clean Cooling Tower Pan", 
+        "Clean Cooling Tower Strainers", "Check/Adjust Float", "Lubricate Shafts and Pumps", 
+        "Replace Fan Motor Belts", "Inspect Heater Elements", "Inspect/Clean Chiller Tubes", 
+        "Fill System/Remove Air", "Inspect Relief Valves", "Clean/Inspect Strainers", 
+        "Controls/Thermostats (Heat to Cool)", "Change Filters", "Verify Damper Operations", 
+        "Replace/Tighten Belts", "Inspect Drain Pan/Piping for Leaks", "Photograph All Work/Date New Filters", 
+        "Get Signed Work Acknowledgement"
+      ]
+    },
+    {
+      name: "Summer PM",
+      season: "summer",
+      tasks: [
+        "Clean/Inspect Outdoor Condenser Coils", "Clean/Inspect Condensate Drain Lines", "Inspect Electrical Connections", 
+        "Lubricate Moving Parts", "Clean Cooling Tower Pan", "Clean Cooling Tower Strainers", 
+        "Inspect Heater Elements", "Inspect Relief Valves", "Clean/Inspect Strainers", 
+        "Inspect/Lubricate Pumps", "Check Controls/Thermostats (Cooling Mode/Batteries)", "Change Filters", 
+        "Verify Damper Operations", "Inspect Drain Pan/Piping for Leaks", "Photograph All Work/Date New Filters", 
+        "Get Signed Work Acknowledgement"
+      ]
+    },
+    {
+      name: "Fall PM",
+      season: "fall",
+      tasks: [
+        "Inspect Combustion Chamber", "Inspect Burner Assembly/Ignitor", "Inspect Heat Exchanger", 
+        "Inspect/Clean Blower Assembly", "Inspect Gas Piping/Valve (Combustion Test)", "Test Safety Devices", 
+        "Drain Cooling Tower/Isolate", "Clean Drain Pan", "Shut Power at Disconnect", 
+        "Check Water Levels/Boiler Pressure", "Inspect/Clean/Verify LWCO", "Clean Site Glass", 
+        "Test/Inspect High Limit Shutoff", "Perform Blowdown/Skim Boiler (Steam)", "Inspect/Test Relief Valve", 
+        "Inspect Electrical Terminals/Wiring", "Inspect Burner Refractory", "Inspect/Lubricate Pumps", 
+        "Check Controls (Heating/Cooling Change Over)", "Change Filters", "Verify Damper Operations", 
+        "Lubricate Moving Parts", "Inspect Drain Pan/Piping for Leaks", "Photograph All Work/Date New Filters", 
+        "Get Signed Work Acknowledgement"
+      ]
+    },
+    {
+      name: "Winter PM",
+      season: "winter",
+      tasks: [
+        "Inspect Combustion Chamber", "Inspect Burner Assembly/Ignitor", "Inspect Heat Exchanger", 
+        "Inspect/Clean Blower Assembly", "Test Safety Devices", "Check Water Levels/Boiler Pressure", 
+        "Inspect/Clean/Verify LWCO", "Test/Inspect High Limit Shutoff", "Perform Blowdown/Skim Boiler (Steam)", 
+        "Inspect/Test Relief Valve", "Clean Site Glass", "Check Controls (Heating/Cooling Change Over)", 
+        "Change Filters", "Verify Damper Operations", "Lubricate Moving Parts", 
+        "Inspect Drain Pan/Piping for Leaks", "Photograph All Work/Date New Filters", "Get Signed Work Acknowledgement"
+      ]
+    }
+  ];
+
+  for (const t of templates) {
+    await addDoc(templatesRef, t);
+  }
+};
+
+export const getPmTaskTemplates = async (db: any): Promise<PmTaskTemplate[]> => {
+  const snapshot = await getDocs(collection(db, 'pm_task_templates'));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PmTaskTemplate));
+};
+
+export const getPmSchedulesForAsset = async (db: any, assetId: string): Promise<PmSchedule[]> => {
+  const snapshot = await getDocs(collection(db, 'assets', assetId, 'pmSchedules'));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PmSchedule));
+};
+
+export const savePmSchedule = async (db: any, assetId: string, schedule: Omit<PmSchedule, 'id'>) => {
+  await addDoc(collection(db, 'assets', assetId, 'pmSchedules'), schedule);
+};
+
+export const generatePmWorkOrdersForMonth = async (db: any, month: number, year: number) => {
+  // Query all PM schedules across all assets (collectionGroup)
+  const schedulesQuery = query(collectionGroup(db, 'pmSchedules'), where('dueMonth', '==', month), where('active', '==', true));
+  const schedulesSnap = await getDocs(schedulesQuery);
+  
+  const templates = await getPmTaskTemplates(db);
+  let createdCount = 0;
+
+  for (const scheduleDoc of schedulesSnap.docs) {
+    const schedule = scheduleDoc.data() as PmSchedule;
+    const assetId = scheduleDoc.ref.parent.parent!.id;
+    
+    // Check if a work order already exists for this asset/template/month/year
+    const existingQuery = query(
+      collection(db, 'pm_work_orders'),
+      where('assetId', '==', assetId),
+      where('templateName', '==', schedule.templateName),
+      where('scheduledMonth', '==', month),
+      where('scheduledYear', '==', year)
+    );
+    const existingSnap = await getDocs(existingQuery);
+    if (!existingSnap.empty) continue;
+
+    const template = templates.find(t => t.id === schedule.templateId);
+    if (!template) continue;
+
+    const assetSnap = await getDoc(doc(db, 'assets', assetId));
+    const assetData = assetSnap.data() as Asset;
+    const siteSnap = await getDoc(doc(db, 'work_sites', assetData.siteId));
+    const siteData = siteSnap.data() as WorkSite;
+
+    const tasks: PmTask[] = template.tasks.map(t => ({
+      text: t,
+      completed: false,
+      notes: '',
+      photoUrls: []
+    }));
+
+    const pmWorkOrder: Omit<PmWorkOrder, 'id'> = {
+      status: 'Scheduled',
+      assetId,
+      assetName: assetData.name,
+      assetTag: assetData.assetTag,
+      workSiteId: assetData.siteId,
+      workSiteName: siteData.name,
+      templateName: template.name,
+      scheduledMonth: month,
+      scheduledYear: year,
+      tasks,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    await addDoc(collection(db, 'pm_work_orders'), pmWorkOrder);
+    createdCount++;
+  }
+
+  return createdCount;
+};
+
+export const getPmWorkOrders = async (db: any, filters?: { technicianId?: string }): Promise<PmWorkOrder[]> => {
+  let q = collection(db, 'pm_work_orders');
+  // Add tech filters if needed, but for MVP we list all or by site/assigned
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PmWorkOrder));
+};
+
+export const getPmWorkOrderById = async (db: any, id: string): Promise<PmWorkOrder | undefined> => {
+  const snap = await getDoc(doc(db, 'pm_work_orders', id));
+  return snap.exists() ? { id: snap.id, ...snap.data() } as PmWorkOrder : undefined;
+};
+
+// ... existing code ...
 export const getWorkOrderById = async (db: any, id: string): Promise<WorkOrder | undefined> => {
   try {
     const workOrderRef = doc(db, 'work_orders', id);

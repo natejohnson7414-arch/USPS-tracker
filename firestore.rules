@@ -17,6 +17,17 @@ service cloud.firestore {
         get(/databases/$(database)/documents/roles/$(get(userDocPath).data.roleId)).data.name == roleName;
     }
 
+    // PM System
+    match /pm_task_templates/{templateId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /pm_work_orders/{workOrderId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
     // Quotes: Accessible to all authenticated users for field submissions
     match /quotes/{quoteId} {
       allow get, list, create, update: if isSignedIn();
@@ -27,6 +38,10 @@ service cloud.firestore {
     match /assets/{assetId} {
       allow read: if isSignedIn();
       allow write: if isSignedIn();
+
+      match /pmSchedules/{scheduleId} {
+        allow read, write: if isSignedIn();
+      }
     }
 
     match /materials/{materialId} {

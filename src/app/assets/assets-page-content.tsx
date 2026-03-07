@@ -7,11 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Package, PlusCircle, Search, CalendarClock, TrendingUp, AlertTriangle, Loader2, FileBarChart, ChevronRight, MapPin, Wrench, Users } from 'lucide-react';
+import { Package, PlusCircle, Search, CalendarClock, TrendingUp, AlertTriangle, Loader2, FileBarChart, ChevronRight, MapPin, Wrench, Users, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { useFirestore, useUser } from '@/firebase'; // added useUser
-import { getAssets, getAssetPmSchedules } from '@/lib/data';
-import type { Asset, AssetPmSchedule } from '@/lib/types';
+import { useFirestore, useUser } from '@/firebase';
+import { getAssets, getAssetPmSchedules, generatePmWorkOrdersForMonth, getPmWorkOrders } from '@/lib/data';
+import type { Asset, AssetPmSchedule, PmWorkOrder } from '@/lib/types';
 import { generateLaborForecast, type LaborForecast } from '@/lib/reporting-service';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
@@ -29,24 +29,47 @@ export default function AssetsPageContent() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [schedules, setSchedules] = useState<AssetPmSchedule[]>([]);
   const [laborForecast, setLaborForecast] = useState<LaborForecast[]>([]);
+  const [pmWorkOrders, setPmWorkOrders] = useState<PmWorkOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isReportOpen, setIsReportOpen] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
     if (db && user) {
       setIsLoading(true);
-      Promise.all([
+      const [a, s, l, pwo] = await Promise.all([
         getAssets(db),
         getAssetPmSchedules(db),
-        generateLaborForecast(db)
-      ]).then(([a, s, l]) => {
-        setAssets(a);
-        setSchedules(s);
-        setLaborForecast(l);
-      }).finally(() => setIsLoading(false));
+        generateLaborForecast(db),
+        getPmWorkOrders(db)
+      ]);
+      setAssets(a);
+      setSchedules(s);
+      setLaborForecast(l);
+      setPmWorkOrders(pwo);
+      setIsLoading(false);
     }
   }, [db, user]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleGeneratePmOrders = async () => {
+    if (!db) return;
+    setIsGenerating(true);
+    try {
+      const now = new Date();
+      const count = await generatePmWorkOrdersForMonth(db, now.getMonth() + 1, now.getFullYear());
+      toast({ title: "PM Generation Complete", description: `Created ${count} new PM work orders.` });
+      fetchData();
+    } catch (e) {
+      toast({ title: "Generation Failed", variant: 'destructive' });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const filteredAssets = assets.filter(a => 
     a.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -98,9 +121,13 @@ export default function AssetsPageContent() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Assets & PM</h1>
-            <p className="text-muted-foreground">Manage equipment registry and repeatable maintenance planning.</p>
+            <p className="text-muted-foreground">Manage equipment registry and seasonal maintenance cycles.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={handleGeneratePmOrders} disabled={isGenerating} variant="outline" className="bg-primary/5 border-primary/20 text-primary">
+              {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+              Generate This Month's PMs
+            </Button>
             <Button onClick={() => setIsReportOpen(true)} variant="outline">
               <FileBarChart className="mr-2 h-4 w-4" />
               Materials Report
@@ -125,20 +152,18 @@ export default function AssetsPageContent() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">High Criticality</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Active PM Orders</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-destructive">{assets.filter(a => a.criticality === 'high').length}</div>
+              <div className="text-2xl font-bold text-primary">{pmWorkOrders.filter(wo => wo.status !== 'Completed').length}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">PM Sites (This Month)</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">High Criticality</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">
-                {new Set(getSchedulesForMonth(new Date()).map(s => s.siteId)).size}
-              </div>
+              <div className="text-2xl font-bold text-destructive">{assets.filter(a => a.criticality === 'high').length}</div>
             </CardContent>
           </Card>
         </div>
@@ -146,9 +171,53 @@ export default function AssetsPageContent() {
         <Tabs defaultValue="calendar">
           <TabsList className="mb-4">
             <TabsTrigger value="calendar">PM Planning Calendar</TabsTrigger>
+            <TabsTrigger value="active-pms">Current PM Work Orders</TabsTrigger>
             <TabsTrigger value="registry">Equipment Registry</TabsTrigger>
             <TabsTrigger value="reports">Labor Projections</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="active-pms">
+            <Card>
+              <CardHeader>
+                <CardTitle>Open Preventative Maintenance Jobs</CardTitle>
+                <CardDescription>Documentation-intensive seasonal tasks currently in progress.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Job Status</TableHead>
+                      <TableHead>Equipment</TableHead>
+                      <TableHead>Site</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pmWorkOrders.filter(wo => wo.status !== 'Completed').map(wo => (
+                      <TableRow key={wo.id}>
+                        <TableCell><Badge variant={wo.status === 'In Progress' ? 'default' : 'secondary'}>{wo.status}</Badge></TableCell>
+                        <TableCell>
+                          <div className="font-medium">{wo.assetName}</div>
+                          <div className="text-xs text-muted-foreground">{wo.assetTag}</div>
+                        </TableCell>
+                        <TableCell>{wo.workSiteName}</TableCell>
+                        <TableCell>{wo.templateName}</TableCell>
+                        <TableCell className="text-right">
+                          <Button asChild size="sm">
+                            <Link href={`/pm-work-orders/${wo.id}`}>Execute PM</Link>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {pmWorkOrders.filter(wo => wo.status !== 'Completed').length === 0 && (
+                      <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No active PM work orders.</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="calendar">
             <Card>

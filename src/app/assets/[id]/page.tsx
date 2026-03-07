@@ -10,10 +10,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { History, CalendarClock, Settings, Wrench, Clock, Loader2, AlertCircle, Box, PlusCircle, Repeat, ArrowLeft, Camera, Library, Maximize2, Download, Trash2, X } from 'lucide-react';
+import { History, CalendarClock, Settings, Wrench, Clock, Loader2, AlertCircle, Box, PlusCircle, Repeat, ArrowLeft, Camera, Library, Maximize2, Download, Trash2, X, ClipboardCheck, ChevronRight } from 'lucide-react';
 import { useFirestore, updateDocumentNonBlocking, useUser } from '@/firebase';
-import { getAssetById, getAssetPmSchedules, getAssetServiceHistory, calculateAssetMetrics } from '@/lib/data';
-import type { Asset, AssetPmSchedule, AssetServiceHistory } from '@/lib/types';
+import { getAssetById, getAssetPmSchedules, getAssetServiceHistory, calculateAssetMetrics, getPmSchedulesForAsset } from '@/lib/data';
+import type { Asset, AssetPmSchedule, AssetServiceHistory, PmSchedule } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { AddPmScheduleDialog } from '@/components/add-pm-schedule-dialog';
@@ -31,12 +31,12 @@ export default function AssetDetailsPage() {
   const { toast } = useToast();
   
   const [asset, setAsset] = useState<Asset | null>(null);
-  const [schedules, setSchedules] = useState<AssetPmSchedule[]>([]);
+  const [schedules, setSchedules] = useState<PmSchedule[]>([]);
+  const [legacySchedules, setLegacySchedules] = useState<AssetPmSchedule[]>([]);
   const [history, setHistory] = useState<AssetServiceHistory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
-  const [selectedSchedule, setSelectedSchedule] = useState<AssetPmSchedule | null>(null);
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
   const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
   const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
@@ -46,13 +46,15 @@ export default function AssetDetailsPage() {
 
   const fetchAssetData = useCallback(async () => {
     if (db && user && id && id !== 'new') {
-      const [a, s, h] = await Promise.all([
+      const [a, s, ls, h] = await Promise.all([
         getAssetById(db, id as string),
+        getPmSchedulesForAsset(db, id as string),
         getAssetPmSchedules(db, id as string),
         getAssetServiceHistory(db, id as string)
       ]);
       setAsset(a || null);
       setSchedules(s);
+      setLegacySchedules(ls);
       setHistory(h);
     }
   }, [db, user, id]);
@@ -120,20 +122,6 @@ export default function AssetDetailsPage() {
     } catch (error) {
       toast({ title: "Delete Failed", variant: 'destructive' });
     }
-  };
-
-  const handleEditSchedule = (s: AssetPmSchedule) => {
-    setSelectedSchedule(s);
-    setIsScheduleDialogOpen(true);
-  };
-
-  const handleAddSchedule = () => {
-    setSelectedSchedule(null);
-    setIsScheduleDialogOpen(true);
-  };
-
-  const handleScheduleSaved = () => {
-    fetchAssetData();
   };
 
   if (isLoading) return <MainLayout><div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div></MainLayout>;
@@ -232,12 +220,48 @@ export default function AssetDetailsPage() {
           </div>
 
           <div className="lg:col-span-3">
-            <Tabs defaultValue="photos">
+            <Tabs defaultValue="pm">
               <TabsList className="mb-4">
+                <TabsTrigger value="pm"><CalendarClock className="mr-2 h-4 w-4" /> PM Schedules</TabsTrigger>
                 <TabsTrigger value="photos"><Camera className="mr-2 h-4 w-4" /> Photos</TabsTrigger>
                 <TabsTrigger value="history"><History className="mr-2 h-4 w-4" /> Service History</TabsTrigger>
-                <TabsTrigger value="pm"><CalendarClock className="mr-2 h-4 w-4" /> PM Schedules</TabsTrigger>
               </TabsList>
+
+              <TabsContent value="pm">
+                <Card>
+                  <CardHeader>
+                    <div className="flex justify-between items-center">
+                      <CardTitle>Preventative Maintenance Cycles</CardTitle>
+                      <Button size="sm" variant="outline" onClick={() => setIsScheduleDialogOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Add Schedule</Button>
+                    </div>
+                    <CardDescription>Indefinite seasonal cycles mapped to specific months.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {schedules.length > 0 ? (
+                      <div className="space-y-4">
+                        {schedules.map(schedule => (
+                          <div key={schedule.id} className="flex items-center justify-between p-4 border rounded-lg bg-card">
+                            <div className="space-y-1">
+                              <p className="font-bold text-primary">{schedule.templateName}</p>
+                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1 font-semibold text-foreground"><Clock className="h-3 w-3" /> Due Month: {schedule.dueMonth}</span>
+                                <Badge variant="secondary" className="h-5 text-[10px] uppercase">{schedule.season}</Badge>
+                                <span className="flex items-center gap-1"><Repeat className="h-3 w-3" /> {schedule.recurrence}</span>
+                              </div>
+                            </div>
+                            <Badge variant={schedule.active ? 'default' : 'secondary'}>{schedule.active ? 'Active' : 'Paused'}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
+                        <CalendarClock className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                        <p>No preventative maintenance cycles defined.</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
               <TabsContent value="photos">
                 <Card>
@@ -298,43 +322,6 @@ export default function AssetDetailsPage() {
                   </CardContent>
                 </Card>
               </TabsContent>
-
-              <TabsContent value="pm">
-                <Card>
-                  <CardHeader>
-                    <div className="flex justify-between items-center">
-                      <CardTitle>PM Schedules</CardTitle>
-                      <Button size="sm" variant="outline" onClick={handleAddSchedule}><PlusCircle className="mr-2 h-4 w-4" /> New Schedule</Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {schedules.length > 0 ? (
-                      <div className="space-y-4">
-                        {schedules.map(schedule => (
-                          <div key={schedule.id} className="flex items-center justify-between p-4 border rounded-lg">
-                            <div className="space-y-1">
-                              <p className="font-bold">{schedule.templateName}</p>
-                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1 font-semibold text-foreground"><Clock className="h-3 w-3" /> Due: {format(new Date(schedule.nextDueDate), 'MMMM')}</span>
-                                <span className="flex items-center gap-1"><Repeat className="h-3 w-3" /> Frequency: {schedule.frequencyType}</span>
-                                <span className="flex items-center gap-1"><Wrench className="h-3 w-3" /> Labor: {schedule.estimatedLaborHours} hrs</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={schedule.status === 'active' ? 'default' : 'secondary'}>{schedule.status}</Badge>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditSchedule(schedule)}>
-                                <Settings className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-12 text-muted-foreground">No active preventative maintenance schedules.</div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
             </Tabs>
           </div>
         </div>
@@ -343,9 +330,8 @@ export default function AssetDetailsPage() {
       <AddPmScheduleDialog 
         isOpen={isScheduleDialogOpen}
         onOpenChange={setIsScheduleDialogOpen}
-        assetId={id as string}
-        schedule={selectedSchedule}
-        onScheduleAdded={handleScheduleSaved}
+        asset={asset}
+        onScheduleAdded={fetchAssetData}
       />
 
       <Sheet open={photoSheetOpen} onOpenChange={setPhotoSheetOpen}>

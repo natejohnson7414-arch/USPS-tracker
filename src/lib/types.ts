@@ -279,3 +279,45 @@ export type TimeEntry = {
   technicianName?: string;
   excludeFromReport?: boolean;
 };
+
+// NEW PM SYSTEM TYPES
+export type PmTaskTemplate = {
+  id: string;
+  name: string;
+  season: 'spring' | 'summer' | 'fall' | 'winter';
+  tasks: string[];
+};
+
+export type PmSchedule = {
+  id: string;
+  templateId: string;
+  templateName: string;
+  season: string;
+  dueMonth: number; // 1-12
+  recurrence: 'yearly';
+  active: boolean;
+};
+
+export type PmTask = {
+  text: string;
+  completed: boolean;
+  notes: string;
+  photoUrls: string[];
+};
+
+export type PmWorkOrder = {
+  id: string;
+  status: 'Scheduled' | 'In Progress' | 'Submitted For Review' | 'Completed';
+  assetId: string;
+  assetName?: string;
+  assetTag?: string;
+  workSiteId?: string;
+  workSiteName?: string;
+  templateName: string;
+  scheduledMonth: number;
+  scheduledYear: number;
+  tasks: PmTask[];
+  assignedTechnicianId?: string;
+  createdAt: string;
+  updatedAt: string;
+};
