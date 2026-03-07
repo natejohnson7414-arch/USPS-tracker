@@ -20,12 +20,17 @@ service cloud.firestore {
     // PM System
     match /pm_task_templates/{templateId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSignedIn();
     }
 
     match /pm_work_orders/{workOrderId} {
       allow read: if isSignedIn();
       allow write: if isSignedIn();
+    }
+
+    // Collection Group rule for PM Schedules to allow generating work orders across all assets
+    match /{path=**}/pmSchedules/{scheduleId} {
+      allow read, write: if isSignedIn();
     }
 
     // Quotes: Accessible to all authenticated users for field submissions

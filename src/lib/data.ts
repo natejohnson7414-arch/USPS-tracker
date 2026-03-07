@@ -4,18 +4,17 @@ import type {
   AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client, 
   TrainingRecord, HvacStartupReport, TimeEntry, Activity, ActivityHistoryItem, 
   Quote, Asset, PmTemplate, AssetPmSchedule, AssetServiceHistory, Material,
-  PmTaskTemplate, PmSchedule, PmWorkOrder
+  PmTaskTemplate, PmSchedule, PmWorkOrder, PmTask
 } from '@/lib/types';
 import { collection, doc, query, where, arrayUnion, orderBy, collectionGroup, getDocs, documentId, setDoc, addDoc, getDoc } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 import { sampleRoles, sampleTechnicians, sampleWorkOrders, sampleWorkSites, sampleClients } from './sample-data';
 import { setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { parseISO } from 'date-fns';
 
 export const seedDatabase = async (db: any) => {
     const rolesSnapshot = await getCollectionNonBlocking(collection(db, 'roles'));
     if (rolesSnapshot.empty) {
-        console.log("Seeding database...");
+        console.log("Seeding base roles and technicians...");
         const roleRefs = await Promise.all(sampleRoles.map(role => addDocumentNonBlocking(collection(db, 'roles'), role)));
         const roles = await Promise.all(roleRefs.map(async (ref, i) => ({ id: ref.id, ...sampleRoles[i] })));
         const technicianRole = roles.find(r => r.name === 'Technician');
@@ -44,7 +43,7 @@ export const seedDatabase = async (db: any) => {
         }
     }
     
-    // Seed PM Templates if missing
+    // Always check/seed PM Templates independently to ensure seasonal cycles work
     await seedPmTemplates(db);
 };
 
@@ -53,6 +52,7 @@ export const seedPmTemplates = async (db: any) => {
   const snap = await getDocs(templatesRef);
   if (!snap.empty) return;
 
+  console.log("Seeding seasonal PM templates...");
   const templates: Omit<PmTaskTemplate, 'id'>[] = [
     {
       name: "Spring PM",
@@ -128,36 +128,68 @@ export const savePmSchedule = async (db: any, assetId: string, schedule: Omit<Pm
   await addDoc(collection(db, 'assets', assetId, 'pmSchedules'), schedule);
 };
 
+/**
+ * Generates PM Work Orders for a specific month.
+ * Uses client-side filtering for the Collection Group query to avoid index requirement errors.
+ */
 export const generatePmWorkOrdersForMonth = async (db: any, month: number, year: number) => {
-  // Query all PM schedules across all assets (collectionGroup)
-  const schedulesQuery = query(collectionGroup(db, 'pmSchedules'), where('dueMonth', '==', month), where('active', '==', true));
-  const schedulesSnap = await getDocs(schedulesQuery);
+  console.log(`Starting PM generation for Month: ${month}, Year: ${year}`);
   
-  const templates = await getPmTaskTemplates(db);
+  // 1. Fetch all PM schedules across all assets
+  // We use client-side filtering to avoid requiring a composite index for 'dueMonth' + 'active'
+  const schedulesSnap = await getDocs(collectionGroup(db, 'pmSchedules'));
+  const dueSchedules = schedulesSnap.docs.filter(d => {
+    const data = d.data();
+    return data.dueMonth === month && data.active === true;
+  });
+  
+  if (dueSchedules.length === 0) {
+    console.log("No active PM schedules found for this month.");
+    return 0;
+  }
+
+  // 2. Fetch templates
+  let templates = await getPmTaskTemplates(db);
+  if (templates.length === 0) {
+    await seedPmTemplates(db);
+    templates = await getPmTaskTemplates(db);
+  }
+
+  // 3. Fetch existing PM work orders for this month to prevent duplicates
+  // Filter client-side to avoid index requirement
+  const existingWoSnap = await getDocs(collection(db, 'pm_work_orders'));
+  const existingWos = existingWoSnap.docs.filter(d => {
+    const data = d.data();
+    return data.scheduledMonth === month && data.scheduledYear === year;
+  });
+
   let createdCount = 0;
 
-  for (const scheduleDoc of schedulesSnap.docs) {
+  for (const scheduleDoc of dueSchedules) {
     const schedule = scheduleDoc.data() as PmSchedule;
     const assetId = scheduleDoc.ref.parent.parent!.id;
     
-    // Check if a work order already exists for this asset/template/month/year
-    const existingQuery = query(
-      collection(db, 'pm_work_orders'),
-      where('assetId', '==', assetId),
-      where('templateName', '==', schedule.templateName),
-      where('scheduledMonth', '==', month),
-      where('scheduledYear', '==', year)
-    );
-    const existingSnap = await getDocs(existingQuery);
-    if (!existingSnap.empty) continue;
+    // Check if a work order already exists for this specific asset + template this month
+    const alreadyExists = existingWos.some(wo => {
+      const data = wo.data();
+      return data.assetId === assetId && data.templateName === schedule.templateName;
+    });
+
+    if (alreadyExists) {
+      console.log(`Skipping: PM already generated for ${schedule.templateName} on Asset ${assetId}`);
+      continue;
+    }
 
     const template = templates.find(t => t.id === schedule.templateId);
     if (!template) continue;
 
+    // Fetch full asset and site details for the Work Order header
     const assetSnap = await getDoc(doc(db, 'assets', assetId));
+    if (!assetSnap.exists()) continue;
     const assetData = assetSnap.data() as Asset;
+    
     const siteSnap = await getDoc(doc(db, 'work_sites', assetData.siteId));
-    const siteData = siteSnap.data() as WorkSite;
+    const siteData = siteSnap.exists() ? siteSnap.data() as WorkSite : { name: 'Unknown Site' };
 
     const tasks: PmTask[] = template.tasks.map(t => ({
       text: t,
@@ -188,10 +220,8 @@ export const generatePmWorkOrdersForMonth = async (db: any, month: number, year:
   return createdCount;
 };
 
-export const getPmWorkOrders = async (db: any, filters?: { technicianId?: string }): Promise<PmWorkOrder[]> => {
-  let q = collection(db, 'pm_work_orders');
-  // Add tech filters if needed, but for MVP we list all or by site/assigned
-  const snapshot = await getDocs(q);
+export const getPmWorkOrders = async (db: any): Promise<PmWorkOrder[]> => {
+  const snapshot = await getDocs(collection(db, 'pm_work_orders'));
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PmWorkOrder));
 };
 
@@ -200,7 +230,6 @@ export const getPmWorkOrderById = async (db: any, id: string): Promise<PmWorkOrd
   return snap.exists() ? { id: snap.id, ...snap.data() } as PmWorkOrder : undefined;
 };
 
-// ... existing code ...
 export const getWorkOrderById = async (db: any, id: string): Promise<WorkOrder | undefined> => {
   try {
     const workOrderRef = doc(db, 'work_orders', id);
@@ -554,10 +583,6 @@ export const getMaterials = async (db: any): Promise<Material[]> => {
 export const getMaterialById = async (db: any, id: string): Promise<Material | undefined> => {
   const snap = await getDocumentNonBlocking(doc(db, 'materials', id));
   return snap.exists() ? { id: snap.id, ...snap.data() } as Material : undefined;
-};
-
-export const generatePmWorkOrders = async (db: any) => {
-  return { count: 0 };
 };
 
 export const calculateAssetMetrics = (history: AssetServiceHistory[]) => {

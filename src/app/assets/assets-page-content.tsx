@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Package, PlusCircle, Search, CalendarClock, TrendingUp, AlertTriangle, Loader2, FileBarChart, ChevronRight, MapPin, Wrench, Users, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useFirestore, useUser } from '@/firebase';
-import { getAssets, getAssetPmSchedules, generatePmWorkOrdersForMonth, getPmWorkOrders } from '@/lib/data';
+import { getAssets, getAssetPmSchedules, generatePmWorkOrdersForMonth, getPmWorkOrders, seedDatabase } from '@/lib/data';
 import type { Asset, AssetPmSchedule, PmWorkOrder } from '@/lib/types';
 import { generateLaborForecast, type LaborForecast } from '@/lib/reporting-service';
 import Link from 'next/link';
@@ -38,6 +38,10 @@ export default function AssetsPageContent() {
   const fetchData = useCallback(async () => {
     if (db && user) {
       setIsLoading(true);
+      
+      // Ensure templates are seeded before we attempt operations
+      await seedDatabase(db);
+      
       const [a, s, l, pwo] = await Promise.all([
         getAssets(db),
         getAssetPmSchedules(db),
@@ -62,10 +66,17 @@ export default function AssetsPageContent() {
     try {
       const now = new Date();
       const count = await generatePmWorkOrdersForMonth(db, now.getMonth() + 1, now.getFullYear());
-      toast({ title: "PM Generation Complete", description: `Created ${count} new PM work orders.` });
+      
+      if (count > 0) {
+        toast({ title: "PM Generation Complete", description: `Created ${count} new PM work orders.` });
+      } else {
+        toast({ title: "No Action Needed", description: "All PMs for this month are already scheduled or none are due." });
+      }
+      
       fetchData();
-    } catch (e) {
-      toast({ title: "Generation Failed", variant: 'destructive' });
+    } catch (e: any) {
+      console.error("PM Generation Error:", e);
+      toast({ title: "Generation Failed", description: e.message || "An internal error occurred.", variant: 'destructive' });
     } finally {
       setIsGenerating(false);
     }
