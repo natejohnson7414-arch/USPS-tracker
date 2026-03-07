@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { DashboardClient } from './dashboard-client';
 import { MainLayout } from '@/components/main-layout';
-import type { WorkOrder, Technician, WorkSite, Client, Role } from '@/lib/types';
+import type { WorkOrder, Technician, WorkSite, Client, Role, PmWorkOrder } from '@/lib/types';
 import { useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useTechnician as useRoleData } from '@/hooks/use-technician';
@@ -58,6 +58,11 @@ export default function DashboardPageContent() {
 
   const { data: workOrders, isLoading: isWorkOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
   
+  const { data: pmWorkOrders, isLoading: isPmLoading } = useCollection<PmWorkOrder>(useMemoFirebase(() => {
+      if (!db || isAuthLoading || !user) return null;
+      return collection(db, 'pm_work_orders');
+  }, [db, isAuthLoading, user]));
+
   const { data: fetchedTechnicians, isLoading: isTechniciansLoading } = useCollection<RawTechnician>(useMemoFirebase(() => {
       if (!db || isAuthLoading || !user) return null;
       return collection(db, 'technicians');
@@ -92,7 +97,7 @@ export default function DashboardPageContent() {
     if (fetchedClients) setClients(fetchedClients);
   }, [fetchedClients]);
 
-  const isDataLoading = isAuthLoading || isWorkOrdersLoading || isRoleLoading || isTechniciansLoading || isWorkSitesLoading || isClientsLoading;
+  const isDataLoading = isAuthLoading || isWorkOrdersLoading || isRoleLoading || isTechniciansLoading || isWorkSitesLoading || isClientsLoading || isPmLoading;
 
   if (isDataLoading) {
     return (
@@ -108,6 +113,7 @@ export default function DashboardPageContent() {
     <MainLayout>
       <DashboardClient 
         initialWorkOrders={workOrders || []} 
+        pmWorkOrders={pmWorkOrders || []}
         technicians={technicians} 
         initialWorkSites={workSites}
         initialClients={clients}

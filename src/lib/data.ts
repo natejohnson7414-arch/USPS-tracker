@@ -10,6 +10,7 @@ import { collection, doc, query, where, arrayUnion, orderBy, collectionGroup, ge
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 import { sampleRoles, sampleTechnicians, sampleWorkOrders, sampleWorkSites, sampleClients } from './sample-data';
 import { setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { differenceInMonths } from 'date-fns';
 
 export const seedDatabase = async (db: any) => {
     const rolesSnapshot = await getCollectionNonBlocking(collection(db, 'roles'));
@@ -130,15 +131,34 @@ export const savePmSchedule = async (db: any, assetId: string, schedule: Omit<Pm
 
 /**
  * Generates Consolidated Site-Level PM Work Orders for a specific month.
+ * Includes recurrence logic to ensure Quarterly/Semi-Annual tasks are captured.
  */
 export const generatePmWorkOrdersForMonth = async (db: any, month: number, year: number) => {
   console.log(`Starting consolidated PM generation for Month: ${month}, Year: ${year}`);
   
-  // 1. Fetch all PM schedules across all assets
+  const targetDate = new Date(year, month - 1, 1);
   const schedulesSnap = await getDocs(collectionGroup(db, 'pmSchedules'));
+  
+  // 1. Filter by recurrence logic
   const dueSchedules = schedulesSnap.docs.filter(d => {
-    const data = d.data();
-    return data.dueMonth === month && data.active === true;
+    const data = d.data() as PmSchedule;
+    if (!data.active) return false;
+
+    // Direct match
+    if (data.dueMonth === month) return true;
+
+    // Recurrence match (calculated from anchor month)
+    const diff = (month - data.dueMonth + 12) % 12;
+    
+    // We need to fetch the asset to know its frequency if using 'built-in' logic
+    // but the schedule object in the subcollection usually has this if generated via add-pm-schedule-dialog
+    // For now we'll assume standard frequencies
+    switch ((data as any).recurrence || 'yearly') {
+        case 'monthly': return true;
+        case 'quarterly': return diff % 3 === 0;
+        case 'semiannual': return diff % 6 === 0;
+        default: return false; // yearly only hits on exact month
+    }
   });
   
   if (dueSchedules.length === 0) {
@@ -184,7 +204,6 @@ export const generatePmWorkOrdersForMonth = async (db: any, month: number, year:
   let createdCount = 0;
 
   for (const [siteId, group] of siteGroups.entries()) {
-    // Check if a site-level PM already exists for this site/month/year
     const alreadyExists = existingWos.some(wo => wo.data().workSiteId === siteId);
     if (alreadyExists) continue;
 
