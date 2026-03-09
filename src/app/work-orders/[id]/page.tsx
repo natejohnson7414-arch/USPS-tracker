@@ -763,7 +763,7 @@ export default function WorkOrderDetailPage() {
 
        <MapProviderSelection address={selectedAddress} isOpen={!!selectedAddress} onOpenChange={() => setSelectedAddress(null)} />
         <Dialog open={isSignatureDialogOpen} onOpenChange={setIsSignatureDialogOpen}>
-            <DialogContent className="fixed inset-0 h-[100dvh] w-screen max-w-none p-0 flex flex-col border-0 rounded-none shadow-none z-[100]">
+            <DialogContent className="fixed inset-0 z-[100] flex flex-col w-screen h-[100dvh] max-w-none translate-x-0 translate-y-0 border-none bg-background p-0 left-0 top-0">
                 <DialogHeader className="sr-only">
                     <DialogTitle>Capture Signature</DialogTitle>
                     <DialogDescription>Use your finger or stylus to provide a signature for this work order.</DialogDescription>

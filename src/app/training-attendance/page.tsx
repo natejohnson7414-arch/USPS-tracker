@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
@@ -399,7 +398,7 @@ function TrainingAttendancePageContent() {
       </div>
 
        <Dialog open={isSignatureDialogOpen} onOpenChange={setIsSignatureDialogOpen}>
-            <DialogContent className="h-full w-full max-w-none p-0 flex flex-col border-0 rounded-none shadow-none">
+            <DialogContent className="fixed inset-0 z-50 flex flex-col w-screen h-[100dvh] max-w-none translate-x-0 translate-y-0 border-none bg-background p-0 left-0 top-0">
                 <SignaturePad 
                     onSave={handleSignatureSave}
                     onClear={() => {}}
