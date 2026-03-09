@@ -12,8 +12,6 @@ interface FirebaseClientProviderProps {
 
 /**
  * Handles async initialization of Firebase services.
- * Uses a ref guard to ensure the initialization promise is only triggered once
- * per component mount cycle, supporting React Strict Mode.
  */
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
   const [firebaseServices, setFirebaseServices] = useState<FirebaseServices | null>(null);
@@ -28,8 +26,17 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     initStarted.current = true;
 
     const startServices = async () => {
+      // Add a safety timeout for the entire initialization
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Connection attempt timed out.")), 15000)
+      );
+
       try {
-        const services = await initializeFirebase();
+        const services = await Promise.race([
+          initializeFirebase(),
+          timeoutPromise
+        ]) as FirebaseServices;
+        
         setFirebaseServices(services);
       } catch (err: any) {
         console.error("Critical Firebase Client Provider Error:", err);
@@ -49,20 +56,24 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
   if (error) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 text-center">
-        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <div className="bg-destructive/10 p-6 rounded-full mb-6">
+          <AlertCircle className="h-12 w-12 text-destructive" />
+        </div>
         <h1 className="text-xl font-bold mb-2">Service Unavailable</h1>
-        <p className="text-muted-foreground mb-6 max-w-xs">{error}</p>
+        <p className="text-muted-foreground mb-6 max-w-xs">
+          {error} This may be due to restricted network permissions on your workstation.
+        </p>
         <Button onClick={() => window.location.reload()}>Retry Connection</Button>
       </div>
     );
   }
 
-  // Loading state (resolved via singleton promise in init.ts)
+  // Loading state
   if (!firebaseServices) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-        <p className="text-muted-foreground font-medium italic">Establishing local database connection...</p>
+        <p className="text-muted-foreground font-medium italic">Handshaking with database...</p>
       </div>
     );
   }

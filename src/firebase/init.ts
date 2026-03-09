@@ -35,7 +35,7 @@ async function isIndexedDbAvailable(): Promise<boolean> {
   return new Promise((resolve) => {
     const dbName = 'idb-persistence-check';
     const timeout = setTimeout(() => {
-      console.warn("IndexedDB check timed out. Falling back to memory.");
+      console.warn("[Firebase] IndexedDB check timed out. Falling back to memory.");
       resolve(false);
     }, 1000);
 
@@ -59,12 +59,12 @@ async function isIndexedDbAvailable(): Promise<boolean> {
       
       request.onerror = () => {
         clearTimeout(timeout);
-        console.warn("IndexedDB error detected. Storage may be restricted.");
+        console.warn("[Firebase] IndexedDB error detected. Storage may be restricted.");
         resolve(false);
       };
     } catch (e) {
       clearTimeout(timeout);
-      console.warn("IndexedDB access thrown. Persistence disabled.");
+      console.warn("[Firebase] IndexedDB access thrown. Persistence disabled.");
       resolve(false);
     }
   });
@@ -81,6 +81,8 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
 
   // 2. If an initialization is already in progress, return the existing promise
   if (servicesPromise) return servicesPromise;
+
+  console.log("[Firebase] Starting service initialization...");
 
   // 3. Create the initialization promise
   servicesPromise = (async () => {
@@ -104,16 +106,16 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
             firestore = initializeFirestore(app, {
               localCache: persistentLocalCache({}),
             });
-            console.log("Firestore persistence enabled");
+            console.log("[Firebase] Firestore persistence enabled");
           } else {
             firestore = initializeFirestore(app, {
               localCache: memoryLocalCache(),
             });
-            console.log("Firestore memory fallback");
+            console.log("[Firebase] Firestore memory fallback (no IDB)");
           }
           firestoreInitialized = true;
         } catch (e: any) {
-          console.warn("Firestore custom initialization failed, falling back to standard getFirestore:", e.message);
+          console.warn("[Firebase] Firestore custom initialization failed, falling back to standard getFirestore:", e.message);
           firestore = getFirestore(app);
           firestoreInitialized = true;
         }
@@ -128,6 +130,7 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
     };
 
     services = finalServices;
+    console.log("[Firebase] Core services established.");
     return finalServices;
   })();
 

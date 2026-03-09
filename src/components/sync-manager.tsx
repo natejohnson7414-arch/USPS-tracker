@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback, useRef } from 'react';
 import { useFirestore, useUser } from '@/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { useTechnician } from '@/hooks/use-technician';
 import { getActiveUploadCount } from '@/firebase/storage';
 
@@ -28,7 +28,6 @@ export function SyncManager() {
     // 1. High-priority Interlock
     const isUploading = getActiveUploadCount() > 0 || (typeof window !== 'undefined' && window.__UPLOAD_IN_PROGRESS__);
     if (!db || !user || !technician || !role || isSyncing.current || !navigator.onLine || isUploading) {
-      if (isUploading) console.log('[SyncManager] yielding to active upload...');
       return;
     }
 
@@ -37,14 +36,16 @@ export function SyncManager() {
     if (isDebug) console.log('[SyncManager] Starting background sync cycle...');
 
     try {
+      // Limit pre-cache to most recent relevant work orders to avoid massive batching
       const q = query(
         collection(db, 'work_orders'), 
-        where('assignedTechnicianId', '==', user.uid)
+        where('assignedTechnicianId', '==', user.uid),
+        limit(20)
       );
       
       const snapshot = await getDocs(q);
       
-      // Process work orders SEQUENTIALLY with delays
+      // Process work orders SEQUENTIALLY with delays to allow main thread UI priority
       for (const woDoc of snapshot.docs) {
         // Re-check interlock inside loop
         const currentUploads = getActiveUploadCount() > 0 || (typeof window !== 'undefined' && window.__UPLOAD_IN_PROGRESS__);
@@ -53,22 +54,20 @@ export function SyncManager() {
         const woId = woDoc.id;
         try {
             await getDocs(collection(db, 'work_orders', woId, 'updates'));
-            await new Promise(resolve => setTimeout(resolve, 800)); // Yield more
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Yield more
             
             await getDocs(collection(db, 'work_orders', woId, 'activities'));
-            await new Promise(resolve => setTimeout(resolve, 800));
+            await new Promise(resolve => setTimeout(resolve, 1000));
         } catch (e) {
             console.warn(`[SyncManager] Skip subcollections for ${woId}:`, e);
         }
       }
       
-      // Cache base registries
+      // Cache base registries sparingly
       if (!window.__UPLOAD_IN_PROGRESS__ && getActiveUploadCount() === 0) {
         await getDocs(collection(db, 'work_sites'));
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
         await getDocs(collection(db, 'clients'));
-        await new Promise(resolve => setTimeout(resolve, 500));
-        await getDocs(collection(db, 'technicians'));
       }
 
       if (isDebug) console.log('[SyncManager] Sync cycle complete.');
@@ -81,8 +80,8 @@ export function SyncManager() {
 
   useEffect(() => {
     if (user && !isProfileLoading && technician && role) {
-      // Start delay: Wait 10 seconds after boot to allow initial renders
-      const initialTimer = setTimeout(performSync, 10000);
+      // Start delay: Wait 15 seconds after boot to allow initial renders
+      const initialTimer = setTimeout(performSync, 15000);
       const interval = setInterval(performSync, 15 * 60 * 1000);
       
       return () => {

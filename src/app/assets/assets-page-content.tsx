@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -38,21 +37,25 @@ export default function AssetsPageContent() {
   const fetchData = useCallback(async () => {
     if (db && user) {
       setIsLoading(true);
-      
-      // Ensure templates are seeded before we attempt operations
-      await seedDatabase(db);
-      
-      const [a, s, l, pwo] = await Promise.all([
-        getAssets(db),
-        getAssetPmSchedules(db),
-        generateLaborForecast(db),
-        getPmWorkOrders(db)
-      ]);
-      setAssets(a);
-      setSchedules(s);
-      setLaborForecast(l);
-      setPmWorkOrders(pwo);
-      setIsLoading(false);
+      try {
+        // Ensure templates are seeded before we attempt operations
+        await seedDatabase(db);
+        
+        const [a, s, l, pwo] = await Promise.all([
+          getAssets(db),
+          getAssetPmSchedules(db),
+          generateLaborForecast(db),
+          getPmWorkOrders(db)
+        ]);
+        setAssets(a);
+        setSchedules(s);
+        setLaborForecast(l);
+        setPmWorkOrders(pwo);
+      } catch (e) {
+        console.error("[Assets] Data fetch failed:", e);
+      } finally {
+        setIsLoading(false);
+      }
     }
   }, [db, user]);
 
