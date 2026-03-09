@@ -66,8 +66,12 @@ export function WorkSiteForm({ site, onFormSaved, onCancel }: WorkSiteFormProps)
             return;
         }
 
-        if(!name || !address) {
-            toast({ title: "Missing Fields", description: "Site Name and Address are required.", variant: 'destructive' });
+        if(!name || !address || !city || !state) {
+            toast({ 
+                title: "Missing Fields", 
+                description: "Site Name, Address, City, and State are required.", 
+                variant: 'destructive' 
+            });
             return;
         }
 
@@ -137,21 +141,21 @@ export function WorkSiteForm({ site, onFormSaved, onCancel }: WorkSiteFormProps)
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                          <div className="space-y-2">
-                            <Label htmlFor="site-name">Site Name</Label>
+                            <Label htmlFor="site-name">Site Name <span className="text-destructive">*</span></Label>
                             <Input id="site-name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g., Downtown Office Building" required />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="address">Street Address</Label>
+                            <Label htmlFor="address">Street Address <span className="text-destructive">*</span></Label>
                             <Input id="address" value={address} onChange={e => setAddress(e.target.value)} placeholder="e.g., 123 Main St" required />
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                              <div className="space-y-2 sm:col-span-2">
-                                <Label htmlFor="city">City</Label>
-                                <Input id="city" value={city} onChange={e => setCity(e.target.value)} />
+                                <Label htmlFor="city">City <span className="text-destructive">*</span></Label>
+                                <Input id="city" value={city} onChange={e => setCity(e.target.value)} required />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="state">State</Label>
-                                <Input id="state" value={state} onChange={e => setState(e.target.value)} />
+                                <Label htmlFor="state">State <span className="text-destructive">*</span></Label>
+                                <Input id="state" value={state} onChange={e => setState(e.target.value)} required />
                             </div>
                         </div>
                         <div className="space-y-2">

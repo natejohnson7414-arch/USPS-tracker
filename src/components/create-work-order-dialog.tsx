@@ -214,8 +214,12 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
   };
 
   const handleCreateNewSite = async () => {
-    if (!db || !newSiteName) {
-        toast({title: "Missing Name", description: "Please provide a name for the new work site.", variant: "destructive"});
+    if (!db || !newSiteName || !extractedAddress || !extractedCity || !extractedState) {
+        toast({
+            title: "Missing Information", 
+            description: "Site Name, Address, City, and State are required for a new site.", 
+            variant: "destructive"
+        });
         return;
     }
     setIsSubmitting(true);
@@ -223,9 +227,9 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
         const workSitesRef = collection(db, 'work_sites');
         const newSiteData: Omit<WorkSite, 'id'> = {
             name: newSiteName,
-            address: extractedAddress || '',
-            city: extractedCity || '', 
-            state: extractedState || '', 
+            address: extractedAddress,
+            city: extractedCity, 
+            state: extractedState, 
             zip: '',
         };
 
@@ -453,7 +457,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
                     </AlertDescription>
                     <div className="mt-4 space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="new-site-name">New Site Name</Label>
+                            <Label htmlFor="new-site-name">New Site Name <span className="text-destructive">*</span></Label>
                             <Input 
                                 id="new-site-name" 
                                 value={newSiteName} 
@@ -461,9 +465,17 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
                                 placeholder="Enter a name for the new site"
                             />
                         </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="new-site-address">Address <span className="text-destructive">*</span></Label>
+                            <Input 
+                                id="new-site-address" 
+                                value={extractedAddress || ''} 
+                                onChange={(e) => setExtractedAddress(e.target.value)}
+                            />
+                        </div>
                          <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="new-site-city">City</Label>
+                                <Label htmlFor="new-site-city">City <span className="text-destructive">*</span></Label>
                                 <Input 
                                     id="new-site-city" 
                                     value={extractedCity || ''} 
@@ -471,7 +483,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
                                 />
                             </div>
                              <div className="space-y-2">
-                                <Label htmlFor="new-site-state">State</Label>
+                                <Label htmlFor="new-site-state">State <span className="text-destructive">*</span></Label>
                                 <Input 
                                     id="new-site-state" 
                                     value={extractedState || ''} 
