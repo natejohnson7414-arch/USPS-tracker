@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
@@ -763,7 +764,7 @@ export default function WorkOrderDetailPage() {
 
        <MapProviderSelection address={selectedAddress} isOpen={!!selectedAddress} onOpenChange={() => setSelectedAddress(null)} />
         <Dialog open={isSignatureDialogOpen} onOpenChange={setIsSignatureDialogOpen}>
-            <DialogContent className="fixed inset-0 z-[100] flex flex-col w-screen h-[100dvh] max-w-none translate-x-0 translate-y-0 border-none bg-background p-0 left-0 top-0">
+            <DialogContent className="fixed inset-0 z-[100] flex flex-col w-screen h-[100dvh] max-w-none translate-x-0 translate-y-0 border-none bg-background p-0 left-0 top-0 [&>button]:h-14 [&>button]:w-14 [&>button>svg]:!h-10 [&>button>svg]:!w-10 [&>button]:opacity-100 [&>button]:bg-muted/50 [&>button]:rounded-full [&>button]:top-4 [&>button]:right-4">
                 <DialogHeader className="sr-only">
                     <DialogTitle>Capture Signature</DialogTitle>
                     <DialogDescription>Use your finger or stylus to provide a signature for this work order.</DialogDescription>
