@@ -1,4 +1,3 @@
-
 'use client';
 
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
@@ -38,7 +37,7 @@ async function isIndexedDbAvailable(): Promise<boolean> {
     const timeout = setTimeout(() => {
       console.warn("[Firebase] IndexedDB check timed out. Falling back to memory.");
       resolve(false);
-    }, 1500);
+    }, 2000);
 
     try {
       const request = indexedDB.open(dbName);
@@ -73,8 +72,7 @@ async function isIndexedDbAvailable(): Promise<boolean> {
 
 /**
  * Initializes Firebase services with a guaranteed completion path.
- * Uses a Promise guard and a boolean flag to handle React Strict Mode 
- * and prevent "Firestore already initialized" errors.
+ * Uses a Promise guard and defensive initialization to handle Next.js HMR.
  */
 export async function initializeFirebase(): Promise<FirebaseServices> {
   // 1. If we already have the services, return them immediately
@@ -83,7 +81,7 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
   // 2. If an initialization is already in progress, return the existing promise
   if (servicesPromise) return servicesPromise;
 
-  console.log("[Firebase] Starting service initialization...");
+  console.log("[Firebase] Starting service initialization sequence...");
 
   // 3. Create the initialization promise
   servicesPromise = (async () => {
@@ -98,6 +96,8 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
       if (isServer) {
         firestore = getFirestore(app);
       } else {
+        // Defensive check: If Firestore is already implicitly initialized, 
+        // we fallback to getFirestore to avoid "already initialized" errors.
         if (firestoreInitialized) {
           firestore = getFirestore(app);
         } else {
@@ -113,11 +113,11 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
               firestore = initializeFirestore(app, {
                 localCache: memoryLocalCache(),
               });
-              console.log("[Firebase] Firestore memory fallback (no IDB)");
+              console.log("[Firebase] Firestore memory fallback (no IDB access)");
             }
             firestoreInitialized = true;
           } catch (e: any) {
-            console.warn("[Firebase] Firestore custom initialization failed, falling back to standard getFirestore:", e.message);
+            console.warn("[Firebase] initializeFirestore failed, falling back to getFirestore:", e.message);
             firestore = getFirestore(app);
             firestoreInitialized = true;
           }
@@ -132,7 +132,7 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
       };
 
       services = finalServices;
-      console.log("[Firebase] Core services established.");
+      console.log("[Firebase] Core services successfully established.");
       return finalServices;
     } catch (error) {
       // CRITICAL: Clear the promise so retries can actually try again

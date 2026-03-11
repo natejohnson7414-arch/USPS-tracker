@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -93,10 +92,12 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
   useEffect(() => {
     if (!firestore) return;
-    // This tracks if the local Firestore cache is currently reconciling with the server
+    
+    // Track snapshots sync state to show status in header
     const unsubscribe = onSnapshotsInSync(firestore, () => {
       setIsSyncing(false);
     });
+    
     return () => unsubscribe();
   }, [firestore]);
 
@@ -107,7 +108,10 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       return;
     }
 
-    setUserAuthState({ user: null, isUserLoading: true, userError: null });
+    // Don't set loading if we already have a user from a previous render (HMR resilience)
+    if (!userAuthState.user) {
+        setUserAuthState(prev => ({ ...prev, isUserLoading: true }));
+    }
 
     const unsubscribe = onAuthStateChanged(
       auth,

@@ -1,10 +1,9 @@
-
 'use client';
 
 import React, { useState, useEffect, type ReactNode, useRef } from 'react';
 import { FirebaseProvider } from '@/firebase/provider';
 import { initializeFirebase, type FirebaseServices } from '@/firebase/init';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface FirebaseClientProviderProps {
@@ -12,7 +11,7 @@ interface FirebaseClientProviderProps {
 }
 
 /**
- * Handles async initialization of Firebase services.
+ * Handles async initialization of Firebase services with robust error recovery.
  */
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
   const [firebaseServices, setFirebaseServices] = useState<FirebaseServices | null>(null);
@@ -27,12 +26,12 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     initStarted.current = true;
 
     const startServices = async () => {
-      console.log("[ClientProvider] Initializing services...");
+      console.log("[ClientProvider] Attempting to connect to database...");
       
-      // Increased timeout to 30s for slow connections
-      const TIMEOUT_MS = 30000;
+      // Increased timeout to 45s for extremely slow/restricted environments
+      const TIMEOUT_MS = 45000;
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Database connection timed out. Please check your network and try again.")), TIMEOUT_MS)
+        setTimeout(() => reject(new Error("The database connection is taking longer than expected. This can happen on restricted networks or during server restarts.")), TIMEOUT_MS)
       );
 
       try {
@@ -42,10 +41,11 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
         ]) as FirebaseServices;
         
         setFirebaseServices(services);
+        setError(null);
       } catch (err: any) {
         console.error("Critical Firebase Client Provider Error:", err);
         setError(err.message || "Failed to establish database connection.");
-        // Reset the ref so a refresh or state change can try again
+        // Allow retry
         initStarted.current = false;
       }
     };
@@ -53,7 +53,7 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     startServices();
   }, []);
 
-  // Prevent server-side rendering of the Firebase context
+  // Prevent server-side rendering mismatch
   if (!hasHydrated) {
     return null;
   }
@@ -65,11 +65,19 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
         <div className="bg-destructive/10 p-6 rounded-full mb-6">
           <AlertCircle className="h-12 w-12 text-destructive" />
         </div>
-        <h1 className="text-xl font-bold mb-2">Service Unavailable</h1>
-        <p className="text-muted-foreground mb-6 max-w-xs text-sm">
+        <h1 className="text-xl font-bold mb-2">Connection Issue</h1>
+        <p className="text-muted-foreground mb-6 max-w-sm text-sm">
           {error}
         </p>
-        <Button onClick={() => window.location.reload()}>Retry Connection</Button>
+        <div className="flex flex-col gap-2 w-full max-w-xs">
+            <Button onClick={() => window.location.reload()} className="w-full">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Retry Connection
+            </Button>
+            <Button variant="ghost" onClick={() => setError(null)} className="w-full text-xs">
+                Dismiss and Wait
+            </Button>
+        </div>
       </div>
     );
   }
@@ -80,6 +88,7 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
         <p className="text-muted-foreground font-medium italic animate-pulse">Establishing local database connection...</p>
+        <p className="text-[10px] text-muted-foreground mt-8 opacity-50 uppercase tracking-widest">Checking persistent storage...</p>
       </div>
     );
   }
