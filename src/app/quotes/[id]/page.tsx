@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -250,7 +251,7 @@ export default function QuoteDetailPage() {
                         <DialogTitle className="text-white text-sm font-bold uppercase tracking-widest">Quote Documentation Preview</DialogTitle>
                         <DialogDescription className="sr-only">High resolution preview of quote documentation</DialogDescription>
                     </DialogHeader>
-                    <div className="flex-1 relative flex items-center justify-center p-4">{viewingPhoto && <Image src={viewingPhoto} alt="Quote photo preview" fill className="object-contain" style={{ width: 'auto', height: 'auto' }} priority />}</div>
+                    <div className="flex-1 relative flex items-center justify-center p-4">{viewingPhoto && <Image src={viewingPhoto} alt="Quote photo preview" fill className="object-contain" priority />}</div>
                     <div className="p-4 bg-background flex justify-between items-center border-t">
                         <Button variant="outline" size="sm" onClick={() => setViewingPhoto(null)}>Close</Button>
                         <div className="flex items-center gap-2">

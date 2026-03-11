@@ -102,6 +102,7 @@ interface WorkOrderAdminDetailsProps {
   setTempOnLeaving: (value: string) => void;
   contactInfo: string;
   setContactInfo: (value: string) => void;
+  onContactInfoUpdate: () => void;
   onAddActivity: (activity: Omit<Activity, 'id' | 'createdDate' | 'workOrderId'>) => void;
   isAddingActivity: boolean;
   onUpdateActivityStatus: (activityId: string, status: Activity['status']) => void;
@@ -607,7 +608,7 @@ export function WorkOrderAdminDetails({
             <DialogDescription className="sr-only">High resolution preview of work order documentation</DialogDescription>
           </DialogHeader>
           <div className="flex-1 relative flex items-center justify-center p-4">
-            {viewingPhoto && <Image src={viewingPhoto.url} alt="High resolution documentation" fill className="object-contain" style={{ width: 'auto', height: 'auto' }} priority />}
+            {viewingPhoto && <Image src={viewingPhoto.url} alt="High resolution documentation" fill className="object-contain" priority />}
           </div>
           <div className="p-4 bg-background flex justify-between items-center border-t">
             <Button variant="outline" size="sm" onClick={() => setViewingPhoto(null)}>Close</Button>
