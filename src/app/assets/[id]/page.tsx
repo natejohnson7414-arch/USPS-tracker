@@ -46,16 +46,20 @@ export default function AssetDetailsPage() {
 
   const fetchAssetData = useCallback(async () => {
     if (db && user && id && id !== 'new') {
-      const [a, s, ls, h] = await Promise.all([
-        getAssetById(db, id as string),
-        getPmSchedulesForAsset(db, id as string),
-        getAssetPmSchedules(db, id as string),
-        getAssetServiceHistory(db, id as string)
-      ]);
-      setAsset(a || null);
-      setSchedules(s);
-      setLegacySchedules(ls);
-      setHistory(h);
+      try {
+        const [a, s, ls, h] = await Promise.all([
+          getAssetById(db, id as string),
+          getPmSchedulesForAsset(db, id as string),
+          getAssetPmSchedules(db, id as string),
+          getAssetServiceHistory(db, id as string)
+        ]);
+        setAsset(a || null);
+        setSchedules(s);
+        setLegacySchedules(ls);
+        setHistory(h);
+      } catch (e) {
+        console.error("Failed to fetch asset data:", e);
+      }
     }
   }, [db, user, id]);
 
@@ -73,17 +77,24 @@ export default function AssetDetailsPage() {
 
     setIsUploadingPhotos(true);
     setPhotoSheetOpen(false);
+    
+    // Sequential upload is more reliable on mobile/workstation networks
+    const uploadedUrls: string[] = [];
     const toastId = toast({ title: `Uploading ${files.length} photo(s)...`, duration: Infinity });
 
     try {
-      const uploadedUrls: string[] = [];
       let i = 0;
       for (const file of Array.from(files)) {
         i++;
         const path = `assets/${asset.assetTag}/${Date.now()}-${file.name}`;
+        
         const { downloadURL } = await uploadImageResumable(file, path, {
           onProgress: (p) => {
-            toastId.update({ id: toastId.id, description: `File ${i}/${files.length}: ${p.pct}%` });
+            toastId.update({ 
+              id: toastId.id, 
+              title: `Uploading ${i}/${files.length}`,
+              description: `File: ${file.name} (${p.pct}%)` 
+            });
           }
         });
         uploadedUrls.push(downloadURL);
@@ -96,10 +107,10 @@ export default function AssetDetailsPage() {
 
       setAsset(prev => prev ? ({ ...prev, photoUrls: [...(prev.photoUrls || []), ...uploadedUrls] } as Asset) : null);
       toastId.dismiss();
-      toast({ title: "Photos Added" });
+      toast({ title: "Photos Added Successfully" });
     } catch (error) {
       toastId.dismiss();
-      toast({ variant: 'destructive', title: 'Upload Failed' });
+      toast({ variant: 'destructive', title: 'Upload Failed', description: 'Check your connection and try again.' });
     } finally {
       setIsUploadingPhotos(false);
       if (event.target) event.target.value = '';
@@ -134,7 +145,7 @@ export default function AssetDetailsPage() {
       {(isUploadingPhotos) && (
         <div className="fixed inset-0 bg-background/80 z-50 flex flex-col items-center justify-center">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="mt-4 text-lg font-medium">Uploading Photos...</p>
+          <p className="mt-4 text-lg font-medium">Processing Photos...</p>
         </div>
       )}
 
@@ -334,6 +345,9 @@ export default function AssetDetailsPage() {
         onScheduleAdded={fetchAssetData}
       />
 
+      <input type="file" ref={takePhotoInputRef} onChange={handlePhotoUpload} className="hidden" accept="image/*" multiple />
+      <input type="file" ref={chooseFromLibraryInputRef} onChange={handlePhotoUpload} className="hidden" accept="image/*" multiple />
+
       <Sheet open={photoSheetOpen} onOpenChange={setPhotoSheetOpen}>
         <SheetContent side="bottom">
           <SheetHeader><SheetTitle>Add Asset Photos</SheetTitle></SheetHeader>
@@ -347,9 +361,6 @@ export default function AssetDetailsPage() {
           </div>
         </SheetContent>
       </Sheet>
-
-      <input type="file" ref={takePhotoInputRef} onChange={handlePhotoUpload} className="hidden" accept="image/*" capture="environment" multiple />
-      <input type="file" ref={chooseFromLibraryInputRef} onChange={handlePhotoUpload} className="hidden" accept="image/*" multiple />
 
       <Dialog open={!!viewingPhoto} onOpenChange={() => setViewingPhoto(null)}>
         <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/95 border-0 flex flex-col items-stretch h-[90vh]">

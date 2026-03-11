@@ -39,29 +39,26 @@ export const uploadImageResumable = async (
   const HARD_TIMEOUT = opts?.timeoutMs || 120000;
   const startTime = Date.now();
 
+  // Always increment count at start of task
+  activeUploadCount++;
+  if (typeof window !== 'undefined') window.__UPLOAD_IN_PROGRESS__ = true;
+
   try {
     const services = await initializeFirebase();
-    const auth = getAuth(services.firebaseApp);
+    const auth = services.auth;
 
-    if (isDebug) console.log(`[UPLOAD] Initializing: ${path}`);
+    if (isDebug) console.log(`[UPLOAD] Starting: ${path}`);
     
-    // Ensure auth state is fully resolved
-    await auth.authStateReady();
-    const user = auth.currentUser;
+    // Quick check for existing user
+    if (!auth.currentUser) {
+      // Give it one short wait
+      await auth.authStateReady();
+    }
 
+    const user = auth.currentUser;
     if (!user) {
-      if (isDebug) console.error("[UPLOAD] Aborted: No authenticated user found at start of task.");
       throw new Error("Authentication required for upload.");
     }
-
-    if (isDebug) {
-      console.log(`[UPLOAD] Auth active for user: ${user.uid}`);
-      console.log(`[UPLOAD] Online status: ${navigator.onLine ? 'YES' : 'NO'}`);
-      console.log(`[UPLOAD] Target Path: ${path}`);
-    }
-
-    activeUploadCount++;
-    if (typeof window !== 'undefined') window.__UPLOAD_IN_PROGRESS__ = true;
 
     const storageRef = ref(services.storage, path);
     const uploadTask = uploadBytesResumable(storageRef, file);
@@ -82,13 +79,13 @@ export const uploadImageResumable = async (
       if (elapsedSinceProgress > STALL_TIMEOUT) {
         clearInterval(watchdog);
         uploadTask.cancel();
-        if (isDebug) console.error(`[UPLOAD] Stalled: No progress for ${STALL_TIMEOUT}ms. Path: ${path}`);
+        if (isDebug) console.error(`[UPLOAD] Stalled: ${path}`);
       }
 
       if (elapsedTotal > HARD_TIMEOUT) {
         clearInterval(watchdog);
         uploadTask.cancel();
-        if (isDebug) console.error(`[UPLOAD] Hard Timeout: Exceeded ${HARD_TIMEOUT}ms for path: ${path}`);
+        if (isDebug) console.error(`[UPLOAD] Hard Timeout: ${path}`);
       }
     }, 5000);
 
@@ -104,7 +101,6 @@ export const uploadImageResumable = async (
               pct
             });
           }
-          if (isDebug) console.log(`[UPLOAD] Progress for ${path}: ${pct}%`);
         },
         (error: StorageError) => {
           clearInterval(watchdog);
@@ -112,12 +108,7 @@ export const uploadImageResumable = async (
           if (activeUploadCount === 0 && typeof window !== 'undefined') {
             window.__UPLOAD_IN_PROGRESS__ = false;
           }
-          if (isDebug) {
-            console.error("[UPLOAD] SDK Error:", error.code, error.message);
-            if (error.code === 'storage/unauthorized') {
-              console.warn("[UPLOAD] 403 Forbidden: Check storage.rules and authentication context.");
-            }
-          }
+          if (isDebug) console.error("[UPLOAD] SDK Error:", error.code);
           reject(error);
         },
         async () => {
@@ -138,7 +129,12 @@ export const uploadImageResumable = async (
     });
 
   } catch (error: any) {
-    if (isDebug) console.error("[UPLOAD] Initialization Exception:", error);
+    // If we failed before the task observer took over, decrement here
+    activeUploadCount = Math.max(0, activeUploadCount - 1);
+    if (activeUploadCount === 0 && typeof window !== 'undefined') {
+      window.__UPLOAD_IN_PROGRESS__ = false;
+    }
+    if (isDebug) console.error("[UPLOAD] Pre-task Exception:", error);
     throw error;
   }
 };
@@ -163,9 +159,6 @@ export const uploadImage = async (
 export const deleteImage = async (imageUrl: string): Promise<void> => {
   try {
     const services = await initializeFirebase();
-    const auth = getAuth(services.firebaseApp);
-    await auth.authStateReady();
-
     const imageRef = ref(services.storage, imageUrl);
     await deleteObject(imageRef);
   } catch (error: any) {

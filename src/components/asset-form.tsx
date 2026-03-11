@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
 import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { uploadImage, deleteImage } from '@/firebase/storage';
+import { uploadImageResumable, deleteImage } from '@/firebase/storage';
 import { collection, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save, Ban, PlusCircle, Trash2, CalendarClock, Wrench, Camera, X } from 'lucide-react';
@@ -203,22 +203,33 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
     if (!files || files.length === 0) return;
 
     setIsUploadingPhotos(true);
-    const toastId = toast({ title: `Uploading ${files.length} photo(s)...` });
+    const toastId = toast({ title: `Uploading ${files.length} photo(s)...`, duration: Infinity });
 
     try {
-      const uploadPromises = Array.from(files).map(file => {
+      const uploadedUrls: string[] = [];
+      let i = 0;
+      for (const file of Array.from(files)) {
+        i++;
         const path = `assets/${formData.assetTag || 'new'}/${Date.now()}-${file.name}`;
-        return uploadImage(file, path);
-      });
+        const { downloadURL } = await uploadImageResumable(file, path, {
+          onProgress: (p) => {
+            toastId.update({ 
+              id: toastId.id, 
+              title: `Uploading ${i}/${files.length}`,
+              description: `${p.pct}% complete` 
+            });
+          }
+        });
+        uploadedUrls.push(downloadURL);
+      }
 
-      const uploadedUrls = await Promise.all(uploadPromises);
       setFormData(prev => ({
         ...prev,
         photoUrls: [...(prev.photoUrls || []), ...uploadedUrls]
       }));
 
       toastId.dismiss();
-      toast({ title: "Photos Uploaded" });
+      toast({ title: "Photos Ready" });
     } catch (error) {
       toastId.dismiss();
       toast({ title: "Upload Failed", variant: "destructive" });
@@ -258,14 +269,14 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
       };
 
       if (asset?.id) {
-        updateDocumentNonBlocking(doc(db, 'assets', asset.id), data);
+        await updateDocumentNonBlocking(doc(db, 'assets', asset.id), data);
         toast({ title: 'Asset Updated' });
       } else {
         const newData = {
           ...data,
           createdAt: new Date().toISOString(),
         };
-        addDocumentNonBlocking(collection(db, 'assets'), newData);
+        await addDocumentNonBlocking(collection(db, 'assets'), newData);
         toast({ title: 'Asset Created' });
       }
 
@@ -351,7 +362,6 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
                 ref={fileInputRef} 
                 multiple 
                 accept="image/*" 
-                capture="environment"
                 className="hidden" 
                 onChange={handlePhotoUpload} 
               />
