@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, type ReactNode, useRef } from 'react';
@@ -26,9 +27,12 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     initStarted.current = true;
 
     const startServices = async () => {
-      // Add a safety timeout for the entire initialization
+      console.log("[ClientProvider] Initializing services...");
+      
+      // Increased timeout to 30s for slow connections
+      const TIMEOUT_MS = 30000;
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Connection attempt timed out.")), 15000)
+        setTimeout(() => reject(new Error("Database connection timed out. Please check your network and try again.")), TIMEOUT_MS)
       );
 
       try {
@@ -41,6 +45,8 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
       } catch (err: any) {
         console.error("Critical Firebase Client Provider Error:", err);
         setError(err.message || "Failed to establish database connection.");
+        // Reset the ref so a refresh or state change can try again
+        initStarted.current = false;
       }
     };
 
@@ -60,8 +66,8 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
           <AlertCircle className="h-12 w-12 text-destructive" />
         </div>
         <h1 className="text-xl font-bold mb-2">Service Unavailable</h1>
-        <p className="text-muted-foreground mb-6 max-w-xs">
-          {error} This may be due to restricted network permissions on your workstation.
+        <p className="text-muted-foreground mb-6 max-w-xs text-sm">
+          {error}
         </p>
         <Button onClick={() => window.location.reload()}>Retry Connection</Button>
       </div>
@@ -73,7 +79,7 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-        <p className="text-muted-foreground font-medium italic">Handshaking with database...</p>
+        <p className="text-muted-foreground font-medium italic animate-pulse">Establishing local database connection...</p>
       </div>
     );
   }

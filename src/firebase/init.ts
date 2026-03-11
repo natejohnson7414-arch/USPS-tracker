@@ -1,3 +1,4 @@
+
 'use client';
 
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
@@ -37,7 +38,7 @@ async function isIndexedDbAvailable(): Promise<boolean> {
     const timeout = setTimeout(() => {
       console.warn("[Firebase] IndexedDB check timed out. Falling back to memory.");
       resolve(false);
-    }, 1000);
+    }, 1500);
 
     try {
       const request = indexedDB.open(dbName);
@@ -86,52 +87,59 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
 
   // 3. Create the initialization promise
   servicesPromise = (async () => {
-    const isServer = typeof window === 'undefined';
-    
-    // Initialize App (Idempotent)
-    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+    try {
+      const isServer = typeof window === 'undefined';
+      
+      // Initialize App (Idempotent)
+      const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-    let firestore: Firestore;
+      let firestore: Firestore;
 
-    if (isServer) {
-      firestore = getFirestore(app);
-    } else {
-      if (firestoreInitialized) {
+      if (isServer) {
         firestore = getFirestore(app);
       } else {
-        try {
-          const idbAvailable = await isIndexedDbAvailable();
-          
-          if (idbAvailable) {
-            firestore = initializeFirestore(app, {
-              localCache: persistentLocalCache({}),
-            });
-            console.log("[Firebase] Firestore persistence enabled");
-          } else {
-            firestore = initializeFirestore(app, {
-              localCache: memoryLocalCache(),
-            });
-            console.log("[Firebase] Firestore memory fallback (no IDB)");
-          }
-          firestoreInitialized = true;
-        } catch (e: any) {
-          console.warn("[Firebase] Firestore custom initialization failed, falling back to standard getFirestore:", e.message);
+        if (firestoreInitialized) {
           firestore = getFirestore(app);
-          firestoreInitialized = true;
+        } else {
+          try {
+            const idbAvailable = await isIndexedDbAvailable();
+            
+            if (idbAvailable) {
+              firestore = initializeFirestore(app, {
+                localCache: persistentLocalCache({}),
+              });
+              console.log("[Firebase] Firestore persistence enabled");
+            } else {
+              firestore = initializeFirestore(app, {
+                localCache: memoryLocalCache(),
+              });
+              console.log("[Firebase] Firestore memory fallback (no IDB)");
+            }
+            firestoreInitialized = true;
+          } catch (e: any) {
+            console.warn("[Firebase] Firestore custom initialization failed, falling back to standard getFirestore:", e.message);
+            firestore = getFirestore(app);
+            firestoreInitialized = true;
+          }
         }
       }
+
+      const finalServices: FirebaseServices = {
+        firebaseApp: app,
+        auth: getAuth(app),
+        firestore,
+        storage: getStorage(app),
+      };
+
+      services = finalServices;
+      console.log("[Firebase] Core services established.");
+      return finalServices;
+    } catch (error) {
+      // CRITICAL: Clear the promise so retries can actually try again
+      servicesPromise = null;
+      console.error("[Firebase] Fatal error during initialization:", error);
+      throw error;
     }
-
-    const finalServices: FirebaseServices = {
-      firebaseApp: app,
-      auth: getAuth(app),
-      firestore,
-      storage: getStorage(app),
-    };
-
-    services = finalServices;
-    console.log("[Firebase] Core services established.");
-    return finalServices;
   })();
 
   return servicesPromise;
