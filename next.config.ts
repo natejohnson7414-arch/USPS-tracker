@@ -19,7 +19,7 @@ const withPWA = require('next-pwa')({
         cacheName: 'pages',
         networkTimeoutSeconds: 3,
         expiration: {
-          maxEntries: 32,
+          maxEntries: 16,
           maxAgeSeconds: 24 * 60 * 60, // 24 hours
         },
       },
@@ -31,7 +31,7 @@ const withPWA = require('next-pwa')({
       options: {
         cacheName: 'next-static-assets',
         expiration: {
-          maxEntries: 128,
+          maxEntries: 64,
           maxAgeSeconds: 24 * 60 * 60 * 30, // 30 days
         },
       },
@@ -43,42 +43,9 @@ const withPWA = require('next-pwa')({
       options: {
         cacheName: 'next-image-assets',
         expiration: {
-          maxEntries: 64,
+          maxEntries: 32,
           maxAgeSeconds: 24 * 60 * 60 * 7, // 7 days
         },
-      },
-    },
-    {
-      // 4. RSC Flight Requests (_rsc query param in Next.js 15)
-      urlPattern: /.*(_rsc|__flight__).*/i,
-      handler: 'StaleWhileRevalidate',
-      options: {
-        cacheName: 'next-rsc-payloads',
-        expiration: {
-          maxEntries: 256,
-          maxAgeSeconds: 24 * 60 * 60 * 1, // 1 day
-        },
-      },
-    },
-    {
-      // 5. General Page Caching (Restricted to same-origin to avoid CORS interference)
-      urlPattern: ({ url }) => url.origin === self.location.origin && url.pathname.startsWith('/'),
-      handler: 'StaleWhileRevalidate',
-      options: {
-        cacheName: 'next-pages',
-        expiration: {
-          maxEntries: 64,
-          maxAgeSeconds: 24 * 60 * 60 * 7, // 7 days
-        },
-      },
-    },
-    {
-      // 6. API Proxy Routes
-      urlPattern: /\/api\/.*/i,
-      handler: 'NetworkFirst',
-      options: {
-        cacheName: 'api-responses',
-        networkTimeoutSeconds: 10,
       },
     },
   ],
