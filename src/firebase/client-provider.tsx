@@ -16,6 +16,7 @@ interface FirebaseClientProviderProps {
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
   const [firebaseServices, setFirebaseServices] = useState<FirebaseServices | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string>("Initializing...");
   const [hasHydrated, setHasHydrated] = useState(false);
   const initStarted = useRef(false);
 
@@ -26,26 +27,27 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     initStarted.current = true;
 
     const startServices = async () => {
-      console.log("[ClientProvider] Attempting to connect to database...");
+      setStatus("Connecting to database...");
       
-      // Increased timeout to 45s for extremely slow/restricted environments
-      const TIMEOUT_MS = 45000;
+      const TIMEOUT_MS = 60000; // Increased to 60s for restricted environments
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error("The database connection is taking longer than expected. This can happen on restricted networks or during server restarts.")), TIMEOUT_MS)
       );
 
       try {
         const services = await Promise.race([
-          initializeFirebase(),
+          initializeFirebase().then(s => {
+            setStatus("Authenticating session...");
+            return s;
+          }),
           timeoutPromise
         ]) as FirebaseServices;
         
         setFirebaseServices(services);
         setError(null);
       } catch (err: any) {
-        console.error("Critical Firebase Client Provider Error:", err);
+        console.error("Firebase Client Provider Error:", err);
         setError(err.message || "Failed to establish database connection.");
-        // Allow retry
         initStarted.current = false;
       }
     };
@@ -53,12 +55,8 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     startServices();
   }, []);
 
-  // Prevent server-side rendering mismatch
-  if (!hasHydrated) {
-    return null;
-  }
+  if (!hasHydrated) return null;
 
-  // Fatal initialization error fallback
   if (error) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 text-center">
@@ -74,21 +72,17 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Retry Connection
             </Button>
-            <Button variant="ghost" onClick={() => setError(null)} className="w-full text-xs">
-                Dismiss and Wait
-            </Button>
         </div>
       </div>
     );
   }
 
-  // Loading state
   if (!firebaseServices) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-        <p className="text-muted-foreground font-medium italic animate-pulse">Establishing local database connection...</p>
-        <p className="text-[10px] text-muted-foreground mt-8 opacity-50 uppercase tracking-widest">Checking persistent storage...</p>
+        <p className="text-muted-foreground font-medium italic animate-pulse">{status}</p>
+        <p className="text-[10px] text-muted-foreground mt-8 opacity-50 uppercase tracking-widest">Checking local storage...</p>
       </div>
     );
   }
