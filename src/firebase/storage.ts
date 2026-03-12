@@ -76,7 +76,6 @@ export const uploadImageResumable = async (
   const isDebug = process.env.NEXT_PUBLIC_DEBUG_UPLOADS === '1';
   const STALL_TIMEOUT = opts?.stallMs || 60000;
   const HARD_TIMEOUT = opts?.timeoutMs || 300000;
-  const startTime = Date.now();
 
   // Lifecycle state to prevent double-decrementing global counters
   let taskFinished = false;
@@ -86,12 +85,19 @@ export const uploadImageResumable = async (
 
   // Wait for auth to be ready
   if (!auth.currentUser) {
-    await auth.authStateReady();
+    try {
+      await Promise.race([
+        auth.authStateReady(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Auth handshake timeout")), 15000))
+      ]);
+    } catch (e) {
+      if (isDebug) console.warn("[UPLOAD] Auth ready check timed out, attempting to proceed.");
+    }
   }
 
   const user = auth.currentUser;
-  if (!user) {
-    throw new Error("Authentication required for upload.");
+  if (!user && isDebug) {
+    console.warn("[UPLOAD] No current user detected before starting upload.");
   }
 
   // Increment counter and block background sync
@@ -108,8 +114,10 @@ export const uploadImageResumable = async (
     }
   };
 
+  const startTime = Date.now();
+
   try {
-    if (isDebug) console.log(`[UPLOAD] Starting: ${path}`);
+    if (isDebug) console.log(`[UPLOAD] Initializing: ${path}`);
     
     const storageRef = ref(services.storage, path);
     const uploadTask = uploadBytesResumable(storageRef, file);
@@ -130,13 +138,13 @@ export const uploadImageResumable = async (
       if (elapsedSinceProgress > STALL_TIMEOUT) {
         clearInterval(watchdog);
         uploadTask.cancel();
-        if (isDebug) console.error(`[UPLOAD] Stalled: ${path}`);
+        if (isDebug) console.error(`[UPLOAD] Stalled: ${path} after ${elapsedSinceProgress}ms`);
       }
 
       if (elapsedTotal > HARD_TIMEOUT) {
         clearInterval(watchdog);
         uploadTask.cancel();
-        if (isDebug) console.error(`[UPLOAD] Hard Timeout: ${path}`);
+        if (isDebug) console.error(`[UPLOAD] Hard Timeout: ${path} after ${elapsedTotal}ms`);
       }
     }, 5000);
 
@@ -156,7 +164,7 @@ export const uploadImageResumable = async (
         (error: StorageError) => {
           clearInterval(watchdog);
           finish();
-          if (isDebug) console.error("[UPLOAD] SDK Error:", error.code);
+          if (isDebug) console.error("[UPLOAD] SDK Error:", error.code, error.message);
           reject(error);
         },
         async () => {
@@ -175,7 +183,7 @@ export const uploadImageResumable = async (
 
   } catch (error: any) {
     finish();
-    if (isDebug) console.error("[UPLOAD] Pre-task Exception:", error);
+    if (isDebug) console.error("[UPLOAD] Exception:", error);
     throw error;
   }
 };

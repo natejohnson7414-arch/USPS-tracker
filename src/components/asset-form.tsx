@@ -226,9 +226,24 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
 
       toastId.dismiss();
       toast({ title: "Photos Ready" });
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Asset form upload failed:", error);
       toastId.dismiss();
-      toast({ title: "Upload Failed", variant: "destructive" });
+      
+      let errorDescription = "Transfer failed. Please check your connection.";
+      if (error.code === 'storage/unauthorized') {
+        errorDescription = "Access denied. Your session may have expired.";
+      } else if (error.code === 'storage/canceled') {
+        errorDescription = "The upload timed out. Try fewer photos at once.";
+      } else if (error.message) {
+        errorDescription = error.message;
+      }
+
+      toast({ 
+        title: "Upload Failed", 
+        variant: "destructive",
+        description: errorDescription
+      });
     } finally {
       setIsUploadingPhotos(false);
       if (fileInputRef.current) fileInputRef.current.value = '';

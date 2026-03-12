@@ -107,9 +107,24 @@ export default function AssetDetailsPage() {
 
       toastId.dismiss();
       toast({ title: "Photos Added Successfully" });
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Asset photo upload failed:", error);
       toastId.dismiss();
-      toast({ variant: 'destructive', title: 'Upload Failed', description: 'Check your connection and try again.' });
+      
+      let errorDescription = "Check your connection and try again.";
+      if (error.code === 'storage/unauthorized') {
+        errorDescription = "Access denied. Please check your session and try again.";
+      } else if (error.code === 'storage/canceled') {
+        errorDescription = "The upload was interrupted or timed out.";
+      } else if (error.message) {
+        errorDescription = error.message;
+      }
+
+      toast({ 
+        variant: 'destructive', 
+        title: 'Upload Failed', 
+        description: errorDescription 
+      });
     } finally {
       setIsUploadingPhotos(false);
       if (event.target) event.target.value = '';
