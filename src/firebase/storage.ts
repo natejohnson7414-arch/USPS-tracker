@@ -1,8 +1,7 @@
 'use client';
 
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject, StorageError } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject, type StorageError } from 'firebase/storage';
 import { initializeFirebase } from './init';
-import { getAuth } from 'firebase/auth';
 import type { PhotoMetadata } from '@/lib/types';
 
 /**
@@ -21,8 +20,8 @@ export interface UploadProgress {
 export interface UploadOptions {
   onProgress?: (p: UploadProgress) => void;
   signal?: AbortSignal;
-  timeoutMs?: number;      // Default 120s
-  stallMs?: number;        // Default 30s
+  timeoutMs?: number;      // Default 300s
+  stallMs?: number;        // Default 60s
 }
 
 /**
@@ -30,12 +29,13 @@ export interface UploadOptions {
  * Produces a compressed JPEG version of the image.
  */
 export async function createThumbnail(file: File | Blob, maxWidth = 400): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous"; // Essential for migration fetching
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  
+  try {
+    return await new Promise((resolve, reject) => {
       img.onload = () => {
+        URL.revokeObjectURL(url);
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
@@ -49,24 +49,19 @@ export async function createThumbnail(file: File | Blob, maxWidth = 400): Promis
         ctx?.drawImage(img, 0, 0, width, height);
         canvas.toBlob((blob) => {
           if (blob) resolve(blob);
-          else reject(new Error('Canvas to Blob failed'));
+          else reject(new Error('Canvas conversion failed'));
         }, 'image/jpeg', 0.7);
       };
-      img.onerror = () => reject(new Error('Image load failed'));
-      if (typeof file === 'string') {
-          img.src = file;
-      } else {
-          img.src = e.target?.result as string;
-      }
-    };
-    reader.onerror = () => reject(new Error('File read failed'));
-    if (file instanceof Blob) {
-        reader.readAsDataURL(file);
-    } else {
-        // Handle case where we might pass a URL string directly to img.src if needed
-        reject(new Error('Invalid file type for thumbnail generation'));
-    }
-  });
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Failed to load image for thumbnail'));
+      };
+      img.src = url;
+    });
+  } catch (err) {
+    URL.revokeObjectURL(url);
+    throw err;
+  }
 }
 
 /**
@@ -79,29 +74,43 @@ export const uploadImageResumable = async (
   opts?: UploadOptions
 ): Promise<{ downloadURL: string; fullPath: string }> => {
   const isDebug = process.env.NEXT_PUBLIC_DEBUG_UPLOADS === '1';
-  const STALL_TIMEOUT = opts?.stallMs || 30000;
-  const HARD_TIMEOUT = opts?.timeoutMs || 120000;
+  const STALL_TIMEOUT = opts?.stallMs || 60000;
+  const HARD_TIMEOUT = opts?.timeoutMs || 300000;
   const startTime = Date.now();
 
-  // Always increment count at start of task
+  // Lifecycle state to prevent double-decrementing global counters
+  let taskFinished = false;
+
+  const services = await initializeFirebase();
+  const auth = services.auth;
+
+  // Wait for auth to be ready
+  if (!auth.currentUser) {
+    await auth.authStateReady();
+  }
+
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("Authentication required for upload.");
+  }
+
+  // Increment counter and block background sync
   activeUploadCount++;
   if (typeof window !== 'undefined') window.__UPLOAD_IN_PROGRESS__ = true;
 
-  try {
-    const services = await initializeFirebase();
-    const auth = services.auth;
+  const finish = () => {
+    if (!taskFinished) {
+      activeUploadCount = Math.max(0, activeUploadCount - 1);
+      if (activeUploadCount === 0 && typeof window !== 'undefined') {
+        window.__UPLOAD_IN_PROGRESS__ = false;
+      }
+      taskFinished = true;
+    }
+  };
 
+  try {
     if (isDebug) console.log(`[UPLOAD] Starting: ${path}`);
     
-    if (!auth.currentUser) {
-      await auth.authStateReady();
-    }
-
-    const user = auth.currentUser;
-    if (!user) {
-      throw new Error("Authentication required for upload.");
-    }
-
     const storageRef = ref(services.storage, path);
     const uploadTask = uploadBytesResumable(storageRef, file);
 
@@ -146,19 +155,13 @@ export const uploadImageResumable = async (
         },
         (error: StorageError) => {
           clearInterval(watchdog);
-          activeUploadCount = Math.max(0, activeUploadCount - 1);
-          if (activeUploadCount === 0 && typeof window !== 'undefined') {
-            window.__UPLOAD_IN_PROGRESS__ = false;
-          }
+          finish();
           if (isDebug) console.error("[UPLOAD] SDK Error:", error.code);
           reject(error);
         },
         async () => {
           clearInterval(watchdog);
-          activeUploadCount = Math.max(0, activeUploadCount - 1);
-          if (activeUploadCount === 0 && typeof window !== 'undefined') {
-            window.__UPLOAD_IN_PROGRESS__ = false;
-          }
+          finish();
           try {
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
             if (isDebug) console.log(`[UPLOAD] Success: ${downloadURL}`);
@@ -171,10 +174,7 @@ export const uploadImageResumable = async (
     });
 
   } catch (error: any) {
-    activeUploadCount = Math.max(0, activeUploadCount - 1);
-    if (activeUploadCount === 0 && typeof window !== 'undefined') {
-      window.__UPLOAD_IN_PROGRESS__ = false;
-    }
+    finish();
     if (isDebug) console.error("[UPLOAD] Pre-task Exception:", error);
     throw error;
   }
@@ -196,12 +196,12 @@ export const uploadPhotoWithThumbnail = async (
   // 1. Upload original
   const { downloadURL: originalUrl } = await uploadImageResumable(file, originalPath, opts);
 
-  // 2. Generate and upload thumbnail
+  // 2. Generate and upload thumbnail (fail gracefully to return original if thumb fails)
   try {
     const thumbBlob = await createThumbnail(file);
     const { downloadURL: thumbnailUrl } = await uploadImageResumable(thumbBlob, thumbnailPath, {
       ...opts,
-      onProgress: undefined // Don't report thumb progress to main UI
+      onProgress: undefined 
     });
     return { url: originalUrl, thumbnailUrl };
   } catch (e) {

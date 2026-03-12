@@ -9,14 +9,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { History, CalendarClock, Settings, Wrench, Clock, Loader2, AlertCircle, Box, PlusCircle, Repeat, ArrowLeft, Camera, Library, Maximize2, Download, Trash2, X, ClipboardCheck, ChevronRight } from 'lucide-react';
+import { History, CalendarClock, Settings, Wrench, Clock, Loader2, AlertCircle, Box, PlusCircle, Repeat, ArrowLeft, Camera, Library, Maximize2, Download, Trash2, X } from 'lucide-react';
 import { useFirestore, updateDocumentNonBlocking, useUser } from '@/firebase';
 import { getAssetById, getAssetPmSchedules, getAssetServiceHistory, calculateAssetMetrics, getPmSchedulesForAsset } from '@/lib/data';
 import type { Asset, AssetPmSchedule, AssetServiceHistory, PmSchedule, PhotoMetadata } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { AddPmScheduleDialog } from '@/components/add-pm-schedule-dialog';
-import { uploadImageResumable, deleteImage, uploadPhotoWithThumbnail, deletePhotoMetadata } from '@/firebase/storage';
+import { uploadPhotoWithThumbnail, deletePhotoMetadata } from '@/firebase/storage';
 import { doc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -31,7 +31,6 @@ export default function AssetDetailsPage() {
   
   const [asset, setAsset] = useState<Asset | null>(null);
   const [schedules, setSchedules] = useState<PmSchedule[]>([]);
-  const [legacySchedules, setLegacySchedules] = useState<AssetPmSchedule[]>([]);
   const [history, setHistory] = useState<AssetServiceHistory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -54,7 +53,6 @@ export default function AssetDetailsPage() {
         ]);
         setAsset(a || null);
         setSchedules(s);
-        setLegacySchedules(ls);
         setHistory(h);
       } catch (e) {
         console.error("Failed to fetch asset data:", e);
@@ -77,32 +75,36 @@ export default function AssetDetailsPage() {
     setIsUploadingPhotos(true);
     setPhotoSheetOpen(false);
     
-    const uploadedResults: PhotoMetadata[] = [];
     const toastId = toast({ title: `Uploading ${files.length} photo(s)...`, duration: Infinity });
 
     try {
       let i = 0;
       for (const file of Array.from(files)) {
         i++;
-        const basePath = `assets/${asset.assetTag}`;
+        const basePath = `assets/${asset.assetTag || asset.id}`;
         const fileName = `${Date.now()}-${file.name}`;
         
         toastId.update({ 
           id: toastId.id, 
           title: `Photo ${i}/${files.length}`,
-          description: `Processing...` 
+          description: `Transferring ${file.name}...` 
         });
 
         const result = await uploadPhotoWithThumbnail(file, basePath, fileName);
-        uploadedResults.push(result);
+        
+        // Save to Firestore sequentially to ensure reliability
+        const assetRef = doc(db, 'assets', asset.id);
+        await updateDocumentNonBlocking(assetRef, {
+          photoUrls: arrayUnion(result)
+        });
+
+        // Update local state sequentially
+        setAsset(prev => prev ? ({ 
+          ...prev, 
+          photoUrls: [...(prev.photoUrls || []), result] 
+        } as Asset) : null);
       }
 
-      const assetRef = doc(db, 'assets', asset.id);
-      await updateDocumentNonBlocking(assetRef, {
-        photoUrls: arrayUnion(...uploadedResults)
-      });
-
-      setAsset(prev => prev ? ({ ...prev, photoUrls: [...(prev.photoUrls || []), ...uploadedResults] } as Asset) : null);
       toastId.dismiss();
       toast({ title: "Photos Added Successfully" });
     } catch (error) {

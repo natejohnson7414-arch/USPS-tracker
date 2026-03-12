@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, Suspense, useMemo, useRef } from 'react';
@@ -8,15 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DatePicker } from '@/components/ui/date-picker';
 import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { uploadImageResumable, deleteImage, uploadPhotoWithThumbnail, deletePhotoMetadata } from '@/firebase/storage';
+import { uploadPhotoWithThumbnail, deletePhotoMetadata } from '@/firebase/storage';
 import { collection, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save, Ban, PlusCircle, Trash2, CalendarClock, Wrench, Camera, X } from 'lucide-react';
-import type { Asset, WorkSite, AssetMaterial, Material, PhotoMetadata } from '@/lib/types';
+import type { Asset, WorkSite, AssetMaterial, PhotoMetadata } from '@/lib/types';
 import { getWorkSites, getMaterials, getAssets } from '@/lib/data';
 import { Separator } from '@/components/ui/separator';
 
@@ -206,7 +203,6 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
     const toastId = toast({ title: `Processing ${files.length} photo(s)...`, duration: Infinity });
 
     try {
-      const uploadedResults: PhotoMetadata[] = [];
       let i = 0;
       for (const file of Array.from(files)) {
         i++;
@@ -216,17 +212,17 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
         toastId.update({ 
           id: toastId.id, 
           title: `Photo ${i}/${files.length}`,
-          description: `Generating thumbnail...` 
+          description: `Transferring ${file.name}...` 
         });
 
         const result = await uploadPhotoWithThumbnail(file, basePath, fileName);
-        uploadedResults.push(result);
+        
+        // Update local form state sequentially
+        setFormData(prev => ({
+          ...prev,
+          photoUrls: [...(prev.photoUrls || []), result]
+        }));
       }
-
-      setFormData(prev => ({
-        ...prev,
-        photoUrls: [...(prev.photoUrls || []), ...uploadedResults]
-      }));
 
       toastId.dismiss();
       toast({ title: "Photos Ready" });
