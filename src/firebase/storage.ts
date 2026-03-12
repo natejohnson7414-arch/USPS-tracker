@@ -1,4 +1,3 @@
-
 'use client';
 
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject, StorageError } from 'firebase/storage';
@@ -30,11 +29,12 @@ export interface UploadOptions {
  * Client-side thumbnail generation using Canvas.
  * Produces a compressed JPEG version of the image.
  */
-async function createThumbnail(file: File | Blob, maxWidth = 400): Promise<Blob> {
+export async function createThumbnail(file: File | Blob, maxWidth = 400): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
+      img.crossOrigin = "anonymous"; // Essential for migration fetching
       img.onload = () => {
         const canvas = document.createElement('canvas');
         let width = img.width;
@@ -53,10 +53,19 @@ async function createThumbnail(file: File | Blob, maxWidth = 400): Promise<Blob>
         }, 'image/jpeg', 0.7);
       };
       img.onerror = () => reject(new Error('Image load failed'));
-      img.src = e.target?.result as string;
+      if (typeof file === 'string') {
+          img.src = file;
+      } else {
+          img.src = e.target?.result as string;
+      }
     };
     reader.onerror = () => reject(new Error('File read failed'));
-    reader.readAsDataURL(file);
+    if (file instanceof Blob) {
+        reader.readAsDataURL(file);
+    } else {
+        // Handle case where we might pass a URL string directly to img.src if needed
+        reject(new Error('Invalid file type for thumbnail generation'));
+    }
   });
 }
 
