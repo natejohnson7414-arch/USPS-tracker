@@ -196,6 +196,9 @@ interface WorkOrderDetailsProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onReplyToAttention?: () => void;
+  onLinkAsset: (assetId: string) => void;
+  onUnlinkAsset: (assetId: string) => void;
+  isLinkingAsset: string | null;
 }
 
 export function WorkOrderDetails({
@@ -238,6 +241,9 @@ export function WorkOrderDetails({
   activeTab,
   setActiveTab,
   onReplyToAttention,
+  onLinkAsset,
+  onUnlinkAsset,
+  isLinkingAsset,
 }: WorkOrderDetailsProps) {
   const db = useFirestore();
   const { user } = useUser();
@@ -259,7 +265,6 @@ export function WorkOrderDetails({
   const [viewingPhoto, setViewingPhoto] = useState<{ url: string, type: 'before' | 'after' | 'receipts' } | null>(null);
 
   const [siteAssets, setSiteAssets] = useState<Asset[]>([]);
-  const [isLinking, setIsLinking] = useState<string | null>(null);
 
   const isCompleted = workOrder.status === 'Completed';
 
@@ -320,26 +325,6 @@ export function WorkOrderDetails({
         setIsReplying(true);
         try { await onReplyToAttention(); } finally { setIsReplying(false); }
     }
-  };
-
-  const handleLinkAsset = async (assetId: string) => {
-    if (!db || isLinking) return;
-    setIsLinking(assetId);
-    try {
-        const woRef = doc(db, 'work_orders', workOrder.id);
-        await updateDocumentNonBlocking(woRef, { assetIds: arrayUnion(assetId) });
-        toast({ title: 'Asset Linked to Job' });
-    } catch (e) { } finally { setIsLinking(null); }
-  };
-
-  const handleUnlinkAsset = async (assetId: string) => {
-    if (!db || isLinking) return;
-    setIsLinking(assetId);
-    try {
-        const woRef = doc(db, 'work_orders', workOrder.id);
-        await updateDocumentNonBlocking(woRef, { assetIds: arrayRemove(assetId) });
-        toast({ title: 'Asset Unlinked' });
-    } catch (e) { } finally { setIsLinking(null); }
   };
   
   const isCurrentUserAssigned = workOrder.assignedTechnicianId === user?.uid;
@@ -547,11 +532,11 @@ export function WorkOrderDetails({
                   <div className="space-y-3">
                     {siteAssets.map(asset => {
                       const isLinked = linkedAssetIds.has(asset.id);
-                      const isL = isLinking === asset.id;
+                      const isL = isLinkingAsset === asset.id;
                       return (
                         <div key={asset.id} className={`flex items-center justify-between p-3 border rounded-lg transition-all ${isLinked ? 'bg-primary/5 border-primary/20 ring-1 ring-primary/10' : 'hover:bg-muted/30'}`}>
                           <div className="flex-1"><div className="flex items-center gap-2"><p className="font-bold">{asset.name}</p><Badge variant="outline" className="font-mono text-[10px]">{asset.assetTag}</Badge>{isLinked && <Badge className="h-5 text-[10px] bg-primary text-primary-foreground">Linked to Job</Badge>}</div><p className="text-xs text-muted-foreground mt-1">{asset.manufacturer} {asset.model} • <span className="capitalize">{asset.status}</span></p></div>
-                          <div className="flex items-center gap-2"><Button asChild variant="ghost" size="icon" className="h-8 w-8" title="View History"><Link href={`/assets/${asset.id}`}><ChevronRight className="h-4 w-4" /></Link></Button>{!isCompleted && <div className="flex items-center gap-2">{isLinked ? <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => handleUnlinkAsset(asset.id)} disabled={!!isLinking}>{isL ? <Loader2 className="h-4 w-4 animate-spin" /> : <><X className="h-4 w-4 mr-1" /> Unlink</>}</Button> : <Button variant="outline" size="sm" className="gap-2" onClick={() => handleLinkAsset(asset.id)} disabled={!!isLinking}>{isL ? <Loader2 className="h-4 w-4 animate-spin" /> : <><LinkIcon className="h-4 w-4" /> Link Asset</>}</Button>}</div>}</div>
+                          <div className="flex items-center gap-2"><Button asChild variant="ghost" size="icon" className="h-8 w-8" title="View History"><Link href={`/assets/${asset.id}`}><ChevronRight className="h-4 w-4" /></Link></Button>{!isCompleted && <div className="flex items-center gap-2">{isLinked ? <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => onUnlinkAsset(asset.id)} disabled={!!isLinkingAsset}>{isL ? <Loader2 className="h-4 w-4 animate-spin" /> : <><X className="h-4 w-4 mr-1" /> Unlink</>}</Button> : <Button variant="outline" size="sm" className="gap-2" onClick={() => onLinkAsset(asset.id)} disabled={!!isLinkingAsset}>{isL ? <Loader2 className="h-4 w-4 animate-spin" /> : <><LinkIcon className="h-4 w-4" /> Link Asset</>}</Button>}</div>}</div>
                         </div>
                       );
                     })}

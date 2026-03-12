@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, ClipboardCheck, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText, Download, AlertCircle, Save, CheckCircle2, Package, ChevronRight, Filter, Receipt, Sparkles, Maximize2 } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, ClipboardCheck, CheckCircle2, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText, Download, AlertCircle, Save, Package, ChevronRight, Filter, Receipt, Sparkles, Maximize2 } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
@@ -116,6 +116,9 @@ interface WorkOrderAdminDetailsProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onClearAttentionStatus?: () => void;
+  onLinkAsset: (assetId: string) => void;
+  onUnlinkAsset: (assetId: string) => void;
+  isLinkingAsset: string | null;
 }
 
 export function WorkOrderAdminDetails({
@@ -157,6 +160,9 @@ export function WorkOrderAdminDetails({
   activeTab,
   setActiveTab,
   onClearAttentionStatus,
+  onLinkAsset,
+  onUnlinkAsset,
+  isLinkingAsset,
 }: WorkOrderAdminDetailsProps) {
   const db = useFirestore();
   const { user } = useUser();
@@ -175,7 +181,6 @@ export function WorkOrderAdminDetails({
   const [viewingPhoto, setViewingPhoto] = useState<{ url: string, type: 'before' | 'after' | 'receipts' } | null>(null);
 
   const [siteAssets, setSiteAssets] = useState<Asset[]>([]);
-  const [isLinking, setIsLinking] = useState<string | null>(null);
 
   const [internalNotes, setInternalNotes] = useState(workOrder.internalNotes || '');
   const [needsAttention, setNeedsAttention] = useState(workOrder.needsAttention || false);
@@ -295,26 +300,6 @@ export function WorkOrderAdminDetails({
   };
 
   const handleClearReplyStatus = async () => { if (onClearAttentionStatus) onClearAttentionStatus(); };
-
-  const handleLinkAsset = async (assetId: string) => {
-    if (!db || isLinking) return;
-    setIsLinking(assetId);
-    try {
-        const woRef = doc(db, 'work_orders', workOrder.id);
-        await updateDocumentNonBlocking(woRef, { assetIds: arrayUnion(assetId) });
-        toast({ title: 'Asset Linked to Job' });
-    } catch (e) { } finally { setIsLinking(null); }
-  };
-
-  const handleUnlinkAsset = async (assetId: string) => {
-    if (!db || isLinking) return;
-    setIsLinking(assetId);
-    try {
-        const woRef = doc(db, 'work_orders', workOrder.id);
-        await updateDocumentNonBlocking(woRef, { assetIds: arrayRemove(assetId) });
-        toast({ title: 'Asset Unlinked' });
-    } catch (e) { } finally { setIsLinking(null); }
-  };
 
   const handleDeletePhotoInViewer = () => {
     if (!viewingPhoto) return;
@@ -463,11 +448,11 @@ export function WorkOrderAdminDetails({
                   <div className="space-y-3">
                     {siteAssets.map(asset => {
                       const isLinked = linkedAssetIds.has(asset.id);
-                      const isLoad = isLinking === asset.id;
+                      const isLoad = isLinkingAsset === asset.id;
                       return (
                         <div key={asset.id} className={`flex items-center justify-between p-3 border rounded-lg transition-all ${isLinked ? 'bg-primary/5 border-primary/20 ring-1 ring-primary/10' : 'hover:bg-muted/30'}`}>
                           <div className="flex-1"><div className="flex items-center gap-2"><p className="font-bold">{asset.name}</p><Badge variant="outline" className="font-mono text-[10px]">{asset.assetTag}</Badge>{isLinked && <Badge className="h-5 text-[10px] bg-primary text-primary-foreground">Linked to Job</Badge>}</div><p className="text-xs text-muted-foreground mt-1">{asset.manufacturer} {asset.model} • {asset.status}</p></div>
-                          <div className="flex items-center gap-2"><Button asChild variant="ghost" size="icon" className="h-8 w-8"><Link href={`/assets/${asset.id}`}><ChevronRight className="h-4 w-4" /></Link></Button>{!isCompleted && <div className="flex items-center gap-2">{isLinked ? <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => handleUnlinkAsset(asset.id)} disabled={!!isLinking}>{isLoad ? <Loader2 className="h-4 w-4 animate-spin" /> : <><X className="h-4 w-4 mr-1" /> Unlink</>}</Button> : <Button variant="outline" size="sm" className="gap-2" onClick={() => handleLinkAsset(asset.id)} disabled={!!isLinking}>{isLoad ? <Loader2 className="h-4 w-4 animate-spin" /> : <><LinkIcon className="h-4 w-4" /> Link Asset</>}</Button>}</div>}</div>
+                          <div className="flex items-center gap-2"><Button asChild variant="ghost" size="icon" className="h-8 w-8"><Link href={`/assets/${asset.id}`}><ChevronRight className="h-4 w-4" /></Link></Button>{!isCompleted && <div className="flex items-center gap-2">{isLinked ? <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => onUnlinkAsset(asset.id)} disabled={!!isLinkingAsset}>{isLoad ? <Loader2 className="h-4 w-4 animate-spin" /> : <><X className="h-4 w-4 mr-1" /> Unlink</>}</Button> : <Button variant="outline" size="sm" className="gap-2" onClick={() => onLinkAsset(asset.id)} disabled={!!isLinkingAsset}>{isLoad ? <Loader2 className="h-4 w-4 animate-spin" /> : <><LinkIcon className="h-4 w-4" /> Link Asset</>}</Button>}</div>}</div>
                         </div>
                       );
                     })}

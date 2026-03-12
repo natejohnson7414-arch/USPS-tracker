@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Ban, Pencil, Save, Printer, Download, Receipt, CheckCircle2, Loader2 } from 'lucide-react';
 import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, ActivityHistoryItem, Quote, HvacStartupReport, FileAttachment, Acknowledgement, PhotoMetadata } from '@/lib/types';
-import { doc, collection, arrayUnion } from 'firebase/firestore';
+import { doc, collection, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImageResumable, deleteImage, uploadPhotoWithThumbnail, deletePhotoMetadata } from '@/firebase/storage';
 import { MapProviderSelection } from '@/components/map-provider-selection';
@@ -66,6 +66,7 @@ export default function WorkOrderDetailPage() {
   const [isAddingActivity, setIsAddingActivity] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isLinkingAsset, setIsLinkingAsset] = useState<string | null>(null);
   
   const [tempOnArrival, setTempOnArrival] = useState('');
   const [tempOnLeaving, setTempOnLeaving] = useState('');
@@ -536,6 +537,53 @@ export default function WorkOrderDetailPage() {
     fetchData();
   };
 
+  const handleLinkAsset = async (assetId: string) => {
+    if (!db || !workOrder || isLinkingAsset) return;
+    setIsLinkingAsset(assetId);
+    try {
+        const woRef = doc(db, 'work_orders', workOrder.id);
+        await updateDocumentNonBlocking(woRef, { assetIds: arrayUnion(assetId) });
+        
+        // Optimistic update
+        setWorkOrder(prev => {
+            if (!prev) return null;
+            const assetIds = prev.assetIds || [];
+            if (!assetIds.includes(assetId)) {
+                return { ...prev, assetIds: [...assetIds, assetId] };
+            }
+            return prev;
+        });
+        
+        toast({ title: 'Asset Linked to Job' });
+    } catch (e) {
+        fetchData();
+    } finally {
+        setIsLinkingAsset(null);
+    }
+  };
+
+  const handleUnlinkAsset = async (assetId: string) => {
+    if (!db || !workOrder || isLinkingAsset) return;
+    setIsLinkingAsset(assetId);
+    try {
+        const woRef = doc(db, 'work_orders', workOrder.id);
+        await updateDocumentNonBlocking(woRef, { assetIds: arrayRemove(assetId) });
+        
+        // Optimistic update
+        setWorkOrder(prev => {
+            if (!prev) return null;
+            const assetIds = prev.assetIds || [];
+            return { ...prev, assetIds: assetIds.filter(id => id !== assetId) };
+        });
+        
+        toast({ title: 'Asset Unlinked' });
+    } catch (e) {
+        fetchData();
+    } finally {
+        setIsLinkingAsset(null);
+    }
+  };
+
   const handleDownloadMedia = async () => {
     if (!workOrder) return;
     setIsDownloading(true);
@@ -766,11 +814,11 @@ export default function WorkOrderDetailPage() {
                  <WorkOrderEditForm workOrder={workOrder} technicians={technicians} workSites={workSites} clients={clients} onFormSaved={handleFormSaved} onCancel={() => setIsEditing(false)} />
             ) : isTechnician ? (
                 <WorkOrderDetails
-                    workOrder={workOrder} isTechnician={isTechnician} isAdmin={isAdmin} trainingRecords={trainingRecords} onTrainingRecordDelete={handleTrainingRecordDelete} hvacReports={hvacReports} onHvacReportDelete={handleHvacReportDelete} timeEntries={timeEntries} activities={activities} quotes={quotes} onTimeEntriesSaved={handleTimeEntriesSaved} onNotePhotoDelete={handleNotePhotoDelete} onNoteDelete={handleNoteDelete} onBeforePhotosAdded={(files) => handlePhotosAdded('before', files)} onAfterPhotosAdded={(files) => handlePhotosAdded('after', files)} onReceiptsAndPackingSlipsAdded={(files) => handlePhotosAdded('receipts', files)} onBeforePhotoDelete={(url) => handlePhotoDeleted('before', url)} onAfterPhotoDelete={(url) => handlePhotoDeleted('after', url)} onReceiptsAndPackingSlipsPhotoDelete={(url) => handlePhotoDeleted('receipts', url)} onTimeEntryDelete={handleTimeEntryDelete} isSavingPhotos={isSavingPhotos} onDirectionsClick={() => workOrder.workSite && handleDirectionsClick(workOrder.workSite)} onSignatureSave={() => setIsSignatureDialogOpen(true)} onTempUpdate={handleTempUpdate} tempOnArrival={tempOnArrival} setTempOnArrival={setTempOnArrival} tempOnLeaving={tempOnLeaving} setTempOnLeaving={setTempOnLeaving} contactInfo={contactInfo} setContactInfo={setContactInfo} onContactInfoUpdate={handleContactInfoUpdate} onAddActivity={handleAddActivity} isAddingActivity={isAddingActivity} onUpdateActivityStatus={handleUpdateActivityStatus} onDeleteActivity={handleDeleteActivity} technicians={technicians} onMarkForReview={handleMarkForReview} isSubmittingReview={isSubmittingReview} onSignatureDelete={handleSignatureDelete} activeTab={activeTab} setActiveTab={setActiveTab} onReplyToAttention={handleReplyToAttention}
+                    workOrder={workOrder} isTechnician={isTechnician} isAdmin={isAdmin} trainingRecords={trainingRecords} onTrainingRecordDelete={handleTrainingRecordDelete} hvacReports={hvacReports} onHvacReportDelete={handleHvacReportDelete} timeEntries={timeEntries} activities={activities} quotes={quotes} onTimeEntriesSaved={handleTimeEntriesSaved} onNotePhotoDelete={handleNotePhotoDelete} onNoteDelete={handleNoteDelete} onBeforePhotosAdded={(files) => handlePhotosAdded('before', files)} onAfterPhotosAdded={(files) => handlePhotosAdded('after', files)} onReceiptsAndPackingSlipsAdded={(files) => handlePhotosAdded('receipts', files)} onBeforePhotoDelete={(url) => handlePhotoDeleted('before', url)} onAfterPhotoDelete={(url) => handlePhotoDeleted('after', url)} onReceiptsAndPackingSlipsPhotoDelete={(url) => handlePhotoDeleted('receipts', url)} onTimeEntryDelete={handleTimeEntryDelete} isSavingPhotos={isSavingPhotos} onDirectionsClick={() => workOrder.workSite && handleDirectionsClick(workOrder.workSite)} onSignatureSave={() => setIsSignatureDialogOpen(true)} onTempUpdate={handleTempUpdate} tempOnArrival={tempOnArrival} setTempOnArrival={setTempOnArrival} tempOnLeaving={tempOnLeaving} setTempOnLeaving={setTempOnLeaving} contactInfo={contactInfo} setContactInfo={setContactInfo} onContactInfoUpdate={handleContactInfoUpdate} onAddActivity={handleAddActivity} isAddingActivity={isAddingActivity} onUpdateActivityStatus={handleUpdateActivityStatus} onDeleteActivity={handleDeleteActivity} technicians={technicians} onMarkForReview={handleMarkForReview} isSubmittingReview={isSubmittingReview} onSignatureDelete={handleSignatureDelete} activeTab={activeTab} setActiveTab={setActiveTab} onReplyToAttention={handleReplyToAttention} onLinkAsset={handleLinkAsset} onUnlinkAsset={handleUnlinkAsset} isLinkingAsset={isLinkingAsset}
                 />
             ) : (
                  <WorkOrderAdminDetails
-                    workOrder={workOrder} assignedTechnician={assignedTechnician} isTechnician={isTechnician} isAdmin={isAdmin} trainingRecords={trainingRecords} onTrainingRecordDelete={handleTrainingRecordDelete} hvacReports={hvacReports} onHvacReportDelete={handleHvacReportDelete} timeEntries={timeEntries} activities={activities} quotes={quotes} onNotePhotoDelete={handleNotePhotoDelete} onNoteDelete={handleNoteDelete} onBeforePhotosAdded={(files) => handlePhotosAdded('before', files)} onAfterPhotosAdded={(files) => handlePhotosAdded('after', files)} onReceiptsAndPackingSlipsAdded={(files) => handlePhotosAdded('receipts', files)} onBeforePhotoDelete={(url) => handlePhotoDeleted('before', url)} onAfterPhotoDelete={(url) => handlePhotoDeleted('after', url)} onReceiptsAndPackingSlipsPhotoDelete={(url) => handlePhotoDeleted('receipts', url)} onTimeEntryDelete={handleTimeEntryDelete} isSavingPhotos={isSavingPhotos} onDirectionsClick={() => workOrder.workSite && handleDirectionsClick(workOrder.workSite)} onSignatureSave={() => setIsSignatureDialogOpen(true)} onTempUpdate={handleTempUpdate} tempOnArrival={tempOnArrival} setTempOnArrival={setTempOnArrival} tempOnLeaving={tempOnLeaving} setTempOnLeaving={setTempOnLeaving} contactInfo={contactInfo} setContactInfo={setContactInfo} onAddActivity={handleAddActivity} isAddingActivity={isAddingActivity} onUpdateActivityStatus={handleUpdateActivityStatus} onDeleteActivity={handleDeleteActivity} technicians={technicians} onFilesUploaded={handleFilesUploaded} onFileDeleted={handleFileDeleted} isUploadingFiles={isUploadingFiles} onSignatureDelete={handleSignatureDelete} activeTab={activeTab} setActiveTab={setActiveTab} onClearAttentionStatus={handleClearReplyStatus}
+                    workOrder={workOrder} assignedTechnician={assignedTechnician} isTechnician={isTechnician} isAdmin={isAdmin} trainingRecords={trainingRecords} onTrainingRecordDelete={handleTrainingRecordDelete} hvacReports={hvacReports} onHvacReportDelete={handleHvacReportDelete} timeEntries={timeEntries} activities={activities} quotes={quotes} onNotePhotoDelete={handleNotePhotoDelete} onNoteDelete={handleNoteDelete} onBeforePhotosAdded={(files) => handlePhotosAdded('before', files)} onAfterPhotosAdded={(files) => handlePhotosAdded('after', files)} onReceiptsAndPackingSlipsAdded={(files) => handlePhotosAdded('receipts', files)} onBeforePhotoDelete={(url) => handlePhotoDeleted('before', url)} onAfterPhotoDelete={(url) => handlePhotoDeleted('after', url)} onReceiptsAndPackingSlipsPhotoDelete={(url) => handlePhotoDeleted('receipts', url)} onTimeEntryDelete={handleTimeEntryDelete} isSavingPhotos={isSavingPhotos} onDirectionsClick={() => workOrder.workSite && handleDirectionsClick(workOrder.workSite)} onSignatureSave={() => setIsSignatureDialogOpen(true)} onTempUpdate={handleTempUpdate} tempOnArrival={tempOnArrival} setTempOnArrival={setTempOnArrival} tempOnLeaving={tempOnLeaving} setTempOnLeaving={setTempOnLeaving} contactInfo={contactInfo} setContactInfo={setContactInfo} onAddActivity={handleAddActivity} isAddingActivity={isAddingActivity} onUpdateActivityStatus={handleUpdateActivityStatus} onDeleteActivity={handleDeleteActivity} technicians={technicians} onFilesUploaded={handleFilesUploaded} onFileDeleted={handleFileDeleted} isUploadingFiles={isUploadingFiles} onSignatureDelete={handleSignatureDelete} activeTab={activeTab} setActiveTab={setActiveTab} onClearAttentionStatus={handleClearReplyStatus} onLinkAsset={handleLinkAsset} onUnlinkAsset={handleUnlinkAsset} isLinkingAsset={isLinkingAsset}
                 />
             )}
         </div>
