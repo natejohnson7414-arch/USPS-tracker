@@ -7,6 +7,11 @@ export type FileAttachment = {
   uploadedAt: string;
 };
 
+export type PhotoMetadata = {
+  url: string;
+  thumbnailUrl?: string;
+};
+
 export type Acknowledgement = {
   name: string;
   signatureUrl: string;
@@ -29,7 +34,7 @@ export type WorkOrderNote = {
   id: string;
   text: string;
   createdAt: string;
-  photoUrls?: string[];
+  photoUrls?: (string | PhotoMetadata)[];
   excludeFromReport?: boolean;
 };
 
@@ -100,9 +105,9 @@ export type WorkOrder = {
   acknowledgements?: Acknowledgement[];
   customerSignatureUrl?: string;
   signatureDate?: string;
-  beforePhotoUrls?: string[];
-  afterPhotoUrls?: string[];
-  receiptsAndPackingSlips?: string[];
+  beforePhotoUrls?: (string | PhotoMetadata)[];
+  afterPhotoUrls?: (string | PhotoMetadata)[];
+  receiptsAndPackingSlips?: (string | PhotoMetadata)[];
   uploadedFiles?: FileAttachment[];
   sourcePdfUrl?: string;
   internalNotes?: string;
@@ -193,7 +198,7 @@ export type Asset = {
   pmMonth?: number;
   customFields?: { [key: string]: string };
   materials?: AssetMaterial[];
-  photoUrls?: string[];
+  photoUrls?: (string | PhotoMetadata)[];
   // Denormalized for display
   siteName?: string;
 };
@@ -263,7 +268,7 @@ export type AssetServiceHistory = {
   notes: string;
   materialsUsed?: any[];
   measurements?: Record<string, any>;
-  photos?: string[];
+  photos?: (string | PhotoMetadata)[];
   followUpRequired?: boolean;
 };
 
@@ -280,7 +285,6 @@ export type TimeEntry = {
   excludeFromReport?: boolean;
 };
 
-// NEW PM SYSTEM TYPES
 export type PmTaskTemplate = {
   id: string;
   name: string;
@@ -302,7 +306,7 @@ export type PmTask = {
   text: string;
   completed: boolean;
   notes: string;
-  photoUrls: string[];
+  photoUrls: (string | PhotoMetadata)[];
 };
 
 export type PmAssetTaskGroup = {
@@ -324,4 +328,38 @@ export type PmWorkOrder = {
   assignedTechnicianId?: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type QuoteLineItem = {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+};
+
+export type Quote = {
+  id: string;
+  quoteNumber: string;
+  status: 'Draft' | 'Sent' | 'Accepted' | 'Rejected' | 'Archived';
+  workOrderId: string;
+  clientId?: string;
+  workSiteId?: string;
+  jobName: string;
+  description: string;
+  modelNumber: string;
+  serialNumber: string;
+  estimatedLabor?: string;
+  materialsNeeded?: string;
+  photos: (string | PhotoMetadata)[];
+  videos: string[];
+  createdDate: string;
+  createdBy_technicianId: string;
+  createdBy_technician?: Technician;
+  client?: Client;
+  workSite?: WorkSite;
+  lineItems: QuoteLineItem[];
+  subtotal: number;
+  tax: number;
+  total: number;
+  adminNotes?: string;
 };

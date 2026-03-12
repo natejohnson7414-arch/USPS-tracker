@@ -20,8 +20,8 @@ import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
 import { useTechnician } from '@/hooks/use-technician';
 import { getQuoteById } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
-import { uploadImageResumable, deleteImage } from '@/firebase/storage';
-import type { Quote, QuoteLineItem } from '@/lib/types';
+import { uploadImageResumable, deleteImage, uploadPhotoWithThumbnail, deletePhotoMetadata } from '@/firebase/storage';
+import type { Quote, QuoteLineItem, PhotoMetadata } from '@/lib/types';
 import { Loader2, ArrowLeft, Trash2, PlusCircle, Video, FileText, Camera, ImageIcon, Maximize2, Download } from 'lucide-react';
 import { doc, arrayUnion } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -100,27 +100,32 @@ export default function QuoteDetailPage() {
         setIsUploadingMedia(true);
         const toastId = toast({ title: `Uploading ${files.length} file(s)...`, duration: Infinity });
         try {
-            const uploadedPhotoUrls: string[] = [];
+            const uploadedPhotoResults: PhotoMetadata[] = [];
             const uploadedVideoUrls: string[] = [];
             let i = 0;
             for (const file of Array.from(files)) {
                 i++;
                 const isVideo = file.type.startsWith('video/');
                 const folder = isVideo ? 'videos' : 'photos';
-                const path = `quotes/${quote.quoteNumber}/${folder}/${Date.now()}-${file.name}`;
+                const basePath = `quotes/${quote.quoteNumber}/${folder}`;
+                const fileName = `${Date.now()}-${file.name}`;
+                
                 toastId.update({ id: toastId.id, description: `File ${i}/${files.length}: Uploading...` });
-                const { downloadURL } = await uploadImageResumable(file, path, {
-                    onProgress: (p) => toastId.update({ id: toastId.id, description: `File ${i}/${files.length}: ${p.pct}%` })
-                });
-                if (isVideo) uploadedVideoUrls.push(downloadURL);
-                else uploadedPhotoUrls.push(downloadURL);
+                
+                if (isVideo) {
+                  const { downloadURL } = await uploadImageResumable(file, `${basePath}/${fileName}`);
+                  uploadedVideoUrls.push(downloadURL);
+                } else {
+                  const result = await uploadPhotoWithThumbnail(file, basePath, fileName);
+                  uploadedPhotoResults.push(result);
+                }
             }
             const quoteRef = doc(db, 'quotes', quote.id);
             const updateData: any = {};
-            if (uploadedPhotoUrls.length > 0) updateData.photos = arrayUnion(...uploadedPhotoUrls);
+            if (uploadedPhotoResults.length > 0) updateData.photos = arrayUnion(...uploadedPhotoResults);
             if (uploadedVideoUrls.length > 0) updateData.videos = arrayUnion(...uploadedVideoUrls);
             await updateDocumentNonBlocking(quoteRef, updateData);
-            setQuote(prev => prev ? ({ ...prev, photos: [...(prev.photos || []), ...uploadedPhotoUrls], videos: [...(prev.videos || []), ...uploadedVideoUrls] } as Quote) : null);
+            setQuote(prev => prev ? ({ ...prev, photos: [...(prev.photos || []), ...uploadedPhotoResults], videos: [...(prev.videos || []), ...uploadedVideoUrls] } as Quote) : null);
             toastId.dismiss();
             toast({ title: "Media Added" });
         } catch (error: any) { toastId.dismiss(); toast({ variant: "destructive", title: "Upload Failed" }); } finally {
@@ -129,14 +134,24 @@ export default function QuoteDetailPage() {
         }
     };
 
-    const handleMediaDelete = async (url: string, type: 'photo' | 'video') => {
+    const handleMediaDelete = async (photoOrUrl: string | PhotoMetadata, type: 'photo' | 'video') => {
         if (!db || !quote) return;
         const field = type === 'photo' ? 'photos' : 'videos';
-        const updatedList = (quote[field] || []).filter(u => u !== url);
+        const targetUrl = typeof photoOrUrl === 'string' ? photoOrUrl : photoOrUrl.url;
+        
+        const updatedList = (quote[field] as any[]).filter(p => {
+          const url = typeof p === 'string' ? p : p.url;
+          return url !== targetUrl;
+        });
+
         try {
             const quoteRef = doc(db, 'quotes', quote.id);
             await updateDocumentNonBlocking(quoteRef, { [field]: updatedList });
-            await deleteImage(url);
+            if (type === 'photo') {
+              await deletePhotoMetadata(photoOrUrl as PhotoMetadata);
+            } else {
+              await deleteImage(photoOrUrl as string);
+            }
             setQuote(prev => prev ? ({ ...prev, [field]: updatedList } as Quote) : null);
             toast({ title: "Media Deleted" });
         } catch (error) { toast({ title: "Delete Failed", variant: 'destructive' }); }
@@ -147,6 +162,9 @@ export default function QuoteDetailPage() {
 
     const isAdmin = role?.name === 'Administrator';
     const isCompleted = quote.status === 'Accepted' || quote.status === 'Archived';
+
+    const getThumbUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.thumbnailUrl || p.url;
+    const getPhotoUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.url;
 
     return (
         <MainLayout>
@@ -194,9 +212,9 @@ export default function QuoteDetailPage() {
                                     <div className="flex items-center justify-between"><h3 className="font-bold flex items-center gap-2"><ImageIcon className="h-4 w-4" /> Quote Media</h3>{!isCompleted && <div><input type="file" ref={mediaInputRef} multiple accept="image/*,video/*" className="hidden" onChange={handleMediaUpload} /><Button size="sm" variant="outline" onClick={() => mediaInputRef.current?.click()} disabled={isUploadingMedia}>{isUploadingMedia ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}Add Photos/Video</Button></div>}</div>
                                     {quote.photos && quote.photos.length > 0 && (
                                         <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
-                                            {quote.photos.map((url, i) => (
-                                                <div key={i} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto(url)}>
-                                                    <Image src={url} alt={`Quote photo ${i+1}`} fill className="object-cover" sizes="(max-width: 768px) 25vw, 12vw" />
+                                            {quote.photos.map((photo, i) => (
+                                                <div key={getPhotoUrl(photo)} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto(getPhotoUrl(photo))}>
+                                                    <Image src={getThumbUrl(photo)} alt={`Quote photo ${i+1}`} fill sizes="(max-width: 768px) 25vw, 12vw" className="object-cover" />
                                                     <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Maximize2 className="text-white h-5 w-5" /></div>
                                                 </div>
                                             ))}
@@ -256,7 +274,15 @@ export default function QuoteDetailPage() {
                         <Button variant="outline" size="sm" onClick={() => setViewingPhoto(null)}>Close</Button>
                         <div className="flex items-center gap-2">
                             {viewingPhoto && <Button variant="outline" size="sm" asChild><a href={`/api/image-proxy?url=${encodeURIComponent(viewingPhoto)}`} download><Download className="h-4 w-4 mr-2" /> Download</a></Button>}
-                            {!isCompleted && viewingPhoto && <Button variant="destructive" size="sm" onClick={() => { handleMediaDelete(viewingPhoto, 'photo'); setViewingPhoto(null); }}><Trash2 className="h-4 w-4 mr-2" /> Delete Documentation</Button>}
+                            {!isCompleted && viewingPhoto && (
+                              <Button variant="destructive" size="sm" onClick={() => { 
+                                const p = quote.photos.find(p => (typeof p === 'string' ? p : p.url) === viewingPhoto);
+                                if (p) handleMediaDelete(p, 'photo'); 
+                                setViewingPhoto(null); 
+                              }}>
+                                <Trash2 className="h-4 w-4 mr-2" /> Delete Documentation
+                              </Button>
+                            )}
                         </div>
                     </div>
                 </DialogContent>

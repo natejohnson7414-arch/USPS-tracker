@@ -9,15 +9,14 @@ import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { History, CalendarClock, Settings, Wrench, Clock, Loader2, AlertCircle, Box, PlusCircle, Repeat, ArrowLeft, Camera, Library, Maximize2, Download, Trash2, X, ClipboardCheck, ChevronRight } from 'lucide-react';
 import { useFirestore, updateDocumentNonBlocking, useUser } from '@/firebase';
 import { getAssetById, getAssetPmSchedules, getAssetServiceHistory, calculateAssetMetrics, getPmSchedulesForAsset } from '@/lib/data';
-import type { Asset, AssetPmSchedule, AssetServiceHistory, PmSchedule } from '@/lib/types';
+import type { Asset, AssetPmSchedule, AssetServiceHistory, PmSchedule, PhotoMetadata } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { AddPmScheduleDialog } from '@/components/add-pm-schedule-dialog';
-import { uploadImageResumable, deleteImage } from '@/firebase/storage';
+import { uploadImageResumable, deleteImage, uploadPhotoWithThumbnail, deletePhotoMetadata } from '@/firebase/storage';
 import { doc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -37,7 +36,7 @@ export default function AssetDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
-  const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
+  const [viewingPhoto, setViewingPhoto] = useState<PhotoMetadata | null>(null);
   const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
   const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
 
@@ -78,34 +77,32 @@ export default function AssetDetailsPage() {
     setIsUploadingPhotos(true);
     setPhotoSheetOpen(false);
     
-    // Sequential upload is more reliable on mobile/workstation networks
-    const uploadedUrls: string[] = [];
+    const uploadedResults: PhotoMetadata[] = [];
     const toastId = toast({ title: `Uploading ${files.length} photo(s)...`, duration: Infinity });
 
     try {
       let i = 0;
       for (const file of Array.from(files)) {
         i++;
-        const path = `assets/${asset.assetTag}/${Date.now()}-${file.name}`;
+        const basePath = `assets/${asset.assetTag}`;
+        const fileName = `${Date.now()}-${file.name}`;
         
-        const { downloadURL } = await uploadImageResumable(file, path, {
-          onProgress: (p) => {
-            toastId.update({ 
-              id: toastId.id, 
-              title: `Uploading ${i}/${files.length}`,
-              description: `File: ${file.name} (${p.pct}%)` 
-            });
-          }
+        toastId.update({ 
+          id: toastId.id, 
+          title: `Photo ${i}/${files.length}`,
+          description: `Processing...` 
         });
-        uploadedUrls.push(downloadURL);
+
+        const result = await uploadPhotoWithThumbnail(file, basePath, fileName);
+        uploadedResults.push(result);
       }
 
       const assetRef = doc(db, 'assets', asset.id);
       await updateDocumentNonBlocking(assetRef, {
-        photoUrls: arrayUnion(...uploadedUrls)
+        photoUrls: arrayUnion(...uploadedResults)
       });
 
-      setAsset(prev => prev ? ({ ...prev, photoUrls: [...(prev.photoUrls || []), ...uploadedUrls] } as Asset) : null);
+      setAsset(prev => prev ? ({ ...prev, photoUrls: [...(prev.photoUrls || []), ...uploadedResults] } as Asset) : null);
       toastId.dismiss();
       toast({ title: "Photos Added Successfully" });
     } catch (error) {
@@ -119,16 +116,22 @@ export default function AssetDetailsPage() {
 
   const handleDeletePhoto = async () => {
     if (!viewingPhoto || !db || !asset) return;
-    const urlToDelete = viewingPhoto;
+    const photoToDelete = viewingPhoto;
     setViewingPhoto(null);
 
     try {
       const assetRef = doc(db, 'assets', asset.id);
       await updateDocumentNonBlocking(assetRef, {
-        photoUrls: arrayRemove(urlToDelete)
+        photoUrls: arrayRemove(photoToDelete)
       });
-      await deleteImage(urlToDelete);
-      setAsset(prev => prev ? ({ ...prev, photoUrls: (prev.photoUrls || []).filter(u => u !== urlToDelete) } as Asset) : null);
+      await deletePhotoMetadata(photoToDelete);
+      
+      const targetUrl = typeof photoToDelete === 'string' ? photoToDelete : photoToDelete.url;
+      setAsset(prev => prev ? ({ 
+        ...prev, 
+        photoUrls: (prev.photoUrls || []).filter(p => (typeof p === 'string' ? p : p.url) !== targetUrl) 
+      } as Asset) : null);
+      
       toast({ title: "Photo Deleted" });
     } catch (error) {
       toast({ title: "Delete Failed", variant: 'destructive' });
@@ -139,6 +142,9 @@ export default function AssetDetailsPage() {
   if (!asset) return <MainLayout><div className="container py-12 text-center"><AlertCircle className="h-12 w-12 mx-auto mb-4 text-destructive" /><h1 className="text-2xl font-bold">Asset Not Found</h1></div></MainLayout>;
 
   const metrics = calculateAssetMetrics(history);
+
+  const getPhotoUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.url;
+  const getThumbUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.thumbnailUrl || p.url;
 
   return (
     <MainLayout>
@@ -280,10 +286,10 @@ export default function AssetDetailsPage() {
                   <CardContent>
                     {asset.photoUrls && asset.photoUrls.length > 0 ? (
                       <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
-                        {asset.photoUrls.map((url, idx) => (
-                          <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto(url)}>
+                        {asset.photoUrls.map((photo, idx) => (
+                          <div key={getPhotoUrl(photo)} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto(typeof photo === 'string' ? { url: photo } : photo)}>
                             <Image 
-                              src={url} 
+                              src={getThumbUrl(photo)} 
                               alt={`Asset photo ${idx + 1}`} 
                               fill 
                               sizes="(max-width: 768px) 25vw, 12vw"
@@ -369,14 +375,14 @@ export default function AssetDetailsPage() {
             <DialogDescription className="sr-only">High resolution preview of asset documentation</DialogDescription>
           </DialogHeader>
           <div className="flex-1 relative flex items-center justify-center p-4">
-            {viewingPhoto && <Image src={viewingPhoto} alt="Asset photo preview" fill className="object-contain" priority />}
+            {viewingPhoto && <Image src={viewingPhoto.url} alt="Asset photo preview" fill className="object-contain" priority />}
           </div>
           <div className="p-4 bg-background flex justify-between items-center border-t">
             <Button variant="outline" size="sm" onClick={() => setViewingPhoto(null)}>Close</Button>
             <div className="flex items-center gap-2">
               {viewingPhoto && (
                 <Button variant="outline" size="sm" asChild>
-                  <a href={`/api/image-proxy?url=${encodeURIComponent(viewingPhoto)}`} download>
+                  <a href={`/api/image-proxy?url=${encodeURIComponent(viewingPhoto.url)}`} download>
                     <Download className="h-4 w-4 mr-2" /> Download
                   </a>
                 </Button>

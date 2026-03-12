@@ -4,6 +4,7 @@
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject, StorageError } from 'firebase/storage';
 import { initializeFirebase } from './init';
 import { getAuth } from 'firebase/auth';
+import type { PhotoMetadata } from '@/lib/types';
 
 /**
  * Global counter for active uploads to allow background services (like SyncManager)
@@ -23,6 +24,40 @@ export interface UploadOptions {
   signal?: AbortSignal;
   timeoutMs?: number;      // Default 120s
   stallMs?: number;        // Default 30s
+}
+
+/**
+ * Client-side thumbnail generation using Canvas.
+ * Produces a compressed JPEG version of the image.
+ */
+async function createThumbnail(file: File | Blob, maxWidth = 400): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error('Canvas to Blob failed'));
+        }, 'image/jpeg', 0.7);
+      };
+      img.onerror = () => reject(new Error('Image load failed'));
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error('File read failed'));
+    reader.readAsDataURL(file);
+  });
 }
 
 /**
@@ -49,9 +84,7 @@ export const uploadImageResumable = async (
 
     if (isDebug) console.log(`[UPLOAD] Starting: ${path}`);
     
-    // Quick check for existing user
     if (!auth.currentUser) {
-      // Give it one short wait
       await auth.authStateReady();
     }
 
@@ -129,13 +162,42 @@ export const uploadImageResumable = async (
     });
 
   } catch (error: any) {
-    // If we failed before the task observer took over, decrement here
     activeUploadCount = Math.max(0, activeUploadCount - 1);
     if (activeUploadCount === 0 && typeof window !== 'undefined') {
       window.__UPLOAD_IN_PROGRESS__ = false;
     }
     if (isDebug) console.error("[UPLOAD] Pre-task Exception:", error);
     throw error;
+  }
+};
+
+/**
+ * Uploads a photo and automatically generates/uploads a thumbnail.
+ * Returns both URLs.
+ */
+export const uploadPhotoWithThumbnail = async (
+  file: File | Blob,
+  basePath: string,
+  fileName: string,
+  opts?: UploadOptions
+): Promise<PhotoMetadata> => {
+  const originalPath = `${basePath}/${fileName}`;
+  const thumbnailPath = `${basePath}/thumbnails/${fileName}`;
+
+  // 1. Upload original
+  const { downloadURL: originalUrl } = await uploadImageResumable(file, originalPath, opts);
+
+  // 2. Generate and upload thumbnail
+  try {
+    const thumbBlob = await createThumbnail(file);
+    const { downloadURL: thumbnailUrl } = await uploadImageResumable(thumbBlob, thumbnailPath, {
+      ...opts,
+      onProgress: undefined // Don't report thumb progress to main UI
+    });
+    return { url: originalUrl, thumbnailUrl };
+  } catch (e) {
+    console.warn("[UPLOAD] Thumbnail generation failed, using original only:", e);
+    return { url: originalUrl };
   }
 };
 
@@ -164,5 +226,19 @@ export const deleteImage = async (imageUrl: string): Promise<void> => {
   } catch (error: any) {
     if (error.code === 'storage/object-not-found') return;
     throw error;
+  }
+};
+
+/**
+ * Helper to delete both original and thumbnail if possible.
+ */
+export const deletePhotoMetadata = async (photo: string | PhotoMetadata): Promise<void> => {
+  if (typeof photo === 'string') {
+    await deleteImage(photo);
+  } else {
+    await deleteImage(photo.url);
+    if (photo.thumbnailUrl) {
+      await deleteImage(photo.thumbnailUrl);
+    }
   }
 };

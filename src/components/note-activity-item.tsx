@@ -1,9 +1,10 @@
+
 'use client';
 
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { format } from 'date-fns';
-import type { WorkOrderNote } from '@/lib/types';
+import type { WorkOrderNote, PhotoMetadata } from '@/lib/types';
 import { Button } from './ui/button';
 import { Trash2, FileText, FileX, Maximize2, Download } from 'lucide-react';
 import { Badge } from './ui/badge';
@@ -11,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 
 interface NoteActivityItemProps {
   note: WorkOrderNote;
-  onPhotoDelete?: (noteId: string, photoUrl: string) => void;
+  onPhotoDelete?: (noteId: string, photo: string | PhotoMetadata) => void;
   onNoteDelete?: (noteId: string) => void;
   showPhotos?: boolean;
   isAdmin?: boolean;
@@ -27,6 +28,9 @@ export const NoteActivityItem = React.memo(({
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
   const isValidDate = note.createdAt && !isNaN(new Date(note.createdAt).getTime());
   const isExcluded = note.excludeFromReport || false;
+
+  const getPhotoUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.url;
+  const getThumbUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.thumbnailUrl || p.url;
 
   return (
     <div className="space-y-3 relative border-b pb-4 last:border-0 last:pb-0">
@@ -56,9 +60,9 @@ export const NoteActivityItem = React.memo(({
       </div>
       {showPhotos && note.photoUrls && note.photoUrls.length > 0 && (
         <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
-          {note.photoUrls.map((url, index) => (
-            <div key={index} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto(url)}>
-              <Image src={url} alt={`Work photo ${index + 1}`} fill sizes="(max-width: 768px) 25vw, 12vw" className="object-cover" />
+          {note.photoUrls.map((photo, index) => (
+            <div key={getPhotoUrl(photo)} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto(getPhotoUrl(photo))}>
+              <Image src={getThumbUrl(photo)} alt={`Work photo ${index + 1}`} fill sizes="(max-width: 768px) 25vw, 12vw" className="object-cover" />
               <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Maximize2 className="text-white h-5 w-5" /></div>
             </div>
           ))}
@@ -73,7 +77,15 @@ export const NoteActivityItem = React.memo(({
             <Button variant="outline" size="sm" onClick={() => setViewingPhoto(null)}>Close</Button>
             <div className="flex items-center gap-2">
                 {viewingPhoto && <Button variant="outline" size="sm" asChild><a href={`/api/image-proxy?url=${encodeURIComponent(viewingPhoto)}`} download><Download className="h-4 w-4 mr-2" /> Download</a></Button>}
-                {onPhotoDelete && viewingPhoto && <Button variant="destructive" size="sm" onClick={() => { onPhotoDelete(note.id, viewingPhoto); setViewingPhoto(null); }}><Trash2 className="h-4 w-4 mr-2" /> Delete Documentation</Button>}
+                {onPhotoDelete && viewingPhoto && (
+                  <Button variant="destructive" size="sm" onClick={() => { 
+                    const p = note.photoUrls?.find(p => (typeof p === 'string' ? p : p.url) === viewingPhoto);
+                    if (p) onPhotoDelete(note.id, p); 
+                    setViewingPhoto(null); 
+                  }}>
+                    <Trash2 className="h-4 w-4 mr-2" /> Delete Documentation
+                  </Button>
+                )}
             </div>
           </div>
         </DialogContent>

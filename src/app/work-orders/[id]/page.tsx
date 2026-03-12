@@ -11,10 +11,10 @@ import { WorkOrderAdminDetails } from '@/components/work-order-admin-details';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Ban, Pencil, Save, Printer, Download, Receipt, CheckCircle2, Loader2 } from 'lucide-react';
 import { useFirestore, useUser, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, ActivityHistoryItem, Quote, HvacStartupReport, FileAttachment, Acknowledgement } from '@/lib/types';
+import type { WorkOrder, Technician, WorkOrderNote, WorkSite, Client, TrainingRecord, TimeEntry, Activity, ActivityHistoryItem, Quote, HvacStartupReport, FileAttachment, Acknowledgement, PhotoMetadata } from '@/lib/types';
 import { doc, collection, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { uploadImageResumable, deleteImage } from '@/firebase/storage';
+import { uploadImageResumable, deleteImage, uploadPhotoWithThumbnail, deletePhotoMetadata } from '@/firebase/storage';
 import { MapProviderSelection } from '@/components/map-provider-selection';
 import {
   Dialog,
@@ -168,26 +168,30 @@ export default function WorkOrderDetailPage() {
     const toastId = toast({ title: `Preparing ${files.length} photo(s)...`, duration: Infinity });
 
     try {
-      const uploadedUrls: string[] = [];
+      const uploadedResults: PhotoMetadata[] = [];
       let i = 0;
 
       for (const file of files) {
         i++;
-        const uploadPath = `work-orders/${workOrder.id}/${type}/${Date.now()}-${file.name}`;
-        activeUploadsRef.current.add(uploadPath);
+        const basePath = `work-orders/${workOrder.id}/${type}`;
+        const fileName = `${Date.now()}-${file.name}`;
+        
+        toastId.update({ 
+          id: toastId.id, 
+          title: `Photo ${i}/${files.length}`, 
+          description: `Generating and uploading thumbnail...` 
+        });
 
-        const { downloadURL } = await uploadImageResumable(file, uploadPath, {
+        const result = await uploadPhotoWithThumbnail(file, basePath, fileName, {
           onProgress: (p) => {
             toastId.update({ 
               id: toastId.id, 
-              title: `Photo ${i}/${files.length}`, 
-              description: `Uploading... ${p.pct}%` 
+              description: `Uploading original... ${p.pct}%` 
             });
           }
         });
         
-        uploadedUrls.push(downloadURL);
-        activeUploadsRef.current.delete(uploadPath);
+        uploadedResults.push(result);
       }
 
       let fieldToUpdate: 'beforePhotoUrls' | 'afterPhotoUrls' | 'receiptsAndPackingSlips';
@@ -195,14 +199,14 @@ export default function WorkOrderDetailPage() {
       else if (type === 'after') fieldToUpdate = 'afterPhotoUrls';
       else fieldToUpdate = 'receiptsAndPackingSlips';
 
-      const currentUrls = workOrder[fieldToUpdate] || [];
-      const newUrls = [...currentUrls, ...uploadedUrls];
+      const currentPhotos = workOrder[fieldToUpdate] || [];
+      const newPhotos = [...currentPhotos, ...uploadedResults];
 
       await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), {
-        [fieldToUpdate]: newUrls,
+        [fieldToUpdate]: newPhotos,
       });
 
-      setWorkOrder(prev => prev ? { ...prev, [fieldToUpdate]: newUrls } : null);
+      setWorkOrder(prev => prev ? { ...prev, [fieldToUpdate]: newPhotos } : null);
       
       toastId.dismiss();
       toast({ title: "Photos Saved", description: `${files.length} photo(s) added successfully.` });
@@ -212,14 +216,14 @@ export default function WorkOrderDetailPage() {
       toast({ 
         variant: "destructive", 
         title: "Upload Interrupted", 
-        description: error.code === 'storage/canceled' ? "The upload was cancelled or timed out." : "Please check your signal and try again." 
+        description: "Please check your signal and try again." 
       });
     } finally {
       setIsSavingPhotos(false);
     }
   };
 
-  const handlePhotoDeleted = async (type: 'before' | 'after' | 'receipts', urlToDelete: string) => {
+  const handlePhotoDeleted = async (type: 'before' | 'after' | 'receipts', photoToDelete: string | PhotoMetadata) => {
     if (!db || !workOrder) return;
 
     let fieldToUpdate: 'beforePhotoUrls' | 'afterPhotoUrls' | 'receiptsAndPackingSlips';
@@ -227,14 +231,19 @@ export default function WorkOrderDetailPage() {
     else if (type === 'after') fieldToUpdate = 'afterPhotoUrls';
     else fieldToUpdate = 'receiptsAndPackingSlips';
 
-    const currentUrls = workOrder[fieldToUpdate] || [];
-    const newUrls = currentUrls.filter(url => url !== urlToDelete);
+    const targetUrl = typeof photoToDelete === 'string' ? photoToDelete : photoToDelete.url;
+    const currentPhotos = workOrder[fieldToUpdate] || [];
+    
+    const newPhotos = currentPhotos.filter(p => {
+      const url = typeof p === 'string' ? p : p.url;
+      return url !== targetUrl;
+    });
 
-    setWorkOrder(prev => prev ? { ...prev, [fieldToUpdate]: newUrls } : null);
+    setWorkOrder(prev => prev ? { ...prev, [fieldToUpdate]: newPhotos } : null);
 
     try {
-        await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { [fieldToUpdate]: newUrls });
-        await deleteImage(urlToDelete);
+        await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { [fieldToUpdate]: newPhotos });
+        await deletePhotoMetadata(photoToDelete);
         toast({ title: "Photo Deleted" });
     } catch(error) {
         fetchData();
@@ -407,21 +416,26 @@ export default function WorkOrderDetailPage() {
     }
   };
   
-   const handleNotePhotoDelete = async (noteId: string, photoUrl: string) => {
+   const handleNotePhotoDelete = async (noteId: string, photoToDelete: string | PhotoMetadata) => {
     if (!db || !workOrder) return;
     
     const noteRef = doc(db, 'work_orders', workOrder.id, 'updates', noteId);
-    
+    const targetUrl = typeof photoToDelete === 'string' ? photoToDelete : photoToDelete.url;
+
     const updatedNotes = workOrder.notes.map(note => {
       if (note.id === noteId) {
-        return { ...note, photoUrls: note.photoUrls?.filter(url => url !== photoUrl) };
+        return { 
+          ...note, 
+          photoUrls: (note.photoUrls || []).filter(p => (typeof p === 'string' ? p : p.url) !== targetUrl) 
+        };
       }
       return note;
     });
+    
     setWorkOrder(prev => prev ? { ...prev, notes: updatedNotes } : null);
 
     try {
-        await deleteImage(photoUrl); 
+        await deletePhotoMetadata(photoToDelete); 
         const updatedNote = updatedNotes.find(n => n.id === noteId);
         if(updatedNote) {
             await updateDocumentNonBlocking(noteRef, { photoUrls: updatedNote.photoUrls || [] }); 
@@ -444,7 +458,7 @@ export default function WorkOrderDetailPage() {
     
     deleteDocumentNonBlocking(noteRef)
         .then(() => {
-            const photoDeletePromises = (noteToDelete.photoUrls || []).map(url => deleteImage(url));
+            const photoDeletePromises = (noteToDelete.photoUrls || []).map(p => deletePhotoMetadata(p));
             return Promise.all(photoDeletePromises);
         })
         .then(() => {
@@ -533,11 +547,13 @@ export default function WorkOrderDetailPage() {
     const mediaFolder = zip.folder("media");
     const documentsFolder = zip.folder("documents");
 
+    const getUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.url;
+
     const mediaItems = [
-        ...(workOrder.beforePhotoUrls || []).map(url => ({ url, subfolder: 'before' })),
-        ...(workOrder.afterPhotoUrls || []).map(url => ({ url, subfolder: 'after' })),
-        ...(workOrder.notes?.flatMap(note => (note.photoUrls || []).map(url => ({ url, subfolder: 'notes' }))) || []),
-        ...(quotes.flatMap(quote => (quote.photos || []).map(url => ({ url, subfolder: `quotes/${quote.quoteNumber}/photos` })))),
+        ...(workOrder.beforePhotoUrls || []).map(p => ({ url: getUrl(p), subfolder: 'before' })),
+        ...(workOrder.afterPhotoUrls || []).map(p => ({ url: getUrl(p), subfolder: 'after' })),
+        ...(workOrder.notes?.flatMap(note => (note.photoUrls || []).map(p => ({ url: getUrl(p), subfolder: 'notes' }))) || []),
+        ...(quotes.flatMap(quote => (quote.photos || []).map(p => ({ url: getUrl(p), subfolder: `quotes/${quote.quoteNumber}/photos` })))),
         ...(quotes.flatMap(quote => (quote.videos || []).map(url => ({ url, subfolder: `quotes/${quote.quoteNumber}/videos` }))))
     ];
 
@@ -552,7 +568,6 @@ export default function WorkOrderDetailPage() {
     const toastId = toast({ title: "Preparing Media ZIP", description: "Starting compression...", duration: Infinity });
 
     try {
-        // Fetch and add media items
         for (let i = 0; i < mediaItems.length; i++) {
             const item = mediaItems[i];
             toastId.update({ id: toastId.id, description: `Bundling media ${i + 1}/${mediaItems.length}...` });
@@ -568,7 +583,6 @@ export default function WorkOrderDetailPage() {
             }
         }
 
-        // Fetch and add document files
         for (let i = 0; i < documentFiles.length; i++) {
             const file = documentFiles[i];
             toastId.update({ id: toastId.id, description: `Bundling document ${i + 1}/${documentFiles.length}...` });

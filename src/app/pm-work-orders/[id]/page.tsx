@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, ArrowLeft, Save, FileCheck, MapPin, Package, Calendar, Settings } from 'lucide-react';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
 import { getPmWorkOrderById } from '@/lib/data';
-import type { PmWorkOrder, PmTask, PmAssetTaskGroup } from '@/lib/types';
+import type { PmWorkOrder, PmTask, PmAssetTaskGroup, PhotoMetadata } from '@/lib/types';
 import { PmTaskItem } from '@/components/pm-task-item';
 import { PmSubmissionModal } from '@/components/pm-submission-modal';
 import { doc } from 'firebase/firestore';
@@ -49,24 +49,6 @@ export default function PmWorkOrderExecutionPage() {
     setPmWorkOrder({ ...pmWO, assetTasks: newAssetTasks });
   };
 
-  const handleSaveDraft = async () => {
-    if (!db || !pmWO) return;
-    setIsSaving(true);
-    try {
-      const woRef = doc(db, 'pm_work_orders', pmWO.id);
-      await updateDocumentNonBlocking(woRef, {
-        assetTasks: pmWO.assetTasks,
-        status: pmWO.status === 'Scheduled' ? 'In Progress' : pmWO.status,
-        updatedAt: new Date().toISOString()
-      });
-      toast({ title: "Draft Saved" });
-    } catch (e) {
-      toast({ title: "Save Failed", variant: 'destructive' });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const handleSubmitReview = async () => {
     if (!db || !pmWO) return;
     setIsSaving(true);
@@ -84,6 +66,24 @@ export default function PmWorkOrderExecutionPage() {
     } finally {
       setIsSaving(false);
       setIsSubmitModalOpen(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    if (!db || !pmWO) return;
+    setIsSaving(true);
+    try {
+      const woRef = doc(db, 'pm_work_orders', pmWO.id);
+      await updateDocumentNonBlocking(woRef, {
+        assetTasks: pmWO.assetTasks,
+        status: pmWO.status === 'Scheduled' ? 'In Progress' : pmWO.status,
+        updatedAt: new Date().toISOString()
+      });
+      toast({ title: "Draft Saved" });
+    } catch (e) {
+      toast({ title: "Save Failed", variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
     }
   };
 

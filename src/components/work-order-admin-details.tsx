@@ -5,7 +5,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import type { WorkOrder, Technician, TimeEntry, Activity, HvacStartupReport, FileAttachment, Acknowledgement, Asset, Quote, WorkSite } from '@/lib/types';
+import type { WorkOrder, Technician, TimeEntry, Activity, HvacStartupReport, FileAttachment, Acknowledgement, Asset, Quote, WorkSite, PhotoMetadata } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,6 +32,7 @@ import { notifyTechnicianOfAttention } from '@/ai/flows/notify-technician-flow';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { deletePhotoMetadata } from '@/firebase/storage';
 
 const ActivityItem = React.memo(({ activity, technicians, onDeleteClick, isCompleted }: { 
     activity: Activity, 
@@ -83,14 +84,14 @@ interface WorkOrderAdminDetailsProps {
   timeEntries: TimeEntry[];
   activities: Activity[];
   quotes: Quote[];
-  onNotePhotoDelete: (noteId: string, photoUrl: string) => void;
+  onNotePhotoDelete: (noteId: string, photo: string | PhotoMetadata) => void;
   onNoteDelete: (noteId: string) => void;
   onBeforePhotosAdded: (files: File[]) => void;
   onAfterPhotosAdded: (files: File[]) => void;
   onReceiptsAndPackingSlipsAdded: (files: File[]) => void;
-  onBeforePhotoDelete: (photoUrl: string) => void;
-  onAfterPhotoDelete: (photoUrl: string) => void;
-  onReceiptsAndPackingSlipsPhotoDelete: (photoUrl: string) => void;
+  onBeforePhotoDelete: (photo: string | PhotoMetadata) => void;
+  onAfterPhotoDelete: (photo: string | PhotoMetadata) => void;
+  onReceiptsAndPackingSlipsPhotoDelete: (photo: string | PhotoMetadata) => void;
   onTimeEntryDelete: (timeEntryId: string) => void;
   isSavingPhotos: boolean;
   onDirectionsClick: (workSite: WorkSite) => void;
@@ -317,11 +318,27 @@ export function WorkOrderAdminDetails({
 
   const handleDeletePhotoInViewer = () => {
     if (!viewingPhoto) return;
-    if (viewingPhoto.type === 'before') onBeforePhotoDelete(viewingPhoto.url);
-    else if (viewingPhoto.type === 'after') onAfterPhotoDelete(viewingPhoto.url);
-    else onReceiptsAndPackingSlipsPhotoDelete(viewingPhoto.url);
+    const targetUrl = viewingPhoto.url;
+    
+    // Find the original photo object to pass to delete logic
+    const findPhoto = (list: (string | PhotoMetadata)[] | undefined) => 
+      list?.find(p => (typeof p === 'string' ? p : p.url) === targetUrl);
+
+    const photoObj = findPhoto(workOrder.beforePhotoUrls) || 
+                     findPhoto(workOrder.afterPhotoUrls) || 
+                     findPhoto(workOrder.receiptsAndPackingSlips);
+
+    if (photoObj) {
+      if (viewingPhoto.type === 'before') onBeforePhotoDelete(photoObj);
+      else if (viewingPhoto.type === 'after') onAfterPhotoDelete(photoObj);
+      else onReceiptsAndPackingSlipsPhotoDelete(photoObj);
+    }
+    
     setViewingPhoto(null);
   };
+
+  const getPhotoUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.url;
+  const getThumbUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.thumbnailUrl || p.url;
 
   const linkedAssetIds = new Set(workOrder.assetIds || []);
 
@@ -469,9 +486,9 @@ export function WorkOrderAdminDetails({
                       <div>
                           <h3 className="font-medium mb-2">Before Photos</h3>
                           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 mb-4">
-                            {(workOrder.beforePhotoUrls || []).map((url) => (
-                              <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url, type: 'before' })}>
-                                <Image src={url} alt={`Before photo`} fill sizes="(max-width: 768px) 25vw, 12vw" className="object-cover" />
+                            {(workOrder.beforePhotoUrls || []).map((photo) => (
+                              <div key={getPhotoUrl(photo)} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url: getPhotoUrl(photo), type: 'before' })}>
+                                <Image src={getThumbUrl(photo)} alt={`Before photo`} fill sizes="(max-width: 768px) 25vw, 12vw" className="object-cover" />
                                 <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Maximize2 className="text-white h-5 w-5" /></div>
                               </div>
                             ))}
@@ -482,9 +499,9 @@ export function WorkOrderAdminDetails({
                       <div>
                           <h3 className="font-medium mb-2">After Photos</h3>
                           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 mb-4">
-                            {(workOrder.afterPhotoUrls || []).map((url) => (
-                              <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url, type: 'after' })}>
-                                <Image src={url} alt={`After photo`} fill sizes="(max-width: 768px) 25vw, 12vw" className="object-cover" />
+                            {(workOrder.afterPhotoUrls || []).map((photo) => (
+                              <div key={getPhotoUrl(photo)} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url: getPhotoUrl(photo), type: 'after' })}>
+                                <Image src={getThumbUrl(photo)} alt={`After photo`} fill sizes="(max-width: 768px) 25vw, 12vw" className="object-cover" />
                                 <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Maximize2 className="text-white h-5 w-5" /></div>
                               </div>
                             ))}
@@ -497,9 +514,9 @@ export function WorkOrderAdminDetails({
                 <CardHeader><CardTitle className="flex items-center gap-2"><ReceiptText /> Receipts &amp; Packing Slips</CardTitle></CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 mb-4">
-                    {(workOrder.receiptsAndPackingSlips || []).map((url) => (
-                      <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url, type: 'receipts' })}>
-                        <Image src={url} alt={`Receipt or packing slip`} fill sizes="(max-width: 768px) 25vw, 12vw" className="object-cover" />
+                    {(workOrder.receiptsAndPackingSlips || []).map((photo) => (
+                      <div key={getPhotoUrl(photo)} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url: getPhotoUrl(photo), type: 'receipts' })}>
+                        <Image src={getThumbUrl(photo)} alt={`Receipt or packing slip`} fill sizes="(max-width: 768px) 25vw, 12vw" className="object-cover" />
                         <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Maximize2 className="text-white h-5 w-5" /></div>
                       </div>
                     ))}

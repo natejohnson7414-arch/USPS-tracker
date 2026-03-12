@@ -3,14 +3,14 @@
 
 import React, { useState, useRef } from 'react';
 import Image from 'next/image';
-import type { PmTask } from '@/lib/types';
+import type { PmTask, PhotoMetadata } from '@/lib/types';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
 import { Button } from './ui/button';
 import { Camera, Image as ImageIcon, Loader2, Trash2, X, Maximize2 } from 'lucide-react';
 import { Input } from './ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { uploadImageResumable, deleteImage } from '@/firebase/storage';
+import { uploadImageResumable, deleteImage, uploadPhotoWithThumbnail, deletePhotoMetadata } from '@/firebase/storage';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { cn } from '@/lib/utils';
 
@@ -48,18 +48,19 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
     if (!files || files.length === 0) return;
 
     setIsUploading(true);
-    const uploadedUrls: string[] = [];
+    const uploadedResults: PhotoMetadata[] = [];
 
     try {
       for (const file of Array.from(files)) {
-        const path = `pm-work-orders/${assetTag}/${Date.now()}-${file.name}`;
-        const { downloadURL } = await uploadImageResumable(file, path);
-        uploadedUrls.push(downloadURL);
+        const basePath = `pm-work-orders/${assetTag}`;
+        const fileName = `${Date.now()}-${file.name}`;
+        const result = await uploadPhotoWithThumbnail(file, basePath, fileName);
+        uploadedResults.push(result);
       }
 
       onUpdate({
         ...task,
-        photoUrls: [...task.photoUrls, ...uploadedUrls]
+        photoUrls: [...task.photoUrls, ...uploadedResults]
       });
       toast({ title: "Photos Added" });
     } catch (error) {
@@ -70,15 +71,19 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
     }
   };
 
-  const removePhoto = async (url: string) => {
+  const removePhoto = async (photo: string | PhotoMetadata) => {
+    const targetUrl = typeof photo === 'string' ? photo : photo.url;
     onUpdate({
       ...task,
-      photoUrls: task.photoUrls.filter(u => u !== url)
+      photoUrls: task.photoUrls.filter(p => (typeof p === 'string' ? p : p.url) !== targetUrl)
     });
     try {
-      await deleteImage(url);
+      await deletePhotoMetadata(photo);
     } catch (e) {}
   };
+
+  const getPhotoUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.url;
+  const getThumbUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.thumbnailUrl || p.url;
 
   return (
     <div className={cn(
@@ -114,21 +119,22 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
       </div>
 
       <div className="flex flex-wrap gap-2 pt-2">
-        {task.photoUrls.map((url, i) => (
-          <div key={i} className="relative group h-16 w-16 rounded border overflow-hidden">
+        {task.photoUrls.map((photo, i) => (
+          <div key={getPhotoUrl(photo)} className="relative group h-16 w-16 rounded border overflow-hidden">
             <Image 
-              src={url} 
+              src={getThumbUrl(photo)} 
               alt="Task documentation" 
               fill 
+              sizes="64px"
               className="object-cover cursor-pointer" 
-              onClick={() => setViewingPhoto(url)}
+              onClick={() => setViewingPhoto(getPhotoUrl(photo))}
             />
             {!isCompletedWorkOrder && (
               <Button 
                 variant="destructive" 
                 size="icon" 
                 className="absolute top-0 right-0 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={() => removePhoto(url)}
+                onClick={() => removePhoto(photo)}
               >
                 <X className="h-3 w-3" />
               </Button>
@@ -156,7 +162,7 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
             <DialogDescription>Full resolution view of task documentation</DialogDescription>
           </DialogHeader>
           <div className="relative h-[80vh] w-full">
-            {viewingPhoto && <Image src={viewingPhoto} alt="Task photo" fill className="object-contain" />}
+            {viewingPhoto && <Image src={viewingPhoto} alt="Task photo" fill className="object-contain" priority />}
           </div>
           <div className="p-4 bg-background flex justify-end gap-2">
             <Button variant="outline" onClick={() => setViewingPhoto(null)}>Close</Button>

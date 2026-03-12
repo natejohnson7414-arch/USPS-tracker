@@ -12,11 +12,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
 import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { uploadImageResumable, deleteImage } from '@/firebase/storage';
+import { uploadImageResumable, deleteImage, uploadPhotoWithThumbnail, deletePhotoMetadata } from '@/firebase/storage';
 import { collection, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save, Ban, PlusCircle, Trash2, CalendarClock, Wrench, Camera, X } from 'lucide-react';
-import type { Asset, WorkSite, AssetMaterial, Material } from '@/lib/types';
+import type { Asset, WorkSite, AssetMaterial, Material, PhotoMetadata } from '@/lib/types';
 import { getWorkSites, getMaterials, getAssets } from '@/lib/data';
 import { Separator } from '@/components/ui/separator';
 
@@ -203,29 +203,29 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
     if (!files || files.length === 0) return;
 
     setIsUploadingPhotos(true);
-    const toastId = toast({ title: `Uploading ${files.length} photo(s)...`, duration: Infinity });
+    const toastId = toast({ title: `Processing ${files.length} photo(s)...`, duration: Infinity });
 
     try {
-      const uploadedUrls: string[] = [];
+      const uploadedResults: PhotoMetadata[] = [];
       let i = 0;
       for (const file of Array.from(files)) {
         i++;
-        const path = `assets/${formData.assetTag || 'new'}/${Date.now()}-${file.name}`;
-        const { downloadURL } = await uploadImageResumable(file, path, {
-          onProgress: (p) => {
-            toastId.update({ 
-              id: toastId.id, 
-              title: `Uploading ${i}/${files.length}`,
-              description: `${p.pct}% complete` 
-            });
-          }
+        const basePath = `assets/${formData.assetTag || 'new'}`;
+        const fileName = `${Date.now()}-${file.name}`;
+        
+        toastId.update({ 
+          id: toastId.id, 
+          title: `Photo ${i}/${files.length}`,
+          description: `Generating thumbnail...` 
         });
-        uploadedUrls.push(downloadURL);
+
+        const result = await uploadPhotoWithThumbnail(file, basePath, fileName);
+        uploadedResults.push(result);
       }
 
       setFormData(prev => ({
         ...prev,
-        photoUrls: [...(prev.photoUrls || []), ...uploadedUrls]
+        photoUrls: [...(prev.photoUrls || []), ...uploadedResults]
       }));
 
       toastId.dismiss();
@@ -239,13 +239,14 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
     }
   };
 
-  const handleRemovePhoto = async (url: string) => {
+  const handleRemovePhoto = async (photo: string | PhotoMetadata) => {
+    const targetUrl = typeof photo === 'string' ? photo : photo.url;
     setFormData(prev => ({
       ...prev,
-      photoUrls: (prev.photoUrls || []).filter(u => u !== url)
+      photoUrls: (prev.photoUrls || []).filter(p => (typeof p === 'string' ? p : p.url) !== targetUrl)
     }));
     try {
-      await deleteImage(url);
+      await deletePhotoMetadata(photo);
     } catch (e) {
       console.warn("Could not delete from storage, but removed from form.");
     }
@@ -289,6 +290,8 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
     }
   };
 
+  const getThumbUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.thumbnailUrl || p.url;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-8 pb-24">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -327,15 +330,15 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
             <CardHeader><CardTitle>Equipment Photos</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {formData.photoUrls?.map((url, idx) => (
+                {formData.photoUrls?.map((photo, idx) => (
                   <div key={idx} className="relative aspect-square rounded-md overflow-hidden border">
-                    <Image src={url} alt={`Asset photo ${idx + 1}`} fill className="object-cover" />
+                    <Image src={getThumbUrl(photo)} alt={`Asset photo ${idx + 1}`} fill sizes="150px" className="object-cover" />
                     <Button 
                       type="button" 
                       variant="destructive" 
                       size="icon" 
                       className="absolute top-1 right-1 h-6 w-6"
-                      onClick={() => handleRemovePhoto(url)}
+                      onClick={() => handleRemovePhoto(photo)}
                     >
                       <X className="h-3 w-3" />
                     </Button>
@@ -542,7 +545,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>Custom Specifications (Tag Missing Data)</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Customized Specifications (Tag Missing Data)</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
                 {Object.entries(formData.customFields || {}).map(([key, value]) => (
