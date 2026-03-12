@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -9,6 +8,7 @@ import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { History, CalendarClock, Settings, Wrench, Clock, Loader2, AlertCircle, Box, PlusCircle, Repeat, ArrowLeft, Camera, Library, Maximize2, Download, Trash2, X, ClipboardCheck, ChevronRight } from 'lucide-react';
 import { useFirestore, updateDocumentNonBlocking, useUser } from '@/firebase';
 import { getAssetById, getAssetPmSchedules, getAssetServiceHistory, calculateAssetMetrics, getPmSchedulesForAsset } from '@/lib/data';
