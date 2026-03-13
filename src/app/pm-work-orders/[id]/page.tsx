@@ -150,8 +150,8 @@ export default function PmWorkOrderExecutionPage() {
   if (!pmWO) return <MainLayout><div className="container py-12">PM Work Order not found.</div></MainLayout>;
 
   const allTasks = pmWO.assetTasks.flatMap(g => g.tasks);
-  const completedTasks = allTasks.filter(t => t.completed).length;
-  const progress = allTasks.length > 0 ? (completedTasks / allTasks.length) * 100 : 0;
+  const completedOrNATasks = allTasks.filter(t => t.completed || t.isNA).length;
+  const progress = allTasks.length > 0 ? (completedOrNATasks / allTasks.length) * 100 : 0;
   const isCompleted = pmWO.status === 'Completed' || pmWO.status === 'Submitted For Review';
 
   return (
@@ -198,7 +198,7 @@ export default function PmWorkOrderExecutionPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
-                    <span>{completedTasks} of {allTasks.length} total tasks</span>
+                    <span>{completedOrNATasks} of {allTasks.length} total tasks</span>
                     <span>{Math.round(progress)}%</span>
                   </div>
                   <Progress value={progress} className="h-2" />
@@ -208,7 +208,7 @@ export default function PmWorkOrderExecutionPage() {
                   {pmWO.assetTasks.map((group, idx) => (
                     <div key={idx} className="flex items-center justify-between text-xs border-b pb-2 last:border-0">
                       <span className="truncate max-w-[150px] font-medium">{group.assetTag}</span>
-                      <Badge variant="outline" className="scale-75 origin-right">{group.tasks.filter(t => t.completed).length}/{group.tasks.length}</Badge>
+                      <Badge variant="outline" className="scale-75 origin-right">{group.tasks.filter(t => t.completed || t.isNA).length}/{group.tasks.length}</Badge>
                     </div>
                   ))}
                 </div>

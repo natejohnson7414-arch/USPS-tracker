@@ -305,6 +305,7 @@ export type PmSchedule = {
 export type PmTask = {
   text: string;
   completed: boolean;
+  isNA?: boolean;
   notes: string;
   photoUrls: (string | PhotoMetadata)[];
 };

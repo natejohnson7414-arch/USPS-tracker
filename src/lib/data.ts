@@ -248,6 +248,7 @@ export const generatePmWorkOrdersForMonth = async (db: any, month: number, year:
         tasks: template.tasks.map(t => ({
           text: t,
           completed: false,
+          isNA: false,
           notes: '',
           photoUrls: []
         }))

@@ -7,7 +7,7 @@ import type { PmTask, PhotoMetadata } from '@/lib/types';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
 import { Button } from './ui/button';
-import { Camera, Image as ImageIcon, Loader2, Trash2, X, Maximize2 } from 'lucide-react';
+import { Camera, Image as ImageIcon, Loader2, Trash2, X, Maximize2, Ban } from 'lucide-react';
 import { Input } from './ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { uploadImageResumable, deleteImage, uploadPhotoWithThumbnail, deletePhotoMetadata } from '@/firebase/storage';
@@ -29,6 +29,8 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
 
   const handleToggle = (checked: boolean) => {
+    if (task.isNA) return;
+    
     if (checked && task.photoUrls.length === 0) {
       toast({
         title: "Photo Reminder",
@@ -43,9 +45,18 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
     onUpdate({ ...task, completed: checked });
   };
 
+  const handleToggleNA = (checked: boolean) => {
+    onUpdate({ 
+      ...task, 
+      isNA: checked, 
+      completed: checked ? false : task.completed,
+      notes: checked ? '' : task.notes 
+    });
+  };
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0 || task.isNA) return;
 
     setIsUploading(true);
     const uploadedResults: PhotoMetadata[] = [];
@@ -88,71 +99,89 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
   return (
     <div className={cn(
       "p-4 border rounded-lg space-y-4 transition-colors",
-      task.completed ? "bg-green-50/30 border-green-200" : "bg-card"
+      task.completed ? "bg-green-50/30 border-green-200" : task.isNA ? "bg-muted/30 border-muted opacity-60" : "bg-card"
     )}>
       <div className="flex items-start gap-3">
-        <Checkbox 
-          id={`task-${assetTag}-${index}`} 
-          checked={task.completed} 
-          onCheckedChange={handleToggle}
-          disabled={isCompletedWorkOrder}
-          className="mt-1"
-        />
+        <div className="flex flex-col gap-4 mt-1">
+            <div className="flex flex-col items-center gap-1">
+                <Checkbox 
+                    id={`task-${assetTag}-${index}`} 
+                    checked={task.completed} 
+                    onCheckedChange={handleToggle}
+                    disabled={isCompletedWorkOrder || task.isNA}
+                />
+                <span className="text-[8px] font-black uppercase text-muted-foreground">Done</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+                <Checkbox 
+                    id={`task-na-${assetTag}-${index}`} 
+                    checked={task.isNA} 
+                    onCheckedChange={handleToggleNA}
+                    disabled={isCompletedWorkOrder}
+                    className="border-muted-foreground"
+                />
+                <span className="text-[8px] font-black uppercase text-muted-foreground">N/A</span>
+            </div>
+        </div>
+        
         <div className="flex-1 space-y-1">
           <Label 
             htmlFor={`task-${assetTag}-${index}`}
             className={cn(
               "text-sm font-bold leading-tight cursor-pointer",
-              task.completed && "text-green-800"
+              task.completed && "text-green-800",
+              task.isNA && "text-muted-foreground line-through"
             )}
           >
             {task.text}
           </Label>
           <Input 
-            placeholder="Technical notes..."
+            placeholder={task.isNA ? "Not applicable" : "Technical notes..."}
             value={task.notes}
             onChange={(e) => onUpdate({ ...task, notes: e.target.value })}
             className="h-8 text-xs mt-2"
-            disabled={isCompletedWorkOrder}
+            disabled={isCompletedWorkOrder || task.isNA}
           />
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 pt-2">
-        {task.photoUrls.map((photo, i) => (
-          <div key={getPhotoUrl(photo)} className="relative group h-16 w-16 rounded border overflow-hidden">
-            <Image 
-              src={getThumbUrl(photo)} 
-              alt="Task documentation" 
-              fill 
-              sizes="64px"
-              className="object-cover cursor-pointer" 
-              onClick={() => setViewingPhoto(getPhotoUrl(photo))}
-            />
+      {!task.isNA && (
+        <div className="flex flex-wrap gap-2 pt-2">
+            {task.photoUrls.map((photo, i) => (
+            <div key={getPhotoUrl(photo)} className="relative group h-16 w-16 rounded border overflow-hidden">
+                <Image 
+                src={getThumbUrl(photo)} 
+                alt="Task documentation" 
+                fill 
+                sizes="64px"
+                className="object-cover cursor-pointer" 
+                onClick={() => setViewingPhoto(getPhotoUrl(photo))}
+                />
+                {!isCompletedWorkOrder && (
+                <Button 
+                    variant="destructive" 
+                    size="icon" 
+                    className="absolute top-0 right-0 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => removePhoto(photo)}
+                >
+                    <X className="h-3 w-3" />
+                </Button>
+                )}
+            </div>
+            ))}
             {!isCompletedWorkOrder && (
-              <Button 
-                variant="destructive" 
+            <Button 
+                variant="outline" 
                 size="icon" 
-                className="absolute top-0 right-0 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={() => removePhoto(photo)}
-              >
-                <X className="h-3 w-3" />
-              </Button>
+                className="h-16 w-16 border-dashed"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+            >
+                {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-5 w-5 text-muted-foreground" />}
+            </Button>
             )}
-          </div>
-        ))}
-        {!isCompletedWorkOrder && (
-          <Button 
-            variant="outline" 
-            size="icon" 
-            className="h-16 w-16 border-dashed"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-          >
-            {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-5 w-5 text-muted-foreground" />}
-          </Button>
-        )}
-      </div>
+        </div>
+      )}
       <input type="file" ref={fileInputRef} className="hidden" multiple accept="image/*" onChange={handlePhotoUpload} />
 
       <Dialog open={!!viewingPhoto} onOpenChange={() => setViewingPhoto(null)}>

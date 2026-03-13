@@ -30,7 +30,7 @@ export function PmSubmissionModal({ isOpen, onOpenChange, assetTasks, onConfirm,
   
   const groupsWithGaps = assetTasks.map(group => ({
     ...group,
-    tasksWithoutPhotos: group.tasks.filter(t => t.completed && t.photoUrls.length === 0)
+    tasksWithoutPhotos: group.tasks.filter(t => t.completed && !t.isNA && t.photoUrls.length === 0)
   })).filter(g => g.tasksWithoutPhotos.length > 0);
 
   const totalGaps = groupsWithGaps.reduce((acc, g) => acc + g.tasksWithoutPhotos.length, 0);
