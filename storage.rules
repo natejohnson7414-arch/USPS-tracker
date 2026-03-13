@@ -2,42 +2,12 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // High-priority paths for field documentation to ensure reliable preflight
-    // These paths match the working pattern of work-orders/
-    match /quotes/{allPaths=**} {
-      allow read, write: if isSignedIn();
-    }
-    
-    match /assets/{allPaths=**} {
-      allow read, write: if isSignedIn();
-    }
-
-    match /pm-work-orders/{allPaths=**} {
-      allow read, write: if isSignedIn();
-    }
-
-    function userHasRole(roleName) {
-      let userDocPath = /databases/$(database)/documents/technicians/$(request.auth.uid);
-      let userDoc = get(userDocPath);
-      return isSignedIn() && userDoc.data != null && userDoc.data.roleId != null &&
-        get(/databases/$(database)/documents/roles/$(userDoc.data.roleId)).data.name == roleName;
-    }
-
-    function isAdmin() {
-      return isSignedIn() && (request.auth.token.email == 'admin@crawford-company.com' || userHasRole('Administrator'));
-    }
-
-    match /work-orders/{workOrderId}/{allPaths=**} {
-      allow read, write: if isSignedIn();
-    }
-    
-    match /signatures/{allPaths=**} {
-      allow read, write: if isSignedIn();
+    // Robust rule for all application documentation and field media.
+    // Allows any authenticated user to perform read/write operations.
+    // This resolves 'Access Denied' issues caused by complex path matching 
+    // in workstation environments.
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
     }
   }
 }

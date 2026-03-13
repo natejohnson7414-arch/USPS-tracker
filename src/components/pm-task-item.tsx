@@ -66,8 +66,10 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
       
       for (const file of Array.from(files)) {
         i++;
-        const basePath = `pm-work-orders/${assetTag}`;
-        const fileName = `${Date.now()}-${file.name}`;
+        // Sanitize asset tag for path safety
+        const safeTag = assetTag.replace(/[^a-zA-Z0-9-]/g, '_');
+        const basePath = `pm-work-orders/${safeTag}`;
+        const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
         
         toastId.update({ 
           id: toastId.id, 
@@ -91,9 +93,9 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
       console.error("PM task photo upload failed:", error);
       toastId.dismiss();
       
-      let errorDescription = "Check your connection and try again.";
+      let errorDescription = "Transfer interrupted. Check your signal and try again.";
       if (error.code === 'storage/unauthorized') {
-        errorDescription = "Access denied. Please check your session and try again.";
+        errorDescription = "Access Denied. Please ensure you are logged in and try again.";
       } else if (error.message) {
         errorDescription = error.message;
       }
