@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { MainLayout } from '@/components/main-layout';
@@ -12,11 +12,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useFirestore, useUser, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { getWorkOrderById } from '@/lib/data';
+import { getWorkOrderById, getPmWorkOrderById } from '@/lib/data';
 import { uploadImageResumable } from '@/firebase/storage';
 import { useToast } from '@/hooks/use-toast';
-import type { WorkOrder, Quote } from '@/lib/types';
-import { Loader2, ArrowLeft, Upload, Video, Image as ImageIcon, Trash2 } from 'lucide-react';
+import type { WorkOrder, Quote, PmWorkOrder } from '@/lib/types';
+import { Loader2, ArrowLeft, Upload, Video, Image as ImageIcon, Trash2, AlertCircle } from 'lucide-react';
 import { collection, doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { notifyAdminsOfNewQuote } from '@/ai/flows/notify-admins-flow';
@@ -32,11 +32,14 @@ import {
 export default function StartQuotePage() {
     const { id: workOrderId } = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const db = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
 
-    const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
+    const assetId = searchParams.get('assetId');
+    const [workOrder, setWorkOrder] = useState<WorkOrder | PmWorkOrder | null>(null);
+    const [isPm, setIsPm] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     
@@ -55,21 +58,43 @@ export default function StartQuotePage() {
         if (!db || typeof workOrderId !== 'string') return;
         
         setIsLoading(true);
+        // Try standard work order first
         getWorkOrderById(db, workOrderId)
             .then(wo => {
                 if (wo) {
                     setWorkOrder(wo);
+                    setIsPm(false);
+                    setIsLoading(false);
                 } else {
-                    toast({ title: 'Work Order not found', variant: 'destructive' });
-                    router.push('/');
+                    // Try PM work order
+                    return getPmWorkOrderById(db, workOrderId);
                 }
             })
-            .catch(err => {
-                console.error('Error fetching work order:', err);
-                toast({ title: 'Error fetching work order', variant: 'destructive' });
+            .then(pmWo => {
+                if (pmWo) {
+                    setWorkOrder(pmWo);
+                    setIsPm(true);
+                    
+                    // If assetId is provided, try to autofill model/serial if we can find the asset
+                    if (assetId) {
+                        const assetRef = doc(db, 'assets', assetId);
+                        getDoc(assetRef).then(snap => {
+                            if (snap.exists()) {
+                                const assetData = snap.data();
+                                setModelNumber(assetData.model || '');
+                                setSerialNumber(assetData.serialNumber || '');
+                            }
+                        });
+                    }
+                }
+                setIsLoading(false);
             })
-            .finally(() => setIsLoading(false));
-    }, [db, workOrderId, router, toast]);
+            .catch(err => {
+                console.error('Error fetching parent job:', err);
+                toast({ title: 'Error fetching job details', variant: 'destructive' });
+                setIsLoading(false);
+            });
+    }, [db, workOrderId, assetId]);
 
     useEffect(() => {
         const count = parseInt(numPeople);
@@ -124,6 +149,16 @@ export default function StartQuotePage() {
             return;
         }
 
+        // Mandatory photos if specifically for an asset (repair quote)
+        if (assetId && photos.length === 0) {
+            toast({ 
+                title: 'Photos Required', 
+                description: 'You must upload at least one photo documenting the issue for this equipment grade.', 
+                variant: 'destructive' 
+            });
+            return;
+        }
+
         setIsSubmitting(true);
         if (typeof window !== 'undefined') window.__UPLOAD_IN_PROGRESS__ = true;
         
@@ -137,8 +172,6 @@ export default function StartQuotePage() {
             
             const quoteNumber = result.quoteNumber;
 
-            // 1. Create the Quote document Metadata FIRST to ensure it exists
-            // This matches the pattern used in Work Order creation which we know is reliable.
             progressToast.update({ id: progressToast.id, title: 'Saving Quote', description: 'Creating the job record...' });
 
             const laborDetail = personHours.map((h, i) => `P${i + 1}: ${h || '0'}h`).join(', ');
@@ -148,9 +181,10 @@ export default function StartQuotePage() {
                 quoteNumber: quoteNumber,
                 status: 'Draft',
                 workOrderId: workOrder.id,
-                clientId: workOrder.clientId,
+                assetId: assetId || undefined,
+                clientId: (workOrder as any).clientId || null,
                 workSiteId: workOrder.workSiteId,
-                jobName: workOrder.jobName,
+                jobName: (workOrder as any).jobName || (workOrder as any).workSiteName,
                 description,
                 modelNumber,
                 serialNumber,
@@ -168,8 +202,6 @@ export default function StartQuotePage() {
 
             const quoteRef = await addDocumentNonBlocking(collection(db, 'quotes'), initialQuote);
 
-            // 2. Sequential Media Uploads
-            // Processing one by one prevents connection pool exhaustion and timing errors.
             const photoUrls: string[] = [];
             const videoUrls: string[] = [];
             const allFiles = [...photos.map(f => ({ file: f, type: 'photo' })), ...videos.map(f => ({ file: f, type: 'video' }))];
@@ -195,9 +227,6 @@ export default function StartQuotePage() {
                 else videoUrls.push(downloadURL);
             }
 
-            // 3. Final Updates
-            progressToast.update({ id: progressToast.id, title: 'Finalizing...', description: 'Attaching media to quote.' });
-
             if (photoUrls.length > 0 || videoUrls.length > 0) {
                 await updateDocumentNonBlocking(quoteRef, {
                     photos: photoUrls,
@@ -205,8 +234,20 @@ export default function StartQuotePage() {
                 });
             }
 
-            // Move Work Order to On Hold
-            await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { status: 'On Hold' });
+            // Update parent job status
+            if (!isPm) {
+                await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), { status: 'On Hold' });
+            } else {
+                // If PM, update the specific asset tasks group with the quote ID
+                const pmWo = workOrder as PmWorkOrder;
+                const updatedTasks = pmWo.assetTasks.map(group => {
+                    if (group.assetId === assetId) {
+                        return { ...group, quoteId: quoteRef.id, quoteNumber: quoteNumber };
+                    }
+                    return group;
+                });
+                await updateDocumentNonBlocking(doc(db, 'pm_work_orders', pmWo.id), { assetTasks: updatedTasks });
+            }
 
             progressToast.dismiss();
             toast({ title: 'Quote Created', description: `Quote ${quoteNumber} submitted successfully.` });
@@ -214,11 +255,11 @@ export default function StartQuotePage() {
             notifyAdminsOfNewQuote({
                 quoteId: quoteNumber,
                 workOrderId: workOrder.id,
-                jobName: workOrder.jobName,
+                jobName: (workOrder as any).jobName || (workOrder as any).workSiteName,
                 technicianName: user.displayName || user.email || 'Technician'
             }).catch(e => console.warn('Admin notification deferred:', e.message));
 
-            router.push(`/work-orders/${workOrder.id}`);
+            router.push(isPm ? `/pm-work-orders/${workOrder.id}` : `/work-orders/${workOrder.id}`);
 
         } catch (error: any) {
             progressToast.dismiss();
@@ -256,9 +297,9 @@ export default function StartQuotePage() {
         <MainLayout>
             <div className="container mx-auto py-8">
                 <Button asChild variant="outline" className="mb-6" disabled={isSubmitting}>
-                    <Link href={`/work-orders/${workOrderId}`}>
+                    <Link href={isPm ? `/pm-work-orders/${workOrderId}` : `/work-orders/${workOrderId}`}>
                         <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Work Order
+                        Back to Job
                     </Link>
                 </Button>
                 
@@ -267,10 +308,20 @@ export default function StartQuotePage() {
                         <CardHeader>
                             <CardTitle>Start New Quote</CardTitle>
                             <CardDescription>
-                                For Work Order #{workOrder.id} - {workOrder.jobName}
+                                For {isPm ? 'PM' : 'Work Order'} #{workOrder.id} - {(workOrder as any).jobName || (workOrder as any).workSiteName}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
+                             {assetId && (
+                                <div className="p-4 bg-primary/5 border-2 border-primary/20 rounded-lg flex items-start gap-3">
+                                    <AlertCircle className="h-5 w-5 text-primary shrink-0" />
+                                    <div>
+                                        <p className="text-sm font-bold text-primary">REPAIR QUOTE REQUIRED</p>
+                                        <p className="text-xs">Equipment flagged as Fair/Poor requires a detailed description and <span className="font-bold underline">mandatory photos</span> of the deficiency.</p>
+                                    </div>
+                                </div>
+                             )}
+
                              <div className="space-y-2">
                                 <Label htmlFor="quote-description">Description of Work to be Quoted<span className="text-destructive"> *</span></Label>
                                 <Textarea 
@@ -309,13 +360,18 @@ export default function StartQuotePage() {
 
                             <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label>Photos & Videos</Label>
+                                    <Label className={cn(assetId && "text-primary font-bold")}>
+                                        Photos & Videos {assetId && <span className="text-destructive">*</span>}
+                                    </Label>
                                     <div className="flex gap-2">
-                                        <Button type="button" variant="outline" onClick={() => mediaInputRef.current?.click()} disabled={isSubmitting}>
-                                            <ImageIcon className="mr-2 h-4 w-4" /> Add Media
+                                        <Button type="button" variant={assetId && photos.length === 0 ? "destructive" : "outline"} onClick={() => mediaInputRef.current?.click()} disabled={isSubmitting}>
+                                            <ImageIcon className="mr-2 h-4 w-4" /> {assetId ? "Add Required Photos" : "Add Media"}
                                         </Button>
                                     </div>
                                     <input type="file" ref={mediaInputRef} multiple accept="image/*,video/*" className="hidden" onChange={handleFileChange} />
+                                    {assetId && photos.length === 0 && (
+                                        <p className="text-[10px] text-destructive font-bold uppercase tracking-tight">At least one photo must be provided for Fair/Poor graded units.</p>
+                                    )}
                                 </div>
                                 {photos.length > 0 && (
                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">

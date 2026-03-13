@@ -316,6 +316,9 @@ export type PmAssetTaskGroup = {
   assetTag: string;
   templateName: string;
   tasks: PmTask[];
+  condition?: 'Good' | 'Fair' | 'Poor';
+  quoteId?: string;
+  quoteNumber?: string;
 };
 
 export type PmWorkOrder = {
@@ -344,6 +347,7 @@ export type Quote = {
   quoteNumber: string;
   status: 'Draft' | 'Sent' | 'Accepted' | 'Rejected' | 'Archived';
   workOrderId: string;
+  assetId?: string;
   clientId?: string;
   workSiteId?: string;
   jobName: string;

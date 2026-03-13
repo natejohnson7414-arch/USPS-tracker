@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, FileCheck, Loader2, Package, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, FileCheck, Loader2, Package, CheckCircle2, Receipt } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import type { PmAssetTaskGroup } from '@/lib/types';
@@ -29,12 +29,21 @@ interface PmSubmissionModalProps {
 export function PmSubmissionModal({ isOpen, onOpenChange, assetTasks, onConfirm, isSubmitting }: PmSubmissionModalProps) {
   const [agreed, setAgreed] = useState(false);
   
-  // Requirement: At least one photo per unit (asset group) across any of its tasks
+  // 1. Requirement: At least one photo per unit
   const unitsWithoutPhotos = assetTasks.filter(group => 
     !group.tasks.some(t => t.photoUrls && t.photoUrls.length > 0)
   );
 
-  const canSubmit = agreed && unitsWithoutPhotos.length === 0;
+  // 2. Requirement: Every unit must have a condition grade
+  const unitsWithoutCondition = assetTasks.filter(group => !group.condition);
+
+  // 3. Requirement: Every "Fair" or "Poor" unit must have a quote linked
+  const unitsWithoutQuotes = assetTasks.filter(group => 
+    (group.condition === 'Fair' || group.condition === 'Poor') && !group.quoteId
+  );
+
+  const hasErrors = unitsWithoutPhotos.length > 0 || unitsWithoutCondition.length > 0 || unitsWithoutQuotes.length > 0;
+  const canSubmit = agreed && !hasErrors;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -51,25 +60,57 @@ export function PmSubmissionModal({ isOpen, onOpenChange, assetTasks, onConfirm,
 
         <ScrollArea className="flex-1 pr-4">
           <div className="space-y-6 py-4">
-            {unitsWithoutPhotos.length > 0 ? (
-              <div className="bg-destructive/10 border-2 border-destructive p-4 rounded-lg">
-                <div className="flex items-center gap-2 text-destructive font-bold mb-2">
+            {hasErrors ? (
+              <div className="bg-destructive/10 border-2 border-destructive p-4 rounded-lg space-y-4">
+                <div className="flex items-center gap-2 text-destructive font-bold">
                   <AlertCircle className="h-4 w-4" />
-                  Documentation Requirement Not Met
+                  Documentation Requirements Not Met
                 </div>
-                <p className="text-xs text-destructive mb-3">
-                  USPS standards require <span className="font-bold">at least one photo per unit</span>. The following units have no documentation:
-                </p>
-                <div className="space-y-2">
-                  {unitsWithoutPhotos.map((group, idx) => (
-                    <div key={idx} className="flex items-center justify-between bg-white/50 p-2 rounded border border-destructive/20">
-                      <div className="flex items-center gap-2 text-[10px] font-black uppercase text-destructive">
-                        <Package className="h-3 w-3" /> {group.assetTag} - {group.assetName}
+                
+                {unitsWithoutCondition.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] uppercase font-black text-destructive/70">Missing Condition Grades</p>
+                    {unitsWithoutCondition.map((group, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-white/50 p-2 rounded border border-destructive/20">
+                        <div className="flex items-center gap-2 text-[10px] font-black uppercase text-destructive">
+                          <Package className="h-3 w-3" /> {group.assetTag}
+                        </div>
+                        <Badge variant="destructive" className="h-5 text-[8px] uppercase">Condition Missing</Badge>
                       </div>
-                      <Badge variant="destructive" className="h-5 text-[8px] uppercase px-1.5">No Photos Found</Badge>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
+
+                {unitsWithoutQuotes.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] uppercase font-black text-destructive/70">Missing Repair Quotes</p>
+                    {unitsWithoutQuotes.map((group, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-white/50 p-2 rounded border border-destructive/20">
+                        <div className="flex items-center gap-2 text-[10px] font-black uppercase text-destructive">
+                          <Package className="h-3 w-3" /> {group.assetTag} ({group.condition})
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Receipt className="h-3 w-3 text-destructive" />
+                          <span className="text-[8px] font-bold uppercase text-destructive">Quote Req.</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {unitsWithoutPhotos.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] uppercase font-black text-destructive/70">Missing Documentation Photos</p>
+                    {unitsWithoutPhotos.map((group, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-white/50 p-2 rounded border border-destructive/20">
+                        <div className="flex items-center gap-2 text-[10px] font-black uppercase text-destructive">
+                          <Package className="h-3 w-3" /> {group.assetTag}
+                        </div>
+                        <Badge variant="destructive" className="h-5 text-[8px] uppercase">No Photos</Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="bg-green-50 border-2 border-green-200 p-4 rounded-lg">
@@ -78,7 +119,7 @@ export function PmSubmissionModal({ isOpen, onOpenChange, assetTasks, onConfirm,
                   Documentation Verified
                 </div>
                 <p className="text-xs text-green-700 italic">
-                  At least one photo has been provided for all {assetTasks.length} units in scope.
+                  All units graded, documented with photos, and quotes initiated where required.
                 </p>
               </div>
             )}
@@ -96,7 +137,7 @@ export function PmSubmissionModal({ isOpen, onOpenChange, assetTasks, onConfirm,
                 </li>
                 <li className="flex items-start gap-2 bg-muted/30 p-2 rounded">
                   <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5" />
-                  <span>Asset list updated if incorrect.</span>
+                  <span className="font-bold">Fair/Poor graded units have a linked repair quote with photo documentation.</span>
                 </li>
                 <li className="flex items-start gap-2 bg-muted/30 p-2 rounded">
                   <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5" />
@@ -105,14 +146,6 @@ export function PmSubmissionModal({ isOpen, onOpenChange, assetTasks, onConfirm,
                 <li className="flex items-start gap-2 bg-muted/30 p-2 rounded">
                   <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5" />
                   <span>Filters disposed of off-site.</span>
-                </li>
-                <li className="flex items-start gap-2 bg-muted/30 p-2 rounded">
-                  <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5" />
-                  <span>Condenser coil photos included (if cooling season).</span>
-                </li>
-                <li className="flex items-start gap-2 bg-muted/30 p-2 rounded">
-                  <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5" />
-                  <span>Signed acknowledgment letter with temperatures obtained from a Supervisor.</span>
                 </li>
                 <li className="flex items-start gap-2 bg-muted/30 p-2 rounded">
                   <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5" />

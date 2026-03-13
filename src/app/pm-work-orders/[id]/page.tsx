@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -7,7 +8,7 @@ import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ArrowLeft, Save, FileCheck, MapPin, Package, Calendar, Settings, Pencil, ChevronDown, User } from 'lucide-react';
+import { Loader2, ArrowLeft, Save, FileCheck, MapPin, Package, Calendar, Settings, Pencil, ChevronDown, User, Activity, AlertTriangle, Receipt } from 'lucide-react';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
 import { getPmWorkOrderById, getTechnicians } from '@/lib/data';
 import type { PmWorkOrder, PmTask, PmAssetTaskGroup, PhotoMetadata, Technician } from '@/lib/types';
@@ -95,6 +96,17 @@ export default function PmWorkOrderExecutionPage() {
     setPmWorkOrder({ ...pmWO, assetTasks: newAssetTasks });
   };
 
+  const handleUnitConditionUpdate = (groupIndex: number, condition: PmAssetTaskGroup['condition']) => {
+    if (!pmWO) return;
+    const newAssetTasks = [...pmWO.assetTasks];
+    newAssetTasks[groupIndex] = { ...newAssetTasks[groupIndex], condition };
+    setPmWorkOrder({ ...pmWO, assetTasks: newAssetTasks });
+    
+    // Auto-save this structural change
+    const woRef = doc(db, 'pm_work_orders', pmWO.id);
+    updateDocumentNonBlocking(woRef, { assetTasks: newAssetTasks });
+  };
+
   const handleUpdateDetails = async () => {
     if (!db || !pmWO) return;
 
@@ -105,7 +117,6 @@ export default function PmWorkOrderExecutionPage() {
       const oldDocRef = doc(db, 'pm_work_orders', pmWO.id);
       
       if (isIdChanged) {
-        // Check for duplicates in both job registries
         const [newPmSnap, standardWoSnap] = await Promise.all([
           getDoc(newDocRef),
           getDoc(doc(db, 'work_orders', editForm.id))
@@ -249,6 +260,7 @@ export default function PmWorkOrderExecutionPage() {
               const unitDone = group.tasks.filter(t => t.completed || t.isNA).length;
               const unitFinished = unitDone === unitTotal;
               const unitProgressPercent = (unitDone / unitTotal) * 100;
+              const needsQuote = (group.condition === 'Fair' || group.condition === 'Poor') && !group.quoteId;
 
               return (
                 <AccordionItem 
@@ -266,11 +278,18 @@ export default function PmWorkOrderExecutionPage() {
                           <Package className={cn("h-5 w-5", unitFinished ? "text-green-600" : "text-primary")} />
                           <span className="text-lg font-bold">{group.assetName}</span>
                         </div>
-                        {unitFinished ? (
-                          <Badge className="bg-green-600 h-5 text-[10px] uppercase">Unit Done</Badge>
-                        ) : (
-                          <span className="text-[10px] font-black text-muted-foreground uppercase">{unitDone} / {unitTotal} Tasks</span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {group.condition && (
+                            <Badge variant={group.condition === 'Good' ? 'secondary' : 'destructive'} className="h-5 text-[10px] uppercase">
+                              {group.condition} Condition
+                            </Badge>
+                          )}
+                          {unitFinished ? (
+                            <Badge className="bg-green-600 h-5 text-[10px] uppercase">Unit Done</Badge>
+                          ) : (
+                            <span className="text-[10px] font-black text-muted-foreground uppercase">{unitDone} / {unitTotal} Tasks</span>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="font-mono text-[10px] uppercase text-muted-foreground">TAG: {group.assetTag}</span>
@@ -283,13 +302,53 @@ export default function PmWorkOrderExecutionPage() {
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-4 pb-4 pt-1">
-                    <div className="flex justify-end mb-2">
-                      <Button variant="outline" size="sm" asChild className="h-8 text-xs">
-                        <Link href={`/assets/${group.assetId}`} target="_blank">
-                          <Settings className="h-3 w-3 mr-2" /> Equipment History
-                        </Link>
-                      </Button>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 p-3 bg-muted/30 rounded-lg">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Overall Equipment Condition</Label>
+                        <Select 
+                          value={group.condition || ""} 
+                          onValueChange={(val: any) => handleUnitConditionUpdate(groupIdx, val)}
+                          disabled={isCompleted}
+                        >
+                          <SelectTrigger className="w-full sm:w-[200px] h-9 bg-background">
+                            <SelectValue placeholder="Select condition..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Good">Good - No action needed</SelectItem>
+                            <SelectItem value="Fair">Fair - Needs repair</SelectItem>
+                            <SelectItem value="Poor">Poor - Critical/Needs replacement</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      {needsQuote ? (
+                        <div className="flex items-center gap-3">
+                          <div className="text-right hidden sm:block">
+                            <p className="text-[10px] font-bold text-destructive uppercase">Quote Required</p>
+                            <p className="text-[9px] text-muted-foreground">Fair/Poor condition requires documentation</p>
+                          </div>
+                          <Button asChild variant="destructive" size="sm" className="h-9 gap-2">
+                            <Link href={`/work-orders/${pmWO.id}/start-quote?assetId=${group.assetId}`}>
+                              <Receipt className="h-4 w-4" /> Start Repair Quote
+                            </Link>
+                          </Button>
+                        </div>
+                      ) : group.quoteId ? (
+                        <div className="flex items-center gap-3">
+                          <p className="text-xs font-medium text-green-700">Quote Linked: {group.quoteNumber || 'Pending'}</p>
+                          <Button asChild variant="outline" size="sm" className="h-8">
+                            <Link href={`/quotes/${group.quoteId}`}>View Quote</Link>
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button variant="outline" size="sm" asChild className="h-8 text-xs">
+                          <Link href={`/assets/${group.assetId}`} target="_blank">
+                            <Settings className="h-3 w-3 mr-2" /> Equipment History
+                          </Link>
+                        </Button>
+                      )}
                     </div>
+
                     <div className="space-y-3">
                       {group.tasks.map((task, taskIdx) => (
                         <PmTaskItem 
