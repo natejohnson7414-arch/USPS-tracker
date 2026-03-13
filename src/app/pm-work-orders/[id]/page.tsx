@@ -156,9 +156,6 @@ export default function PmWorkOrderExecutionPage() {
   if (isLoading) return <MainLayout><div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div></MainLayout>;
   if (!pmWO) return <MainLayout><div className="container py-12">PM Work Order not found.</div></MainLayout>;
 
-  const allTasks = pmWO.assetTasks.flatMap(g => g.tasks);
-  const completedOrNATasks = allTasks.filter(t => t.completed || t.isNA).length;
-  const progress = allTasks.length > 0 ? (completedOrNATasks / allTasks.length) * 100 : 0;
   const isCompleted = pmWO.status === 'Completed' || pmWO.status === 'Submitted For Review';
 
   return (
@@ -199,39 +196,31 @@ export default function PmWorkOrderExecutionPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <div className="lg:col-span-1 space-y-6">
+          <div className="lg:col-span-1">
             <Card className="sticky top-24">
-              <CardHeader><CardTitle className="text-sm font-bold uppercase">Consolidated Progress</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span>{completedOrNATasks} of {allTasks.length} total tasks</span>
-                    <span>{Math.round(progress)}%</span>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Units In This Scope</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[500px]">
+                  <div className="space-y-2 pr-3">
+                    {pmWO.assetTasks.map((group, idx) => {
+                      const unitTotal = group.tasks.length;
+                      const unitDone = group.tasks.filter(t => t.completed || t.isNA).length;
+                      const unitFinished = unitDone === unitTotal;
+                      return (
+                        <div key={idx} className="flex items-center justify-between text-xs border-b pb-2 last:border-0">
+                          <span className={cn("truncate max-w-[150px] font-medium", unitFinished && "text-green-600")}>
+                            {group.assetTag}
+                          </span>
+                          <Badge variant={unitFinished ? "default" : "outline"} className={cn("scale-75 origin-right", unitFinished && "bg-green-600")}>
+                            {unitDone}/{unitTotal}
+                          </Badge>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <Progress value={progress} className="h-2" />
-                </div>
-                <div className="pt-4 space-y-3">
-                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Units in Scope</p>
-                  <ScrollArea className="h-[300px]">
-                    <div className="space-y-2 pr-3">
-                      {pmWO.assetTasks.map((group, idx) => {
-                        const unitTotal = group.tasks.length;
-                        const unitDone = group.tasks.filter(t => t.completed || t.isNA).length;
-                        const unitFinished = unitDone === unitTotal;
-                        return (
-                          <div key={idx} className="flex items-center justify-between text-xs border-b pb-2 last:border-0">
-                            <span className={cn("truncate max-w-[150px] font-medium", unitFinished && "text-green-600")}>
-                              {group.assetTag}
-                            </span>
-                            <Badge variant={unitFinished ? "default" : "outline"} className={cn("scale-75 origin-right", unitFinished && "bg-green-600")}>
-                              {unitDone}/{unitTotal}
-                            </Badge>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </ScrollArea>
-                </div>
+                </ScrollArea>
               </CardContent>
             </Card>
           </div>
