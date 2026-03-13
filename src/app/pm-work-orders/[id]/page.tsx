@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -8,7 +7,7 @@ import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ArrowLeft, Save, FileCheck, MapPin, Package, Calendar, Settings, Pencil } from 'lucide-react';
+import { Loader2, ArrowLeft, Save, FileCheck, MapPin, Package, Calendar, Settings, Pencil, ChevronDown } from 'lucide-react';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
 import { getPmWorkOrderById } from '@/lib/data';
 import type { PmWorkOrder, PmTask, PmAssetTaskGroup, PhotoMetadata } from '@/lib/types';
@@ -26,6 +25,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -193,7 +198,7 @@ export default function PmWorkOrderExecutionPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           <div className="lg:col-span-1 space-y-6">
-            <Card>
+            <Card className="sticky top-24">
               <CardHeader><CardTitle className="text-sm font-bold uppercase">Consolidated Progress</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -205,52 +210,85 @@ export default function PmWorkOrderExecutionPage() {
                 </div>
                 <div className="pt-4 space-y-3">
                   <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Units in Scope</p>
-                  {pmWO.assetTasks.map((group, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-xs border-b pb-2 last:border-0">
-                      <span className="truncate max-w-[150px] font-medium">{group.assetTag}</span>
-                      <Badge variant="outline" className="scale-75 origin-right">{group.tasks.filter(t => t.completed || t.isNA).length}/{group.tasks.length}</Badge>
+                  <ScrollArea className="h-[300px]">
+                    <div className="space-y-2 pr-3">
+                      {pmWO.assetTasks.map((group, idx) => {
+                        const unitTotal = group.tasks.length;
+                        const unitDone = group.tasks.filter(t => t.completed || t.isNA).length;
+                        const unitFinished = unitDone === unitTotal;
+                        return (
+                          <div key={idx} className="flex items-center justify-between text-xs border-b pb-2 last:border-0">
+                            <span className={cn("truncate max-w-[150px] font-medium", unitFinished && "text-green-600")}>
+                              {group.assetTag}
+                            </span>
+                            <Badge variant={unitFinished ? "default" : "outline"} className={cn("scale-75 origin-right", unitFinished && "bg-green-600")}>
+                              {unitDone}/{unitTotal}
+                            </Badge>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
+                  </ScrollArea>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          <div className="lg:col-span-3 space-y-8">
-            {pmWO.assetTasks.map((group, groupIdx) => (
-              <Card key={groupIdx} className="overflow-hidden border-primary/10">
-                <CardHeader className="bg-primary/5 py-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Package className="h-4 w-4 text-primary" />
-                        {group.assetName}
-                      </CardTitle>
-                      <CardDescription className="font-mono text-[10px] uppercase">
-                        TAG: {group.assetTag} • {group.templateName}
-                      </CardDescription>
-                    </div>
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href={`/assets/${group.assetId}`} target="_blank">
-                        <Settings className="h-4 w-4 mr-2" /> History
-                      </Link>
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-6">
-                  {group.tasks.map((task, taskIdx) => (
-                    <PmTaskItem 
-                      key={`${groupIdx}-${taskIdx}`} 
-                      task={task} 
-                      index={taskIdx} 
-                      onUpdate={(updatedTask) => handleTaskUpdate(groupIdx, taskIdx, updatedTask)}
-                      assetTag={group.assetTag}
-                      isCompletedWorkOrder={isCompleted}
-                    />
-                  ))}
-                </CardContent>
-              </Card>
-            ))}
+          <div className="lg:col-span-3 space-y-4">
+            <Accordion type="multiple" className="space-y-4">
+              {pmWO.assetTasks.map((group, groupIdx) => {
+                const unitTotal = group.tasks.length;
+                const unitDone = group.tasks.filter(t => t.completed || t.isNA).length;
+                const unitFinished = unitDone === unitTotal;
+
+                return (
+                  <AccordionItem 
+                    key={groupIdx} 
+                    value={`item-${groupIdx}`} 
+                    className={cn(
+                      "border rounded-lg overflow-hidden transition-all",
+                      unitFinished ? "border-green-200 bg-green-50/10" : "border-primary/10 bg-card"
+                    )}
+                  >
+                    <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                      <div className="flex flex-col items-start text-left gap-1">
+                        <div className="flex items-center gap-2">
+                          <Package className={cn("h-5 w-5", unitFinished ? "text-green-600" : "text-primary")} />
+                          <span className="text-lg font-bold">{group.assetName}</span>
+                          {unitFinished && <Badge className="bg-green-600 h-5 text-[10px] uppercase">Unit Done</Badge>}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono text-[10px] uppercase text-muted-foreground">TAG: {group.assetTag}</span>
+                          <span className="text-[10px] text-muted-foreground">•</span>
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase">{group.templateName}</span>
+                        </div>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-6 pb-6 pt-2">
+                      <div className="flex justify-end mb-4">
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/assets/${group.assetId}`} target="_blank">
+                            <Settings className="h-4 w-4 mr-2" /> View Equipment History
+                          </Link>
+                        </Button>
+                      </div>
+                      <div className="space-y-4">
+                        {group.tasks.map((task, taskIdx) => (
+                          <PmTaskItem 
+                            key={`${groupIdx}-${taskIdx}`} 
+                            task={task} 
+                            index={taskIdx} 
+                            onUpdate={(updatedTask) => handleTaskUpdate(groupIdx, taskIdx, updatedTask)}
+                            assetTag={group.assetTag}
+                            isCompletedWorkOrder={isCompleted}
+                          />
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
           </div>
         </div>
       </div>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef } from 'react';
@@ -101,7 +100,7 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
       "p-4 border rounded-lg space-y-4 transition-colors",
       task.completed ? "bg-green-50/30 border-green-200" : task.isNA ? "bg-muted/30 border-muted opacity-60" : "bg-card"
     )}>
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-4">
         <div className="flex flex-col gap-4 mt-1">
             <div className="flex flex-col items-center gap-1">
                 <Checkbox 
@@ -109,6 +108,7 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
                     checked={task.completed} 
                     onCheckedChange={handleToggle}
                     disabled={isCompletedWorkOrder || task.isNA}
+                    className="h-10 w-10"
                 />
                 <span className="text-[8px] font-black uppercase text-muted-foreground">Done</span>
             </div>
@@ -118,17 +118,17 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
                     checked={task.isNA} 
                     onCheckedChange={handleToggleNA}
                     disabled={isCompletedWorkOrder}
-                    className="border-muted-foreground"
+                    className="border-muted-foreground h-10 w-10"
                 />
                 <span className="text-[8px] font-black uppercase text-muted-foreground">N/A</span>
             </div>
         </div>
         
-        <div className="flex-1 space-y-1">
+        <div className="flex-1 space-y-1 pt-1">
           <Label 
             htmlFor={`task-${assetTag}-${index}`}
             className={cn(
-              "text-sm font-bold leading-tight cursor-pointer",
+              "text-base font-bold leading-tight cursor-pointer",
               task.completed && "text-green-800",
               task.isNA && "text-muted-foreground line-through"
             )}
@@ -139,7 +139,7 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
             placeholder={task.isNA ? "Not applicable" : "Technical notes..."}
             value={task.notes}
             onChange={(e) => onUpdate({ ...task, notes: e.target.value })}
-            className="h-8 text-xs mt-2"
+            className="h-9 text-sm mt-3"
             disabled={isCompletedWorkOrder || task.isNA}
           />
         </div>
