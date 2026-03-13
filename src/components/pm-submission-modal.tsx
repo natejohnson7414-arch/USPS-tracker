@@ -13,8 +13,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, FileCheck, Loader2, Package } from 'lucide-react';
+import { AlertCircle, FileCheck, Loader2, Package, CheckCircle2 } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import type { PmAssetTaskGroup } from '@/lib/types';
 
 interface PmSubmissionModalProps {
@@ -28,12 +29,12 @@ interface PmSubmissionModalProps {
 export function PmSubmissionModal({ isOpen, onOpenChange, assetTasks, onConfirm, isSubmitting }: PmSubmissionModalProps) {
   const [agreed, setAgreed] = useState(false);
   
-  const groupsWithGaps = assetTasks.map(group => ({
-    ...group,
-    tasksWithoutPhotos: group.tasks.filter(t => t.completed && !t.isNA && t.photoUrls.length === 0)
-  })).filter(g => g.tasksWithoutPhotos.length > 0);
+  // Requirement: At least one photo per unit (asset group) across any of its tasks
+  const unitsWithoutPhotos = assetTasks.filter(group => 
+    !group.tasks.some(t => t.photoUrls && t.photoUrls.length > 0)
+  );
 
-  const totalGaps = groupsWithGaps.reduce((acc, g) => acc + g.tasksWithoutPhotos.length, 0);
+  const canSubmit = agreed && unitsWithoutPhotos.length === 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -50,25 +51,35 @@ export function PmSubmissionModal({ isOpen, onOpenChange, assetTasks, onConfirm,
 
         <ScrollArea className="flex-1 pr-4">
           <div className="space-y-6 py-4">
-            {totalGaps > 0 && (
-              <div className="bg-orange-50 border-2 border-orange-200 p-4 rounded-lg">
-                <div className="flex items-center gap-2 text-orange-800 font-bold mb-2">
+            {unitsWithoutPhotos.length > 0 ? (
+              <div className="bg-destructive/10 border-2 border-destructive p-4 rounded-lg">
+                <div className="flex items-center gap-2 text-destructive font-bold mb-2">
                   <AlertCircle className="h-4 w-4" />
-                  Documentation Gaps ({totalGaps})
+                  Documentation Requirement Not Met
                 </div>
-                <p className="text-xs text-orange-700 mb-3 italic">The following items are marked done but have 0 photos:</p>
-                <div className="space-y-4">
-                  {groupsWithGaps.map((group, idx) => (
-                    <div key={idx} className="space-y-1">
-                      <p className="text-[10px] font-black uppercase text-orange-900 flex items-center gap-1">
+                <p className="text-xs text-destructive mb-3">
+                  USPS standards require <span className="font-bold">at least one photo per unit</span>. The following units have no documentation:
+                </p>
+                <div className="space-y-2">
+                  {unitsWithoutPhotos.map((group, idx) => (
+                    <div key={idx} className="flex items-center justify-between bg-white/50 p-2 rounded border border-destructive/20">
+                      <div className="flex items-center gap-2 text-[10px] font-black uppercase text-destructive">
                         <Package className="h-3 w-3" /> {group.assetTag} - {group.assetName}
-                      </p>
-                      <ul className="list-disc pl-5 text-[11px] text-orange-800 space-y-0.5">
-                        {group.tasksWithoutPhotos.map((t, i) => <li key={i}>{t.text}</li>)}
-                      </ul>
+                      </div>
+                      <Badge variant="destructive" className="h-5 text-[8px] uppercase px-1.5">No Photos Found</Badge>
                     </div>
                   ))}
                 </div>
+              </div>
+            ) : (
+              <div className="bg-green-50 border-2 border-green-200 p-4 rounded-lg">
+                <div className="flex items-center gap-2 text-green-800 font-bold mb-1">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Documentation Verified
+                </div>
+                <p className="text-xs text-green-700 italic">
+                  At least one photo has been provided for all {assetTasks.length} units in scope.
+                </p>
               </div>
             )}
 
@@ -123,7 +134,7 @@ export function PmSubmissionModal({ isOpen, onOpenChange, assetTasks, onConfirm,
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Go Back
           </Button>
-          <Button onClick={onConfirm} disabled={!agreed || isSubmitting}>
+          <Button onClick={onConfirm} disabled={!canSubmit || isSubmitting}>
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             Submit Review
           </Button>
