@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -8,10 +7,10 @@ import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ArrowLeft, Save, FileCheck, MapPin, Package, Calendar, Settings, Pencil, ChevronDown } from 'lucide-react';
+import { Loader2, ArrowLeft, Save, FileCheck, MapPin, Package, Calendar, Settings, Pencil, ChevronDown, User } from 'lucide-react';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
-import { getPmWorkOrderById } from '@/lib/data';
-import type { PmWorkOrder, PmTask, PmAssetTaskGroup, PhotoMetadata } from '@/lib/types';
+import { getPmWorkOrderById, getTechnicians } from '@/lib/data';
+import type { PmWorkOrder, PmTask, PmAssetTaskGroup, PhotoMetadata, Technician } from '@/lib/types';
 import { PmTaskItem } from '@/components/pm-task-item';
 import { PmSubmissionModal } from '@/components/pm-submission-modal';
 import { doc, getDoc, writeBatch } from 'firebase/firestore';
@@ -36,6 +35,14 @@ import {
 } from "@/components/ui/accordion";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function PmWorkOrderExecutionPage() {
   const { id } = useParams();
@@ -45,21 +52,34 @@ export default function PmWorkOrderExecutionPage() {
   const { toast } = useToast();
 
   const [pmWO, setPmWorkOrder] = useState<PmWorkOrder | null>(null);
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   
-  const [isIdDialogOpen, setIsIdDialogOpen] = useState(false);
-  const [newJobId, setNewJobId] = useState('');
-  const [isUpdatingId, setIsUpdatingId] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    id: '',
+    assignedTechnicianId: '',
+    description: ''
+  });
+  const [isUpdatingDetails, setIsUpdatingDetails] = useState(false);
 
   useEffect(() => {
     if (db && id) {
-      getPmWorkOrderById(db, id as string).then(data => {
+      Promise.all([
+        getPmWorkOrderById(db, id as string),
+        getTechnicians(db)
+      ]).then(([data, techs]) => {
         if (data) {
           setPmWorkOrder(data);
-          setNewJobId(data.id);
+          setEditForm({
+            id: data.id,
+            assignedTechnicianId: data.assignedTechnicianId || 'none',
+            description: data.description || ''
+          });
         }
+        setTechnicians(techs);
         setIsLoading(false);
       });
     }
@@ -75,44 +95,55 @@ export default function PmWorkOrderExecutionPage() {
     setPmWorkOrder({ ...pmWO, assetTasks: newAssetTasks });
   };
 
-  const handleUpdateId = async () => {
-    if (!db || !pmWO || !newJobId || newJobId === pmWO.id) {
-      setIsIdDialogOpen(false);
-      return;
-    }
+  const handleUpdateDetails = async () => {
+    if (!db || !pmWO) return;
 
-    setIsUpdatingId(true);
+    setIsUpdatingDetails(true);
     try {
-      const newDocRef = doc(db, 'pm_work_orders', newJobId);
+      const isIdChanged = editForm.id !== pmWO.id;
+      const newDocRef = doc(db, 'pm_work_orders', editForm.id);
       const oldDocRef = doc(db, 'pm_work_orders', pmWO.id);
       
-      // Check for duplicates in both job registries
-      const [newPmSnap, standardWoSnap] = await Promise.all([
-        getDoc(newDocRef),
-        getDoc(doc(db, 'work_orders', newJobId))
-      ]);
+      if (isIdChanged) {
+        // Check for duplicates in both job registries
+        const [newPmSnap, standardWoSnap] = await Promise.all([
+          getDoc(newDocRef),
+          getDoc(doc(db, 'work_orders', editForm.id))
+        ]);
 
-      if (newPmSnap.exists() || standardWoSnap.exists()) {
-        toast({ title: "Duplicate Job Number", description: `The Job # "${newJobId}" is already in use.`, variant: "destructive" });
-        setIsUpdatingId(false);
-        return;
+        if (newPmSnap.exists() || standardWoSnap.exists()) {
+          toast({ title: "Duplicate Job Number", description: `The Job # "${editForm.id}" is already in use.`, variant: "destructive" });
+          setIsUpdatingDetails(false);
+          return;
+        }
       }
 
       const batch = writeBatch(db);
-      const updatedData = { ...pmWO, id: newJobId, updatedAt: new Date().toISOString() };
+      const updatedData = { 
+        ...pmWO, 
+        id: editForm.id, 
+        assignedTechnicianId: editForm.assignedTechnicianId === 'none' ? null : editForm.assignedTechnicianId,
+        description: editForm.description,
+        updatedAt: new Date().toISOString() 
+      };
       
-      batch.set(newDocRef, updatedData);
-      batch.delete(oldDocRef);
+      if (isIdChanged) {
+        batch.set(newDocRef, updatedData);
+        batch.delete(oldDocRef);
+        await batch.commit();
+        router.replace(`/pm-work-orders/${editForm.id}`);
+      } else {
+        batch.set(newDocRef, updatedData);
+        await batch.commit();
+        setPmWorkOrder(updatedData);
+      }
       
-      await batch.commit();
-      
-      toast({ title: "Job Number Updated" });
-      router.replace(`/pm-work-orders/${newJobId}`);
-      setIsIdDialogOpen(false);
+      toast({ title: "Job Details Updated" });
+      setIsEditDialogOpen(false);
     } catch (e) {
       toast({ title: "Update Failed", variant: 'destructive' });
     } finally {
-      setIsUpdatingId(false);
+      setIsUpdatingDetails(false);
     }
   };
 
@@ -158,6 +189,7 @@ export default function PmWorkOrderExecutionPage() {
   if (!pmWO) return <MainLayout><div className="container py-12">PM Work Order not found.</div></MainLayout>;
 
   const isCompleted = pmWO.status === 'Completed' || pmWO.status === 'Submitted For Review';
+  const assignedTech = technicians.find(t => t.id === pmWO.assignedTechnicianId);
 
   return (
     <MainLayout>
@@ -176,12 +208,26 @@ export default function PmWorkOrderExecutionPage() {
               <div className="flex items-center gap-1.5"><Calendar className="h-4 w-4" /> {pmWO.scheduledMonth}/{pmWO.scheduledYear}</div>
               <div className="flex items-center gap-1.5 font-mono bg-muted/50 px-2 py-0.5 rounded border">
                 ID: {pmWO.id}
-                {!isCompleted && (
-                  <Button variant="ghost" size="icon" className="h-5 w-5 ml-1" onClick={() => setIsIdDialogOpen(true)}>
-                    <Pencil className="h-3 w-3" />
-                  </Button>
-                )}
               </div>
+              {assignedTech ? (
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-5 w-5">
+                    <AvatarImage src={assignedTech.avatarUrl} alt={assignedTech.name} />
+                    <AvatarFallback>{assignedTech.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <span>{assignedTech.name}</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-orange-600">
+                  <User className="h-4 w-4" />
+                  <span>Unassigned</span>
+                </div>
+              )}
+              {!isCompleted && (
+                <Button variant="ghost" size="sm" className="h-7 px-2 text-[10px] uppercase font-bold" onClick={() => setIsEditDialogOpen(true)}>
+                  <Pencil className="h-3 w-3 mr-1" /> Edit Details
+                </Button>
+              )}
             </div>
           </div>
           {!isCompleted && (
@@ -272,12 +318,12 @@ export default function PmWorkOrderExecutionPage() {
         isSubmitting={isSaving}
       />
 
-      <Dialog open={isIdDialogOpen} onOpenChange={setIsIdDialogOpen}>
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Job Number</DialogTitle>
+            <DialogTitle>Edit PM Details</DialogTitle>
             <DialogDescription>
-              Update the Job # for this preventative maintenance work order.
+              Update the Job # and technician assignment for this master PM.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -285,19 +331,52 @@ export default function PmWorkOrderExecutionPage() {
               <Label htmlFor="pm-id">Job Number</Label>
               <Input 
                 id="pm-id" 
-                value={newJobId} 
-                onChange={(e) => setNewJobId(e.target.value)} 
+                value={editForm.id} 
+                onChange={(e) => setEditForm(prev => ({ ...prev, id: e.target.value }))} 
                 placeholder="e.g. PM-12345"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pm-tech">Assigned Technician</Label>
+              <Select 
+                value={editForm.assignedTechnicianId} 
+                onValueChange={(val) => setEditForm(prev => ({ ...prev, assignedTechnicianId: val }))}
+              >
+                <SelectTrigger id="pm-tech">
+                  <SelectValue placeholder="Select technician" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Unassigned</SelectItem>
+                  {technicians.map(tech => (
+                    <SelectItem key={tech.id} value={tech.id}>
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-4 w-4">
+                          <AvatarImage src={tech.avatarUrl} alt={tech.name} />
+                          <AvatarFallback>{tech.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        {tech.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pm-desc">Description</Label>
+              <Input 
+                id="pm-desc" 
+                value={editForm.description} 
+                onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))} 
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsIdDialogOpen(false)} disabled={isUpdatingId}>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isUpdatingDetails}>
               Cancel
             </Button>
-            <Button onClick={handleUpdateId} disabled={isUpdatingId || !newJobId || newJobId === pmWO.id}>
-              {isUpdatingId && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Change
+            <Button onClick={handleUpdateDetails} disabled={isUpdatingDetails || !editForm.id}>
+              {isUpdatingDetails && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
