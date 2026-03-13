@@ -231,6 +231,7 @@ export default function PmWorkOrderExecutionPage() {
                 const unitTotal = group.tasks.length;
                 const unitDone = group.tasks.filter(t => t.completed || t.isNA).length;
                 const unitFinished = unitDone === unitTotal;
+                const unitProgressPercent = (unitDone / unitTotal) * 100;
 
                 return (
                   <AccordionItem 
@@ -242,17 +243,28 @@ export default function PmWorkOrderExecutionPage() {
                     )}
                   >
                     <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                      <div className="flex flex-col items-start text-left gap-1">
-                        <div className="flex items-center gap-2">
-                          <Package className={cn("h-5 w-5", unitFinished ? "text-green-600" : "text-primary")} />
-                          <span className="text-lg font-bold">{group.assetName}</span>
-                          {unitFinished && <Badge className="bg-green-600 h-5 text-[10px] uppercase">Unit Done</Badge>}
+                      <div className="flex flex-col items-start text-left gap-1 w-full pr-4">
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center gap-2">
+                            <Package className={cn("h-5 w-5", unitFinished ? "text-green-600" : "text-primary")} />
+                            <span className="text-lg font-bold">{group.assetName}</span>
+                          </div>
+                          {unitFinished ? (
+                            <Badge className="bg-green-600 h-5 text-[10px] uppercase">Unit Done</Badge>
+                          ) : (
+                            <span className="text-[10px] font-black text-muted-foreground uppercase">{unitDone} / {unitTotal} Tasks</span>
+                          )}
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="font-mono text-[10px] uppercase text-muted-foreground">TAG: {group.assetTag}</span>
                           <span className="text-[10px] text-muted-foreground">•</span>
                           <span className="text-[10px] font-bold text-muted-foreground uppercase">{group.templateName}</span>
                         </div>
+                        {!unitFinished && (
+                          <div className="w-full mt-2">
+                            <Progress value={unitProgressPercent} className="h-1.5" />
+                          </div>
+                        )}
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="px-4 pb-4 pt-1">
