@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -195,104 +196,71 @@ export default function PmWorkOrderExecutionPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <div className="lg:col-span-1">
-            <Card className="sticky top-24">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Units In This Scope</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[500px]">
-                  <div className="space-y-2 pr-3">
-                    {pmWO.assetTasks.map((group, idx) => {
-                      const unitTotal = group.tasks.length;
-                      const unitDone = group.tasks.filter(t => t.completed || t.isNA).length;
-                      const unitFinished = unitDone === unitTotal;
-                      return (
-                        <div key={idx} className="flex items-center justify-between text-xs border-b pb-2 last:border-0">
-                          <span className={cn("truncate max-w-[150px] font-medium", unitFinished && "text-green-600")}>
-                            {group.assetTag}
-                          </span>
-                          <Badge variant={unitFinished ? "default" : "outline"} className={cn("scale-75 origin-right", unitFinished && "bg-green-600")}>
-                            {unitDone}/{unitTotal}
-                          </Badge>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </div>
+        <div className="max-w-4xl mx-auto space-y-4">
+          <Accordion type="multiple" className="space-y-4">
+            {pmWO.assetTasks.map((group, groupIdx) => {
+              const unitTotal = group.tasks.length;
+              const unitDone = group.tasks.filter(t => t.completed || t.isNA).length;
+              const unitFinished = unitDone === unitTotal;
+              const unitProgressPercent = (unitDone / unitTotal) * 100;
 
-          <div className="lg:col-span-3 space-y-4">
-            <Accordion type="multiple" className="space-y-4">
-              {pmWO.assetTasks.map((group, groupIdx) => {
-                const unitTotal = group.tasks.length;
-                const unitDone = group.tasks.filter(t => t.completed || t.isNA).length;
-                const unitFinished = unitDone === unitTotal;
-                const unitProgressPercent = (unitDone / unitTotal) * 100;
-
-                return (
-                  <AccordionItem 
-                    key={groupIdx} 
-                    value={`item-${groupIdx}`} 
-                    className={cn(
-                      "border rounded-lg overflow-hidden transition-all",
-                      unitFinished ? "border-green-200 bg-green-50/10" : "border-primary/10 bg-card"
-                    )}
-                  >
-                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                      <div className="flex flex-col items-start text-left gap-1 w-full pr-4">
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center gap-2">
-                            <Package className={cn("h-5 w-5", unitFinished ? "text-green-600" : "text-primary")} />
-                            <span className="text-lg font-bold">{group.assetName}</span>
-                          </div>
-                          {unitFinished ? (
-                            <Badge className="bg-green-600 h-5 text-[10px] uppercase">Unit Done</Badge>
-                          ) : (
-                            <span className="text-[10px] font-black text-muted-foreground uppercase">{unitDone} / {unitTotal} Tasks</span>
-                          )}
+              return (
+                <AccordionItem 
+                  key={groupIdx} 
+                  value={`item-${groupIdx}`} 
+                  className={cn(
+                    "border rounded-lg overflow-hidden transition-all",
+                    unitFinished ? "border-green-200 bg-green-50/10" : "border-primary/10 bg-card"
+                  )}
+                >
+                  <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                    <div className="flex flex-col items-start text-left gap-1 w-full pr-4">
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-2">
+                          <Package className={cn("h-5 w-5", unitFinished ? "text-green-600" : "text-primary")} />
+                          <span className="text-lg font-bold">{group.assetName}</span>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className="font-mono text-[10px] uppercase text-muted-foreground">TAG: {group.assetTag}</span>
-                          <span className="text-[10px] text-muted-foreground">•</span>
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase">{group.templateName}</span>
-                        </div>
-                        {!unitFinished && (
-                          <div className="w-full mt-2">
-                            <Progress value={unitProgressPercent} className="h-1.5" />
-                          </div>
+                        {unitFinished ? (
+                          <Badge className="bg-green-600 h-5 text-[10px] uppercase">Unit Done</Badge>
+                        ) : (
+                          <span className="text-[10px] font-black text-muted-foreground uppercase">{unitDone} / {unitTotal} Tasks</span>
                         )}
                       </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="px-4 pb-4 pt-1">
-                      <div className="flex justify-end mb-2">
-                        <Button variant="outline" size="sm" asChild className="h-8 text-xs">
-                          <Link href={`/assets/${group.assetId}`} target="_blank">
-                            <Settings className="h-3 w-3 mr-2" /> Equipment History
-                          </Link>
-                        </Button>
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-[10px] uppercase text-muted-foreground">TAG: {group.assetTag}</span>
+                        <span className="text-[10px] text-muted-foreground">•</span>
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase">{group.templateName}</span>
                       </div>
-                      <div className="space-y-3">
-                        {group.tasks.map((task, taskIdx) => (
-                          <PmTaskItem 
-                            key={`${groupIdx}-${taskIdx}`} 
-                            task={task} 
-                            index={taskIdx} 
-                            onUpdate={(updatedTask) => handleTaskUpdate(groupIdx, taskIdx, updatedTask)}
-                            assetTag={group.assetTag}
-                            isCompletedWorkOrder={isCompleted}
-                          />
-                        ))}
+                      <div className="w-full mt-2">
+                        <Progress value={unitProgressPercent} className="h-1.5" />
                       </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
-          </div>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-4 pb-4 pt-1">
+                    <div className="flex justify-end mb-2">
+                      <Button variant="outline" size="sm" asChild className="h-8 text-xs">
+                        <Link href={`/assets/${group.assetId}`} target="_blank">
+                          <Settings className="h-3 w-3 mr-2" /> Equipment History
+                        </Link>
+                      </Button>
+                    </div>
+                    <div className="space-y-3">
+                      {group.tasks.map((task, taskIdx) => (
+                        <PmTaskItem 
+                          key={`${groupIdx}-${taskIdx}`} 
+                          task={task} 
+                          index={taskIdx} 
+                          onUpdate={(updatedTask) => handleTaskUpdate(groupIdx, taskIdx, updatedTask)}
+                          assetTag={group.assetTag}
+                          isCompletedWorkOrder={isCompleted}
+                        />
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
         </div>
       </div>
 
