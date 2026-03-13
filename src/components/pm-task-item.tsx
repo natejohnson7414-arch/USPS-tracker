@@ -9,7 +9,7 @@ import { Button } from './ui/button';
 import { Camera, Image as ImageIcon, Loader2, Trash2, X, Maximize2, Ban } from 'lucide-react';
 import { Input } from './ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { uploadImageResumable, deleteImage, uploadPhotoWithThumbnail, deletePhotoMetadata } from '@/firebase/storage';
+import { uploadPhotoWithThumbnail, deletePhotoMetadata } from '@/firebase/storage';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { cn } from '@/lib/utils';
 
@@ -58,23 +58,51 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
     if (!files || files.length === 0 || task.isNA) return;
 
     setIsUploading(true);
-    const uploadedResults: PhotoMetadata[] = [];
+    const toastId = toast({ title: `Uploading ${files.length} photo(s)...`, duration: Infinity });
 
     try {
+      let i = 0;
+      const currentTaskPhotos = [...task.photoUrls];
+      
       for (const file of Array.from(files)) {
+        i++;
         const basePath = `pm-work-orders/${assetTag}`;
         const fileName = `${Date.now()}-${file.name}`;
+        
+        toastId.update({ 
+          id: toastId.id, 
+          title: `Photo ${i}/${files.length}`,
+          description: `Uploading to unit ${assetTag}...` 
+        });
+
         const result = await uploadPhotoWithThumbnail(file, basePath, fileName);
-        uploadedResults.push(result);
+        
+        // Add to the local list and notify parent progressively
+        currentTaskPhotos.push(result);
+        onUpdate({
+          ...task,
+          photoUrls: [...currentTaskPhotos]
+        });
       }
 
-      onUpdate({
-        ...task,
-        photoUrls: [...task.photoUrls, ...uploadedResults]
+      toastId.dismiss();
+      toast({ title: "Photos Added Successfully" });
+    } catch (error: any) {
+      console.error("PM task photo upload failed:", error);
+      toastId.dismiss();
+      
+      let errorDescription = "Check your connection and try again.";
+      if (error.code === 'storage/unauthorized') {
+        errorDescription = "Access denied. Please check your session and try again.";
+      } else if (error.message) {
+        errorDescription = error.message;
+      }
+
+      toast({ 
+        variant: 'destructive', 
+        title: 'Upload Failed', 
+        description: errorDescription 
       });
-      toast({ title: "Photos Added" });
-    } catch (error) {
-      toast({ title: "Upload Failed", variant: "destructive" });
     } finally {
       setIsUploading(false);
       if (e.target) e.target.value = '';

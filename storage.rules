@@ -17,6 +17,10 @@ service firebase.storage {
       allow read, write: if isSignedIn();
     }
 
+    match /pm-work-orders/{allPaths=**} {
+      allow read, write: if isSignedIn();
+    }
+
     function userHasRole(roleName) {
       let userDocPath = /databases/$(database)/documents/technicians/$(request.auth.uid);
       let userDoc = get(userDocPath);
