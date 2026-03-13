@@ -241,7 +241,7 @@ export default function PmWorkOrderExecutionPage() {
                       unitFinished ? "border-green-200 bg-green-50/10" : "border-primary/10 bg-card"
                     )}
                   >
-                    <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
                       <div className="flex flex-col items-start text-left gap-1">
                         <div className="flex items-center gap-2">
                           <Package className={cn("h-5 w-5", unitFinished ? "text-green-600" : "text-primary")} />
@@ -255,15 +255,15 @@ export default function PmWorkOrderExecutionPage() {
                         </div>
                       </div>
                     </AccordionTrigger>
-                    <AccordionContent className="px-6 pb-6 pt-2">
-                      <div className="flex justify-end mb-4">
-                        <Button variant="outline" size="sm" asChild>
+                    <AccordionContent className="px-4 pb-4 pt-1">
+                      <div className="flex justify-end mb-2">
+                        <Button variant="outline" size="sm" asChild className="h-8 text-xs">
                           <Link href={`/assets/${group.assetId}`} target="_blank">
-                            <Settings className="h-4 w-4 mr-2" /> View Equipment History
+                            <Settings className="h-3 w-3 mr-2" /> Equipment History
                           </Link>
                         </Button>
                       </div>
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         {group.tasks.map((task, taskIdx) => (
                           <PmTaskItem 
                             key={`${groupIdx}-${taskIdx}`} 

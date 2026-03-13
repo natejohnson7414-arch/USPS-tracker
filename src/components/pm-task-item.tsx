@@ -97,11 +97,11 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
 
   return (
     <div className={cn(
-      "p-4 border rounded-lg space-y-4 transition-colors",
+      "p-3 border rounded-lg space-y-3 transition-colors",
       task.completed ? "bg-green-50/30 border-green-200" : task.isNA ? "bg-muted/30 border-muted opacity-60" : "bg-card"
     )}>
-      <div className="flex items-start gap-4">
-        <div className="flex flex-col gap-4 mt-1">
+      <div className="flex items-start gap-3">
+        <div className="flex flex-col gap-3 mt-1">
             <div className="flex flex-col items-center gap-1">
                 <Checkbox 
                     id={`task-${assetTag}-${index}`} 
@@ -128,7 +128,7 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
           <Label 
             htmlFor={`task-${assetTag}-${index}`}
             className={cn(
-              "text-base font-bold leading-tight cursor-pointer",
+              "text-sm sm:text-base font-bold leading-tight cursor-pointer",
               task.completed && "text-green-800",
               task.isNA && "text-muted-foreground line-through"
             )}
@@ -139,21 +139,21 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
             placeholder={task.isNA ? "Not applicable" : "Technical notes..."}
             value={task.notes}
             onChange={(e) => onUpdate({ ...task, notes: e.target.value })}
-            className="h-9 text-sm mt-3"
+            className="h-8 text-sm mt-2"
             disabled={isCompletedWorkOrder || task.isNA}
           />
         </div>
       </div>
 
       {!task.isNA && (
-        <div className="flex flex-wrap gap-2 pt-2">
+        <div className="flex flex-wrap gap-2 pt-1">
             {task.photoUrls.map((photo, i) => (
-            <div key={getPhotoUrl(photo)} className="relative group h-16 w-16 rounded border overflow-hidden">
+            <div key={getPhotoUrl(photo)} className="relative group h-14 w-14 rounded border overflow-hidden">
                 <Image 
                 src={getThumbUrl(photo)} 
                 alt="Task documentation" 
                 fill 
-                sizes="64px"
+                sizes="56px"
                 className="object-cover cursor-pointer" 
                 onClick={() => setViewingPhoto(getPhotoUrl(photo))}
                 />
@@ -161,10 +161,10 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
                 <Button 
                     variant="destructive" 
                     size="icon" 
-                    className="absolute top-0 right-0 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-0 right-0 h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={() => removePhoto(photo)}
                 >
-                    <X className="h-3 w-3" />
+                    <X className="h-2 w-2" />
                 </Button>
                 )}
             </div>
@@ -173,11 +173,11 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
             <Button 
                 variant="outline" 
                 size="icon" 
-                className="h-16 w-16 border-dashed"
+                className="h-14 w-14 border-dashed"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
             >
-                {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-5 w-5 text-muted-foreground" />}
+                {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4 text-muted-foreground" />}
             </Button>
             )}
         </div>
