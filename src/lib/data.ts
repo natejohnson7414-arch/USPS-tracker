@@ -10,7 +10,7 @@ import { collection, doc, query, where, arrayUnion, orderBy, collectionGroup, ge
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 import { sampleRoles, sampleTechnicians, sampleWorkOrders, sampleWorkSites, sampleClients } from './sample-data';
 import { setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { differenceInMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
+import { differenceInMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO, format } from 'date-fns';
 
 export const seedDatabase = async (db: any) => {
     const rolesSnapshot = await getCollectionNonBlocking(collection(db, 'roles'));
@@ -139,14 +139,39 @@ const getSeasonalTemplate = (month: number, templates: PmTaskTemplate[]) => {
   return templates.find(t => t.season === season) || templates[0];
 };
 
+/**
+ * Generates a unique PM ID by checking both work_orders and pm_work_orders.
+ */
+const generateUniquePmId = async (db: any): Promise<string> => {
+  let isUnique = false;
+  let newId = '';
+  
+  while (!isUnique) {
+    const randomNum = Math.floor(Math.random() * 90000) + 10000;
+    newId = `PM-${randomNum}`;
+    
+    const [woSnap, pmWoSnap] = await Promise.all([
+      getDoc(doc(db, 'work_orders', newId)),
+      getDoc(doc(db, 'pm_work_orders', newId))
+    ]);
+    
+    if (!woSnap.exists() && !pmWoSnap.exists()) {
+      isUnique = true;
+    }
+  }
+  
+  return newId;
+};
+
 export const generatePmWorkOrdersForMonth = async (db: any, month: number, year: number) => {
   console.log(`Starting consolidated Cycle-Aware PM generation for Month: ${month}, Year: ${year}`);
   
   const targetDate = new Date(year, month - 1, 1);
   const start = startOfMonth(targetDate);
   const end = endOfMonth(targetDate);
+  const monthName = format(targetDate, 'MMMM');
 
-  // 1. Get ALL schedules (explicit subcollections + derived asset fields)
+  // 1. Get ALL schedules
   const allSchedules = await getAssetPmSchedules(db);
   
   // 2. Project which ones are due this month based on recurrence
@@ -155,10 +180,8 @@ export const generatePmWorkOrdersForMonth = async (db: any, month: number, year:
     
     const startDueDate = parseISO(s.nextDueDate);
     
-    // Direct Month Match
     if (isWithinInterval(startDueDate, { start, end })) return true;
 
-    // Recurrence Logic (consistent with calendar view)
     if (startDueDate < start) {
       const monthsDiff = differenceInMonths(start, startDueDate);
       const freq = (s.frequencyType || 'annual').toLowerCase();
@@ -212,7 +235,6 @@ export const generatePmWorkOrdersForMonth = async (db: any, month: number, year:
     const assetTasks: PmAssetTaskGroup[] = [];
 
     for (const s of group.schedules) {
-      // Find template: use explicit template if linked, otherwise find seasonal default for month
       let template = templates.find(t => t.id === s.templateId);
       if (!template || s.templateId === 'built-in') {
         template = getSeasonalTemplate(month, templates);
@@ -234,18 +256,22 @@ export const generatePmWorkOrdersForMonth = async (db: any, month: number, year:
 
     if (assetTasks.length === 0) continue;
 
-    const pmWorkOrder: Omit<PmWorkOrder, 'id'> = {
+    const newPmId = await generateUniquePmId(db);
+
+    const pmWorkOrder: PmWorkOrder = {
+      id: newPmId,
       status: 'Scheduled',
       workSiteId: siteId,
       workSiteName: group.siteName,
       scheduledMonth: month,
       scheduledYear: year,
+      description: `${monthName} Preventative Maintenance`,
       assetTasks,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
-    await addDoc(collection(db, 'pm_work_orders'), pmWorkOrder);
+    await setDoc(doc(db, 'pm_work_orders', newPmId), pmWorkOrder);
     createdCount++;
   }
 
@@ -269,7 +295,6 @@ export const getWorkOrderById = async (db: any, id: string): Promise<WorkOrder |
     if (workOrderSnap.exists()) {
       const data = workOrderSnap.data();
       
-      // Attempt to load associated data but catch failures gracefully
       let workSite = data.workSiteId ? await getWorkSiteById(db, data.workSiteId).catch(() => undefined) : undefined;
       let client = data.clientId ? await getClientById(db, data.clientId).catch(() => undefined) : undefined;
       
@@ -378,7 +403,6 @@ export const getAssets = async (db: any): Promise<Asset[]> => {
 
 export const getAssetsByIds = async (db: any, ids: string[]): Promise<Asset[]> => {
   if (!ids || ids.length === 0) return [];
-  // Firestore IN query limited to 10-30 items depending on SDK, but usually fine for assets on a job
   const q = query(collection(db, 'assets'), where(documentId(), 'in', ids.slice(0, 10)));
   const snapshot = await getCollectionNonBlocking(q);
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Asset));

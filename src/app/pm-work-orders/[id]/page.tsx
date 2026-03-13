@@ -8,16 +8,26 @@ import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ArrowLeft, Save, FileCheck, MapPin, Package, Calendar, Settings } from 'lucide-react';
+import { Loader2, ArrowLeft, Save, FileCheck, MapPin, Package, Calendar, Settings, Pencil } from 'lucide-react';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
 import { getPmWorkOrderById } from '@/lib/data';
 import type { PmWorkOrder, PmTask, PmAssetTaskGroup, PhotoMetadata } from '@/lib/types';
 import { PmTaskItem } from '@/components/pm-task-item';
 import { PmSubmissionModal } from '@/components/pm-submission-modal';
-import { doc } from 'firebase/firestore';
+import { doc, getDoc, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function PmWorkOrderExecutionPage() {
   const { id } = useParams();
@@ -30,11 +40,18 @@ export default function PmWorkOrderExecutionPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
+  
+  const [isIdDialogOpen, setIsIdDialogOpen] = useState(false);
+  const [newJobId, setNewJobId] = useState('');
+  const [isUpdatingId, setIsUpdatingId] = useState(false);
 
   useEffect(() => {
     if (db && id) {
       getPmWorkOrderById(db, id as string).then(data => {
-        if (data) setPmWorkOrder(data);
+        if (data) {
+          setPmWorkOrder(data);
+          setNewJobId(data.id);
+        }
         setIsLoading(false);
       });
     }
@@ -48,6 +65,47 @@ export default function PmWorkOrderExecutionPage() {
     newAssetTasks[groupIndex] = { ...newAssetTasks[groupIndex], tasks: newTasks };
     
     setPmWorkOrder({ ...pmWO, assetTasks: newAssetTasks });
+  };
+
+  const handleUpdateId = async () => {
+    if (!db || !pmWO || !newJobId || newJobId === pmWO.id) {
+      setIsIdDialogOpen(false);
+      return;
+    }
+
+    setIsUpdatingId(true);
+    try {
+      const newDocRef = doc(db, 'pm_work_orders', newJobId);
+      const oldDocRef = doc(db, 'pm_work_orders', pmWO.id);
+      
+      // Check for duplicates in both job registries
+      const [newPmSnap, standardWoSnap] = await Promise.all([
+        getDoc(newDocRef),
+        getDoc(doc(db, 'work_orders', newJobId))
+      ]);
+
+      if (newPmSnap.exists() || standardWoSnap.exists()) {
+        toast({ title: "Duplicate Job Number", description: `The Job # "${newJobId}" is already in use.`, variant: "destructive" });
+        setIsUpdatingId(false);
+        return;
+      }
+
+      const batch = writeBatch(db);
+      const updatedData = { ...pmWO, id: newJobId, updatedAt: new Date().toISOString() };
+      
+      batch.set(newDocRef, updatedData);
+      batch.delete(oldDocRef);
+      
+      await batch.commit();
+      
+      toast({ title: "Job Number Updated" });
+      router.replace(`/pm-work-orders/${newJobId}`);
+      setIsIdDialogOpen(false);
+    } catch (e) {
+      toast({ title: "Update Failed", variant: 'destructive' });
+    } finally {
+      setIsUpdatingId(false);
+    }
   };
 
   const handleSubmitReview = async () => {
@@ -108,10 +166,17 @@ export default function PmWorkOrderExecutionPage() {
               <h1 className="text-3xl font-bold tracking-tight">Preventative Maintenance</h1>
               <Badge variant={isCompleted ? "secondary" : "default"}>{pmWO.status}</Badge>
             </div>
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground font-medium">
+            <div className="flex flex-wrap gap-x-6 gap-y-2 items-center text-sm text-muted-foreground font-medium">
               <div className="flex items-center gap-1.5"><MapPin className="h-4 w-4" /> {pmWO.workSiteName}</div>
               <div className="flex items-center gap-1.5"><Calendar className="h-4 w-4" /> {pmWO.scheduledMonth}/{pmWO.scheduledYear}</div>
-              <div className="flex items-center gap-1.5"><Package className="h-4 w-4" /> {pmWO.assetTasks.length} Units</div>
+              <div className="flex items-center gap-1.5 font-mono bg-muted/50 px-2 py-0.5 rounded border">
+                ID: {pmWO.id}
+                {!isCompleted && (
+                  <Button variant="ghost" size="icon" className="h-5 w-5 ml-1" onClick={() => setIsIdDialogOpen(true)}>
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
           {!isCompleted && (
@@ -197,6 +262,37 @@ export default function PmWorkOrderExecutionPage() {
         onConfirm={handleSubmitReview}
         isSubmitting={isSaving}
       />
+
+      <Dialog open={isIdDialogOpen} onOpenChange={setIsIdDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Job Number</DialogTitle>
+            <DialogDescription>
+              Update the Job # for this preventative maintenance work order.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="pm-id">Job Number</Label>
+              <Input 
+                id="pm-id" 
+                value={newJobId} 
+                onChange={(e) => setNewJobId(e.target.value)} 
+                placeholder="e.g. PM-12345"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsIdDialogOpen(false)} disabled={isUpdatingId}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateId} disabled={isUpdatingId || !newJobId || newJobId === pmWO.id}>
+              {isUpdatingId && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Change
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }

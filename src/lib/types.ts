@@ -326,6 +326,7 @@ export type PmWorkOrder = {
   scheduledYear: number;
   assetTasks: PmAssetTaskGroup[];
   assignedTechnicianId?: string;
+  description: string;
   createdAt: string;
   updatedAt: string;
 };
