@@ -56,7 +56,16 @@ export function DashboardClient({
     });
   }, [workOrders, searchTerm]);
 
-  const activePmWorkOrders = pmWorkOrders.filter(wo => wo.status !== 'Completed');
+  const filteredPmWorkOrders = useMemo(() => {
+    return pmWorkOrders.filter(order => {
+      const lowerSearchTerm = searchTerm.toLowerCase();
+      const matchesSearch =
+        order.workSiteName?.toLowerCase().includes(lowerSearchTerm) ||
+        order.id?.toLowerCase().includes(lowerSearchTerm) ||
+        order.description?.toLowerCase().includes(lowerSearchTerm);
+      return matchesSearch;
+    });
+  }, [pmWorkOrders, searchTerm]);
 
   const getTechnician = (id?: string) => technicians.find(t => t.id === id);
 
@@ -67,14 +76,24 @@ export function DashboardClient({
             <h1 className="text-3xl font-bold tracking-tight">Work Order Dashboard</h1>
         </div>
 
-        {activePmWorkOrders.length > 0 && (
+        <WorkOrderTableToolbar
+            onSearchChange={setSearchTerm}
+            onStatusChange={onStatusChange}
+            currentStatusFilter={statusFilter}
+            onAssignedToChange={onAssignedToChange}
+            currentAssignedToFilter={assignedToFilter}
+            technicians={technicians}
+            currentUserRole={currentUserRole}
+        />
+
+        {filteredPmWorkOrders.length > 0 && (
             <section className="space-y-4">
                 <div className="flex items-center gap-2 text-primary">
                     <CalendarClock className="h-5 w-5" />
                     <h2 className="text-xl font-bold uppercase tracking-wide">Master Preventative Maintenance</h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {activePmWorkOrders.map(wo => {
+                    {filteredPmWorkOrders.map(wo => {
                         const technician = getTechnician(wo.assignedTechnicianId);
                         return (
                             <Card key={wo.id} className="border-l-4 border-l-primary hover:bg-muted/30 transition-colors shadow-sm">
@@ -132,15 +151,6 @@ export function DashboardClient({
                 <AlertCircle className="h-5 w-5" />
                 <h2 className="text-xl font-bold uppercase tracking-wide">Service & Repair Jobs</h2>
             </div>
-            <WorkOrderTableToolbar
-                onSearchChange={setSearchTerm}
-                onStatusChange={onStatusChange}
-                currentStatusFilter={statusFilter}
-                onAssignedToChange={onAssignedToChange}
-                currentAssignedToFilter={assignedToFilter}
-                technicians={technicians}
-                currentUserRole={currentUserRole}
-            />
             <WorkOrderTable workOrders={filteredWorkOrders} technicians={technicians} workSites={initialWorkSites} />
         </section>
       </div>

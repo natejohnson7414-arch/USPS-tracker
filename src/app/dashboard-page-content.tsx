@@ -58,10 +58,35 @@ export default function DashboardPageContent() {
 
   const { data: workOrders, isLoading: isWorkOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
   
-  const { data: pmWorkOrders, isLoading: isPmLoading } = useCollection<PmWorkOrder>(useMemoFirebase(() => {
-      if (!db || isAuthLoading || !user) return null;
-      return collection(db, 'pm_work_orders');
-  }, [db, isAuthLoading, user]));
+  const pmWorkOrdersQuery = useMemoFirebase(() => {
+      if (!db || isAuthLoading || !user || !currentUserRole) return null;
+      
+      const pmCollection = collection(db, 'pm_work_orders');
+      const filters: any[] = [];
+
+      // Assignment Filter
+      if (assignedToFilter !== 'All') {
+        filters.push(where('assignedTechnicianId', '==', assignedToFilter));
+      }
+
+      // Status Filter Mapping
+      if (statusFilter === 'All' && currentUserRole.name === 'Technician') {
+        filters.push(where('status', 'in', ['Scheduled', 'In Progress', 'Submitted For Review']));
+      } else if (statusFilter !== 'All') {
+        let pmStatus = statusFilter;
+        if (statusFilter === 'Open') pmStatus = 'Scheduled';
+        if (statusFilter === 'Review') pmStatus = 'Submitted For Review';
+        // 'On Hold' doesn't exist for PMs, so this will correctly return empty if selected
+        filters.push(where('status', '==', pmStatus));
+      }
+      
+      if (filters.length > 0) {
+        return query(pmCollection, ...filters);
+      }
+      return query(pmCollection);
+  }, [db, statusFilter, assignedToFilter, user, isAuthLoading, currentUserRole]);
+
+  const { data: pmWorkOrders, isLoading: isPmLoading } = useCollection<PmWorkOrder>(pmWorkOrdersQuery);
 
   const { data: fetchedTechnicians, isLoading: isTechniciansLoading } = useCollection<RawTechnician>(useMemoFirebase(() => {
       if (!db || isAuthLoading || !user) return null;
