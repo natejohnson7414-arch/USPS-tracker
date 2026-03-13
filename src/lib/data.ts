@@ -4,13 +4,13 @@ import type {
   AppUser, Role, Technician, WorkOrder, WorkOrderNote, WorkSite, Client, 
   TrainingRecord, HvacStartupReport, TimeEntry, Activity, ActivityHistoryItem, 
   Quote, Asset, PmTemplate, AssetPmSchedule, AssetServiceHistory, Material,
-  PmTaskTemplate, PmSchedule, PmWorkOrder, PmTask, PmAssetTaskGroup
+  PmTaskTemplate, PmSchedule, PmWorkOrder, PmTask, PmAssetTaskGroup, MaintenanceContract
 } from '@/lib/types';
 import { collection, doc, query, where, arrayUnion, orderBy, collectionGroup, getDocs, documentId, setDoc, addDoc, getDoc } from 'firebase/firestore';
 import { getDocumentNonBlocking, getCollectionNonBlocking } from '@/firebase/non-blocking-reads';
 import { sampleRoles, sampleTechnicians, sampleWorkOrders, sampleWorkSites, sampleClients } from './sample-data';
 import { setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { differenceInMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO, format } from 'date-fns';
+import { differenceInMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO, format, isAfter, isBefore } from 'date-fns';
 
 export const seedDatabase = async (db: any) => {
     const rolesSnapshot = await getCollectionNonBlocking(collection(db, 'roles'));
@@ -163,6 +163,14 @@ const generateUniquePmId = async (db: any): Promise<string> => {
   return newId;
 };
 
+export const getActiveContracts = async (db: any): Promise<MaintenanceContract[]> => {
+  const snapshot = await getDocs(collection(db, 'contracts'));
+  const now = new Date();
+  return snapshot.docs
+    .map(d => ({ id: d.id, ...d.data() } as MaintenanceContract))
+    .filter(c => c.status === 'active' && isAfter(new Date(c.endDate), now) && isBefore(new Date(c.startDate), now));
+};
+
 export const generatePmWorkOrdersForMonth = async (db: any, month: number, year: number) => {
   console.log(`Starting consolidated Cycle-Aware PM generation for Month: ${month}, Year: ${year}`);
   
@@ -171,12 +179,18 @@ export const generatePmWorkOrdersForMonth = async (db: any, month: number, year:
   const end = endOfMonth(targetDate);
   const monthName = format(targetDate, 'MMMM');
 
-  // 1. Get ALL schedules
-  const allSchedules = await getAssetPmSchedules(db);
+  // 1. Get ALL schedules and active contracts
+  const [allSchedules, activeContracts] = await Promise.all([
+    getAssetPmSchedules(db),
+    getActiveContracts(db)
+  ]);
   
-  // 2. Project which ones are due this month based on recurrence
+  const contractSiteIds = new Set(activeContracts.map(c => c.siteId));
+
+  // 2. Project which ones are due this month based on recurrence AND have an active contract
   const dueSchedules = allSchedules.filter(s => {
     if (s.status !== 'active') return false;
+    if (!s.siteId || !contractSiteIds.has(s.siteId)) return false; // MUST HAVE VALID CONTRACT
     
     const startDueDate = parseISO(s.nextDueDate);
     
@@ -198,7 +212,7 @@ export const generatePmWorkOrdersForMonth = async (db: any, month: number, year:
   });
   
   if (dueSchedules.length === 0) {
-    console.log("No projected PM schedules due for this month.");
+    console.log("No projected PM schedules due for this month with active contracts.");
     return 0;
   }
 
@@ -653,4 +667,17 @@ export const calculateAssetMetrics = (history: AssetServiceHistory[]) => {
   const mtbfDays = (totalTimeMs / totalIntervals) / (1000 * 60 * 60 * 24);
 
   return { mtbf: mtbfDays, mttr: 4.5 }; 
+};
+
+export const getContracts = async (db: any): Promise<MaintenanceContract[]> => {
+  const snapshot = await getCollectionNonBlocking(collection(db, 'contracts'));
+  const sites = await getWorkSites(db);
+  return snapshot.docs.map(d => {
+    const data = d.data();
+    return {
+      id: d.id,
+      ...data,
+      siteName: sites.find(s => s.id === data.siteId)?.name
+    } as MaintenanceContract;
+  });
 };

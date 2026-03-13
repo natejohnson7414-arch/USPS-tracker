@@ -365,3 +365,17 @@ export type Quote = {
   total: number;
   adminNotes?: string;
 };
+
+export type MaintenanceContract = {
+  id: string;
+  siteId: string;
+  contractNumber: string;
+  startDate: string;
+  endDate: string;
+  status: 'active' | 'expired' | 'pending' | 'cancelled';
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  // Denormalized
+  siteName?: string;
+};

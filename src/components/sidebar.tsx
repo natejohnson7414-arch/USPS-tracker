@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -10,7 +11,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { PanelLeft, Wrench, Package2, Users, MapPin, Building } from 'lucide-react';
+import { PanelLeft, Wrench, Package2, Users, MapPin, Building, FileSignature } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useTechnician } from '@/hooks/use-technician';
@@ -19,6 +20,7 @@ const navLinks = [
   { href: '/users', label: 'Users', icon: Users },
   { href: '/work-sites', label: 'Work Sites', icon: MapPin },
   { href: '/clients', label: 'Clients', icon: Building },
+  { href: '/contracts', label: 'Contracts', icon: FileSignature },
 ];
 
 export function Sidebar() {
@@ -29,7 +31,7 @@ export function Sidebar() {
   const isTechnician = role?.name === 'Technician';
 
   const filteredNavLinks = isTechnician
-    ? navLinks.filter(link => !['/users', '/clients', '/work-sites'].includes(link.href))
+    ? navLinks.filter(link => !['/users', '/clients', '/work-sites', '/contracts'].includes(link.href))
     : navLinks;
 
   // For technicians, we don't need the sidebar functionality.

@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "Asset": {
@@ -121,6 +120,23 @@
         "followUpRequired": { "type": "boolean" }
       },
       "required": ["assetId", "workOrderId", "completedDate", "notes"]
+    },
+    "MaintenanceContract": {
+      "title": "MaintenanceContract",
+      "type": "object",
+      "description": "Represents a maintenance contract for a site.",
+      "properties": {
+        "id": { "type": "string" },
+        "siteId": { "type": "string" },
+        "contractNumber": { "type": "string" },
+        "startDate": { "type": "string", "format": "date-time" },
+        "endDate": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["active", "expired", "pending", "cancelled"] },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "siteId", "contractNumber", "startDate", "endDate", "status"]
     }
   },
   "auth": {
@@ -143,6 +159,10 @@
       {
         "path": "/asset_service_history/{historyId}",
         "definition": { "entityName": "AssetServiceHistory" }
+      },
+      {
+        "path": "/contracts/{contractId}",
+        "definition": { "entityName": "MaintenanceContract" }
       }
     ]
   }
