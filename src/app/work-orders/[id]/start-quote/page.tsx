@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -11,12 +10,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { useFirestore, useUser, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { getWorkOrderById, getPmWorkOrderById } from '@/lib/data';
 import { uploadImageResumable } from '@/firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import type { WorkOrder, Quote, PmWorkOrder, PhotoMetadata } from '@/lib/types';
-import { Loader2, ArrowLeft, Upload, Video, Image as ImageIcon, Trash2, AlertCircle, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Loader2, ArrowLeft, Upload, Video, Image as ImageIcon, Trash2, AlertCircle, Sparkles, CheckCircle2, X } from 'lucide-react';
 import { collection, doc, getDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { notifyAdminsOfNewQuote } from '@/ai/flows/notify-admins-flow';
