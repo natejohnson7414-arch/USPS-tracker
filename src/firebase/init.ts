@@ -100,11 +100,14 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
         }
       }
 
+      // Explicitly pass storage bucket to resolve initialization issues in restricted environments
+      const storage = getStorage(app, firebaseConfig.storageBucket);
+
       const finalServices: FirebaseServices = {
         firebaseApp: app,
         auth: getAuth(app),
         firestore,
-        storage: getStorage(app),
+        storage,
       };
 
       services = finalServices;

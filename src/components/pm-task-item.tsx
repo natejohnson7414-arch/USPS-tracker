@@ -66,15 +66,15 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
       
       for (const file of Array.from(files)) {
         i++;
-        // Sanitize asset tag for path safety
-        const safeTag = assetTag.replace(/[^a-zA-Z0-9-]/g, '_');
+        // Aggressive sanitization for storage path safety
+        const safeTag = assetTag.replace(/[^a-zA-Z0-9]/g, '_');
         const basePath = `pm-work-orders/${safeTag}`;
-        const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
         
         toastId.update({ 
           id: toastId.id, 
           title: `Photo ${i}/${files.length}`,
-          description: `Uploading to unit ${assetTag}...` 
+          description: `Transferring to unit ${assetTag}...` 
         });
 
         const result = await uploadPhotoWithThumbnail(file, basePath, fileName);
@@ -90,12 +90,15 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
       toastId.dismiss();
       toast({ title: "Photos Added Successfully" });
     } catch (error: any) {
-      console.error("PM task photo upload failed:", error);
+      console.error("PM task photo upload failed details:", error);
       toastId.dismiss();
       
-      let errorDescription = "Transfer interrupted. Check your signal and try again.";
+      let errorDescription = "Transfer failed. Check your signal and try again.";
+      
       if (error.code === 'storage/unauthorized') {
-        errorDescription = "Access Denied. Please ensure you are logged in and try again.";
+        errorDescription = "Access Denied. Your session may have expired. Please refresh the page.";
+      } else if (error.code === 'storage/retry-limit-exceeded') {
+        errorDescription = "Transfer timed out. Try fewer photos at once.";
       } else if (error.message) {
         errorDescription = error.message;
       }

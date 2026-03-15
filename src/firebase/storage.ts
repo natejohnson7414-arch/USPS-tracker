@@ -1,6 +1,7 @@
 'use client';
 
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject, type StorageError } from 'firebase/storage';
+import { getIdToken } from 'firebase/auth';
 import { initializeFirebase } from './init';
 import type { PhotoMetadata } from '@/lib/types';
 
@@ -96,7 +97,14 @@ export const uploadImageResumable = async (
   }
 
   const user = auth.currentUser;
-  if (!user && isDebug) {
+  if (user) {
+    try {
+      // Force token refresh to ensure Storage SDK picks up the current authenticated state
+      await getIdToken(user, true);
+    } catch (e) {
+      if (isDebug) console.warn("[UPLOAD] Proactive token refresh failed:", e);
+    }
+  } else if (isDebug) {
     console.warn("[UPLOAD] No current user detected before starting upload.");
   }
 
