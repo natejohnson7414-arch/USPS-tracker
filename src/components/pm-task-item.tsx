@@ -19,9 +19,19 @@ interface PmTaskItemProps {
   onUpdate: (updatedTask: PmTask) => void;
   assetTag: string;
   isCompletedWorkOrder: boolean;
+  pmWorkOrderId: string;
+  onSavingStateChange?: (isSaving: boolean) => void;
 }
 
-export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrder }: PmTaskItemProps) {
+export function PmTaskItem({ 
+  task, 
+  index, 
+  onUpdate, 
+  assetTag, 
+  isCompletedWorkOrder,
+  pmWorkOrderId,
+  onSavingStateChange 
+}: PmTaskItemProps) {
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,11 +63,17 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
     });
   };
 
+  /**
+   * Hardened Photo Upload logic following standard WO scheme.
+   * Path: pm-work-orders/[PM_ID]/assets/[TAG]/[FILE]
+   */
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0 || task.isNA) return;
 
     setIsUploading(true);
+    onSavingStateChange?.(true);
+    
     const toastId = toast({ title: `Uploading ${files.length} photo(s)...`, duration: Infinity });
 
     try {
@@ -66,21 +82,27 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
       
       for (const file of Array.from(files)) {
         i++;
-        // Aggressive sanitization for storage path safety
+        // Scheme: Standardized path structure matching WO documentation
         const safeTag = assetTag.replace(/[^a-zA-Z0-9]/g, '_');
-        const basePath = `pm-work-orders/${safeTag}`;
+        const basePath = `pm-work-orders/${pmWorkOrderId}/assets/${safeTag}`;
         const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
         
         toastId.update({ 
           id: toastId.id, 
           title: `Photo ${i}/${files.length}`,
-          description: `Transferring to unit ${assetTag}...` 
+          description: `Transferring documentation...` 
         });
 
-        const result = await uploadPhotoWithThumbnail(file, basePath, fileName);
+        const result = await uploadPhotoWithThumbnail(file, basePath, fileName, {
+          onProgress: (p) => {
+            toastId.update({ id: toastId.id, description: `Transferring... ${p.pct}%` });
+          }
+        });
         
-        // Add to the local list and notify parent progressively
+        // Progressive Save: Update local task state for each file
         currentTaskPhotos.push(result);
+        
+        // Code Scheme: Trigger immediate non-blocking update via parent handleTaskUpdate
         onUpdate({
           ...task,
           photoUrls: [...currentTaskPhotos]
@@ -88,41 +110,45 @@ export function PmTaskItem({ task, index, onUpdate, assetTag, isCompletedWorkOrd
       }
 
       toastId.dismiss();
-      toast({ title: "Photos Added Successfully" });
+      toast({ title: "Photos Saved" });
     } catch (error: any) {
-      console.error("PM task photo upload failed details:", error);
+      console.error("PM task photo upload failed:", error);
       toastId.dismiss();
       
-      let errorDescription = "Transfer failed. Check your signal and try again.";
-      
+      let errorDescription = "Check your connection and try again.";
       if (error.code === 'storage/unauthorized') {
-        errorDescription = "Access Denied. Your session may have expired. Please refresh the page.";
-      } else if (error.code === 'storage/retry-limit-exceeded') {
-        errorDescription = "Transfer timed out. Try fewer photos at once.";
+        errorDescription = "Access denied. Please check your session and try again.";
       } else if (error.message) {
         errorDescription = error.message;
       }
 
       toast({ 
         variant: 'destructive', 
-        title: 'Upload Failed', 
+        title: 'Upload Interrupted', 
         description: errorDescription 
       });
     } finally {
       setIsUploading(false);
+      onSavingStateChange?.(false);
       if (e.target) e.target.value = '';
     }
   };
 
   const removePhoto = async (photo: string | PhotoMetadata) => {
     const targetUrl = typeof photo === 'string' ? photo : photo.url;
+    
+    // Optimistic local update
+    const updatedPhotos = task.photoUrls.filter(p => (typeof p === 'string' ? p : p.url) !== targetUrl);
     onUpdate({
       ...task,
-      photoUrls: task.photoUrls.filter(p => (typeof p === 'string' ? p : p.url) !== targetUrl)
+      photoUrls: updatedPhotos
     });
+
     try {
       await deletePhotoMetadata(photo);
-    } catch (e) {}
+    } catch (e) {
+      console.warn("Storage delete failed, but field documentation updated.");
+    }
   };
 
   const getPhotoUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.url;

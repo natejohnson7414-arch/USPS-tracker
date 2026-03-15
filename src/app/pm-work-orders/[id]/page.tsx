@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -56,6 +55,7 @@ export default function PmWorkOrderExecutionPage() {
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingPhotos, setIsSavingPhotos] = useState(false);
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -86,25 +86,41 @@ export default function PmWorkOrderExecutionPage() {
     }
   }, [db, id]);
 
+  /**
+   * Updates a specific task within the assetTasks array.
+   * Logic scheme: Updates local state first, then auto-persists to Firestore non-blocking.
+   */
   const handleTaskUpdate = (groupIndex: number, taskIndex: number, updatedTask: PmTask) => {
-    if (!pmWO) return;
+    if (!pmWO || !db) return;
+    
     const newAssetTasks = [...pmWO.assetTasks];
     const newTasks = [...newAssetTasks[groupIndex].tasks];
     newTasks[taskIndex] = updatedTask;
     newAssetTasks[groupIndex] = { ...newAssetTasks[groupIndex], tasks: newTasks };
     
+    // Update Local State
     setPmWorkOrder({ ...pmWO, assetTasks: newAssetTasks });
+
+    // Code Scheme: Progressive Auto-Save to Firestore
+    const woRef = doc(db, 'pm_work_orders', pmWO.id);
+    updateDocumentNonBlocking(woRef, {
+      assetTasks: newAssetTasks,
+      updatedAt: new Date().toISOString()
+    });
   };
 
   const handleUnitConditionUpdate = (groupIndex: number, condition: PmAssetTaskGroup['condition']) => {
-    if (!pmWO) return;
+    if (!pmWO || !db) return;
     const newAssetTasks = [...pmWO.assetTasks];
     newAssetTasks[groupIndex] = { ...newAssetTasks[groupIndex], condition };
     setPmWorkOrder({ ...pmWO, assetTasks: newAssetTasks });
     
     // Auto-save this structural change
     const woRef = doc(db, 'pm_work_orders', pmWO.id);
-    updateDocumentNonBlocking(woRef, { assetTasks: newAssetTasks });
+    updateDocumentNonBlocking(woRef, { 
+      assetTasks: newAssetTasks,
+      updatedAt: new Date().toISOString()
+    });
   };
 
   const handleUpdateDetails = async () => {
@@ -204,6 +220,13 @@ export default function PmWorkOrderExecutionPage() {
 
   return (
     <MainLayout>
+      {(isSaving || isSavingPhotos) && (
+        <div className="fixed inset-0 bg-background/80 z-50 flex flex-col items-center justify-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="mt-4 text-lg font-medium">Processing Updates...</p>
+        </div>
+      )}
+
       <div className="container mx-auto py-8">
         <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
@@ -358,6 +381,8 @@ export default function PmWorkOrderExecutionPage() {
                           onUpdate={(updatedTask) => handleTaskUpdate(groupIdx, taskIdx, updatedTask)}
                           assetTag={group.assetTag}
                           isCompletedWorkOrder={isCompleted}
+                          pmWorkOrderId={pmWO.id}
+                          onSavingStateChange={setIsSavingPhotos}
                         />
                       ))}
                     </div>
