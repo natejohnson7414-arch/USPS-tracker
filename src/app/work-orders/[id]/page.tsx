@@ -1,9 +1,8 @@
-
 'use client';
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { getTechnicians, getWorkOrderById, getWorkSites, getClients, getTrainingRecordsByWorkOrderId, getTimeEntriesByWorkOrder, getTechnicianById, deleteTrainingRecord, updateWorkOrderStatus, addWorkHistoryItem, getQuotesByWorkOrderId, getHvacStartupReportsByWorkOrderId, deleteHvacStartupReport, getActivitiesByWorkOrderId } from '@/lib/data';
-import { notFound, useParams, useRouter } from 'next/navigation';
+import { notFound, useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
 import { WorkOrderDetails } from '@/components/work-order-details';
@@ -41,6 +40,7 @@ import { ReportPreviewDialog } from '@/components/report-preview-dialog';
 export default function WorkOrderDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const id = params.id as string;
   const db = useFirestore();
   const { user } = useUser();
@@ -74,7 +74,7 @@ export default function WorkOrderDetailPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
 
   const activeUploadsRef = useRef<Set<string>>(new Set());
 
@@ -567,7 +567,7 @@ export default function WorkOrderDetailPage() {
     setIsLinkingAsset(assetId);
     try {
         const woRef = doc(db, 'work_orders', workOrder.id);
-        await updateDocumentNonBlocking(woRef, { assetIds: arrayRemove(assetId) });
+        await updateDocumentNonBlocking(woRef, { arrayRemove: arrayRemove(assetId) });
         
         // Optimistic update
         setWorkOrder(prev => {

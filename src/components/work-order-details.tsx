@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -524,7 +523,7 @@ export function WorkOrderDetails({
           <div className="space-y-8">
             <Card className="rounded-t-none">
               <CardHeader>
-                <div className="flex justify-between items-center"><CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" />Site Equipment Registry</CardTitle>{!isCompleted && <Button variant="outline" size="sm" asChild><Link href={`/assets/new?siteId=${workOrder.workSiteId}`}><PlusCircle className="mr-2 h-4 w-4" /> Register New Asset</Link></Button>}</div>
+                <div className="flex justify-between items-center"><CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" />Site Equipment Registry</CardTitle>{!isCompleted && <Button asChild variant="outline" size="sm"><Link href={`/assets/new?siteId=${workOrder.workSiteId}&workOrderId=${workOrder.id}`}><PlusCircle className="mr-2 h-4 w-4" /> Register New Asset</Link></Button>}</div>
                 <CardDescription>Select the specific equipment being serviced on this job.</CardDescription>
               </CardHeader>
               <CardContent>
@@ -541,7 +540,7 @@ export function WorkOrderDetails({
                       );
                     })}
                   </div>
-                ) : <div className="text-center py-12 border-2 border-dashed rounded-lg"><Package className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><p className="text-sm text-muted-foreground">No equipment registered at this site yet.</p>{!isCompleted && <Button asChild variant="link" className="mt-2"><Link href={`/assets/new?siteId=${workOrder.workSiteId}`}>Add the first asset</Link></Button>}</div>}
+                ) : <div className="text-center py-12 border-2 border-dashed rounded-lg"><Package className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><p className="text-sm text-muted-foreground">No equipment registered at this site yet.</p>{!isCompleted && <Button asChild variant="link" className="mt-2"><Link href={`/assets/new?siteId=${workOrder.workSiteId}&workOrderId=${workOrder.id}`}>Add the first asset</Link></Button>}</div>}
               </CardContent>
             </Card>
           </div>

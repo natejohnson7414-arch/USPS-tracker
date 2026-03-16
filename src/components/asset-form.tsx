@@ -295,12 +295,30 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
         toast({ title: 'Asset Created' });
       }
 
-      router.back();
+      const workOrderId = searchParams.get('workOrderId');
+      if (workOrderId) {
+        router.push(`/work-orders/${workOrderId}?tab=assets`);
+      } else {
+        router.back();
+      }
     } catch (error) {
       console.error('Error saving asset:', error);
       toast({ title: 'Error saving asset', variant: 'destructive' });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleCancelAction = () => {
+    if (onCancel) {
+      onCancel();
+      return;
+    }
+    const workOrderId = searchParams.get('workOrderId');
+    if (workOrderId) {
+      router.push(`/work-orders/${workOrderId}?tab=assets`);
+    } else {
+      router.back();
     }
   };
 
@@ -602,7 +620,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
 
       <div className="fixed bottom-0 left-0 w-full bg-background border-t shadow-lg z-50">
         <div className="container mx-auto py-4 px-4 flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onCancel || (() => router.back())} disabled={isSaving}>
+          <Button type="button" variant="outline" onClick={handleCancelAction} disabled={isSaving}>
             <Ban className="mr-2 h-4 w-4" /> Cancel
           </Button>
           <Button type="submit" disabled={isSaving}>

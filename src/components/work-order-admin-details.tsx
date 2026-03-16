@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -348,7 +347,7 @@ export function WorkOrderAdminDetails({
             {workOrder.needsAttention && (
                 <div className="bg-destructive/10 border-2 border-destructive p-4 rounded-lg flex items-start gap-3">
                     <AlertCircle className="h-6 w-6 text-destructive shrink-0" />
-                    <div><p className="font-bold text-destructive">NEEDS ATTENTION</p><p className="text-sm">{workOrder.attentionMessage}</p></div>
+                    <div><p className="font-bold text-destructive">OFFICE ALERT: NEEDS ATTENTION</p><p className="text-sm">{workOrder.attentionMessage}</p></div>
                 </div>
             )}
             {!workOrder.needsAttention && workOrder.technicianReplied && (
@@ -440,7 +439,7 @@ export function WorkOrderAdminDetails({
           <div className="space-y-8">
             <Card className="rounded-t-none">
               <CardHeader>
-                <div className="flex justify-between items-center"><CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" />Site Equipment Registry</CardTitle>{!isCompleted && <Button variant="outline" size="sm" asChild><Link href={`/assets/new?siteId=${workOrder.workSiteId}`}><PlusCircle className="mr-2 h-4 w-4" /> Register New Asset</Link></Button>}</div>
+                <div className="flex justify-between items-center"><CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" />Site Equipment Registry</CardTitle>{!isCompleted && <Button variant="outline" size="sm" asChild><Link href={`/assets/new?siteId=${workOrder.workSiteId}&workOrderId=${workOrder.id}`}><PlusCircle className="mr-2 h-4 w-4" /> Register New Asset</Link></Button>}</div>
                 <CardDescription>Select equipment from the site registry to assign it to this job.</CardDescription>
               </CardHeader>
               <CardContent>
