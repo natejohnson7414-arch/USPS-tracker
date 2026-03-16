@@ -1,20 +1,30 @@
 
 'use client';
 
-import { collection, getDocs, doc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, addDoc } from 'firebase/firestore';
 import type { Material, Asset } from './types';
+
+export type UnifiedMaterial = {
+  id: string;
+  name: string;
+  category: string;
+  uom: string;
+  source: 'catalog' | 'asset';
+  createdAt?: string;
+  updatedAt?: string;
+};
 
 export type DuplicateGroup = {
   normalizedName: string;
-  materials: Material[];
+  materials: UnifiedMaterial[];
 };
 
 /**
  * Groups materials by their normalized name to identify duplicates.
  * Normalization: Lowercase, trimmed, and single-spaced.
  */
-export function identifyDuplicates(materials: Material[]): DuplicateGroup[] {
-  const groups = new Map<string, Material[]>();
+export function identifyDuplicates(materials: UnifiedMaterial[]): DuplicateGroup[] {
+  const groups = new Map<string, UnifiedMaterial[]>();
   
   materials.forEach(m => {
     const key = m.name.toLowerCase().trim().replace(/\s+/g, ' ');
@@ -32,33 +42,43 @@ export function identifyDuplicates(materials: Material[]): DuplicateGroup[] {
 
 /**
  * Merges a group of duplicate materials into a single master record.
+ * Standardizes names across the catalog and all assets.
  */
 export async function mergeMaterialsAction(
   db: any,
-  master: Material,
-  duplicates: Material[],
+  master: UnifiedMaterial,
+  duplicates: UnifiedMaterial[],
   updateAssets: boolean
 ) {
   const batch = writeBatch(db);
   
-  // 1. Identify IDs to remove (all in the group except the master)
-  const idsToRemove = duplicates
-    .filter(d => d.id !== master.id)
-    .map(d => d.id);
+  // 1. Ensure the master record exists in the catalog
+  let masterCatalogId = master.id;
+  if (master.source === 'asset') {
+    const newDocRef = await addDoc(collection(db, 'materials'), {
+      name: master.name,
+      category: master.category,
+      uom: master.uom,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    masterCatalogId = newDocRef.id;
+  } else {
+    batch.update(doc(db, 'materials', master.id), {
+      updatedAt: new Date().toISOString()
+    });
+  }
+
+  // 2. Remove redundant global catalog records
+  duplicates.forEach(d => {
+    if (d.source === 'catalog' && d.id !== masterCatalogId) {
+      batch.delete(doc(db, 'materials', d.id));
+    }
+  });
   
   const namesToStandardize = duplicates.map(d => d.name.toLowerCase().trim().replace(/\s+/g, ' '));
 
-  // 2. Delete duplicate records from the materials catalog
-  idsToRemove.forEach(id => {
-    batch.delete(doc(db, 'materials', id));
-  });
-  
-  // 3. Update the master record's timestamp
-  batch.update(doc(db, 'materials', master.id), {
-    updatedAt: new Date().toISOString()
-  });
-  
-  // 4. Optionally scan and update all assets that reference these names
+  // 3. Scan and update every Asset referencing these variations
   if (updateAssets) {
     const assetsSnap = await getDocs(collection(db, 'assets'));
     
@@ -72,7 +92,7 @@ export async function mergeMaterialsAction(
         const isMatch = namesToStandardize.includes(matNameLower);
         
         if (isMatch) {
-          // Only update if it's actually different from the master specs
+          // Check if it already matches the master specs exactly
           if (mat.name !== master.name || mat.category !== master.category || mat.uom !== master.uom) {
             changed = true;
             return {

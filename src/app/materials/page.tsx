@@ -1,23 +1,23 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Package, PlusCircle, Search, Settings, Loader2, Trash2, Edit, Sparkles, AlertTriangle, CheckCircle2, Info, Ban } from 'lucide-react';
+import { Package, PlusCircle, Search, Settings, Loader2, Trash2, Edit, Sparkles, AlertTriangle, CheckCircle2, Info, Ban, Database } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useFirestore, deleteDocumentNonBlocking, useUser } from '@/firebase';
-import { getMaterials } from '@/lib/data';
-import type { Material } from '@/lib/types';
+import { getMaterials, getAssets } from '@/lib/data';
+import type { Material, Asset, AssetMaterial } from '@/lib/types';
 import { MaterialForm } from '@/components/material-form';
 import { useToast } from '@/hooks/use-toast';
 import { doc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
-import { identifyDuplicates, mergeMaterialsAction, type DuplicateGroup } from '@/lib/material-service';
+import { identifyDuplicates, mergeMaterialsAction, type DuplicateGroup, type UnifiedMaterial } from '@/lib/material-service';
 import { useTechnician } from '@/hooks/use-technician';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -30,6 +30,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 
 export default function MaterialsPage() {
   const db = useFirestore();
@@ -37,7 +39,8 @@ export default function MaterialsPage() {
   const { toast } = useToast();
   const { role, isLoading: isRoleLoading } = useTechnician();
   
-  const [materials, setMaterials] = useState<Material[]>([]);
+  const [catalogMaterials, setCatalogMaterials] = useState<Material[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -49,30 +52,80 @@ export default function MaterialsPage() {
   const [updateAssetsDuringMerge, setUpdateAssetsDuringMerge] = useState(true);
   const [selectedMasterIds, setSelectedMasterIds] = useState<Record<string, string>>({});
 
-  const fetchMaterials = async () => {
+  const fetchData = useCallback(async () => {
     if (db && user) {
       setIsLoading(true);
       try {
-        const fetched = await getMaterials(db);
-        setMaterials(fetched);
+        const [fetchedMaterials, fetchedAssets] = await Promise.all([
+          getMaterials(db),
+          getAssets(db)
+        ]);
+        setCatalogMaterials(fetchedMaterials);
+        setAssets(fetchedAssets);
       } catch (error) {
-        console.error(error);
+        console.error("Error fetching data:", error);
       } finally {
         setIsLoading(false);
       }
     }
-  };
+  }, [db, user]);
 
   useEffect(() => {
     if (db && user && role?.name !== 'Technician') {
-      fetchMaterials();
+      fetchData();
     }
-  }, [db, user, role]);
+  }, [db, user, role, fetchData]);
 
-  const duplicateGroups = useMemo(() => identifyDuplicates(materials), [materials]);
+  /**
+   * Unified List: Combines Global Catalog items with materials found only on Assets.
+   */
+  const unifiedMaterials = useMemo(() => {
+    const list: UnifiedMaterial[] = catalogMaterials.map(m => ({
+      ...m,
+      source: 'catalog'
+    }));
 
-  const handleEdit = (m: Material) => {
-    setEditingMaterial(m);
+    // Extract materials from assets that aren't in the global catalog
+    const catalogNames = new Set(catalogMaterials.map(m => m.name.toLowerCase().trim()));
+    
+    assets.forEach(asset => {
+      asset.materials?.forEach(am => {
+        const normalizedName = am.name.toLowerCase().trim();
+        if (!catalogNames.has(normalizedName)) {
+          // Add as a "virtual" material entry for identification/cleanup
+          list.push({
+            id: `asset-mat-${normalizedName.replace(/\s+/g, '-')}`,
+            name: am.name,
+            category: am.category,
+            uom: am.uom,
+            source: 'asset',
+            createdAt: asset.createdAt,
+            updatedAt: asset.updatedAt
+          });
+          catalogNames.add(normalizedName); // Only add once per unique name
+        }
+      });
+    });
+
+    return list.sort((a, b) => a.name.localeCompare(b.name));
+  }, [catalogMaterials, assets]);
+
+  const duplicateGroups = useMemo(() => identifyDuplicates(unifiedMaterials), [unifiedMaterials]);
+
+  const handleEdit = (m: UnifiedMaterial) => {
+    if (m.source === 'asset') {
+      // If it's only on an asset, pre-fill a new form to add it to the catalog
+      setEditingMaterial({
+        id: '',
+        name: m.name,
+        category: m.category,
+        uom: m.uom,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      } as Material);
+    } else {
+      setEditingMaterial(catalogMaterials.find(cm => cm.id === m.id) || null);
+    }
     setIsFormOpen(true);
   };
 
@@ -81,7 +134,7 @@ export default function MaterialsPage() {
     try {
       await deleteDocumentNonBlocking(doc(db, 'materials', deletingMaterial.id));
       toast({ title: 'Material Deleted' });
-      setMaterials(prev => prev.filter(m => m.id !== deletingMaterial.id));
+      setCatalogMaterials(prev => prev.filter(m => m.id !== deletingMaterial.id));
     } catch (error) {
       toast({ title: 'Delete Failed', variant: 'destructive' });
     } finally {
@@ -103,18 +156,18 @@ export default function MaterialsPage() {
     
     try {
       await mergeMaterialsAction(db, master, group.materials, updateAssetsDuringMerge);
-      toast({ title: "Materials Merged", description: `Standardized to "${master.name}".` });
-      fetchMaterials();
+      toast({ title: "Database Standardized", description: `Merged variations into "${master.name}".` });
+      fetchData();
     } catch (e) {
-      toast({ title: "Merge Failed", variant: 'destructive' });
+      toast({ title: "Standardization Failed", variant: 'destructive' });
     } finally {
       setIsMerging(false);
     }
   };
 
-  const filteredMaterials = materials.filter(m => 
+  const filteredMaterials = unifiedMaterials.filter(m => 
     m.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    m.partNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (m as any).partNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     m.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -151,12 +204,12 @@ export default function MaterialsPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">PM Materials Catalog</h1>
-            <p className="text-muted-foreground">Manage parts, belts, filters and other recurring maintenance materials.</p>
+            <p className="text-muted-foreground">Comprehensive scan of parts catalog and equipment registry.</p>
           </div>
           {!isFormOpen && (
             <Button onClick={() => { setEditingMaterial(null); setIsFormOpen(true); }}>
               <PlusCircle className="mr-2 h-4 w-4" />
-              Add Material
+              Add to Catalog
             </Button>
           )}
         </div>
@@ -168,18 +221,18 @@ export default function MaterialsPage() {
               onCancel={() => setIsFormOpen(false)}
               onSaved={() => {
                 setIsFormOpen(false);
-                fetchMaterials();
+                fetchData();
               }}
             />
           </div>
         ) : (
           <Tabs defaultValue="catalog">
             <TabsList className="mb-6">
-              <TabsTrigger value="catalog">Standard Catalog</TabsTrigger>
+              <TabsTrigger value="catalog">System Catalog</TabsTrigger>
               <TabsTrigger value="cleanup" className="gap-2">
                 Cleanup Utility
                 {duplicateGroups.length > 0 && (
-                  <Badge variant="destructive" className="h-5 px-1.5 min-w-[1.25rem] justify-center">
+                  <Badge variant="destructive" className="h-5 px-1.5 min-w-[1.25rem] justify-center animate-pulse">
                     {duplicateGroups.length}
                   </Badge>
                 )}
@@ -190,7 +243,10 @@ export default function MaterialsPage() {
               <Card>
                 <CardHeader>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <CardTitle>Inventory & Specs</CardTitle>
+                    <div>
+                      <CardTitle>Master List</CardTitle>
+                      <CardDescription>All materials detected in the system, including those added ad-hoc to assets.</CardDescription>
+                    </div>
                     <div className="relative w-full sm:w-64">
                       <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -206,37 +262,36 @@ export default function MaterialsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Source</TableHead>
                         <TableHead>Category</TableHead>
                         <TableHead>Material Name</TableHead>
-                        <TableHead>Part #</TableHead>
-                        <TableHead>Specifications</TableHead>
                         <TableHead>UOM</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {isLoading ? (
-                        <TableRow><TableCell colSpan={6} className="text-center py-8">Loading materials...</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={5} className="text-center py-8">Scanning database...</TableCell></TableRow>
                       ) : filteredMaterials.length > 0 ? (
                         filteredMaterials.map(m => (
                           <TableRow key={m.id}>
+                            <TableCell>
+                              {m.source === 'catalog' ? (
+                                <Badge variant="outline" className="gap-1.5 border-green-200 text-green-700 bg-green-50">
+                                  <CheckCircle2 className="h-3 w-3" /> Standard
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="gap-1.5 border-orange-200 text-orange-700 bg-orange-50">
+                                  <Database className="h-3 w-3" /> From Asset
+                                </Badge>
+                              )}
+                            </TableCell>
                             <TableCell>
                               <Badge variant="secondary" className="capitalize">{m.category}</Badge>
                             </TableCell>
                             <TableCell className="font-medium">
                               {m.name}
-                              {m.description && <p className="text-xs text-muted-foreground font-normal">{m.description}</p>}
-                            </TableCell>
-                            <TableCell className="font-mono text-xs">{m.partNumber || 'N/A'}</TableCell>
-                            <TableCell>
-                              <div className="flex flex-wrap gap-1">
-                                {Object.entries(m.customFields || {}).map(([k, v]) => (
-                                  <Badge key={k} variant="outline" className="text-[10px] px-1 h-5">
-                                    {k}: {v}
-                                  </Badge>
-                                ))}
-                                {Object.keys(m.customFields || {}).length === 0 && <span className="text-muted-foreground text-xs italic">No extra specs</span>}
-                              </div>
+                              {(m as any).partNumber && <p className="text-[10px] font-mono text-muted-foreground uppercase">SKU: {(m as any).partNumber}</p>}
                             </TableCell>
                             <TableCell>{m.uom}</TableCell>
                             <TableCell className="text-right">
@@ -244,15 +299,17 @@ export default function MaterialsPage() {
                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(m)}>
                                   <Edit className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingMaterial(m)}>
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                {m.source === 'catalog' && (
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingMaterial(m as Material)}>
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
                         ))
                       ) : (
-                        <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No materials found in the catalog.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No materials found in the scan.</TableCell></TableRow>
                       )}
                     </TableBody>
                   </Table>
@@ -266,7 +323,7 @@ export default function MaterialsPage() {
                   <Info className="h-4 w-4" />
                   <AlertTitle className="text-sm font-bold">Standardization Utility</AlertTitle>
                   <AlertDescription className="text-xs">
-                    Identify duplicate material names caused by inconsistent casing or spacing. Merge them to standardize your catalog and asset records.
+                    This utility scans both the global catalog and individual asset records to find variations like <span className="font-mono bg-muted px-1">"20x20x2"</span> vs <span className="font-mono bg-muted px-1">"20X20X2"</span>.
                   </AlertDescription>
                 </Alert>
 
@@ -281,7 +338,7 @@ export default function MaterialsPage() {
                       Synchronize Equipment Registry
                     </label>
                     <p className="text-xs text-muted-foreground">
-                      When merging, automatically update all existing Assets to use the "Master" name and specifications.
+                      Automatically update every Asset in the system to use the "Master" name and specifications.
                     </p>
                   </div>
                 </div>
@@ -295,10 +352,10 @@ export default function MaterialsPage() {
                             <div>
                               <CardTitle className="text-lg flex items-center gap-2">
                                 <AlertTriangle className="h-5 w-5 text-orange-500" />
-                                Duplicate Group: <span className="font-mono bg-muted px-2 rounded">"{group.normalizedName}"</span>
+                                Conflict Group: <span className="font-mono bg-muted px-2 rounded">"{group.normalizedName}"</span>
                               </CardTitle>
                               <CardDescription>
-                                Found {group.materials.length} variations in the catalog. Select the preferred "Master" record.
+                                Found {group.materials.length} variations. Select the record to use as the standard.
                               </CardDescription>
                             </div>
                             <Button 
@@ -316,10 +373,10 @@ export default function MaterialsPage() {
                             <TableHeader>
                               <TableRow className="bg-muted/50">
                                 <TableHead className="w-[50px]">Master</TableHead>
+                                <TableHead>Source</TableHead>
                                 <TableHead>Display Name</TableHead>
                                 <TableHead>Category</TableHead>
                                 <TableHead>UOM</TableHead>
-                                <TableHead>Part #</TableHead>
                                 <TableHead>Last Updated</TableHead>
                               </TableRow>
                             </TableHeader>
@@ -336,12 +393,18 @@ export default function MaterialsPage() {
                                       onCheckedChange={() => setSelectedMasterIds(prev => ({ ...prev, [group.normalizedName]: m.id }))}
                                     />
                                   </TableCell>
+                                  <TableCell>
+                                    {m.source === 'catalog' ? (
+                                      <Badge variant="outline" className="text-[8px] h-4 bg-green-50">Catalog</Badge>
+                                    ) : (
+                                      <Badge variant="outline" className="text-[8px] h-4 bg-orange-50">Asset</Badge>
+                                    )}
+                                  </TableCell>
                                   <TableCell className="font-bold">{m.name}</TableCell>
-                                  <TableCell><Badge variant="secondary">{m.category}</Badge></TableCell>
+                                  <TableCell><Badge variant="secondary" className="h-5 text-[10px]">{m.category}</Badge></TableCell>
                                   <TableCell>{m.uom}</TableCell>
-                                  <TableCell className="font-mono text-xs text-muted-foreground">{m.partNumber || 'None'}</TableCell>
                                   <TableCell className="text-xs text-muted-foreground">
-                                    {m.updatedAt ? format(new Date(m.updatedAt), 'MMM d, yyyy') : 'Legacy'}
+                                    {m.updatedAt ? format(new Date(m.updatedAt), 'MMM d, yyyy') : 'N/A'}
                                   </TableCell>
                                 </TableRow>
                               ))}
@@ -355,7 +418,7 @@ export default function MaterialsPage() {
                   <div className="py-20 text-center border-2 border-dashed rounded-lg bg-muted/10">
                     <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4 opacity-50" />
                     <h3 className="text-lg font-bold">Catalog is Clean</h3>
-                    <p className="text-muted-foreground">No duplicate material names found in the current registry.</p>
+                    <p className="text-muted-foreground">No variations in material naming were found in the database scan.</p>
                   </div>
                 )}
               </div>
