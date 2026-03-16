@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -5,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { CreateWorkOrderDialog } from './create-work-order-dialog';
 import type { Technician, WorkSite, Client } from '@/lib/types';
-import { Home, LayoutDashboard, Receipt, Package } from 'lucide-react';
+import { Home, LayoutDashboard, Receipt, Package, Box } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTechnician } from '@/hooks/use-technician';
 
@@ -45,22 +46,33 @@ export function PrimaryNav({ technicians, workSites, clients, onWorkSiteAdded }:
                 {!isTechnician && (
                     <Button asChild variant="ghost" className={cn(
                         "font-semibold",
-                        pathname.startsWith('/quotes') && "bg-muted"
+                        pathname.startsWith('/assets') && "bg-muted"
                     )}>
-                        <Link href="/quotes">
-                            <Receipt className="mr-2 h-4 w-4" />
-                            Quotes
+                        <Link href="/assets">
+                            <Package className="mr-2 h-4 w-4" />
+                            Assets & PM
                         </Link>
                     </Button>
                 )}
                 {!isTechnician && (
                     <Button asChild variant="ghost" className={cn(
                         "font-semibold",
-                        pathname.startsWith('/assets') && "bg-muted"
+                        pathname.startsWith('/materials') && "bg-muted"
                     )}>
-                        <Link href="/assets">
-                            <Package className="mr-2 h-4 w-4" />
-                            Assets & PM
+                        <Link href="/materials">
+                            <Box className="mr-2 h-4 w-4" />
+                            Materials
+                        </Link>
+                    </Button>
+                )}
+                {!isTechnician && (
+                    <Button asChild variant="ghost" className={cn(
+                        "font-semibold",
+                        pathname.startsWith('/quotes') && "bg-muted"
+                    )}>
+                        <Link href="/quotes">
+                            <Receipt className="mr-2 h-4 w-4" />
+                            Quotes
                         </Link>
                     </Button>
                 )}

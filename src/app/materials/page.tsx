@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Package, PlusCircle, Search, Settings, Loader2, Trash2, Edit, Sparkles, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { Package, PlusCircle, Search, Settings, Loader2, Trash2, Edit, Sparkles, AlertTriangle, CheckCircle2, Info, Ban } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useFirestore, deleteDocumentNonBlocking, useUser } from '@/firebase';
 import { getMaterials } from '@/lib/data';
@@ -18,6 +18,8 @@ import { doc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { identifyDuplicates, mergeMaterialsAction, type DuplicateGroup } from '@/lib/material-service';
+import { useTechnician } from '@/hooks/use-technician';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +35,7 @@ export default function MaterialsPage() {
   const db = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
+  const { role, isLoading: isRoleLoading } = useTechnician();
   
   const [materials, setMaterials] = useState<Material[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,10 +64,10 @@ export default function MaterialsPage() {
   };
 
   useEffect(() => {
-    if (db && user) {
+    if (db && user && role?.name !== 'Technician') {
       fetchMaterials();
     }
-  }, [db, user]);
+  }, [db, user, role]);
 
   const duplicateGroups = useMemo(() => identifyDuplicates(materials), [materials]);
 
@@ -114,6 +117,33 @@ export default function MaterialsPage() {
     m.partNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     m.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (isRoleLoading) {
+    return (
+      <MainLayout>
+        <div className="flex h-screen items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (role?.name === 'Technician') {
+    return (
+      <MainLayout>
+        <div className="container mx-auto py-8 text-center">
+          <div className="flex flex-col items-center gap-4">
+            <Ban className="h-16 w-16 text-destructive" />
+            <h1 className="text-2xl font-bold">Unauthorized Access</h1>
+            <p className="text-muted-foreground">You do not have permission to manage the materials catalog.</p>
+            <Button asChild>
+              <a href="/">Go to Dashboard</a>
+            </Button>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -234,10 +264,10 @@ export default function MaterialsPage() {
               <div className="space-y-6">
                 <Alert>
                   <Info className="h-4 w-4" />
-                  <CardTitle className="text-sm font-bold">Standardization Utility</CardTitle>
-                  <CardDescription className="text-xs">
+                  <AlertTitle className="text-sm font-bold">Standardization Utility</AlertTitle>
+                  <AlertDescription className="text-xs">
                     Identify duplicate material names caused by inconsistent casing or spacing. Merge them to standardize your catalog and asset records.
-                  </CardDescription>
+                  </AlertDescription>
                 </Alert>
 
                 <div className="flex items-center space-x-2 bg-muted/30 p-4 rounded-lg border border-dashed">
@@ -297,7 +327,7 @@ export default function MaterialsPage() {
                               {group.materials.map(m => (
                                 <TableRow 
                                   key={m.id} 
-                                  className={selectedMasterIds[group.normalizedName] === m.id ? "bg-primary/5" : ""}
+                                  className={cn("cursor-pointer", selectedMasterIds[group.normalizedName] === m.id && "bg-primary/5")}
                                   onClick={() => setSelectedMasterIds(prev => ({ ...prev, [group.normalizedName]: m.id }))}
                                 >
                                   <TableCell>

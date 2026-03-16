@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -6,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Package, PlusCircle, Search, CalendarClock, TrendingUp, AlertTriangle, Loader2, FileBarChart, ChevronRight, MapPin, Wrench, Users, Sparkles, Building } from 'lucide-react';
+import { Package, PlusCircle, Search, CalendarClock, TrendingUp, AlertTriangle, Loader2, FileBarChart, ChevronRight, Building, Box, Sparkles, Wrench, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useFirestore, useUser } from '@/firebase';
 import { getAssets, getAssetPmSchedules, generatePmWorkOrdersForMonth, getPmWorkOrders, seedDatabase } from '@/lib/data';
@@ -25,6 +26,7 @@ export default function AssetsPageContent() {
   const db = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
+  
   const [assets, setAssets] = useState<Asset[]>([]);
   const [schedules, setSchedules] = useState<AssetPmSchedule[]>([]);
   const [laborForecast, setLaborForecast] = useState<LaborForecast[]>([]);
@@ -38,9 +40,7 @@ export default function AssetsPageContent() {
     if (db && user) {
       setIsLoading(true);
       try {
-        // Ensure templates are seeded before we attempt operations
         await seedDatabase(db);
-        
         const [a, s, l, pwo] = await Promise.all([
           getAssets(db),
           getAssetPmSchedules(db),
@@ -85,11 +85,13 @@ export default function AssetsPageContent() {
     }
   };
 
-  const filteredAssets = assets.filter(a => 
-    a.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    a.assetTag.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.siteName?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredAssets = useMemo(() => {
+    return assets.filter(a => 
+      a.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      a.assetTag.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.siteName?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [assets, searchTerm]);
 
   const planningMonths = useMemo(() => {
     const months = [];
@@ -100,22 +102,16 @@ export default function AssetsPageContent() {
     return months;
   }, []);
 
-  const getSchedulesForMonth = (monthDate: Date) => {
+  const getSchedulesForMonth = useCallback((monthDate: Date) => {
     const targetStart = startOfMonth(monthDate);
     const targetEnd = endOfMonth(monthDate);
 
     return schedules.filter(s => {
       if (s.status !== 'active') return false;
-      
       const startDueDate = parseISO(s.nextDueDate);
-      
-      if (isWithinInterval(startDueDate, { start: targetStart, end: targetEnd })) {
-        return true;
-      }
-
+      if (isWithinInterval(startDueDate, { start: targetStart, end: targetEnd })) return true;
       if (startDueDate < targetStart) {
         const monthsDiff = differenceInMonths(targetStart, startDueDate);
-        
         switch (s.frequencyType) {
           case 'monthly': return true;
           case 'quarterly': return monthsDiff % 3 === 0;
@@ -124,10 +120,9 @@ export default function AssetsPageContent() {
           default: return false;
         }
       }
-
       return false;
     });
-  };
+  }, [schedules]);
 
   return (
     <MainLayout>
@@ -141,6 +136,12 @@ export default function AssetsPageContent() {
             <Button onClick={handleGeneratePmOrders} disabled={isGenerating} variant="outline" className="bg-primary/5 border-primary/20 text-primary">
               {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
               Generate This Month's PMs
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/materials">
+                <Box className="mr-2 h-4 w-4" />
+                Materials Catalog
+              </Link>
             </Button>
             <Button onClick={() => setIsReportOpen(true)} variant="outline">
               <FileBarChart className="mr-2 h-4 w-4" />
