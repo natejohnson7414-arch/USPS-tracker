@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { uploadPhotoWithThumbnail, deletePhotoMetadata } from '@/firebase/storage';
 import { collection, doc } from 'firebase/firestore';
@@ -51,6 +52,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
         model: asset.model || '',
         siteId: asset.siteId || '',
         locationDescription: asset.locationDescription || '',
+        notes: asset.notes || '',
         status: asset.status || 'active',
         criticality: asset.criticality || 'medium',
         installDate: asset.installDate || new Date().toISOString(),
@@ -72,6 +74,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
       model: '',
       siteId: searchParams.get('siteId') || '',
       locationDescription: '',
+      notes: '',
       status: 'active',
       criticality: 'medium',
       installDate: new Date().toISOString(),
@@ -419,6 +422,16 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Asset Notes</Label>
+                <Textarea 
+                  id="notes" 
+                  value={formData.notes || ''} 
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })} 
+                  placeholder="Record any specific asset notes here (access, safety, etc.)"
+                  rows={4}
+                />
               </div>
             </CardContent>
           </Card>

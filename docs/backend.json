@@ -13,6 +13,7 @@
         "model": { "type": "string" },
         "siteId": { "type": "string" },
         "locationDescription": { "type": "string" },
+        "notes": { "type": "string", "description": "General notes about the equipment." },
         "installDate": { "type": "string", "format": "date-time" },
         "warrantyExpiration": { "type": "string", "format": "date-time" },
         "status": { "type": "string", "enum": ["active", "retired", "out_of_service"] },

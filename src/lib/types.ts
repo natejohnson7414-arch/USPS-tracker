@@ -1,4 +1,3 @@
-
 export type FileAttachment = {
   name: string;
   url: string;
@@ -183,6 +182,7 @@ export type Asset = {
   model: string;
   siteId: string;
   locationDescription?: string;
+  notes?: string;
   installDate: string;
   warrantyExpiration?: string;
   status: 'active' | 'retired' | 'out_of_service';
