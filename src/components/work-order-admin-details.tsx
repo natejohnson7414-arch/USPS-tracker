@@ -8,7 +8,6 @@ import type { WorkOrder, Technician, TimeEntry, Activity, HvacStartupReport, Fil
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -31,7 +30,7 @@ import { notifyTechnicianOfAttention } from '@/ai/flows/notify-technician-flow';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { deletePhotoMetadata } from '@/firebase/storage';
+import { Separator } from '@/components/ui/separator';
 
 const ActivityItem = React.memo(({ activity, technicians, onDeleteClick, isCompleted }: { 
     activity: Activity, 
@@ -450,8 +449,32 @@ export function WorkOrderAdminDetails({
                       const isLoad = isLinkingAsset === asset.id;
                       return (
                         <div key={asset.id} className={`flex items-center justify-between p-3 border rounded-lg transition-all ${isLinked ? 'bg-primary/5 border-primary/20 ring-1 ring-primary/10' : 'hover:bg-muted/30'}`}>
-                          <div className="flex-1"><div className="flex items-center gap-2"><p className="font-bold">{asset.name}</p><Badge variant="outline" className="font-mono text-[10px]">{asset.assetTag}</Badge>{isLinked && <Badge className="h-5 text-[10px] bg-primary text-primary-foreground">Linked to Job</Badge>}</div><p className="text-xs text-muted-foreground mt-1">{asset.manufacturer} {asset.model} • {asset.status}</p></div>
-                          <div className="flex items-center gap-2"><Button asChild variant="ghost" size="icon" className="h-8 w-8"><Link href={`/assets/${asset.id}`}><ChevronRight className="h-4 w-4" /></Link></Button>{!isCompleted && <div className="flex items-center gap-2">{isLinked ? <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => onUnlinkAsset(asset.id)} disabled={!!isLinkingAsset}>{isLoad ? <Loader2 className="h-4 w-4 animate-spin" /> : <><X className="h-4 w-4 mr-1" /> Unlink</>}</Button> : <Button variant="outline" size="sm" className="gap-2" onClick={() => onLinkAsset(asset.id)} disabled={!!isLinkingAsset}>{isLoad ? <Loader2 className="h-4 w-4 animate-spin" /> : <><LinkIcon className="h-4 w-4" /> Link Asset</>}</Button>}</div>}</div>
+                          <Link href={`/assets/${asset.id}`} className="flex-1 group/asset">
+                            <div className="flex items-center gap-2">
+                              <p className="font-bold group-hover/asset:underline">{asset.name}</p>
+                              <Badge variant="outline" className="font-mono text-[10px]">{asset.assetTag}</Badge>
+                              {isLinked && <Badge className="h-5 text-[10px] bg-primary text-primary-foreground">Linked to Job</Badge>}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">{asset.manufacturer} {asset.model} • {asset.status}</p>
+                          </Link>
+                          <div className="flex items-center gap-2">
+                            <Button asChild variant="ghost" size="icon" className="h-8 w-8">
+                              <Link href={`/assets/${asset.id}`}><ChevronRight className="h-4 w-4" /></Link>
+                            </Button>
+                            {!isCompleted && (
+                              <div className="flex items-center gap-2">
+                                {isLinked ? (
+                                  <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => onUnlinkAsset(asset.id)} disabled={!!isLinkingAsset}>
+                                    {isLoad ? <Loader2 className="h-4 w-4 animate-spin" /> : <><X className="h-4 w-4 mr-1" /> Unlink</>}
+                                  </Button>
+                                ) : (
+                                  <Button variant="outline" size="sm" className="gap-2" onClick={() => onLinkAsset(asset.id)} disabled={!!isLinkingAsset}>
+                                    {isLoad ? <Loader2 className="h-4 w-4 animate-spin" /> : <><LinkIcon className="h-4 w-4" /> Link Asset</>}
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
