@@ -341,6 +341,80 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
           </Card>
 
           <Card>
+            <CardHeader><CardTitle>PM Materials (Filters, Belts, etc.)</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                {formData.materials?.map((mat, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-2 border rounded-md bg-muted/20">
+                    <div className="text-sm">
+                      <span className="font-bold">{mat.quantity} {mat.uom}</span> - {mat.name} <span className="text-xs text-muted-foreground">({mat.category})</span>
+                    </div>
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleRemoveMaterial(idx)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <Separator />
+              <div className="space-y-3">
+                <Label className="text-xs uppercase text-muted-foreground">Add Required Material</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">Type</Label>
+                    <Select value={newMatCategory} onValueChange={setNewMatCategory}>
+                      <SelectTrigger><SelectValue placeholder="Filter type..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All Types</SelectItem>
+                        {allCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">Name</Label>
+                    <Input 
+                      placeholder="Type to search..." 
+                      value={newMatName} 
+                      list="asset-material-datalist"
+                      autoComplete="off"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setNewMatName(val);
+                        const match = materialSuggestions.find(m => m.name.toLowerCase() === val.toLowerCase());
+                        if (match) {
+                          setNewMatUom(match.uom);
+                          if (newMatCategory === 'ALL' || newMatCategory !== match.category) {
+                            setNewMatCategory(match.category);
+                          }
+                        }
+                      }} 
+                    />
+                    <datalist id="asset-material-datalist">
+                      {filteredSuggestions.map((m, i) => (
+                        <option key={`${m.name}-${i}`} value={m.name}>
+                          {m.category}
+                        </option>
+                      ))}
+                    </datalist>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">Qty</Label>
+                    <Input type="number" placeholder="Qty" value={newMatQty} onChange={(e) => setNewMatQty(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">UOM</Label>
+                    <Input placeholder="UOM" value={newMatUom} onChange={(e) => setNewMatUom(e.target.value)} />
+                  </div>
+                </div>
+                <Button type="button" variant="outline" className="w-full" onClick={handleAddMaterial} disabled={!newMatName}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Add Material
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
             <CardHeader><CardTitle>Equipment Photos</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -495,80 +569,6 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>PM Materials (Filters, Belts, etc.)</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                {formData.materials?.map((mat, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-2 border rounded-md bg-muted/20">
-                    <div className="text-sm">
-                      <span className="font-bold">{mat.quantity} {mat.uom}</span> - {mat.name} <span className="text-xs text-muted-foreground">({mat.category})</span>
-                    </div>
-                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleRemoveMaterial(idx)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-              <Separator />
-              <div className="space-y-3">
-                <Label className="text-xs uppercase text-muted-foreground">Add Required Material</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-[10px]">Type</Label>
-                    <Select value={newMatCategory} onValueChange={setNewMatCategory}>
-                      <SelectTrigger><SelectValue placeholder="Filter type..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ALL">All Types</SelectItem>
-                        {allCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[10px]">Name</Label>
-                    <Input 
-                      placeholder="Type to search..." 
-                      value={newMatName} 
-                      list="asset-material-datalist"
-                      autoComplete="off"
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setNewMatName(val);
-                        const match = materialSuggestions.find(m => m.name.toLowerCase() === val.toLowerCase());
-                        if (match) {
-                          setNewMatUom(match.uom);
-                          if (newMatCategory === 'ALL' || newMatCategory !== match.category) {
-                            setNewMatCategory(match.category);
-                          }
-                        }
-                      }} 
-                    />
-                    <datalist id="asset-material-datalist">
-                      {filteredSuggestions.map((m, i) => (
-                        <option key={`${m.name}-${i}`} value={m.name}>
-                          {m.category}
-                        </option>
-                      ))}
-                    </datalist>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-[10px]">Qty</Label>
-                    <Input type="number" placeholder="Qty" value={newMatQty} onChange={(e) => setNewMatQty(e.target.value)} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[10px]">UOM</Label>
-                    <Input placeholder="UOM" value={newMatUom} onChange={(e) => setNewMatUom(e.target.value)} />
-                  </div>
-                </div>
-                <Button type="button" variant="outline" className="w-full" onClick={handleAddMaterial} disabled={!newMatName}>
-                  <PlusCircle className="mr-2 h-4 w-4" /> Add Material
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
             <CardHeader><CardTitle>Customized Specifications (Tag Missing Data)</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
@@ -585,7 +585,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
                 ))}
               </div>
               <Separator />
-              <div className="space-y-3">
+              <div className="space-y-3 pt-2">
                 <Label className="text-xs uppercase text-muted-foreground">Add Custom Field</Label>
                 <div className="grid grid-cols-2 gap-2">
                   <Input placeholder="Field Name (e.g. Phase)" value={newFieldName} onChange={(e) => setNewFieldName(e.target.value)} />
