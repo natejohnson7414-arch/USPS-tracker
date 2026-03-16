@@ -102,6 +102,7 @@ export const generateLaborForecast = async (db: any): Promise<LaborForecast[]> =
 /**
  * Generates a material forecast report based on PM schedules due in a specific month.
  * Handles repeatable schedule logic to project future requirements.
+ * Aggregates materials case-insensitively.
  */
 export const generateMaterialsReport = async (
   db: any, 
@@ -143,7 +144,13 @@ export const generateMaterialsReport = async (
     const group = reportGroups.get(groupKey)!;
 
     asset.materials.forEach((mat: AssetMaterial) => {
-      let item = group.items.find(i => i.name === mat.name && i.category === mat.category);
+      // Normalize for comparison
+      const normalizedName = mat.name.toLowerCase().trim().replace(/\s+/g, ' ');
+      
+      let item = group.items.find(i => 
+        i.name.toLowerCase().trim().replace(/\s+/g, ' ') === normalizedName && 
+        i.category === mat.category
+      );
       
       if (item) {
         item.quantity += mat.quantity;
@@ -152,7 +159,7 @@ export const generateMaterialsReport = async (
         }
       } else {
         group.items.push({
-          name: mat.name,
+          name: mat.name, // Use the first encounter as the display name
           category: mat.category,
           quantity: mat.quantity,
           uom: mat.uom,

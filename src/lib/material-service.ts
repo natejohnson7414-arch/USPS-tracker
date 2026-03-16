@@ -10,13 +10,14 @@ export type DuplicateGroup = {
 };
 
 /**
- * Groups materials by their normalized (lowercase/trimmed) name to identify duplicates.
+ * Groups materials by their normalized name to identify duplicates.
+ * Normalization: Lowercase, trimmed, and single-spaced.
  */
 export function identifyDuplicates(materials: Material[]): DuplicateGroup[] {
   const groups = new Map<string, Material[]>();
   
   materials.forEach(m => {
-    const key = m.name.toLowerCase().trim();
+    const key = m.name.toLowerCase().trim().replace(/\s+/g, ' ');
     if (!groups.has(key)) {
       groups.set(key, []);
     }
@@ -45,7 +46,7 @@ export async function mergeMaterialsAction(
     .filter(d => d.id !== master.id)
     .map(d => d.id);
   
-  const namesToStandardize = duplicates.map(d => d.name.toLowerCase().trim());
+  const namesToStandardize = duplicates.map(d => d.name.toLowerCase().trim().replace(/\s+/g, ' '));
 
   // 2. Delete duplicate records from the materials catalog
   idsToRemove.forEach(id => {
@@ -67,7 +68,7 @@ export async function mergeMaterialsAction(
       
       let changed = false;
       const updatedMaterials = asset.materials.map(mat => {
-        const matNameLower = mat.name.toLowerCase().trim();
+        const matNameLower = mat.name.toLowerCase().trim().replace(/\s+/g, ' ');
         const isMatch = namesToStandardize.includes(matNameLower);
         
         if (isMatch) {
