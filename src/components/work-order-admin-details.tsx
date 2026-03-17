@@ -322,6 +322,9 @@ export function WorkOrderAdminDetails({
 
   const getPhotoUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.url;
   const getThumbUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.thumbnailUrl || p.url;
+  
+  // Use image proxy for high-res previews to resolve CORS/loading issues
+  const getProxiedUrl = (url: string) => `/api/image-proxy?url=${encodeURIComponent(url)}`;
 
   const linkedAssetIds = new Set(workOrder.assetIds || []);
 
@@ -632,13 +635,31 @@ export function WorkOrderAdminDetails({
             <DialogDescription className="sr-only">High resolution preview of work order documentation</DialogDescription>
           </DialogHeader>
           <div className="flex-1 relative flex items-center justify-center p-4">
-            {viewingPhoto && <Image src={viewingPhoto.url} alt="High resolution documentation" fill className="object-contain" priority />}
+            {viewingPhoto && (
+              <Image 
+                src={getProxiedUrl(viewingPhoto.url)} 
+                alt="High resolution documentation" 
+                fill 
+                className="object-contain" 
+                priority 
+              />
+            )}
           </div>
           <div className="p-4 bg-background flex justify-between items-center border-t">
             <Button variant="outline" size="sm" onClick={() => setViewingPhoto(null)}>Close</Button>
             <div className="flex items-center gap-2">
-                {viewingPhoto && <Button variant="outline" size="sm" asChild><a href={`/api/image-proxy?url=${encodeURIComponent(viewingPhoto.url)}`} download><Download className="h-4 w-4 mr-2" /> Download</a></Button>}
-                {!isCompleted && viewingPhoto && <Button variant="destructive" size="sm" onClick={handleDeletePhotoInViewer}><Trash2 className="h-4 w-4 mr-2" /> Delete Documentation</Button>}
+                {viewingPhoto && (
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={getProxiedUrl(viewingPhoto.url)} download>
+                      <Download className="h-4 w-4 mr-2" /> Download
+                    </a>
+                  </Button>
+                )}
+                {!isCompleted && viewingPhoto && (
+                  <Button variant="destructive" size="sm" onClick={handleDeletePhotoInViewer}>
+                    <Trash2 className="h-4 w-4 mr-2" /> Delete Documentation
+                  </Button>
+                )}
             </div>
           </div>
         </DialogContent>
