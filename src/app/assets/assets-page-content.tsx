@@ -145,12 +145,6 @@ export default function AssetsPageContent() {
               {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
               Generate This Month's PMs
             </Button>
-            <Button asChild variant="outline">
-              <Link href="/materials">
-                <Box className="mr-2 h-4 w-4" />
-                Materials Catalog
-              </Link>
-            </Button>
             <Button onClick={() => setIsReportOpen(true)} variant="outline">
               <FileBarChart className="mr-2 h-4 w-4" />
               Materials Report
