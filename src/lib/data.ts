@@ -190,7 +190,7 @@ export const generatePmWorkOrdersForMonth = async (db: any, month: number, year:
   // 2. Project which ones are due this month based on recurrence AND have an active contract
   const dueSchedules = allSchedules.filter(s => {
     if (s.status !== 'active') return false;
-    if (!s.siteId || !contractSiteIds.has(s.siteId)) return false; // MUST HAVE VALID CONTRACT
+    if (!s.siteId || !contractSiteIds.has(s.siteId)) return false; 
     
     const startDueDate = parseISO(s.nextDueDate);
     
@@ -443,26 +443,76 @@ export const getPmTemplates = async (db: any): Promise<PmTemplate[]> => {
 };
 
 export const getAssetPmSchedules = async (db: any, assetId?: string): Promise<AssetPmSchedule[]> => {
+  // Fetch Shared Context
+  const [assets, sites, taskTemplates] = await Promise.all([
+    getAssets(db),
+    getWorkSites(db),
+    getPmTaskTemplates(db)
+  ]);
+
+  // 1. Fetch "New" Seasonal Schedules (from subcollections via collectionGroup)
+  const subSnap = await getDocs(collectionGroup(db, 'pmSchedules'));
+  const seasonalSchedules = subSnap.docs
+    .map(d => {
+      const data = d.data();
+      const parentAssetId = d.ref.parent.parent?.id;
+      if (!parentAssetId) return null;
+      if (assetId && parentAssetId !== assetId) return null;
+      
+      const asset = assets.find(a => a.id === parentAssetId);
+      if (!asset) return null;
+
+      const currentYear = new Date().getFullYear();
+      const nextDue = data.nextDueDate || new Date(currentYear, (data.dueMonth || 1) - 1, 1).toISOString();
+
+      return {
+        id: d.id,
+        assetId: parentAssetId,
+        templateId: data.templateId,
+        nextDueDate: nextDue,
+        autoGenerateWorkOrder: true,
+        status: data.active ? 'active' : 'paused',
+        assetName: asset.name,
+        assetTag: asset.assetTag,
+        siteId: asset.siteId,
+        siteName: sites.find(s => s.id === asset.siteId)?.name,
+        templateName: data.templateName,
+        frequencyType: 'annual',
+        estimatedLaborHours: taskTemplates.find(t => t.id === data.templateId)?.tasks.length ? 2 : 0 
+      } as AssetPmSchedule;
+    })
+    .filter((s): s is AssetPmSchedule => s !== null);
+
+  // 2. Fetch Standalone Legacy Schedules
   let q = collection(db, 'asset_pm_schedules');
   if (assetId) q = query(q, where('assetId', '==', assetId)) as any;
-  const snapshot = await getCollectionNonBlocking(q);
-  const standaloneSchedules = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AssetPmSchedule));
-  
-  const [assets, templates, sites] = await Promise.all([getAssets(db), getPmTemplates(db), getWorkSites(db)]);
-  
-  const filteredAssets = assetId ? assets.filter(a => a.id === assetId) : assets;
-  const assetSchedules: AssetPmSchedule[] = filteredAssets
+  const snapshot = await getDocs(q);
+  const standaloneSchedules = snapshot.docs.map(d => {
+    const data = d.data();
+    const asset = assets.find(a => a.id === data.assetId);
+    return {
+      id: d.id,
+      ...data,
+      assetName: asset?.name,
+      assetTag: asset?.assetTag,
+      siteId: asset?.siteId,
+      siteName: sites.find(s => s.id === asset?.siteId)?.name,
+    } as AssetPmSchedule;
+  });
+
+  // 3. Legacy Frequency-based schedules (on the asset itself)
+  const targetAssets = assetId ? assets.filter(a => a.id === assetId) : assets;
+  const frequencySchedules: AssetPmSchedule[] = targetAssets
     .filter(a => a.pmFrequency && a.pmFrequency !== 'none')
     .map(a => {
       const currentYear = new Date().getFullYear();
       const dueDate = new Date(currentYear, (a.pmMonth || 1) - 1, 1);
-      
       return {
         id: `asset-pm-${a.id}`,
         assetId: a.id,
         templateId: 'built-in',
         nextDueDate: dueDate.toISOString(),
-        autoGenerateWorkOrder: false,
+        autoGenerateWorkOrder: true,
         status: 'active',
         assetName: a.name,
         assetTag: a.assetTag,
@@ -474,22 +524,7 @@ export const getAssetPmSchedules = async (db: any, assetId?: string): Promise<As
       };
     });
 
-  const combined = [...standaloneSchedules.map(s => {
-    const asset = assets.find(a => a.id === s.assetId);
-    const template = templates.find(t => t.id === s.templateId);
-    return {
-      ...s,
-      assetName: asset?.name,
-      assetTag: asset?.assetTag,
-      siteId: asset?.siteId,
-      siteName: sites.find(site => site.id === asset?.siteId)?.name,
-      templateName: template?.name,
-      frequencyType: template?.frequencyType,
-      estimatedLaborHours: template?.estimatedLaborHours
-    };
-  }), ...assetSchedules];
-
-  return combined;
+  return [...seasonalSchedules, ...standaloneSchedules, ...frequencySchedules];
 };
 
 export const getAssetServiceHistory = async (db: any, assetId: string): Promise<AssetServiceHistory[]> => {
