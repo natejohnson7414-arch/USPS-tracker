@@ -144,13 +144,19 @@ function DraggableActivityItem({ activity, techColorMap }: { activity: Activity,
     
     const activityContent = (
         <div className={cn(
-            'p-1.5 text-xs text-white rounded cursor-grab shadow flex items-center', 
+            'p-2 text-[10px] sm:text-xs text-white rounded-md cursor-grab shadow-sm border border-white/10 flex flex-col gap-0.5', 
             isNonProductive 
-                ? 'bg-slate-500' // A neutral color
+                ? 'bg-slate-500' 
                 : techColorMap.get(activity.technicianId) || 'bg-gray-400'
         )}>
-             {isNonProductive && <Coffee className="h-3 w-3 mr-1.5 shrink-0" />}
-            <span className="truncate">{activity.technician?.name || 'Unassigned'}</span>
+            <div className="flex items-center justify-between gap-1">
+                <span className="font-bold truncate">{activity.parentWorkOrder?.jobName || 'No Job Name'}</span>
+                {isNonProductive && <Coffee className="h-3 w-3 shrink-0" />}
+            </div>
+            <div className="flex items-center justify-between text-[9px] opacity-90">
+                <span className="truncate">{activity.technician?.name || 'Unassigned'}</span>
+                <span className="shrink-0 font-mono">#{activity.workOrderId}</span>
+            </div>
         </div>
     );
 
@@ -308,14 +314,15 @@ function CalendarDay({ day, dayActivities, techColorMap, view, index, totalDays,
     });
 
     const isMonthView = view === 'month';
+    const isSingleDay = view === 'day';
 
     return (
         <div className={cn(
             "flex flex-col flex-shrink-0",
-            !isMonthView ? "w-[14.28%] min-w-[170px]" : "w-[14.28%]",
-            (view === 'week' || view === 'two-week') && index < totalDays - 1 && "border-r",
+            isSingleDay ? "w-full" : "w-[20%] min-w-[180px]",
+            isMonthView && "min-w-0",
+            index < totalDays - 1 && (isMonthView ? (index + 1) % 5 !== 0 : true) && "border-r",
             isMonthView && "border-b",
-            isMonthView && (index + 1) % 7 !== 0 && "border-r",
             isMonthView && monthParity === 'odd' && 'bg-muted/40'
         )}>
             {!isMonthView && (
@@ -372,11 +379,9 @@ export default function DispatchBoardPage() {
 
     useEffect(() => {
         if (!isRoleLoading && view === null) {
-            // Priority 1: User's saved preference
             if (technician?.defaultDispatchView) {
                 setView(technician.defaultDispatchView);
             } 
-            // Priority 2: Role-based fallback
             else if (role?.name === 'Technician') {
                 setView('month');
             } else {
@@ -389,13 +394,13 @@ export default function DispatchBoardPage() {
     const sensors = useSensors(
         useSensor(MouseSensor, {
             activationConstraint: {
-                distance: 10, // Require mouse to move 10px before initiating drag
+                distance: 10,
             },
         }),
         useSensor(TouchSensor, {
             activationConstraint: {
-                delay: 250, // Require a 250ms press delay
-                tolerance: 5, // Allow 5px of movement during the delay
+                delay: 250,
+                tolerance: 5,
             },
         }),
         useSensor(PointerSensor)
@@ -454,23 +459,33 @@ export default function DispatchBoardPage() {
     const calendarDays = useMemo(() => {
         if (!view) return [];
         const weekStartsOn = 1; // Monday
+        let days: Date[] = [];
         let start;
         switch (view) {
             case 'day':
-                return [currentDate];
+                days = [currentDate];
+                break;
             case 'week':
                 start = startOfWeek(currentDate, { weekStartsOn });
-                return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+                days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+                break;
             case 'two-week':
                 start = startOfWeek(currentDate, { weekStartsOn });
-                return Array.from({ length: 14 }, (_, i) => addDays(start, i));
+                days = Array.from({ length: 14 }, (_, i) => addDays(start, i));
+                break;
             case 'month':
                  start = startOfWeek(currentDate, { weekStartsOn });
-                return Array.from({ length: 35 }, (_, i) => addDays(start, i)); // 5 weeks
+                days = Array.from({ length: 35 }, (_, i) => addDays(start, i));
+                break;
             default:
                 start = startOfWeek(currentDate, { weekStartsOn });
-                return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+                days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
         }
+
+        return days.filter(day => {
+            const dayOfWeek = day.getDay();
+            return dayOfWeek !== 0 && dayOfWeek !== 6;
+        });
     }, [currentDate, view]);
     
     const handlePrev = () => {
@@ -509,7 +524,7 @@ export default function DispatchBoardPage() {
         const grouped = new Map<string, Activity[]>();
         activities.forEach(activity => {
             if (activity.status === 'cancelled') {
-                return; // Skip cancelled activities
+                return;
             }
             const dateStr = format(new Date(activity.scheduled_date), 'yyyy-MM-dd');
             if (!grouped.has(dateStr)) {
@@ -537,7 +552,6 @@ export default function DispatchBoardPage() {
      async function handleActivityDateChange(activity: Activity, newDate: Date) {
         if (!db) return;
 
-        // Preserve the time part of the original scheduled_date.
         const originalDate = new Date(activity.scheduled_date);
         const timePart = format(originalDate, 'HH:mm:ss.SSS');
         const newDateStr = format(newDate, 'yyyy-MM-dd');
@@ -616,7 +630,6 @@ export default function DispatchBoardPage() {
                     };
                     const activitiesColRef = collection(db, 'work_orders', selectedWorkOrder.id, 'activities');
                     
-                    // ARCHITECTURAL CHANGE: Sync involved technicians list
                     const woRef = doc(db, 'work_orders', selectedWorkOrder.id);
                     updateDocumentNonBlocking(woRef, {
                         involvedTechnicianIds: arrayUnion(tech.id)
@@ -664,7 +677,8 @@ export default function DispatchBoardPage() {
         
         let start, end;
         start = startOfWeek(currentDate, { weekStartsOn });
-        end = addDays(start, calendarDays.length - 1);
+        const lastDay = calendarDays[calendarDays.length - 1] || currentDate;
+        end = lastDay;
         
         if (start.getMonth() === end.getMonth()) {
             return `${format(start, 'MMMM d')} - ${format(end, 'd, yyyy')}`;
@@ -678,7 +692,7 @@ export default function DispatchBoardPage() {
 
     const handleMultiSelectToggle = (checked: boolean) => {
         setIsMultiSelect(checked);
-        setSelectedTechIds([]); // Reset selection when toggling
+        setSelectedTechIds([]);
     };
 
     const handleToggleTechSelection = (techId: string) => {
@@ -758,8 +772,8 @@ export default function DispatchBoardPage() {
                     </div>
                     {view === 'month' && (
                         <div className="flex rounded-t-lg border-l border-r border-t bg-muted/25">
-                            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                                <div key={day} className="w-[14.28%] p-2 text-center font-semibold text-sm text-muted-foreground">{day}</div>
+                            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map(day => (
+                                <div key={day} className="w-[20%] p-2 text-center font-semibold text-sm text-muted-foreground">{day}</div>
                             ))}
                         </div>
                     )}
@@ -768,7 +782,7 @@ export default function DispatchBoardPage() {
                         <div className="space-y-2 pb-4">
                             <div className="overflow-x-auto">
                                 <div className="flex rounded-lg border">
-                                    {calendarDays.slice(0, 7).map((day, index) => {
+                                    {calendarDays.slice(0, 5).map((day, index) => {
                                         const dayKey = format(day, 'yyyy-MM-dd');
                                         const dayActivities = activitiesByDay.get(dayKey) || [];
                                         return (
@@ -779,7 +793,7 @@ export default function DispatchBoardPage() {
                                                 techColorMap={techColorMap}
                                                 view={view!}
                                                 index={index}
-                                                totalDays={7}
+                                                totalDays={5}
                                             />
                                         );
                                     })}
@@ -787,7 +801,7 @@ export default function DispatchBoardPage() {
                             </div>
                             <div className="overflow-x-auto">
                                 <div className="flex rounded-lg border">
-                                    {calendarDays.slice(7, 14).map((day, index) => {
+                                    {calendarDays.slice(5, 10).map((day, index) => {
                                         const dayKey = format(day, 'yyyy-MM-dd');
                                         const dayActivities = activitiesByDay.get(dayKey) || [];
                                         return (
@@ -797,8 +811,8 @@ export default function DispatchBoardPage() {
                                                 dayActivities={dayActivities}
                                                 techColorMap={techColorMap}
                                                 view={view!}
-                                                index={index + 7}
-                                                totalDays={14}
+                                                index={index}
+                                                totalDays={5}
                                             />
                                         );
                                     })}
@@ -905,8 +919,8 @@ export default function DispatchBoardPage() {
                 </div>
                  <DragOverlay>
                     {activeId && activeDragItem?.type === 'activity' ? (
-                        <div className={cn('p-1.5 text-xs text-white rounded cursor-grabbing shadow-lg truncate', techColorMap.get(activeDragItem.activity.technicianId) || 'bg-gray-400')}>
-                            {activeDragItem.activity.technician?.name || 'Unassigned'}
+                        <div className={cn('p-2 text-xs text-white rounded-md cursor-grabbing shadow-lg truncate border border-white/20', techColorMap.get(activeDragItem.activity.technicianId) || 'bg-gray-400')}>
+                            {activeDragItem.activity.parentWorkOrder?.jobName || activeDragItem.activity.technician?.name || 'Unassigned'}
                         </div>
                     ) : activeId && activeDragItem?.type === 'technician' ? (
                         <div className="flex items-center gap-3 p-2 rounded-md border cursor-grabbing bg-card shadow-lg">
