@@ -103,6 +103,7 @@ export default function ContractsPage() {
         {isFormOpen ? (
           <div className="mb-12">
             <ContractForm 
+              key={editingContract?.id || 'new'}
               contract={editingContract}
               workSites={workSites}
               onCancel={() => setIsFormOpen(false)}

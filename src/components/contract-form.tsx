@@ -42,13 +42,14 @@ export function ContractForm({ contract, workSites, onCancel, onSaved }: Contrac
   const [assetSchedules, setAssetSchedules] = useState<Record<string, PmSchedule[]>>({});
   const [isLoadingSchedules, setIsLoadingSchedules] = useState(false);
 
+  // Directly initialize state from contract prop to avoid empty fields on first mount
   const [formData, setFormData] = useState<Partial<MaintenanceContract>>({
-    siteId: '',
-    contractNumber: '',
-    startDate: new Date().toISOString(),
-    endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
-    status: 'active',
-    notes: '',
+    siteId: contract?.siteId || '',
+    contractNumber: contract?.contractNumber || '',
+    startDate: contract?.startDate || new Date().toISOString(),
+    endDate: contract?.endDate || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
+    status: contract?.status || 'active',
+    notes: contract?.notes || '',
   });
 
   useEffect(() => {
@@ -98,7 +99,6 @@ export function ContractForm({ contract, workSites, onCancel, onSaved }: Contrac
     const assetSchedulesList = assetSchedules[assetId] || [];
     const existingSchedule = assetSchedulesList.find(s => s.templateId === templateId);
 
-    // Case: Remove schedule
     if (monthStr === 'none') {
       if (existingSchedule) {
         try {
@@ -127,12 +127,10 @@ export function ContractForm({ contract, workSites, onCancel, onSaved }: Contrac
 
     try {
       if (existingSchedule) {
-        // Update
         const scheduleRef = doc(db, 'assets', assetId, 'pmSchedules', existingSchedule.id);
         await updateDocumentNonBlocking(scheduleRef, scheduleData);
         toast({ title: 'PM Cycle Rescheduled' });
       } else {
-        // Create
         await savePmSchedule(db, assetId, scheduleData);
         toast({ title: 'PM Cycle Scheduled' });
       }
