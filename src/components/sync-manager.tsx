@@ -1,8 +1,9 @@
+
 'use client';
 
 import { useEffect, useCallback, useRef } from 'react';
 import { useFirestore, useUser } from '@/firebase';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit, collectionGroup, doc, getDoc } from 'firebase/firestore';
 import { useTechnician } from '@/hooks/use-technician';
 import { getActiveUploadCount } from '@/firebase/storage';
 
@@ -14,6 +15,7 @@ declare global {
 
 /**
  * Background component that pre-caches data for technicians.
+ * Updated to include work orders linked via activities.
  */
 export function SyncManager() {
   const db = useFirestore();
@@ -32,27 +34,43 @@ export function SyncManager() {
     if (isDebug) console.log('[SyncManager] Starting background sync cycle...');
 
     try {
-      const q = query(
+      // 1. Get IDs of work orders where user is Lead
+      const leadQuery = query(
         collection(db, 'work_orders'), 
         where('assignedTechnicianId', '==', user.uid),
         limit(15)
       );
+      const leadSnap = await getDocs(leadQuery);
+      const leadIds = leadSnap.docs.map(d => d.id);
+
+      // 2. Get IDs of work orders where user has an activity
+      const actQuery = query(
+        collectionGroup(db, 'activities'),
+        where('technicianId', '==', user.uid),
+        limit(20)
+      );
+      const actSnap = await getDocs(actQuery);
+      const activityIds = Array.from(new Set(actSnap.docs.map(d => d.data().workOrderId)));
+
+      // 3. Combine unique IDs
+      const allTargetIds = Array.from(new Set([...leadIds, ...activityIds])).slice(0, 20);
       
-      const snapshot = await getDocs(q);
-      
-      for (const woDoc of snapshot.docs) {
+      for (const woId of allTargetIds) {
         const currentUploads = getActiveUploadCount() > 0 || (typeof window !== 'undefined' && window.__UPLOAD_IN_PROGRESS__);
         if (!isSyncing.current || currentUploads) break;
 
-        const woId = woDoc.id;
         try {
+            // Cache the main document if not already in local cache
+            await getDoc(doc(db, 'work_orders', woId));
+            
+            // Cache subcollections
             await getDocs(collection(db, 'work_orders', woId, 'updates'));
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await new Promise(resolve => setTimeout(resolve, 1000));
             
             await getDocs(collection(db, 'work_orders', woId, 'activities'));
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await new Promise(resolve => setTimeout(resolve, 1000));
         } catch (e) {
-            console.warn(`[SyncManager] Skip subcollections for ${woId}:`, e);
+            console.warn(`[SyncManager] Skip cache for ${woId}:`, e);
         }
       }
       
