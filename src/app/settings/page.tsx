@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -9,11 +9,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useTechnician } from '@/hooks/use-technician';
 import { useTheme } from '@/components/theme-provider';
 import { updateDocumentNonBlocking, useFirestore } from '@/firebase';
+import { uploadPhotoWithThumbnail } from '@/firebase/storage';
 import { doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { cn } from '@/lib/utils';
-import { Check, Moon, Sun, Monitor, Loader2, User as UserIcon } from 'lucide-react';
+import { Check, Moon, Sun, Monitor, Loader2, User as UserIcon, Upload } from 'lucide-react';
 import Image from 'next/image';
 
 const avatarOptions = PlaceHolderImages.filter(img => img.id.startsWith('tech-'));
@@ -24,6 +25,7 @@ export default function SettingsPage() {
   const db = useFirestore();
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAvatarChange = async (url: string) => {
     if (!db || !technician) return;
@@ -41,6 +43,42 @@ export default function SettingsPage() {
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleCustomUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !db || !technician) return;
+
+    setIsSaving(true);
+    const toastId = toast({ title: "Uploading avatar...", duration: Infinity });
+
+    try {
+      const basePath = `technicians/${technician.id}/avatars`;
+      const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+      
+      const result = await uploadPhotoWithThumbnail(file, basePath, fileName, {
+        onProgress: (p) => {
+          toastId.update({ id: toastId.id, description: `Transferring... ${p.pct}%` });
+        }
+      });
+      
+      const techRef = doc(db, 'technicians', technician.id);
+      // We prefer the original URL for the main avatar, though we could use result.thumbnailUrl for small badges
+      await updateDocumentNonBlocking(techRef, { avatarUrl: result.url });
+      
+      toastId.dismiss();
+      toast({ title: 'Profile Picture Updated' });
+    } catch (error: any) {
+      toastId.dismiss();
+      toast({ 
+        title: 'Upload Failed', 
+        description: error.message || 'Check your signal and try again.', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsSaving(false);
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -69,24 +107,44 @@ export default function SettingsPage() {
                 <UserIcon className="h-5 w-5 text-primary" />
                 Profile Customization
               </CardTitle>
-              <CardDescription>Select an avatar to display in work logs and job assignments.</CardDescription>
+              <CardDescription>Select a standard icon or upload your own field photo.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col sm:flex-row gap-8 items-center sm:items-start">
-                <div className="relative h-24 w-24 rounded-full overflow-hidden border-4 border-muted ring-2 ring-primary/10 shrink-0">
-                  <Avatar className="h-full w-full">
-                    <AvatarImage src={technician?.avatarUrl} />
-                    <AvatarFallback><UserIcon className="h-12 w-12 text-muted-foreground" /></AvatarFallback>
-                  </Avatar>
-                  {isSaving && (
-                    <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center">
-                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                    </div>
-                  )}
+                <div className="space-y-4 flex flex-col items-center">
+                  <div className="relative h-24 w-24 rounded-full overflow-hidden border-4 border-muted ring-2 ring-primary/10 shrink-0">
+                    <Avatar className="h-full w-full">
+                      <AvatarImage src={technician?.avatarUrl} className="object-cover" />
+                      <AvatarFallback><UserIcon className="h-12 w-12 text-muted-foreground" /></AvatarFallback>
+                    </Avatar>
+                    {isSaving && (
+                      <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    accept="image/*" 
+                    onChange={handleCustomUpload} 
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full gap-2"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isSaving}
+                  >
+                    <Upload className="h-4 w-4" />
+                    Upload Photo
+                  </Button>
                 </div>
                 
                 <div className="space-y-4 flex-1">
-                  <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Select New Avatar</Label>
+                  <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Quick Select Preset</Label>
                   <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
                     {avatarOptions.map((option) => (
                       <button
