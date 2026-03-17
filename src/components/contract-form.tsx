@@ -310,10 +310,15 @@ export function ContractForm({ contract, workSites, onCancel, onSaved }: Contrac
                                   {sch.season} Cycle
                                 </Badge>
                                 <Button 
+                                  type="button"
                                   variant="ghost" 
                                   size="icon" 
                                   className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-destructive"
-                                  onClick={() => handleDeleteSchedule(asset.id, sch.id)}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleDeleteSchedule(asset.id, sch.id);
+                                  }}
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
