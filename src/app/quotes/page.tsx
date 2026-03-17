@@ -9,8 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Ban, Loader2, Receipt, useUser } from '@/firebase'; // added useUser
-import { useFirestore } from '@/firebase';
+import { Loader2, Receipt } from 'lucide-react';
+import { useUser, useFirestore } from '@/firebase';
 import { useTechnician } from '@/hooks/use-technician';
 import { getQuotes } from '@/lib/data';
 import type { Quote } from '@/lib/types';
