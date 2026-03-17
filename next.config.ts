@@ -6,14 +6,14 @@ const withPWA = require('next-pwa')({
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
   // Navigation fallback ensures that when offline, hard navigations 
-  // (mode: 'navigate') return the index page shell.
+  // (mode: 'navigate') return the designated offline shell.
   fallbacks: {
-    document: '/', 
+    document: '/_offline', 
   },
   runtimeCaching: [
     {
       // 1. Navigation Requests (The "App Shell" strategy)
-      urlPattern: ({ request }) => request.mode === 'navigate',
+      urlPattern: ({ request }: { request: any }) => request.mode === 'navigate',
       handler: 'NetworkFirst',
       options: {
         cacheName: 'pages',

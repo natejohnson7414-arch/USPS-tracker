@@ -25,37 +25,6 @@ let services: FirebaseServices | null = null;
 let firestoreInitialized = false;
 
 /**
- * Fast check for IndexedDB availability.
- */
-async function isIndexedDbAvailable(): Promise<boolean> {
-  if (typeof window === 'undefined' || !window.indexedDB) return false;
-  
-  return new Promise((resolve) => {
-    const dbName = 'idb-persistence-check';
-    const timeout = setTimeout(() => {
-      resolve(false);
-    }, 1000); // 500ms is plenty for a simple open
-
-    try {
-      const request = indexedDB.open(dbName);
-      request.onsuccess = () => {
-        request.result.close();
-        indexedDB.deleteDatabase(dbName);
-        clearTimeout(timeout);
-        resolve(true);
-      };
-      request.onerror = () => {
-        clearTimeout(timeout);
-        resolve(false);
-      };
-    } catch (e) {
-      clearTimeout(timeout);
-      resolve(false);
-    }
-  });
-}
-
-/**
  * Initializes Firebase services with a guaranteed completion path.
  */
 export async function initializeFirebase(): Promise<FirebaseServices> {
@@ -78,25 +47,20 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
           firestore = getFirestore(app);
         } else {
           try {
-            const idbAvailable = await isIndexedDbAvailable();
-            
-            if (idbAvailable) {
-              firestore = initializeFirestore(app, {
-                localCache: persistentLocalCache({}),
-              });
-              console.log("[Firebase] Firestore persistence enabled");
-            } else {
-              firestore = initializeFirestore(app, {
-                localCache: memoryLocalCache(),
-              });
-              console.log("[Firebase] Firestore memory fallback");
-            }
-            firestoreInitialized = true;
+            // Try to initialize with persistent cache (IndexedDB)
+            // This is the safer approach for modern browsers and handled Safari/iPhone restrictions gracefully.
+            firestore = initializeFirestore(app, {
+              localCache: persistentLocalCache({}),
+            });
+            console.log("[Firebase] Firestore persistence enabled");
           } catch (e: any) {
-            console.warn("[Firebase] Falling back to standard Firestore instance:", e.message);
-            firestore = getFirestore(app);
-            firestoreInitialized = true;
+            // Fallback to memory cache if persistent initialization fails (e.g., Safari private mode)
+            console.warn("[Firebase] Persistent cache failed, falling back to memory cache:", e.message);
+            firestore = initializeFirestore(app, {
+              localCache: memoryLocalCache(),
+            });
           }
+          firestoreInitialized = true;
         }
       }
 
