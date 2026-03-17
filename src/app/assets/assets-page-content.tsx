@@ -10,8 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Package, PlusCircle, Search, CalendarClock, TrendingUp, AlertTriangle, Loader2, FileBarChart, ChevronRight, Building, Box, Sparkles, Wrench, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useFirestore, useUser } from '@/firebase';
-import { getAssets, getAssetPmSchedules, generatePmWorkOrdersForMonth, getPmWorkOrders, seedDatabase } from '@/lib/data';
-import type { Asset, AssetPmSchedule, PmWorkOrder } from '@/lib/types';
+import { getAssets, getAssetPmSchedules, generatePmWorkOrdersForMonth, getPmWorkOrders, seedDatabase, getActiveContracts } from '@/lib/data';
+import type { Asset, AssetPmSchedule, PmWorkOrder, MaintenanceContract } from '@/lib/types';
 import { generateLaborForecast, type LaborForecast } from '@/lib/reporting-service';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
@@ -29,6 +29,7 @@ export default function AssetsPageContent() {
   
   const [assets, setAssets] = useState<Asset[]>([]);
   const [schedules, setSchedules] = useState<AssetPmSchedule[]>([]);
+  const [activeContracts, setActiveContracts] = useState<MaintenanceContract[]>([]);
   const [laborForecast, setLaborForecast] = useState<LaborForecast[]>([]);
   const [pmWorkOrders, setPmWorkOrders] = useState<PmWorkOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,14 +42,21 @@ export default function AssetsPageContent() {
       setIsLoading(true);
       try {
         await seedDatabase(db);
-        const [a, s, l, pwo] = await Promise.all([
+        const [a, s, l, pwo, c] = await Promise.all([
           getAssets(db),
           getAssetPmSchedules(db),
           generateLaborForecast(db),
-          getPmWorkOrders(db)
+          getPmWorkOrders(db),
+          getActiveContracts(db)
         ]);
+        
+        // Filter schedules by active contracts immediately
+        const contractSiteIds = new Set(c.map(contract => contract.siteId));
+        const validSchedules = s.filter(sch => sch.siteId && contractSiteIds.has(sch.siteId));
+        
         setAssets(a);
-        setSchedules(s);
+        setSchedules(validSchedules);
+        setActiveContracts(c);
         setLaborForecast(l);
         setPmWorkOrders(pwo);
       } catch (e) {

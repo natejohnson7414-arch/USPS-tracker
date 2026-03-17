@@ -1,8 +1,8 @@
 
 'use client';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import type { AssetPmSchedule, PmTemplate, RequiredMaterial, WorkSite, Asset, AssetMaterial } from '@/lib/types';
-import { getAssetPmSchedules, getPmTemplates, getWorkSites, getAssets } from './data';
+import type { AssetPmSchedule, PmTemplate, RequiredMaterial, WorkSite, Asset, AssetMaterial, MaintenanceContract } from '@/lib/types';
+import { getAssetPmSchedules, getPmTemplates, getWorkSites, getAssets, getActiveContracts } from './data';
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, addMonths, differenceInMonths } from 'date-fns';
 
 export interface MaterialForecast {
@@ -73,11 +73,16 @@ const getDueSchedulesForMonth = (schedules: AssetPmSchedule[], targetStart: Date
 
 /**
  * Generates a labor hours forecast for the next 12 months.
+ * Only includes sites with active Maintenance Contracts.
  */
 export const generateLaborForecast = async (db: any): Promise<LaborForecast[]> => {
-  const [schedules] = await Promise.all([
-    getAssetPmSchedules(db)
+  const [schedules, activeContracts] = await Promise.all([
+    getAssetPmSchedules(db),
+    getActiveContracts(db)
   ]);
+
+  const contractSiteIds = new Set(activeContracts.map(c => c.siteId));
+  const validSchedules = schedules.filter(s => s.siteId && contractSiteIds.has(s.siteId));
 
   const forecast: LaborForecast[] = [];
   const today = new Date();
@@ -87,7 +92,7 @@ export const generateLaborForecast = async (db: any): Promise<LaborForecast[]> =
     const start = startOfMonth(monthDate);
     const end = endOfMonth(monthDate);
     
-    const dueSchedules = getDueSchedulesForMonth(schedules, start, end);
+    const dueSchedules = getDueSchedulesForMonth(validSchedules, start, end);
     const totalHours = dueSchedules.reduce((acc, s) => acc + (s.estimatedLaborHours || 0), 0);
 
     forecast.push({
@@ -101,8 +106,8 @@ export const generateLaborForecast = async (db: any): Promise<LaborForecast[]> =
 
 /**
  * Generates a material forecast report based on PM schedules due in a specific month.
- * Handles repeatable schedule logic to project future requirements.
- * Aggregates materials case-insensitively.
+ * Handles replaceable schedule logic to project future requirements.
+ * Only includes sites with active Maintenance Contracts.
  */
 export const generateMaterialsReport = async (
   db: any, 
@@ -115,16 +120,20 @@ export const generateMaterialsReport = async (
   const start = startOfMonth(targetDate);
   const end = endOfMonth(targetDate);
 
-  const [schedules, assets, sites] = await Promise.all([
+  const [schedules, assets, sites, activeContracts] = await Promise.all([
     getAssetPmSchedules(db),
     getAssets(db),
-    getWorkSites(db)
+    getWorkSites(db),
+    getActiveContracts(db)
   ]);
 
-  // Filter schedules by projected recurrence hits
+  const contractSiteIds = new Set(activeContracts.map(c => c.siteId));
+
+  // Filter schedules by contract AND recurrence
   const dueSchedules = getDueSchedulesForMonth(schedules, start, end).filter(s => {
     const asset = assets.find(a => a.id === s.assetId);
-    return !asset ? false : (siteIds.length === 0 || siteIds.includes(asset.siteId));
+    if (!asset || !contractSiteIds.has(asset.siteId)) return false;
+    return (siteIds.length === 0 || siteIds.includes(asset.siteId));
   });
 
   const reportGroups = new Map<string, MaterialReportGroup>();
@@ -144,7 +153,6 @@ export const generateMaterialsReport = async (
     const group = reportGroups.get(groupKey)!;
 
     asset.materials.forEach((mat: AssetMaterial) => {
-      // Normalize for comparison
       const normalizedName = mat.name.toLowerCase().trim().replace(/\s+/g, ' ');
       
       let item = group.items.find(i => 
@@ -159,7 +167,7 @@ export const generateMaterialsReport = async (
         }
       } else {
         group.items.push({
-          name: mat.name, // Use the first encounter as the display name
+          name: mat.name,
           category: mat.category,
           quantity: mat.quantity,
           uom: mat.uom,
@@ -171,7 +179,6 @@ export const generateMaterialsReport = async (
 
   if (groupBy === 'category') {
     const categoryGroups = new Map<string, MaterialReportGroup>();
-    
     const masterGroup = reportGroups.get('Material Forecast');
     if (masterGroup) {
       masterGroup.items.forEach(item => {
