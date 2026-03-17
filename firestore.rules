@@ -28,9 +28,15 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
-    // Collection Group rule for PM Schedules to allow generating work orders across all assets
+    // Collection Group rule for PM Schedules
     match /{path=**}/pmSchedules/{scheduleId} {
       allow read, write: if isSignedIn();
+    }
+
+    // Collection Group rule for Activities (Crucial for Dashboard)
+    match /{path=**}/activities/{activityId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     // Quotes: Accessible to all authenticated users for field submissions
@@ -85,11 +91,6 @@ service cloud.firestore {
       }
     }
     
-    match /{path=**}/activities/{activityId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
-    }
-
     match /technicians/{techId} {
       allow read: if isSignedIn();
       // Allow users to update their own profile (for settings like defaultDispatchView)
