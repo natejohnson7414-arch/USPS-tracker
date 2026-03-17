@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MainLayout } from '@/components/main-layout';
@@ -14,81 +13,118 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { 
   ArrowLeft, 
   MapPin, 
-  Building, 
   Package, 
   CalendarClock, 
   Info, 
   Pencil, 
   Loader2, 
   AlertCircle,
-  Clock,
-  Settings,
-  ChevronRight,
   PlusCircle,
-  Repeat,
-  Wrench
+  ChevronRight
 } from 'lucide-react';
-import { useFirestore } from '@/firebase';
-import { getWorkSiteById, getAssetsBySiteId, getAssetPmSchedules } from '@/lib/data';
-import type { WorkSite, Asset, AssetPmSchedule } from '@/lib/types';
+import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
+import { getWorkSiteById, getAssetsBySiteId, getPmTaskTemplates, getPmSchedulesForAsset, savePmSchedule } from '@/lib/data';
+import type { WorkSite, Asset, PmTaskTemplate, PmSchedule } from '@/lib/types';
 import { WorkSiteForm } from '@/components/work-site-form';
-import { AddPmScheduleDialog } from '@/components/add-pm-schedule-dialog';
-import { format, parseISO } from 'date-fns';
+import { PmPlanningGrid } from '@/components/pm-planning-grid';
+import { doc, deleteDoc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 export default function WorkSiteDetailsPage() {
   const { id } = useParams();
   const db = useFirestore();
   const router = useRouter();
+  const { toast } = useToast();
+  
   const [site, setSite] = useState<WorkSite | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [schedules, setSchedules] = useState<AssetPmSchedule[]>([]);
+  const [pmTemplates, setPmTemplates] = useState<PmTaskTemplate[]>([]);
+  const [assetSchedules, setAssetSchedules] = useState<Record<string, PmSchedule[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [isAddScheduleOpen, setIsAddScheduleOpen] = useState(false);
-  const [selectedSchedule, setSelectedSchedule] = useState<AssetPmSchedule | null>(null);
+  const [isLoadingSchedules, setIsLoadingSchedules] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!db || !id) return;
     setIsLoading(true);
     try {
-      const [s, a] = await Promise.all([
+      const [s, a, t] = await Promise.all([
         getWorkSiteById(db, id as string),
-        getAssetsBySiteId(db, id as string)
+        getAssetsBySiteId(db, id as string),
+        getPmTaskTemplates(db)
       ]);
       
       setSite(s || null);
       setAssets(a);
+      setPmTemplates(t);
 
-      const siteSchedules = await getAssetPmSchedules(db);
-      setSchedules(siteSchedules.filter(sch => a.some(asset => asset.id === sch.assetId)));
+      const schedulesMap: Record<string, PmSchedule[]> = {};
+      for (const asset of a) {
+        const schedules = await getPmSchedulesForAsset(db, asset.id);
+        schedulesMap[asset.id] = schedules;
+      }
+      setAssetSchedules(schedulesMap);
     } catch (error) {
       console.error("Error fetching site data:", error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [db, id]);
 
   useEffect(() => {
     fetchData();
-  }, [db, id]);
+  }, [fetchData]);
+
+  const handleUpdateSchedule = async (assetId: string, templateId: string, monthStr: string) => {
+    if (!db) return;
+    
+    const assetSchedulesList = assetSchedules[assetId] || [];
+    const existingSchedule = assetSchedulesList.find(s => s.templateId === templateId);
+
+    if (monthStr === 'none') {
+      if (existingSchedule) {
+        try {
+          await deleteDoc(doc(db, 'assets', assetId, 'pmSchedules', existingSchedule.id));
+          toast({ title: 'PM Cycle Removed' });
+          fetchData();
+        } catch (e) {
+          toast({ title: 'Failed to remove cycle', variant: 'destructive' });
+        }
+      }
+      return;
+    }
+
+    const month = parseInt(monthStr);
+    const template = pmTemplates.find(t => t.id === templateId);
+    if (!template) return;
+
+    const scheduleData: Omit<PmSchedule, 'id'> = {
+      templateId,
+      templateName: template.name,
+      season: template.season,
+      dueMonth: month,
+      recurrence: 'yearly',
+      active: true,
+    };
+
+    try {
+      if (existingSchedule) {
+        const scheduleRef = doc(db, 'assets', assetId, 'pmSchedules', existingSchedule.id);
+        await updateDocumentNonBlocking(scheduleRef, scheduleData);
+        toast({ title: 'PM Cycle Rescheduled' });
+      } else {
+        await savePmSchedule(db, assetId, scheduleData);
+        toast({ title: 'PM Cycle Scheduled' });
+      }
+      fetchData();
+    } catch (e) {
+      toast({ title: 'Failed to save cycle', variant: 'destructive' });
+    }
+  };
 
   const handleFormSaved = () => {
     setIsEditing(false);
     fetchData();
-  };
-
-  const handleScheduleAdded = () => {
-    fetchData();
-  };
-
-  const handleEditSchedule = (s: AssetPmSchedule) => {
-    setSelectedSchedule(s);
-    setIsAddScheduleOpen(true);
-  };
-
-  const handleNewSchedule = () => {
-    setSelectedSchedule(null);
-    setIsAddScheduleOpen(true);
   };
 
   if (isLoading) {
@@ -142,7 +178,7 @@ export default function WorkSiteDetailsPage() {
             </TabsTrigger>
             <TabsTrigger value="pm" variant="folder">
               <CalendarClock className="mr-2 h-4 w-4" />
-              Repeatable PMs ({schedules.length})
+              Standardized PM Grid
             </TabsTrigger>
             <TabsTrigger value="info" variant="folder">
               <Info className="mr-2 h-4 w-4" />
@@ -216,60 +252,13 @@ export default function WorkSiteDetailsPage() {
           </TabsContent>
 
           <TabsContent value="pm" className="mt-0">
-            <Card className="rounded-t-none">
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <CardTitle>Repeatable Maintenance Schedules</CardTitle>
-                    <CardDescription>Indefinite cycles for equipment at this site.</CardDescription>
-                  </div>
-                  <Button size="sm" onClick={handleNewSchedule}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Plan PM Cycle
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {schedules.length > 0 ? (
-                  <div className="space-y-4">
-                    {schedules.sort((a, b) => new Date(a.nextDueDate).getTime() - new Date(b.nextDueDate).getTime()).map(schedule => (
-                      <div key={schedule.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors">
-                        <div className="space-y-1">
-                          <p className="font-bold text-primary">{schedule.assetName}</p>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium">{schedule.templateName}</p>
-                            <Badge variant="secondary" className="text-[10px] h-5 flex items-center gap-1">
-                              <Repeat className="h-3 w-3" />
-                              {schedule.frequencyType}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1 font-semibold text-foreground">
-                              <Clock className="h-3 w-3" /> 
-                              Scheduled: {format(parseISO(schedule.nextDueDate), 'MMMM')}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Wrench className="h-3 w-3" />
-                              Est. Labor: {schedule.estimatedLaborHours} hrs
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={schedule.status === 'active' ? 'default' : 'secondary'}>{schedule.status}</Badge>
-                          <Button variant="ghost" size="icon" onClick={() => handleEditSchedule(schedule)}>
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    No repeatable maintenance cycles planned for this site.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <PmPlanningGrid 
+              assets={assets}
+              templates={pmTemplates}
+              assetSchedules={assetSchedules}
+              onUpdateSchedule={handleUpdateSchedule}
+              isLoading={isLoadingSchedules}
+            />
           </TabsContent>
 
           <TabsContent value="info" className="mt-0">
@@ -321,14 +310,6 @@ export default function WorkSiteDetailsPage() {
           </TabsContent>
         </Tabs>
       </div>
-
-      <AddPmScheduleDialog 
-        isOpen={isAddScheduleOpen}
-        onOpenChange={setIsAddScheduleOpen}
-        assets={assets}
-        schedule={selectedSchedule}
-        onScheduleAdded={handleScheduleAdded}
-      />
     </MainLayout>
   );
 }

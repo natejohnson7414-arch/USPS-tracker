@@ -9,18 +9,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { History, CalendarClock, Settings, Wrench, Clock, Loader2, AlertCircle, Box, PlusCircle, Repeat, ArrowLeft, Camera, Library, Maximize2, Download, Trash2, X } from 'lucide-react';
+import { History, CalendarClock, Settings, Loader2, AlertCircle, Box, ArrowLeft, Camera, Library, Maximize2, Download, Trash2 } from 'lucide-react';
 import { useFirestore, updateDocumentNonBlocking, useUser } from '@/firebase';
-import { getAssetById, getAssetPmSchedules, getAssetServiceHistory, calculateAssetMetrics, getPmSchedulesForAsset } from '@/lib/data';
-import type { Asset, AssetPmSchedule, AssetServiceHistory, PmSchedule, PhotoMetadata } from '@/lib/types';
+import { getAssetById, getAssetServiceHistory, calculateAssetMetrics, getPmSchedulesForAsset, getPmTaskTemplates, savePmSchedule } from '@/lib/data';
+import type { Asset, AssetServiceHistory, PmSchedule, PhotoMetadata, PmTaskTemplate } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
-import { AddPmScheduleDialog } from '@/components/add-pm-schedule-dialog';
 import { uploadPhotoWithThumbnail, deletePhotoMetadata } from '@/firebase/storage';
-import { doc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { PmPlanningGrid } from '@/components/pm-planning-grid';
 
 export default function AssetDetailsPage() {
   const { id } = useParams();
@@ -30,11 +30,12 @@ export default function AssetDetailsPage() {
   const { toast } = useToast();
   
   const [asset, setAsset] = useState<Asset | null>(null);
+  const [pmTemplates, setPmTemplates] = useState<PmTaskTemplate[]>([]);
   const [schedules, setSchedules] = useState<PmSchedule[]>([]);
   const [history, setHistory] = useState<AssetServiceHistory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingSchedules, setIsLoadingSchedules] = useState(false);
   
-  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   const [viewingPhoto, setViewingPhoto] = useState<PhotoMetadata | null>(null);
   const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
   const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
@@ -42,18 +43,19 @@ export default function AssetDetailsPage() {
   const takePhotoInputRef = useRef<HTMLInputElement>(null);
   const chooseFromLibraryInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchAssetData = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     if (db && user && id && id !== 'new') {
       try {
-        const [a, s, ls, h] = await Promise.all([
+        const [a, s, h, t] = await Promise.all([
           getAssetById(db, id as string),
           getPmSchedulesForAsset(db, id as string),
-          getAssetPmSchedules(db, id as string),
-          getAssetServiceHistory(db, id as string)
+          getAssetServiceHistory(db, id as string),
+          getPmTaskTemplates(db)
         ]);
         setAsset(a || null);
         setSchedules(s);
         setHistory(h);
+        setPmTemplates(t);
       } catch (e) {
         console.error("Failed to fetch asset data:", e);
       }
@@ -62,11 +64,57 @@ export default function AssetDetailsPage() {
 
   useEffect(() => {
     if (db && user && id && id !== 'new') {
-      fetchAssetData().finally(() => setIsLoading(false));
+      fetchData().finally(() => setIsLoading(false));
     } else if (id === 'new') {
         setIsLoading(false);
     }
-  }, [db, user, id, fetchAssetData]);
+  }, [db, user, id, fetchData]);
+
+  const handleUpdateSchedule = async (assetId: string, templateId: string, monthStr: string) => {
+    if (!db) return;
+    
+    const existingSchedule = schedules.find(s => s.templateId === templateId);
+
+    if (monthStr === 'none') {
+      if (existingSchedule) {
+        try {
+          await deleteDoc(doc(db, 'assets', assetId, 'pmSchedules', existingSchedule.id));
+          toast({ title: 'PM Cycle Removed' });
+          fetchData();
+        } catch (e) {
+          toast({ title: 'Failed to remove cycle', variant: 'destructive' });
+        }
+      }
+      return;
+    }
+
+    const month = parseInt(monthStr);
+    const template = pmTemplates.find(t => t.id === templateId);
+    if (!template) return;
+
+    const scheduleData: Omit<PmSchedule, 'id'> = {
+      templateId,
+      templateName: template.name,
+      season: template.season,
+      dueMonth: month,
+      recurrence: 'yearly',
+      active: true,
+    };
+
+    try {
+      if (existingSchedule) {
+        const scheduleRef = doc(db, 'assets', assetId, 'pmSchedules', existingSchedule.id);
+        await updateDocumentNonBlocking(scheduleRef, scheduleData);
+        toast({ title: 'PM Cycle Rescheduled' });
+      } else {
+        await savePmSchedule(db, assetId, scheduleData);
+        toast({ title: 'PM Cycle Scheduled' });
+      }
+      fetchData();
+    } catch (e) {
+      toast({ title: 'Failed to save cycle', variant: 'destructive' });
+    }
+  };
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -92,13 +140,11 @@ export default function AssetDetailsPage() {
 
         const result = await uploadPhotoWithThumbnail(file, basePath, fileName);
         
-        // Save to Firestore sequentially to ensure reliability
         const assetRef = doc(db, 'assets', asset.id);
         await updateDocumentNonBlocking(assetRef, {
           photoUrls: arrayUnion(result)
         });
 
-        // Update local state sequentially
         setAsset(prev => prev ? ({ 
           ...prev, 
           photoUrls: [...(prev.photoUrls || []), result] 
@@ -110,21 +156,7 @@ export default function AssetDetailsPage() {
     } catch (error: any) {
       console.error("Asset photo upload failed:", error);
       toastId.dismiss();
-      
-      let errorDescription = "Check your connection and try again.";
-      if (error.code === 'storage/unauthorized') {
-        errorDescription = "Access denied. Please check your session and try again.";
-      } else if (error.code === 'storage/canceled') {
-        errorDescription = "The upload was interrupted or timed out.";
-      } else if (error.message) {
-        errorDescription = error.message;
-      }
-
-      toast({ 
-        variant: 'destructive', 
-        title: 'Upload Failed', 
-        description: errorDescription 
-      });
+      toast({ variant: 'destructive', title: 'Upload Failed' });
     } finally {
       setIsUploadingPhotos(false);
       if (event.target) event.target.value = '';
@@ -143,7 +175,7 @@ export default function AssetDetailsPage() {
       });
       await deletePhotoMetadata(photoToDelete);
       
-      const targetUrl = typeof photoToDelete === 'string' ? photoToDelete : photoToDelete.url;
+      const targetUrl = photoToDelete.url;
       setAsset(prev => prev ? ({ 
         ...prev, 
         photoUrls: (prev.photoUrls || []).filter(p => (typeof p === 'string' ? p : p.url) !== targetUrl) 
@@ -212,12 +244,7 @@ export default function AssetDetailsPage() {
                 ))}
                 <Separator />
                 <div><p className="text-muted-foreground">Install Date</p><p className="font-medium">{asset.installDate ? format(new Date(asset.installDate), 'PPP') : 'N/A'}</p></div>
-                <div>
-                  <p className="text-muted-foreground">Warranty Until</p>
-                  <p className={(asset.warrantyExpiration && new Date(asset.warrantyExpiration) < new Date()) ? "text-destructive font-medium" : "font-medium"}>
-                    {asset.warrantyExpiration ? format(new Date(asset.warrantyExpiration), 'PPP') : 'N/A'}
-                  </p>
-                </div>
+                <div><p className="text-muted-foreground">Warranty Until</p><p className={(asset.warrantyExpiration && new Date(asset.warrantyExpiration) < new Date()) ? "text-destructive font-medium" : "font-medium"}>{asset.warrantyExpiration ? format(new Date(asset.warrantyExpiration), 'PPP') : 'N/A'}</p></div>
               </CardContent>
             </Card>
 
@@ -241,14 +268,8 @@ export default function AssetDetailsPage() {
             <Card>
               <CardHeader><CardTitle className="text-sm font-bold uppercase tracking-wider">Performance</CardTitle></CardHeader>
               <CardContent className="space-y-4 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">MTBF</span>
-                  <span className="font-bold">{metrics.mtbf.toFixed(1)} Days</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">MTTR</span>
-                  <span className="font-bold">{metrics.mttr.toFixed(1)} Hours</span>
-                </div>
+                <div className="flex justify-between"><span className="text-muted-foreground">MTBF</span><span className="font-bold">{metrics.mtbf.toFixed(1)} Days</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">MTTR</span><span className="font-bold">{metrics.mttr.toFixed(1)} Hours</span></div>
               </CardContent>
             </Card>
           </div>
@@ -256,45 +277,20 @@ export default function AssetDetailsPage() {
           <div className="lg:col-span-3">
             <Tabs defaultValue="pm">
               <TabsList className="mb-4">
-                <TabsTrigger value="pm"><CalendarClock className="mr-2 h-4 w-4" /> PM Schedules</TabsTrigger>
+                <TabsTrigger value="pm"><CalendarClock className="mr-2 h-4 w-4" /> PM Grid</TabsTrigger>
                 <TabsTrigger value="photos"><Camera className="mr-2 h-4 w-4" /> Photos</TabsTrigger>
                 <TabsTrigger value="history"><History className="mr-2 h-4 w-4" /> Service History</TabsTrigger>
               </TabsList>
 
               <TabsContent value="pm">
-                <Card>
-                  <CardHeader>
-                    <div className="flex justify-between items-center">
-                      <CardTitle>Preventative Maintenance Cycles</CardTitle>
-                      <Button size="sm" variant="outline" onClick={() => setIsScheduleDialogOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Add Schedule</Button>
-                    </div>
-                    <CardDescription>Indefinite seasonal cycles mapped to specific months.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {schedules.length > 0 ? (
-                      <div className="space-y-4">
-                        {schedules.map(schedule => (
-                          <div key={schedule.id} className="flex items-center justify-between p-4 border rounded-lg bg-card">
-                            <div className="space-y-1">
-                              <p className="font-bold text-primary">{schedule.templateName}</p>
-                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1 font-semibold text-foreground"><Clock className="h-3 w-3" /> Due Month: {schedule.dueMonth}</span>
-                                <Badge variant="secondary" className="h-5 text-[10px] uppercase">{schedule.season}</Badge>
-                                <span className="flex items-center gap-1"><Repeat className="h-3 w-3" /> {schedule.recurrence}</span>
-                              </div>
-                            </div>
-                            <Badge variant={schedule.active ? 'default' : 'secondary'}>{schedule.active ? 'Active' : 'Paused'}</Badge>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
-                        <CalendarClock className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                        <p>No preventative maintenance cycles defined.</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                <PmPlanningGrid 
+                  assets={[asset]}
+                  templates={pmTemplates}
+                  assetSchedules={{ [asset.id]: schedules }}
+                  onUpdateSchedule={handleUpdateSchedule}
+                  isLoading={isLoadingSchedules}
+                  showLinks={false}
+                />
               </TabsContent>
 
               <TabsContent value="photos">
@@ -305,26 +301,15 @@ export default function AssetDetailsPage() {
                       <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
                         {asset.photoUrls.map((photo, idx) => (
                           <div key={getPhotoUrl(photo)} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto(typeof photo === 'string' ? { url: photo } : photo)}>
-                            <Image 
-                              src={getThumbUrl(photo)} 
-                              alt={`Asset photo ${idx + 1}`} 
-                              fill 
-                              sizes="(max-width: 768px) 25vw, 12vw"
-                              className="object-cover" 
-                            />
-                            <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Maximize2 className="text-white h-5 w-5" />
-                            </div>
+                            <Image src={getThumbUrl(photo)} alt={`Asset photo ${idx + 1}`} fill sizes="(max-width: 768px) 25vw, 12vw" className="object-cover" />
+                            <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Maximize2 className="text-white h-5 w-5" /></div>
                           </div>
                         ))}
                       </div>
                     ) : (
                       <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
-                        <Camera className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                        <p>No photos available for this asset.</p>
-                        <Button variant="link" onClick={() => setPhotoSheetOpen(true)} className="mt-2">
-                          Add Photo Now
-                        </Button>
+                        <Camera className="h-12 w-12 mx-auto mb-4 opacity-20" /><p>No photos available for this asset.</p>
+                        <Button variant="link" onClick={() => setPhotoSheetOpen(true)} className="mt-2">Add Photo Now</Button>
                       </div>
                     )}
                   </CardContent>
@@ -336,7 +321,7 @@ export default function AssetDetailsPage() {
                   <CardContent className="pt-6">
                     {history.length > 0 ? (
                       <div className="space-y-8">
-                        {history.map((record, idx) => (
+                        {history.map((record) => (
                           <div key={record.id} className="relative pl-8 pb-8 border-l last:pb-0">
                             <div className="absolute left-[-5px] top-0 h-2 w-2 rounded-full bg-primary" />
                             <div className="flex items-center justify-between mb-2">
@@ -344,15 +329,11 @@ export default function AssetDetailsPage() {
                               <Badge variant="secondary">WO #{record.workOrderId}</Badge>
                             </div>
                             <p className="text-sm whitespace-pre-wrap">{record.notes}</p>
-                            {record.followUpRequired && (
-                              <Badge variant="destructive" className="mt-2">Follow-up Required</Badge>
-                            )}
+                            {record.followUpRequired && <Badge variant="destructive" className="mt-2">Follow-up Required</Badge>}
                           </div>
                         ))}
                       </div>
-                    ) : (
-                      <div className="text-center py-12 text-muted-foreground">No service history recorded for this asset.</div>
-                    )}
+                    ) : <div className="text-center py-12 text-muted-foreground">No service history recorded for this asset.</div>}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -361,13 +342,6 @@ export default function AssetDetailsPage() {
         </div>
       </div>
 
-      <AddPmScheduleDialog 
-        isOpen={isScheduleDialogOpen}
-        onOpenChange={setIsScheduleDialogOpen}
-        asset={asset}
-        onScheduleAdded={fetchAssetData}
-      />
-
       <input type="file" ref={takePhotoInputRef} onChange={handlePhotoUpload} className="hidden" accept="image/*" multiple />
       <input type="file" ref={chooseFromLibraryInputRef} onChange={handlePhotoUpload} className="hidden" accept="image/*" multiple />
 
@@ -375,12 +349,8 @@ export default function AssetDetailsPage() {
         <SheetContent side="bottom">
           <SheetHeader><SheetTitle>Add Asset Photos</SheetTitle></SheetHeader>
           <div className="grid gap-4 py-6">
-            <Button variant="outline" className="justify-start h-14" onClick={() => takePhotoInputRef.current?.click()}>
-              <Camera className="mr-4 h-6 w-6" /> Take Photo
-            </Button>
-            <Button variant="outline" className="justify-start h-14" onClick={() => chooseFromLibraryInputRef.current?.click()}>
-              <Library className="mr-4 h-6 w-6" /> Choose from Library
-            </Button>
+            <Button variant="outline" className="justify-start h-14" onClick={() => takePhotoInputRef.current?.click()}><Camera className="mr-4 h-6 w-6" /> Take Photo</Button>
+            <Button variant="outline" className="justify-start h-14" onClick={() => chooseFromLibraryInputRef.current?.click()}><Library className="mr-4 h-6 w-6" /> Choose from Library</Button>
           </div>
         </SheetContent>
       </Sheet>
@@ -391,24 +361,12 @@ export default function AssetDetailsPage() {
             <DialogTitle className="text-white text-sm font-bold uppercase tracking-widest">Asset Documentation Preview</DialogTitle>
             <DialogDescription className="sr-only">High resolution preview of asset documentation</DialogDescription>
           </DialogHeader>
-          <div className="flex-1 relative flex items-center justify-center p-4">
-            {viewingPhoto && <Image src={viewingPhoto.url} alt="Asset photo preview" fill className="object-contain" priority />}
-          </div>
+          <div className="flex-1 relative flex items-center justify-center p-4">{viewingPhoto && <Image src={viewingPhoto.url} alt="Asset photo preview" fill className="object-contain" priority />}</div>
           <div className="p-4 bg-background flex justify-between items-center border-t">
             <Button variant="outline" size="sm" onClick={() => setViewingPhoto(null)}>Close</Button>
             <div className="flex items-center gap-2">
-              {viewingPhoto && (
-                <Button variant="outline" size="sm" asChild>
-                  <a href={`/api/image-proxy?url=${encodeURIComponent(viewingPhoto.url)}`} download>
-                    <Download className="h-4 w-4 mr-2" /> Download
-                  </a>
-                </Button>
-              )}
-              {viewingPhoto && (
-                <Button variant="destructive" size="sm" onClick={handleDeletePhoto}>
-                  <Trash2 className="h-4 w-4 mr-2" /> Delete Documentation
-                </Button>
-              )}
+              {viewingPhoto && <Button variant="outline" size="sm" asChild><a href={`/api/image-proxy?url=${encodeURIComponent(viewingPhoto.url)}`} download><Download className="h-4 w-4 mr-2" /> Download</a></Button>}
+              {viewingPhoto && <Button variant="destructive" size="sm" onClick={handleDeletePhoto}><Trash2 className="h-4 w-4 mr-2" /> Delete Documentation</Button>}
             </div>
           </div>
         </DialogContent>

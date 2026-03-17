@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -12,12 +11,10 @@ import { DatePicker } from './ui/date-picker';
 import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { collection, doc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, Ban, CalendarClock, Package, Clock, Info, CheckCircle2, Circle } from 'lucide-react';
+import { Loader2, Save, Ban } from 'lucide-react';
 import type { MaintenanceContract, WorkSite, Asset, PmTaskTemplate, PmSchedule } from '@/lib/types';
 import { getAssetsBySiteId, getPmTaskTemplates, getPmSchedulesForAsset, savePmSchedule } from '@/lib/data';
-import { Badge } from './ui/badge';
-import { Separator } from './ui/separator';
-import { cn } from '@/lib/utils';
+import { PmPlanningGrid } from './pm-planning-grid';
 
 interface ContractFormProps {
   contract?: MaintenanceContract | null;
@@ -25,13 +22,6 @@ interface ContractFormProps {
   onCancel: () => void;
   onSaved: () => void;
 }
-
-const months = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
-];
-
-const seasonOrder = ['spring', 'summer', 'fall', 'winter'] as const;
 
 export function ContractForm({ contract, workSites, onCancel, onSaved }: ContractFormProps) {
   const db = useFirestore();
@@ -42,7 +32,6 @@ export function ContractForm({ contract, workSites, onCancel, onSaved }: Contrac
   const [assetSchedules, setAssetSchedules] = useState<Record<string, PmSchedule[]>>({});
   const [isLoadingSchedules, setIsLoadingSchedules] = useState(false);
 
-  // Directly initialize state from contract prop to avoid empty fields on first mount
   const [formData, setFormData] = useState<Partial<MaintenanceContract>>({
     siteId: contract?.siteId || '',
     contractNumber: contract?.contractNumber || '',
@@ -178,12 +167,6 @@ export function ContractForm({ contract, workSites, onCancel, onSaved }: Contrac
     }
   };
 
-  const sortedTemplates = useMemo(() => {
-    return [...pmTemplates].sort((a, b) => {
-      return seasonOrder.indexOf(a.season) - seasonOrder.indexOf(b.season);
-    });
-  }, [pmTemplates]);
-
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       <Card>
@@ -264,98 +247,13 @@ export function ContractForm({ contract, workSites, onCancel, onSaved }: Contrac
       </Card>
 
       {formData.siteId && (
-        <Card className="border-primary/20 bg-primary/5">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-primary">
-                  <CalendarClock className="h-5 w-5" />
-                  Site PM Planning & Seasonal Tasking
-                </CardTitle>
-                <CardDescription>Schedule preventative maintenance cycles for every unit on site.</CardDescription>
-              </div>
-              {isLoadingSchedules && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
-            </div>
-          </CardHeader>
-          <CardContent>
-            {siteAssets.length > 0 ? (
-              <div className="space-y-6">
-                {siteAssets.map(asset => {
-                  const schedules = assetSchedules[asset.id] || [];
-                  return (
-                    <div key={asset.id} className="bg-background rounded-lg border p-4 shadow-sm">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                        <div className="flex items-center gap-3">
-                          <div className="bg-primary/10 p-2 rounded">
-                            <Package className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-bold">{asset.name}</p>
-                            <p className="text-[10px] font-mono uppercase text-muted-foreground">TAG: {asset.assetTag}</p>
-                          </div>
-                        </div>
-                        <div className="hidden sm:flex items-center gap-4 text-xs font-medium text-muted-foreground uppercase tracking-widest">
-                          Schedule Status: {schedules.length === sortedTemplates.length ? 
-                            <span className="text-green-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Fully Planned</span> : 
-                            <span className="text-orange-600 flex items-center gap-1"><Circle className="h-3 w-3" /> Incomplete</span>
-                          }
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {sortedTemplates.map(template => {
-                          const existingSchedule = schedules.find(s => s.templateId === template.id);
-                          const isScheduled = !!existingSchedule;
-
-                          return (
-                            <div key={template.id} className="space-y-2">
-                              <Label className={cn(
-                                "text-[10px] uppercase font-black tracking-widest flex items-center gap-1.5",
-                                isScheduled ? "text-primary" : "text-muted-foreground"
-                              )}>
-                                {isScheduled ? <CheckCircle2 className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
-                                {template.name} ({template.season})
-                              </Label>
-                              <Select 
-                                value={existingSchedule?.dueMonth.toString() || 'none'} 
-                                onValueChange={(val) => handleUpdateSchedule(asset.id, template.id, val)}
-                              >
-                                <SelectTrigger className={cn(
-                                  "h-9 text-xs transition-all",
-                                  isScheduled && template.season === 'spring' && "border-emerald-200 bg-emerald-50 text-emerald-900",
-                                  isScheduled && template.season === 'summer' && "border-orange-200 bg-orange-50 text-orange-900",
-                                  isScheduled && template.season === 'fall' && "border-amber-200 bg-amber-50 text-amber-900",
-                                  isScheduled && template.season === 'winter' && "border-sky-200 bg-sky-50 text-sky-900",
-                                )}>
-                                  <SelectValue placeholder="Not Scheduled" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none" className="text-xs text-destructive">Not Scheduled</SelectItem>
-                                  <Separator className="my-1" />
-                                  {months.map((m, i) => (
-                                    <SelectItem key={m} value={(i + 1).toString()} className="text-xs">
-                                      Due in {m}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-12 border-2 border-dashed rounded-lg bg-background/50">
-                <Package className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />
-                <p className="text-sm font-medium text-muted-foreground">No equipment registered for this site.</p>
-                <p className="text-xs text-muted-foreground mt-1">Please register equipment in the Assets & PM section first.</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <PmPlanningGrid 
+          assets={siteAssets}
+          templates={pmTemplates}
+          assetSchedules={assetSchedules}
+          onUpdateSchedule={handleUpdateSchedule}
+          isLoading={isLoadingSchedules}
+        />
       )}
 
       <div className="flex justify-end gap-2 border-t pt-6">
