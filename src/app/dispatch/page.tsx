@@ -23,7 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
 import { addDocumentNonBlocking } from '@/firebase';
-import { collection, doc, query, where } from 'firebase/firestore';
+import { collection, doc, query, where, arrayUnion } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useTechnician as useRole } from '@/hooks/use-technician';
 import {
@@ -615,6 +615,13 @@ export default function DispatchBoardPage() {
                         status: 'scheduled' as const,
                     };
                     const activitiesColRef = collection(db, 'work_orders', selectedWorkOrder.id, 'activities');
+                    
+                    // ARCHITECTURAL CHANGE: Sync involved technicians list
+                    const woRef = doc(db, 'work_orders', selectedWorkOrder.id);
+                    updateDocumentNonBlocking(woRef, {
+                        involvedTechnicianIds: arrayUnion(tech.id)
+                    });
+
                     createActivityPromises.push(addDocumentNonBlocking(activitiesColRef, activityData).then(docRef => ({
                         ...activityData,
                         id: docRef.id,

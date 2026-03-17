@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -355,6 +356,19 @@ export function WorkOrderDetails({
   const getPhotoUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.url;
   const getThumbUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.thumbnailUrl || p.url;
 
+  // Wrapped AddActivity to also sync involvedTechnicianIds
+  const handleAddActivityWithSync = (activityData: any) => {
+    if (!db || !workOrder) return;
+    
+    // Architecturally sync involved technicians list
+    const woRef = doc(db, 'work_orders', workOrder.id);
+    updateDocumentNonBlocking(woRef, {
+        involvedTechnicianIds: arrayUnion(activityData.technicianId)
+    });
+    
+    onAddActivity(activityData);
+  };
+
   return (
     <>
       {isSavingPhotos && (
@@ -629,7 +643,7 @@ export function WorkOrderDetails({
                     <ActivityItem key={activity.id} activity={activity} technicians={technicians} onUpdateStatus={onUpdateActivityStatus} isTechnician={isTechnician} currentUserId={user?.uid} onAddTimeClick={() => handleAddTimeClick(activity)} isAdmin={isAdmin} onDeleteClick={() => setActivityToDelete(activity)} isCompleted={isCompleted} />
                   )) : <p className="text-center text-sm text-muted-foreground py-4">{isTechnician ? "No activities scheduled for today." : "No scheduled activities."}</p>}
                 </div>
-                {(isAdmin || (isTechnician && !isCompleted && workOrder.status !== 'Review')) && <><Separator /><AddActivityForm technicians={technicians} onAddActivity={onAddActivity} isLoading={isAddingActivity} isTechnician={isTechnician} currentUserId={user?.uid} /></>}
+                {(isAdmin || (isTechnician && !isCompleted && workOrder.status !== 'Review')) && <><Separator /><AddActivityForm technicians={technicians} onAddActivity={handleAddActivityWithSync} isLoading={isAddingActivity} isTechnician={isTechnician} currentUserId={user?.uid} /></>}
               </CardContent>
             </Card>
             <Card>

@@ -94,6 +94,7 @@ export type WorkOrder = {
   estimator?: string;
   status: 'Open' | 'In Progress' | 'On Hold' | 'Review' | 'Completed';
   assignedTechnicianId?: string;
+  involvedTechnicianIds?: string[];
   notes: WorkOrderNote[];
   activities: Activity[];
   work_history: ActivityHistoryItem[];

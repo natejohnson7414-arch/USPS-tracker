@@ -3,9 +3,9 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { DashboardClient } from './dashboard-client';
 import { MainLayout } from '@/components/main-layout';
-import type { WorkOrder, Technician, WorkSite, Client, Role, PmWorkOrder, Activity } from '@/lib/types';
+import type { WorkOrder, Technician, WorkSite, Client, Role, PmWorkOrder } from '@/lib/types';
 import { useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
-import { collection, query, where, collectionGroup, documentId } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { useTechnician as useRoleData } from '@/hooks/use-technician';
 
 type RawTechnician = Omit<Technician, 'name'> & { firstName: string; lastName: string };
@@ -32,102 +32,82 @@ export default function DashboardPageContent() {
     }
   }, [user, currentUserRole]);
 
-  // 1. Primary Query: Work orders where user is the lead (assignedTechnicianId)
+  /**
+   * ARCHITECTURAL FIX: 
+   * Instead of a COLLECTION_GROUP index which is complex to manage in prototype,
+   * we use a single query on 'involvedTechnicianIds' array which tracks both lead and helper techs.
+   * We then perform status filtering on the client-side to avoid COMPOSITE index requirements.
+   */
   const workOrdersQuery = useMemoFirebase(() => {
     if (!db || isAuthLoading || !user || !currentUserRole) return null;
 
     const workOrdersCollection = collection(db, 'work_orders');
-    const filters: any[] = [];
-
+    
+    // If filtering for a specific tech (like lead or helper), use the unified 'involved' array.
     if (assignedToFilter !== 'All') {
-      filters.push(where('assignedTechnicianId', '==', assignedToFilter));
-    }
-
-    if (statusFilter === 'All' && currentUserRole.name === 'Technician') {
-      filters.push(where('status', 'in', ['Open', 'In Progress', 'On Hold']));
-    } else if (statusFilter !== 'All') {
-      filters.push(where('status', '==', statusFilter));
+      return query(workOrdersCollection, where('involvedTechnicianIds', 'array-contains', assignedToFilter));
     }
     
-    if (filters.length > 0) {
-      return query(workOrdersCollection, ...filters);
-    }
-    
+    // Otherwise return everything (Admins)
     return query(workOrdersCollection);
 
-  }, [db, statusFilter, assignedToFilter, user, isAuthLoading, currentUserRole]);
+  }, [db, assignedToFilter, user, isAuthLoading, currentUserRole]);
 
-  const { data: leadWorkOrders, isLoading: isLeadWorkOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
+  const { data: allFetchedWorkOrders, isLoading: isWorkOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
 
-  // 2. Activities Query: Find work orders where technician has a scheduled activity (even if not lead)
-  const activitiesQuery = useMemoFirebase(() => {
-    if (!db || isAuthLoading || !user || assignedToFilter === 'All') return null;
-    return query(collectionGroup(db, 'activities'), where('technicianId', '==', assignedToFilter));
-  }, [db, assignedToFilter, isAuthLoading, user]);
-
-  const { data: techActivities, isLoading: isTechActivitiesLoading } = useCollection<Activity>(activitiesQuery);
-
-  // 3. Extraction: Get unique Work Order IDs from activities
-  const activityLinkedIds = useMemo(() => {
-    if (!techActivities) return [];
-    return Array.from(new Set(techActivities.map(a => a.workOrderId)));
-  }, [techActivities]);
-
-  // 4. Linked Work Orders Query: Fetch those specific jobs
-  const activityLinkedWorkOrdersQuery = useMemoFirebase(() => {
-    if (!db || activityLinkedIds.length === 0) return null;
-    
-    const filters: any[] = [where(documentId(), 'in', activityLinkedIds.slice(0, 30))];
-    
-    if (statusFilter === 'All' && currentUserRole?.name === 'Technician') {
-      filters.push(where('status', 'in', ['Open', 'In Progress', 'On Hold']));
-    } else if (statusFilter !== 'All') {
-      filters.push(where('status', '==', statusFilter));
-    }
-
-    return query(collection(db, 'work_orders'), ...filters);
-  }, [db, activityLinkedIds, statusFilter, currentUserRole]);
-
-  const { data: activityWorkOrders, isLoading: isActivityWorkOrdersLoading } = useCollection<WorkOrder>(activityLinkedWorkOrdersQuery);
-
-  // 5. De-duplicated Combination: Merge lead and activity jobs
+  // Client-side filtering for status to ensure Zero-Config (no composite indexes needed)
   const combinedWorkOrders = useMemo(() => {
-    const combined = [...(leadWorkOrders || []), ...(activityWorkOrders || [])];
-    const seen = new Set();
-    return combined.filter(wo => {
-      if (seen.has(wo.id)) return false;
-      seen.add(wo.id);
+    if (!allFetchedWorkOrders) return [];
+    
+    return allFetchedWorkOrders.filter(wo => {
+      // Admin filter
+      if (statusFilter === 'All' && currentUserRole?.name !== 'Technician') return true;
+      
+      // Tech default view filter (hide completed)
+      if (statusFilter === 'All' && currentUserRole?.name === 'Technician') {
+        return ['Open', 'In Progress', 'On Hold', 'Review'].includes(wo.status);
+      }
+      
+      // Specific status filter
+      if (statusFilter !== 'All') {
+        return wo.status === statusFilter;
+      }
+      
       return true;
     });
-  }, [leadWorkOrders, activityWorkOrders]);
+  }, [allFetchedWorkOrders, statusFilter, currentUserRole]);
   
-  // 6. PM Work Orders Query
+  // PM Work Orders Query
   const pmWorkOrdersQuery = useMemoFirebase(() => {
       if (!db || isAuthLoading || !user || !currentUserRole) return null;
       
       const pmCollection = collection(db, 'pm_work_orders');
-      const filters: any[] = [];
-
+      
+      // For PMs, we still check lead technician or fetch all
       if (assignedToFilter !== 'All') {
-        filters.push(where('assignedTechnicianId', '==', assignedToFilter));
+        return query(pmCollection, where('assignedTechnicianId', '==', assignedToFilter));
       }
+      return query(pmCollection);
+  }, [db, assignedToFilter, user, isAuthLoading, currentUserRole]);
 
-      if (statusFilter === 'All' && currentUserRole.name === 'Technician') {
-        filters.push(where('status', 'in', ['Scheduled', 'In Progress', 'Submitted For Review']));
-      } else if (statusFilter !== 'All') {
+  const { data: rawPmWorkOrders, isLoading: isPmLoading } = useCollection<PmWorkOrder>(pmWorkOrdersQuery);
+
+  // Client-side status filter for PMs
+  const pmWorkOrders = useMemo(() => {
+    if (!rawPmWorkOrders) return [];
+    return rawPmWorkOrders.filter(wo => {
+      if (statusFilter === 'All' && currentUserRole?.name === 'Technician') {
+        return ['Scheduled', 'In Progress', 'Submitted For Review'].includes(wo.status);
+      }
+      if (statusFilter !== 'All') {
         let pmStatus = statusFilter;
         if (statusFilter === 'Open') pmStatus = 'Scheduled';
         if (statusFilter === 'Review') pmStatus = 'Submitted For Review';
-        filters.push(where('status', '==', pmStatus));
+        return wo.status === pmStatus;
       }
-      
-      if (filters.length > 0) {
-        return query(pmCollection, ...filters);
-      }
-      return query(pmCollection);
-  }, [db, statusFilter, assignedToFilter, user, isAuthLoading, currentUserRole]);
-
-  const { data: pmWorkOrders, isLoading: isPmLoading } = useCollection<PmWorkOrder>(pmWorkOrdersQuery);
+      return true;
+    });
+  }, [rawPmWorkOrders, statusFilter, currentUserRole]);
 
   // Core Data Fetching (Techs, Sites, Clients)
   const { data: fetchedTechnicians, isLoading: isTechniciansLoading } = useCollection<RawTechnician>(useMemoFirebase(() => {
@@ -164,7 +144,7 @@ export default function DashboardPageContent() {
     if (fetchedClients) setClients(fetchedClients);
   }, [fetchedClients]);
 
-  const isDataLoading = isAuthLoading || isLeadWorkOrdersLoading || isActivityWorkOrdersLoading || isTechActivitiesLoading || isRoleLoading || isTechniciansLoading || isWorkSitesLoading || isClientsLoading || isPmLoading;
+  const isDataLoading = isAuthLoading || isWorkOrdersLoading || isRoleLoading || isTechniciansLoading || isWorkSitesLoading || isClientsLoading || isPmLoading;
 
   if (isDataLoading) {
     return (

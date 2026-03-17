@@ -3,7 +3,7 @@
 
 import { useEffect, useCallback, useRef } from 'react';
 import { useFirestore, useUser } from '@/firebase';
-import { collection, query, where, getDocs, limit, collectionGroup, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit, doc, getDoc } from 'firebase/firestore';
 import { useTechnician } from '@/hooks/use-technician';
 import { getActiveUploadCount } from '@/firebase/storage';
 
@@ -15,7 +15,7 @@ declare global {
 
 /**
  * Background component that pre-caches data for technicians.
- * Updated to include work orders linked via activities.
+ * Updated to use the unified 'involvedTechnicianIds' array for efficient syncing.
  */
 export function SyncManager() {
   const db = useFirestore();
@@ -34,36 +34,24 @@ export function SyncManager() {
     if (isDebug) console.log('[SyncManager] Starting background sync cycle...');
 
     try {
-      // 1. Get IDs of work orders where user is Lead
-      const leadQuery = query(
+      // ARCHITECTURAL FIX: Use the involvedTechnicianIds array for ONE efficient query
+      const involvedQuery = query(
         collection(db, 'work_orders'), 
-        where('assignedTechnicianId', '==', user.uid),
-        limit(15)
+        where('involvedTechnicianIds', 'array-contains', user.uid),
+        limit(25)
       );
-      const leadSnap = await getDocs(leadQuery);
-      const leadIds = leadSnap.docs.map(d => d.id);
-
-      // 2. Get IDs of work orders where user has an activity
-      const actQuery = query(
-        collectionGroup(db, 'activities'),
-        where('technicianId', '==', user.uid),
-        limit(20)
-      );
-      const actSnap = await getDocs(actQuery);
-      const activityIds = Array.from(new Set(actSnap.docs.map(d => d.data().workOrderId)));
-
-      // 3. Combine unique IDs
-      const allTargetIds = Array.from(new Set([...leadIds, ...activityIds])).slice(0, 20);
+      const involvedSnap = await getDocs(involvedQuery);
+      const allTargetIds = involvedSnap.docs.map(d => d.id);
       
       for (const woId of allTargetIds) {
         const currentUploads = getActiveUploadCount() > 0 || (typeof window !== 'undefined' && window.__UPLOAD_IN_PROGRESS__);
         if (!isSyncing.current || currentUploads) break;
 
         try {
-            // Cache the main document if not already in local cache
+            // Cache the main document
             await getDoc(doc(db, 'work_orders', woId));
             
-            // Cache subcollections
+            // Cache subcollections (notes and activities)
             await getDocs(collection(db, 'work_orders', woId, 'updates'));
             await new Promise(resolve => setTimeout(resolve, 1000));
             
@@ -75,6 +63,7 @@ export function SyncManager() {
       }
       
       if (!window.__UPLOAD_IN_PROGRESS__ && getActiveUploadCount() === 0) {
+        // Cache foundational data
         await getDocs(collection(db, 'work_sites'));
         await new Promise(resolve => setTimeout(resolve, 2000));
         await getDocs(collection(db, 'clients'));
