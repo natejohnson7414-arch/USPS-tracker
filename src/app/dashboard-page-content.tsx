@@ -5,7 +5,7 @@ import { DashboardClient } from './dashboard-client';
 import { MainLayout } from '@/components/main-layout';
 import type { WorkOrder, Technician, WorkSite, Client, Role, PmWorkOrder } from '@/lib/types';
 import { useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, or } from 'firebase/firestore';
 import { useTechnician as useRoleData } from '@/hooks/use-technician';
 
 type RawTechnician = Omit<Technician, 'name'> & { firstName: string; lastName: string };
@@ -34,18 +34,24 @@ export default function DashboardPageContent() {
 
   /**
    * ARCHITECTURAL FIX: 
-   * Instead of a COLLECTION_GROUP index which is complex to manage in prototype,
-   * we use a single query on 'involvedTechnicianIds' array which tracks both lead and helper techs.
-   * We then perform status filtering on the client-side to avoid COMPOSITE index requirements.
+   * We use an OR query to find work orders where the user is either the primary lead
+   * or a helper in the 'involvedTechnicianIds' array. This bridges legacy data
+   * and new crew tracking.
    */
   const workOrdersQuery = useMemoFirebase(() => {
     if (!db || isAuthLoading || !user || !currentUserRole) return null;
 
     const workOrdersCollection = collection(db, 'work_orders');
     
-    // If filtering for a specific tech (like lead or helper), use the unified 'involved' array.
+    // If filtering for a specific tech, check both lead field and involved array.
     if (assignedToFilter !== 'All') {
-      return query(workOrdersCollection, where('involvedTechnicianIds', 'array-contains', assignedToFilter));
+      return query(
+        workOrdersCollection, 
+        or(
+          where('assignedTechnicianId', '==', assignedToFilter),
+          where('involvedTechnicianIds', 'array-contains', assignedToFilter)
+        )
+      );
     }
     
     // Otherwise return everything (Admins)

@@ -118,11 +118,18 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
         const selectedWorkSite = workSites.find(ws => ws.id === workSiteId);
         const selectedClient = clients.find(c => c.id === clientId);
 
+        // Architecturally sync involvedTechnicianIds if assigned lead changed
+        const currentInvolved = new Set(workOrder.involvedTechnicianIds || []);
+        if (assignedTechnicianId) {
+            currentInvolved.add(assignedTechnicianId);
+        }
+
         const cleanedData: Omit<WorkOrder, 'id' | 'notes' | 'activities' | 'work_history' | 'beforePhotoUrls' | 'afterPhotoUrls'> = {
             jobName: selectedWorkSite?.name,
             description,
             status,
             assignedTechnicianId,
+            involvedTechnicianIds: Array.from(currentInvolved),
             workSiteId,
             clientId,
             billTo: selectedClient?.name,

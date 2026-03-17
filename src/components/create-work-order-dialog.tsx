@@ -327,6 +327,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
         description,
         status: 'Open' as const,
         assignedTechnicianId,
+        involvedTechnicianIds: assignedTechnicianId ? [assignedTechnicianId] : [],
         workSiteId,
         clientId,
         billTo: selectedClient?.name,

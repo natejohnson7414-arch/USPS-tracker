@@ -3,7 +3,7 @@
 
 import { useEffect, useCallback, useRef } from 'react';
 import { useFirestore, useUser } from '@/firebase';
-import { collection, query, where, getDocs, limit, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit, doc, getDoc, or } from 'firebase/firestore';
 import { useTechnician } from '@/hooks/use-technician';
 import { getActiveUploadCount } from '@/firebase/storage';
 
@@ -15,7 +15,7 @@ declare global {
 
 /**
  * Background component that pre-caches data for technicians.
- * Updated to use the unified 'involvedTechnicianIds' array for efficient syncing.
+ * Updated to use the resilient 'OR' query for efficient syncing of all relevant jobs.
  */
 export function SyncManager() {
   const db = useFirestore();
@@ -34,11 +34,14 @@ export function SyncManager() {
     if (isDebug) console.log('[SyncManager] Starting background sync cycle...');
 
     try {
-      // ARCHITECTURAL FIX: Use the involvedTechnicianIds array for ONE efficient query
+      // ARCHITECTURAL FIX: Use the OR query to find lead OR crew jobs
       const involvedQuery = query(
         collection(db, 'work_orders'), 
-        where('involvedTechnicianIds', 'array-contains', user.uid),
-        limit(25)
+        or(
+          where('assignedTechnicianId', '==', user.uid),
+          where('involvedTechnicianIds', 'array-contains', user.uid)
+        ),
+        limit(30)
       );
       const involvedSnap = await getDocs(involvedQuery);
       const allTargetIds = involvedSnap.docs.map(d => d.id);
