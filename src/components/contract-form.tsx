@@ -27,18 +27,32 @@ export function ContractForm({ contract, workSites, onCancel, onSaved }: Contrac
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
 
-  const [formData, setFormData] = useState<Partial<MaintenanceContract>>({
-    siteId: '',
-    contractNumber: '',
-    startDate: new Date().toISOString(),
-    endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
-    status: 'active',
-    notes: '',
+  // Initialize form data from the contract prop if editing, otherwise use defaults
+  const [formData, setFormData] = useState<Partial<MaintenanceContract>>(() => {
+    if (contract) return { ...contract };
+    return {
+      siteId: '',
+      contractNumber: '',
+      startDate: new Date().toISOString(),
+      endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
+      status: 'active',
+      notes: '',
+    };
   });
 
+  // Ensure state stays in sync if the contract prop changes
   useEffect(() => {
     if (contract) {
-      setFormData(contract);
+      setFormData({ ...contract });
+    } else {
+      setFormData({
+        siteId: '',
+        contractNumber: '',
+        startDate: new Date().toISOString(),
+        endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
+        status: 'active',
+        notes: '',
+      });
     }
   }, [contract]);
 
@@ -90,7 +104,7 @@ export function ContractForm({ contract, workSites, onCancel, onSaved }: Contrac
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="site">Select Work Site *</Label>
-              <Select value={formData.siteId} onValueChange={(val) => setFormData({ ...formData, siteId: val })}>
+              <Select value={formData.siteId || ''} onValueChange={(val) => setFormData({ ...formData, siteId: val })}>
                 <SelectTrigger id="site">
                   <SelectValue placeholder="Select site" />
                 </SelectTrigger>
@@ -105,7 +119,7 @@ export function ContractForm({ contract, workSites, onCancel, onSaved }: Contrac
               <Label htmlFor="contractNumber">Contract / PO Number *</Label>
               <Input
                 id="contractNumber"
-                value={formData.contractNumber}
+                value={formData.contractNumber || ''}
                 onChange={(e) => setFormData({ ...formData, contractNumber: e.target.value })}
                 placeholder="e.g. MC-2024-001"
                 required
@@ -113,7 +127,7 @@ export function ContractForm({ contract, workSites, onCancel, onSaved }: Contrac
             </div>
             <div className="space-y-2">
               <Label htmlFor="status">Agreement Status</Label>
-              <Select value={formData.status} onValueChange={(val: any) => setFormData({ ...formData, status: val })}>
+              <Select value={formData.status || 'active'} onValueChange={(val: any) => setFormData({ ...formData, status: val })}>
                 <SelectTrigger id="status">
                   <SelectValue />
                 </SelectTrigger>
@@ -148,7 +162,7 @@ export function ContractForm({ contract, workSites, onCancel, onSaved }: Contrac
               <Label htmlFor="notes">Internal Notes</Label>
               <Textarea
                 id="notes"
-                value={formData.notes}
+                value={formData.notes || ''}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 rows={4}
                 placeholder="Scope details, exclusions, or billing terms..."
