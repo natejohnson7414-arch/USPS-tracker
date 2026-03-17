@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -12,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, User, Users, Clock, Loader2, RefreshCw, Wifi, WifiOff, CheckCircle2, AlertCircle } from 'lucide-react';
+import { LogOut, User, Users, Clock, Loader2, RefreshCw, Wifi, WifiOff, CheckCircle2, AlertCircle, Settings } from 'lucide-react';
 import { useAuth, useUser, useFirestore, useFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { Sidebar } from './sidebar';
@@ -164,6 +163,12 @@ export function Header() {
                 </div>
 
                 <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/settings">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </Link>
+                </DropdownMenuItem>
                  <DropdownMenuItem asChild>
                   <Link href="/timesheet">
                     <Clock className="mr-2 h-4 w-4" />
