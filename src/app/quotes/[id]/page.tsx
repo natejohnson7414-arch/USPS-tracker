@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -166,6 +165,11 @@ export default function QuoteDetailPage() {
     const getThumbUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.thumbnailUrl || p.url;
     const getPhotoUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.url;
 
+    // Correctly resolve parent job link based on ID prefix
+    const parentJobLink = quote.workOrderId.startsWith('PM-') 
+        ? `/pm-work-orders/${quote.workOrderId}` 
+        : `/work-orders/${quote.workOrderId}`;
+
     return (
         <MainLayout>
             <div className="container mx-auto py-8">
@@ -252,7 +256,15 @@ export default function QuoteDetailPage() {
                          <Card>
                             <CardHeader><CardTitle>Context</CardTitle></CardHeader>
                             <CardContent className="text-sm space-y-3">
-                                 <div className="flex justify-between border-b pb-2"><strong className="text-muted-foreground">Work Order</strong><Link href={`/work-orders/${quote.workOrderId}`} className="text-primary hover:underline font-medium">#{quote.workOrderId}</Link></div>
+                                 <div className="flex justify-between border-b pb-2">
+                                    <strong className="text-muted-foreground">Work Order</strong>
+                                    <Link 
+                                        href={parentJobLink} 
+                                        className="text-primary hover:underline font-medium"
+                                    >
+                                        #{quote.workOrderId}
+                                    </Link>
+                                 </div>
                                  <div className="flex justify-between border-b pb-2"><strong className="text-muted-foreground">Client</strong><span className="text-right">{quote.client?.name || 'N/A'}</span></div>
                                  <div className="flex justify-between border-b pb-2"><strong className="text-muted-foreground">Work Site</strong><span className="text-right">{quote.workSite?.name || 'N/A'}</span></div>
                                  <div className="flex justify-between border-b pb-2"><strong className="text-muted-foreground">Initiated By</strong><span className="text-right">{quote.createdBy_technician?.name || 'N/A'}</span></div>
