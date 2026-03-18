@@ -588,72 +588,100 @@ export default function WorkOrderDetailPage() {
     if (!workOrder) return;
     setIsDownloading(true);
 
-    const JSZip = (await import('jszip')).default;
-    const { saveAs } = await import('file-saver');
-
-    const zip = new JSZip();
-    const mediaFolder = zip.folder("media");
-    const documentsFolder = zip.folder("documents");
-
-    const getUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.url;
-
-    const mediaItems = [
-        ...(workOrder.beforePhotoUrls || []).map(p => ({ url: getUrl(p), subfolder: 'before' })),
-        ...(workOrder.afterPhotoUrls || []).map(p => ({ url: getUrl(p), subfolder: 'after' })),
-        ...(workOrder.notes?.flatMap(note => (note.photoUrls || []).map(p => ({ url: getUrl(p), subfolder: 'notes' }))) || []),
-        ...(quotes.flatMap(quote => (quote.photos || []).map(p => ({ url: getUrl(p), subfolder: `quotes/${quote.quoteNumber}/photos` })))),
-        ...(quotes.flatMap(quote => (quote.videos || []).map(url => ({ url, subfolder: `quotes/${quote.quoteNumber}/videos` }))))
-    ];
-
-    const documentFiles = workOrder.uploadedFiles || [];
-
-    if (mediaItems.length === 0 && documentFiles.length === 0) {
-        toast({ title: "No media to download." });
-        setIsDownloading(false);
-        return;
-    }
-
-    const toastId = toast({ title: "Preparing Media ZIP", description: "Starting compression...", duration: Infinity });
-
     try {
+        // Dynamic loading of JSZip with fallback for common bundle environments
+        const JSZipModule = await import('jszip');
+        const JSZip = JSZipModule.default || (JSZipModule as any);
+        
+        const { saveAs } = await import('file-saver');
+
+        const zip = new JSZip();
+        const mediaFolder = zip.folder("media");
+        const documentsFolder = zip.folder("documents");
+
+        const getUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.url;
+
+        // Flatten all media documentation targets
+        const mediaItems: { url: string; subfolder: string }[] = [
+            ...(workOrder.beforePhotoUrls || []).map(p => ({ url: getUrl(p), subfolder: 'before' })),
+            ...(workOrder.afterPhotoUrls || []).map(p => ({ url: getUrl(p), subfolder: 'after' })),
+            ...(workOrder.receiptsAndPackingSlips || []).map(p => ({ url: getUrl(p), subfolder: 'receipts' })),
+            ...(workOrder.notes?.flatMap(note => (note.photoUrls || []).map(p => ({ url: getUrl(p), subfolder: 'notes' }))) || []),
+            ...(quotes?.flatMap(quote => (quote.photos || []).map(p => ({ url: getUrl(p), subfolder: `quotes/${quote.quoteNumber}/photos` }))) || []),
+            ...(quotes?.flatMap(quote => (quote.videos || []).map(url => ({ url, subfolder: `quotes/${quote.quoteNumber}/videos` }))) || [])
+        ];
+
+        const documentFiles = workOrder.uploadedFiles || [];
+
+        if (mediaItems.length === 0 && documentFiles.length === 0) {
+            toast({ title: "No media found to download." });
+            setIsDownloading(false);
+            return;
+        }
+
+        const toastId = toast({ title: "Preparing Media ZIP", description: "Calculating sizes...", duration: Infinity });
+
+        // Process Media Items (Photos/Videos)
         for (let i = 0; i < mediaItems.length; i++) {
             const item = mediaItems[i];
+            if (!item.url) continue;
+
             toastId.update({ id: toastId.id, description: `Bundling media ${i + 1}/${mediaItems.length}...` });
+            
             try {
+                // Safety: Resolve filename inside the try block to catch malformed URLs
+                let fileName = `media-${i}`;
+                try {
+                    const urlParts = new URL(item.url);
+                    fileName = decodeURIComponent(urlParts.pathname.split('/').pop() || `media-${i}`);
+                } catch (urlErr) {
+                    console.warn("Malformed media URL skipped:", item.url);
+                }
+
                 const response = await fetch(`/api/image-proxy?url=${encodeURIComponent(item.url)}`);
-                if (!response.ok) continue;
+                if (!response.ok) throw new Error(`Proxy failed: ${response.status}`);
+                
                 const blob = await response.blob();
-                const urlParts = new URL(item.url);
-                const fileName = decodeURIComponent(urlParts.pathname.split('/').pop() || `media-${i}`);
                 mediaFolder?.folder(item.subfolder)?.file(fileName, blob);
             } catch (e) {
-                console.warn("Failed to add media to zip:", item.url, e);
+                console.warn("Failed to fetch media item:", item.url, e);
             }
         }
 
+        // Process Documents
         for (let i = 0; i < documentFiles.length; i++) {
             const file = documentFiles[i];
             toastId.update({ id: toastId.id, description: `Bundling document ${i + 1}/${documentFiles.length}...` });
+            
             try {
                 const response = await fetch(`/api/image-proxy?url=${encodeURIComponent(file.url)}`);
-                if (!response.ok) continue;
+                if (!response.ok) throw new Error(`Proxy failed: ${response.status}`);
+                
                 const blob = await response.blob();
                 documentsFolder?.file(file.name, blob);
             } catch (e) {
-                console.warn("Failed to add document to zip:", file.url, e);
+                console.warn("Failed to fetch document:", file.url, e);
             }
         }
 
-        toastId.update({ id: toastId.id, description: "Generating archive..." });
-        const content = await zip.generateAsync({ type: "blob" });
-        saveAs(content, `Work-Order-${workOrder.id}-Export.zip`);
+        toastId.update({ id: toastId.id, description: "Compressing documentation..." });
+        const content = await zip.generateAsync({ 
+            type: "blob",
+            compression: "DEFLATE",
+            compressionOptions: { level: 6 }
+        });
+        
+        saveAs(content, `Work-Order-${workOrder.id}-Media-Export.zip`);
         
         toastId.dismiss();
-        toast({ title: "Download Started", description: "Your zip archive is downloading." });
+        toast({ title: "Download Started", description: "Your documentation zip is downloading." });
     } catch (error) {
-        console.error("ZIP Error:", error);
-        toastId.dismiss();
-        toast({ title: "Bundling Failed", description: "Could not create zip archive.", variant: "destructive" });
+        console.error("ZIP Generation Error:", error);
+        toast({ 
+            title: "Bundling Failed", 
+            description: "An error occurred while creating the archive. Please try again.", 
+            variant: "destructive" 
+        });
     } finally {
         setIsDownloading(false);
     }
@@ -756,7 +784,7 @@ export default function WorkOrderDetailPage() {
 
   const isTechnician = currentUserRole?.name === 'Technician';
   const isAdmin = currentUserRole?.name === 'Administrator';
-  const isCompleted = workOrder.status === 'Completed';
+  // const isCompleted = workOrder.status === 'Completed'; // already defined above
 
   return (
     <MainLayout>
