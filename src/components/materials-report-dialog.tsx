@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -146,9 +145,19 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
                         {group.items.map((item, i) => (
                           <TableRow key={i}>
                             <TableCell className="font-medium">
-                              {item.name}
-                              <div className="text-[10px] text-muted-foreground mt-0.5">
-                                Assets: {item.affectedAssets.map(a => a.tag).join(', ')}
+                              <div className="text-sm">{item.name}</div>
+                              <div className="text-[10px] text-muted-foreground mt-2 space-y-1.5">
+                                <p className="font-bold uppercase tracking-wider text-[9px]">Affected Equipment:</p>
+                                {item.affectedAssets.map((asset, aIdx) => (
+                                  <div key={aIdx} className="flex flex-col gap-0.5 border-l-2 pl-2 py-0.5">
+                                    <span className="font-mono bg-muted px-1 rounded inline-block w-fit">{asset.tag} - {asset.name}</span>
+                                    {asset.notes && (
+                                      <span className="bg-yellow-200 text-black px-1.5 py-0.5 rounded italic inline-block w-fit">
+                                        Note: {asset.notes}
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
                               </div>
                             </TableCell>
                             <TableCell><Badge variant="outline" className="text-[10px]">{item.category}</Badge></TableCell>

@@ -1,4 +1,3 @@
-
 'use client';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import type { AssetPmSchedule, PmTemplate, RequiredMaterial, WorkSite, Asset, AssetMaterial, MaintenanceContract } from '@/lib/types';
@@ -26,7 +25,7 @@ export interface MaterialReportGroup {
     category: string;
     quantity: number;
     uom: string;
-    affectedAssets: { name: string; tag: string }[];
+    affectedAssets: { name: string; tag: string; notes?: string }[];
   }[];
 }
 
@@ -163,7 +162,11 @@ export const generateMaterialsReport = async (
       if (item) {
         item.quantity += mat.quantity;
         if (!item.affectedAssets.some(aa => aa.tag === asset.assetTag)) {
-          item.affectedAssets.push({ name: asset.name, tag: asset.assetTag });
+          item.affectedAssets.push({ 
+            name: asset.name, 
+            tag: asset.assetTag,
+            notes: asset.notes
+          });
         }
       } else {
         group.items.push({
@@ -171,7 +174,11 @@ export const generateMaterialsReport = async (
           category: mat.category,
           quantity: mat.quantity,
           uom: mat.uom,
-          affectedAssets: [{ name: asset.name, tag: asset.assetTag }]
+          affectedAssets: [{ 
+            name: asset.name, 
+            tag: asset.assetTag,
+            notes: asset.notes
+          }]
         });
       }
     });
