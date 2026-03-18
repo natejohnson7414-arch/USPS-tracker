@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -115,14 +116,13 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
               </span>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="h-4 w-4 mr-2" />Print</Button>
-                <Button variant="ghost" size="sm" onClick={() => setReportData(null)}><X className="h-4 w-4" /></Button>
               </div>
             </div>
             
             <ScrollArea className="flex-1 border rounded-md p-6 bg-white shadow-inner printable-report">
               <div className="space-y-10 max-w-3xl mx-auto">
                 <div className="text-center space-y-1">
-                  <h1 className="text-2xl font-bold uppercase tracking-tight">PM Materials Requirements</h1>
+                  <h1 className="text-2xl font-bold uppercase tracking-tight">PM MATERIALS REQUIREMENTS</h1>
                   <p className="text-muted-foreground">{months[parseInt(selectedMonth) - 1]} {selectedYear} Forecast</p>
                 </div>
 
