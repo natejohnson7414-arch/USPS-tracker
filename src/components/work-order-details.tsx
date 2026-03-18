@@ -697,6 +697,7 @@ export function WorkOrderDetails({
                 fill 
                 className="object-contain" 
                 priority 
+                unoptimized={true}
               />
             )}
           </div>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -31,6 +30,9 @@ export const NoteActivityItem = React.memo(({
 
   const getPhotoUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.url;
   const getThumbUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.thumbnailUrl || p.url;
+  
+  // Use image proxy for high-res previews to resolve CORS/loading issues
+  const getProxiedUrl = (url: string) => `/api/image-proxy?url=${encodeURIComponent(url)}`;
 
   return (
     <div className="space-y-3 relative border-b pb-4 last:border-0 last:pb-0">
@@ -72,11 +74,22 @@ export const NoteActivityItem = React.memo(({
       <Dialog open={!!viewingPhoto} onOpenChange={() => setViewingPhoto(null)}>
         <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/95 border-0 flex flex-col items-stretch h-[90vh]">
           <DialogHeader className="p-4 bg-background/10 backdrop-blur-sm border-b border-white/10 absolute top-0 w-full z-10"><DialogTitle className="text-white text-sm font-bold uppercase tracking-widest">Field Note Image Preview</DialogTitle></DialogHeader>
-          <div className="flex-1 relative flex items-center justify-center p-4">{viewingPhoto && <Image src={viewingPhoto} alt="Field documentation preview" fill className="object-contain" priority />}</div>
+          <div className="flex-1 relative flex items-center justify-center p-4">
+            {viewingPhoto && (
+              <Image 
+                src={getProxiedUrl(viewingPhoto)} 
+                alt="Field documentation preview" 
+                fill 
+                className="object-contain" 
+                priority 
+                unoptimized={true}
+              />
+            )}
+          </div>
           <div className="p-4 bg-background flex justify-between items-center border-t">
             <Button variant="outline" size="sm" onClick={() => setViewingPhoto(null)}>Close</Button>
             <div className="flex items-center gap-2">
-                {viewingPhoto && <Button variant="outline" size="sm" asChild><a href={`/api/image-proxy?url=${encodeURIComponent(viewingPhoto)}`} download><Download className="h-4 w-4 mr-2" /> Download</a></Button>}
+                {viewingPhoto && <Button variant="outline" size="sm" asChild><a href={getProxiedUrl(viewingPhoto)} download><Download className="h-4 w-4 mr-2" /> Download</a></Button>}
                 {onPhotoDelete && viewingPhoto && (
                   <Button variant="destructive" size="sm" onClick={() => { 
                     const p = note.photoUrls?.find(p => (typeof p === 'string' ? p : p.url) === viewingPhoto);
