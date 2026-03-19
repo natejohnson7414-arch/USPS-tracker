@@ -589,11 +589,16 @@ export default function WorkOrderDetailPage() {
     setIsDownloading(true);
 
     try {
-        // Dynamic loading of JSZip with fallback for common bundle environments
+        // Robust module resolution for different bundling environments
         const JSZipModule = await import('jszip');
-        const JSZip = JSZipModule.default || (JSZipModule as any);
+        const JSZip = (JSZipModule as any).default || JSZipModule;
         
-        const { saveAs } = await import('file-saver');
+        const FileSaverModule = await import('file-saver');
+        const saveAs = (FileSaverModule as any).saveAs || (FileSaverModule as any).default || FileSaverModule;
+
+        if (typeof saveAs !== 'function') {
+            throw new Error("Save function not found in file-saver module.");
+        }
 
         const zip = new JSZip();
         const mediaFolder = zip.folder("media");
@@ -632,8 +637,12 @@ export default function WorkOrderDetailPage() {
                 // Safety: Resolve filename inside the try block to catch malformed URLs
                 let fileName = `media-${i}`;
                 try {
-                    const urlParts = new URL(item.url);
-                    fileName = decodeURIComponent(urlParts.pathname.split('/').pop() || `media-${i}`);
+                    if (item.url.startsWith('data:')) {
+                        fileName = `data-uri-${i}.jpg`;
+                    } else {
+                        const urlParts = new URL(item.url);
+                        fileName = decodeURIComponent(urlParts.pathname.split('/').pop() || `media-${i}`);
+                    }
                 } catch (urlErr) {
                     console.warn("Malformed media URL skipped:", item.url);
                 }
