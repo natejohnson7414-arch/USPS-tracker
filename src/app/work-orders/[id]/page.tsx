@@ -601,19 +601,19 @@ export default function WorkOrderDetailPage() {
         }
 
         const zip = new JSZip();
-        const mediaFolder = zip.folder("media");
+        // User requested flattening: Media files directly in top-level before/after folders
         const documentsFolder = zip.folder("documents");
 
         const getUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.url;
 
-        // Flatten all media documentation targets
-        const mediaItems: { url: string; subfolder: string }[] = [
-            ...(workOrder.beforePhotoUrls || []).map(p => ({ url: getUrl(p), subfolder: 'before' })),
-            ...(workOrder.afterPhotoUrls || []).map(p => ({ url: getUrl(p), subfolder: 'after' })),
-            ...(workOrder.receiptsAndPackingSlips || []).map(p => ({ url: getUrl(p), subfolder: 'receipts' })),
-            ...(workOrder.notes?.flatMap(note => (note.photoUrls || []).map(p => ({ url: getUrl(p), subfolder: 'notes' }))) || []),
-            ...(quotes?.flatMap(quote => (quote.photos || []).map(p => ({ url: getUrl(p), subfolder: `quotes/${quote.quoteNumber}/photos` }))) || []),
-            ...(quotes?.flatMap(quote => (quote.videos || []).map(url => ({ url, subfolder: `quotes/${quote.quoteNumber}/videos` }))) || [])
+        // Flatten all media documentation targets into either 'before' or 'after' at root
+        const mediaItems: { url: string; subfolder: 'before' | 'after' }[] = [
+            ...(workOrder.beforePhotoUrls || []).map(p => ({ url: getUrl(p), subfolder: 'before' as const })),
+            ...(workOrder.afterPhotoUrls || []).map(p => ({ url: getUrl(p), subfolder: 'after' as const })),
+            ...(workOrder.receiptsAndPackingSlips || []).map(p => ({ url: getUrl(p), subfolder: 'after' as const })),
+            ...(workOrder.notes?.flatMap(note => (note.photoUrls || []).map(p => ({ url: getUrl(p), subfolder: 'after' as const }))) || []),
+            ...(quotes?.flatMap(quote => (quote.photos || []).map(p => ({ url: getUrl(p), subfolder: 'after' as const }))) || []),
+            ...(quotes?.flatMap(quote => (quote.videos || []).map(url => ({ url, subfolder: 'after' as const }))) || [])
         ];
 
         const documentFiles = workOrder.uploadedFiles || [];
@@ -634,24 +634,27 @@ export default function WorkOrderDetailPage() {
             toastId.update({ id: toastId.id, description: `Bundling media ${i + 1}/${mediaItems.length}...` });
             
             try {
-                // Safety: Resolve filename inside the try block to catch malformed URLs
-                let fileName = `media-${i}`;
+                let extractedName = `media-${i}`;
                 try {
                     if (item.url.startsWith('data:')) {
-                        fileName = `data-uri-${i}.jpg`;
+                        extractedName = `data-uri-${i}.jpg`;
                     } else {
                         const urlParts = new URL(item.url);
-                        fileName = decodeURIComponent(urlParts.pathname.split('/').pop() || `media-${i}`);
+                        extractedName = decodeURIComponent(urlParts.pathname.split('/').pop() || `media-${i}`);
                     }
                 } catch (urlErr) {
                     console.warn("Malformed media URL skipped:", item.url);
                 }
 
+                // Ensure unique filename in the flat folder using the sequence index
+                const fileName = `${i + 1}-${extractedName}`;
+
                 const response = await fetch(`/api/image-proxy?url=${encodeURIComponent(item.url)}`);
                 if (!response.ok) throw new Error(`Proxy failed: ${response.status}`);
                 
                 const blob = await response.blob();
-                mediaFolder?.folder(item.subfolder)?.file(fileName, blob);
+                // Place file directly into root-level folders
+                zip.folder(item.subfolder)?.file(fileName, blob);
             } catch (e) {
                 console.warn("Failed to fetch media item:", item.url, e);
             }
