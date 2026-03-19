@@ -29,7 +29,7 @@ import { doc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { notifyTechnicianOfAttention } from '@/ai/flows/notify-technician-flow';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Separator } from '@/components/ui/separator';
 
 const ActivityItem = React.memo(({ activity, technicians, onDeleteClick, isCompleted }: { 
@@ -303,7 +303,6 @@ export function WorkOrderAdminDetails({
     if (!viewingPhoto) return;
     const targetUrl = viewingPhoto.url;
     
-    // Find the original photo object to pass to delete logic
     const findPhoto = (list: (string | PhotoMetadata)[] | undefined) => 
       list?.find(p => (typeof p === 'string' ? p : p.url) === targetUrl);
 
@@ -322,8 +321,6 @@ export function WorkOrderAdminDetails({
 
   const getPhotoUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.url;
   const getThumbUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.thumbnailUrl || p.url;
-  
-  // Use image proxy for high-res previews to resolve CORS/loading issues
   const getProxiedUrl = (url: string) => `/api/image-proxy?url=${encodeURIComponent(url)}`;
 
   const linkedAssetIds = new Set(workOrder.assetIds || []);
@@ -445,7 +442,7 @@ export function WorkOrderAdminDetails({
                 <CardDescription>Select equipment from the site registry to assign it to this job.</CardDescription>
               </CardHeader>
               <CardContent>
-                {siteAssets.length > 0 ? (
+                {linkedAssetIds.size > 0 || siteAssets.length > 0 ? (
                   <div className="space-y-3">
                     {siteAssets.map(asset => {
                       const isLinked = linkedAssetIds.has(asset.id);
@@ -671,7 +668,7 @@ export function WorkOrderAdminDetails({
       <AlertDialog open={!!trainingRecordToDelete} onOpenChange={(open) => !open && setTrainingRecordToDelete(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete this training record.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteTrainingRecord}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       <AlertDialog open={!!hvacReportToDelete} onOpenChange={(open) => !open && setHvacReportToDelete(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete this HVAC Start-up Report.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteHvacReport}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       <AlertDialog open={!!activityToDelete} onOpenChange={(open) => !open && setActivityToDelete(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete this scheduled activity.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeleteActivity}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-      <AlertDialog open={isDeletingSignature} onOpenChange={setIsDeletingSignature}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete Signature?</AlertDialogTitle><AlertDialogDescription>{ackToDelete ? `This will permanently remove the signature from "${ackToDelete.name}".` : "This will permanently remove the signature from this work order."}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => { onSignatureDelete(ackToDelete || undefined); setIsDeletingSignature(false); }}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialog>
+      <AlertDialog open={isDeletingSignature} onOpenChange={setIsDeletingSignature}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete Signature?</AlertDialogTitle><AlertDialogDescription>{ackToDelete ? `This will permanently remove the signature from "${ackToDelete.name}".` : "This will permanently remove the signature from this work order."}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => { onSignatureDelete(ackToDelete || undefined); setIsDeletingSignature(false); }}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
 
       <Sheet open={!!photoSheetTarget} onOpenChange={(isOpen) => !isOpen && setPhotoSheetTarget(null)}><SheetContent side="bottom"><SheetHeader><SheetTitle>Add {photoSheetTarget === 'receipts' ? 'Receipt/Slip' : photoSheetTarget} photos</SheetTitle></SheetHeader><div className="grid gap-4 py-4"><Button type="button" variant="outline" className="justify-start" onClick={() => takePhotoInputRef.current?.click()}><Camera className="mr-4 h-5 w-5" />Take Photo</Button><Button type="button" variant="outline" className="justify-start" onClick={() => chooseFromLibraryInputRef.current?.click()}><Library className="mr-4 h-5 w-5" />Choose from Library</Button></div></SheetContent></Sheet>
       <input type="file" ref={takePhotoInputRef} onChange={handleFileChange} className="hidden" accept="image/*" capture="environment" multiple /><input type="file" ref={chooseFromLibraryInputRef} onChange={handleFileChange} className="hidden" accept="image/*" multiple />
