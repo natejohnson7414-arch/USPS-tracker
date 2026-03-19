@@ -782,9 +782,9 @@ export default function WorkOrderDetailPage() {
     notFound();
   }
 
-  const isTechnician = currentUserRole?.name === 'Technician';
+  const isTechnicianRole = currentUserRole?.name === 'Technician';
   const isAdmin = currentUserRole?.name === 'Administrator';
-  // const isCompleted = workOrder.status === 'Completed'; // already defined above
+  const isCompleted = workOrder.status === 'Completed';
 
   return (
     <MainLayout>
@@ -803,13 +803,13 @@ export default function WorkOrderDetailPage() {
                         Complete WO
                     </Button>
                 )}
-                {!isTechnician && (
+                {!isTechnicianRole && (
                     <Button variant="outline" onClick={handleDownloadMedia} disabled={isDownloading}>
                         {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                         Download Media ZIP
                     </Button>
                 )}
-                {!isTechnician && (
+                {!isTechnicianRole && (
                     <Button variant="outline" onClick={() => setIsReportDialogOpen(true)}>
                         <Printer className="mr-2 h-4 w-4" />
                         Report
@@ -822,7 +822,7 @@ export default function WorkOrderDetailPage() {
                         </Link>
                     </Button>
                 )}
-                {!isCompleted && !isEditing && !isTechnician && workOrder.id !== '24-0001' && (
+                {!isCompleted && !isEditing && !isTechnicianRole && workOrder.id !== '24-0001' && (
                   <Button variant="outline" onClick={() => setIsEditing(true)}>
                     <Pencil className="mr-2 h-4 w-4" /> Edit
                   </Button>
@@ -840,13 +840,13 @@ export default function WorkOrderDetailPage() {
         <div className="pb-24">
             {isEditing ? (
                  <WorkOrderEditForm workOrder={workOrder} technicians={technicians} workSites={workSites} clients={clients} onFormSaved={handleFormSaved} onCancel={() => setIsEditing(false)} />
-            ) : isTechnician ? (
+            ) : isTechnicianRole ? (
                 <WorkOrderDetails
-                    workOrder={workOrder} isTechnician={isTechnician} isAdmin={isAdmin} trainingRecords={trainingRecords} onTrainingRecordDelete={handleTrainingRecordDelete} hvacReports={hvacReports} onHvacReportDelete={handleHvacReportDelete} timeEntries={timeEntries} activities={activities} quotes={quotes} onTimeEntriesSaved={handleTimeEntriesSaved} onNotePhotoDelete={handleNotePhotoDelete} onNoteDelete={handleNoteDelete} onBeforePhotosAdded={(files) => handlePhotosAdded('before', files)} onAfterPhotosAdded={(files) => handlePhotosAdded('after', files)} onReceiptsAndPackingSlipsAdded={(files) => handlePhotosAdded('receipts', files)} onBeforePhotoDelete={(url) => handlePhotoDeleted('before', url)} onAfterPhotoDelete={(url) => handlePhotoDeleted('after', url)} onReceiptsAndPackingSlipsPhotoDelete={(url) => handlePhotoDeleted('receipts', url)} onTimeEntryDelete={handleTimeEntryDelete} isSavingPhotos={isSavingPhotos} onDirectionsClick={() => workOrder.workSite && handleDirectionsClick(workOrder.workSite)} onSignatureSave={() => setIsSignatureDialogOpen(true)} onTempUpdate={handleTempUpdate} tempOnArrival={tempOnArrival} setTempOnArrival={setTempOnArrival} tempOnLeaving={tempOnLeaving} setTempOnLeaving={setTempOnLeaving} contactInfo={contactInfo} setContactInfo={setContactInfo} onContactInfoUpdate={handleContactInfoUpdate} onAddActivity={handleAddActivity} isAddingActivity={isAddingActivity} onUpdateActivityStatus={handleUpdateActivityStatus} onDeleteActivity={handleDeleteActivity} technicians={technicians} onMarkForReview={handleMarkForReview} isSubmittingReview={isSubmittingReview} onSignatureDelete={handleSignatureDelete} activeTab={activeTab} setActiveTab={setActiveTab} onReplyToAttention={handleReplyToAttention} onLinkAsset={handleLinkAsset} onUnlinkAsset={handleUnlinkAsset} isLinkingAsset={isLinkingAsset}
+                    workOrder={workOrder} isTechnician={isTechnicianRole} isAdmin={isAdmin} trainingRecords={trainingRecords} onTrainingRecordDelete={handleTrainingRecordDelete} hvacReports={hvacReports} onHvacReportDelete={handleHvacReportDelete} timeEntries={timeEntries} activities={activities} quotes={quotes} onTimeEntriesSaved={handleTimeEntriesSaved} onNotePhotoDelete={handleNotePhotoDelete} onNoteDelete={handleNoteDelete} onBeforePhotosAdded={(files) => handlePhotosAdded('before', files)} onAfterPhotosAdded={(files) => handlePhotosAdded('after', files)} onReceiptsAndPackingSlipsAdded={(files) => handlePhotosAdded('receipts', files)} onBeforePhotoDelete={(url) => handlePhotoDeleted('before', url)} onAfterPhotoDelete={(url) => handlePhotoDeleted('after', url)} onReceiptsAndPackingSlipsPhotoDelete={(url) => handlePhotoDeleted('receipts', url)} onTimeEntryDelete={handleTimeEntryDelete} isSavingPhotos={isSavingPhotos} onDirectionsClick={() => workOrder.workSite && handleDirectionsClick(workOrder.workSite)} onSignatureSave={() => setIsSignatureDialogOpen(true)} onTempUpdate={handleTempUpdate} tempOnArrival={tempOnArrival} setTempOnArrival={setTempOnArrival} tempOnLeaving={tempOnLeaving} setTempOnLeaving={setTempOnLeaving} contactInfo={contactInfo} setContactInfo={setContactInfo} onContactInfoUpdate={handleContactInfoUpdate} onAddActivity={handleAddActivity} isAddingActivity={isAddingActivity} onUpdateActivityStatus={handleUpdateActivityStatus} onDeleteActivity={handleDeleteActivity} technicians={technicians} onMarkForReview={handleMarkForReview} isSubmittingReview={isSubmittingReview} onSignatureDelete={handleSignatureDelete} activeTab={activeTab} setActiveTab={setActiveTab} onReplyToAttention={handleReplyToAttention} onLinkAsset={handleLinkAsset} onUnlinkAsset={handleUnlinkAsset} isLinkingAsset={isLinkingAsset}
                 />
             ) : (
                  <WorkOrderAdminDetails
-                    workOrder={workOrder} assignedTechnician={assignedTechnician} isTechnician={isTechnician} isAdmin={isAdmin} trainingRecords={trainingRecords} onTrainingRecordDelete={handleTrainingRecordDelete} hvacReports={hvacReports} onHvacReportDelete={handleHvacReportDelete} timeEntries={timeEntries} activities={activities} quotes={quotes} onNotePhotoDelete={handleNotePhotoDelete} onNoteDelete={handleNoteDelete} onBeforePhotosAdded={(files) => handlePhotosAdded('before', files)} onAfterPhotosAdded={(files) => handlePhotosAdded('after', files)} onReceiptsAndPackingSlipsAdded={(files) => handlePhotosAdded('receipts', files)} onBeforePhotoDelete={(url) => handlePhotoDeleted('before', url)} onAfterPhotoDelete={(url) => handlePhotoDeleted('after', url)} onReceiptsAndPackingSlipsPhotoDelete={(url) => handlePhotoDeleted('receipts', url)} onTimeEntryDelete={handleTimeEntryDelete} isSavingPhotos={isSavingPhotos} onDirectionsClick={() => workOrder.workSite && handleDirectionsClick(workOrder.workSite)} onSignatureSave={() => setIsSignatureDialogOpen(true)} onTempUpdate={handleTempUpdate} tempOnArrival={tempOnArrival} setTempOnArrival={setTempOnArrival} tempOnLeaving={tempOnLeaving} setTempOnLeaving={setTempOnLeaving} contactInfo={contactInfo} setContactInfo={setContactInfo} onAddActivity={handleAddActivity} isAddingActivity={isAddingActivity} onUpdateActivityStatus={handleUpdateActivityStatus} onDeleteActivity={handleDeleteActivity} technicians={technicians} onFilesUploaded={handleFilesUploaded} onFileDeleted={handleFileDeleted} isUploadingFiles={isUploadingFiles} onSignatureDelete={handleSignatureDelete} activeTab={activeTab} setActiveTab={setActiveTab} onClearAttentionStatus={handleClearReplyStatus} onLinkAsset={handleLinkAsset} onUnlinkAsset={handleUnlinkAsset} isLinkingAsset={isLinkingAsset}
+                    workOrder={workOrder} assignedTechnician={assignedTechnician} isTechnician={isTechnicianRole} isAdmin={isAdmin} trainingRecords={trainingRecords} onTrainingRecordDelete={handleTrainingRecordDelete} hvacReports={hvacReports} onHvacReportDelete={handleHvacReportDelete} timeEntries={timeEntries} activities={activities} quotes={quotes} onNotePhotoDelete={handleNotePhotoDelete} onNoteDelete={handleNoteDelete} onBeforePhotosAdded={(files) => handlePhotosAdded('before', files)} onAfterPhotosAdded={(files) => handlePhotosAdded('after', files)} onReceiptsAndPackingSlipsAdded={(files) => handlePhotosAdded('receipts', files)} onBeforePhotoDelete={(url) => handlePhotoDeleted('before', url)} onAfterPhotoDelete={(url) => handlePhotoDeleted('after', url)} onReceiptsAndPackingSlipsPhotoDelete={(url) => handlePhotoDeleted('receipts', url)} onTimeEntryDelete={handleTimeEntryDelete} isSavingPhotos={isSavingPhotos} onDirectionsClick={() => workOrder.workSite && handleDirectionsClick(workOrder.workSite)} onSignatureSave={() => setIsSignatureDialogOpen(true)} onTempUpdate={handleTempUpdate} tempOnArrival={tempOnArrival} setTempOnArrival={setTempOnArrival} tempOnLeaving={tempOnLeaving} setTempOnLeaving={setTempOnLeaving} contactInfo={contactInfo} setContactInfo={setContactInfo} onAddActivity={handleAddActivity} isAddingActivity={isAddingActivity} onUpdateActivityStatus={handleUpdateActivityStatus} onDeleteActivity={handleDeleteActivity} technicians={technicians} onFilesUploaded={handleFilesUploaded} onFileDeleted={handleFileDeleted} isUploadingFiles={isUploadingFiles} onSignatureDelete={handleSignatureDelete} activeTab={activeTab} setActiveTab={setActiveTab} onClearAttentionStatus={handleClearReplyStatus} onLinkAsset={handleLinkAsset} onUnlinkAsset={handleUnlinkAsset} isLinkingAsset={isLinkingAsset}
                 />
             )}
         </div>
