@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
@@ -601,12 +602,16 @@ export default function WorkOrderDetailPage() {
         }
 
         const zip = new JSZip();
-        // User requested flattening: Media files directly in top-level before/after folders
-        const documentsFolder = zip.folder("documents");
+        // Create root folder named Work-Order-ID-media as requested
+        const rootFolderName = `Work-Order-${workOrder.id}-media`;
+        const rootFolder = zip.folder(rootFolderName);
+        const beforeFolder = rootFolder?.folder("before");
+        const afterFolder = rootFolder?.folder("after");
+        const documentsFolder = rootFolder?.folder("documents");
 
         const getUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.url;
 
-        // Flatten all media documentation targets into either 'before' or 'after' at root
+        // Flatten all media documentation targets into either 'before' or 'after'
         const mediaItems: { url: string; subfolder: 'before' | 'after' }[] = [
             ...(workOrder.beforePhotoUrls || []).map(p => ({ url: getUrl(p), subfolder: 'before' as const })),
             ...(workOrder.afterPhotoUrls || []).map(p => ({ url: getUrl(p), subfolder: 'after' as const })),
@@ -646,15 +651,20 @@ export default function WorkOrderDetailPage() {
                     console.warn("Malformed media URL skipped:", item.url);
                 }
 
-                // Ensure unique filename in the flat folder using the sequence index
+                // Ensure unique filename using sequence index
                 const fileName = `${i + 1}-${extractedName}`;
 
                 const response = await fetch(`/api/image-proxy?url=${encodeURIComponent(item.url)}`);
                 if (!response.ok) throw new Error(`Proxy failed: ${response.status}`);
                 
                 const blob = await response.blob();
-                // Place file directly into root-level folders
-                zip.folder(item.subfolder)?.file(fileName, blob);
+                
+                // Route to appropriate subfolder inside rootFolder
+                if (item.subfolder === 'before') {
+                    beforeFolder?.file(fileName, blob);
+                } else {
+                    afterFolder?.file(fileName, blob);
+                }
             } catch (e) {
                 console.warn("Failed to fetch media item:", item.url, e);
             }
@@ -683,7 +693,8 @@ export default function WorkOrderDetailPage() {
             compressionOptions: { level: 6 }
         });
         
-        saveAs(content, `Work-Order-${workOrder.id}-Media-Export.zip`);
+        // Filename matches root folder name
+        saveAs(content, `${rootFolderName}.zip`);
         
         toastId.dismiss();
         toast({ title: "Download Started", description: "Your documentation zip is downloading." });
