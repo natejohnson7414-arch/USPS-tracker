@@ -206,17 +206,17 @@ export default function StartQuotePage() {
 
             progressToast.update({ id: progressToast.id, title: 'Saving Quote', description: 'Creating the job record...' });
 
-            const laborDetail = personHours.map((h, i) => `P${i + 1}: ${h || '0'}h`).join(', ');
+            const laborDetail = personHours.map((h, i) => `P1: ${h || '0'}h`).join(', ');
             const formattedLabor = `${numPeople} ${parseInt(numPeople) === 1 ? 'person' : 'people'}: ${laborDetail}`;
 
             const initialQuote: Omit<Quote, 'id'> = {
                 quoteNumber: quoteNumber,
                 status: 'Draft',
                 workOrderId: workOrder.id,
-                assetId: assetId || undefined,
+                assetId: assetId || null,
                 clientId: (workOrder as any).clientId || null,
-                workSiteId: workOrder.workSiteId,
-                jobName: (workOrder as any).jobName || (workOrder as any).workSiteName,
+                workSiteId: workOrder.workSiteId || null,
+                jobName: (workOrder as any).jobName || (workOrder as any).workSiteName || 'Unknown Job',
                 description,
                 modelNumber,
                 serialNumber,
