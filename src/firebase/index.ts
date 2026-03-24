@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Barrel file for Firebase functionality.
  * Initialization logic moved to init.ts to avoid circular dependencies.
