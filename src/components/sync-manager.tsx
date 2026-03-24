@@ -14,7 +14,7 @@ declare global {
 
 /**
  * Background component that pre-caches data for technicians.
- * Updated to use the resilient 'OR' query for efficient syncing of all relevant jobs.
+ * Uses direct imports from provider to avoid circular dependencies with the main barrel file.
  */
 export function SyncManager() {
   const db = useFirestore();
@@ -33,7 +33,7 @@ export function SyncManager() {
     if (isDebug) console.log('[SyncManager] Starting background sync cycle...');
 
     try {
-      // ARCHITECTURAL FIX: Use the OR query to find lead OR crew jobs
+      // Find jobs where user is lead or crew
       const involvedQuery = query(
         collection(db, 'work_orders'), 
         or(
@@ -50,27 +50,15 @@ export function SyncManager() {
         if (!isSyncing.current || currentUploads) break;
 
         try {
-            // Cache the main document
             await getDoc(doc(db, 'work_orders', woId));
-            
-            // Cache subcollections (notes and activities)
             await getDocs(collection(db, 'work_orders', woId, 'updates'));
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
+            await new Promise(resolve => setTimeout(resolve, 500));
             await getDocs(collection(db, 'work_orders', woId, 'activities'));
-            await new Promise(resolve => setTimeout(resolve, 1000));
         } catch (e) {
             console.warn(`[SyncManager] Skip cache for ${woId}:`, e);
         }
       }
       
-      if (!window.__UPLOAD_IN_PROGRESS__ && getActiveUploadCount() === 0) {
-        // Cache foundational data
-        await getDocs(collection(db, 'work_sites'));
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        await getDocs(collection(db, 'clients'));
-      }
-
       if (isDebug) console.log('[SyncManager] Sync cycle complete.');
     } catch (error) {
       console.error('[SyncManager] Sync cycle failed:', error);
@@ -81,9 +69,8 @@ export function SyncManager() {
 
   useEffect(() => {
     if (user && !isProfileLoading && technician && role) {
-      // Conservative Start Delay: Wait 45 seconds after boot to allow initial renders
-      const initialTimer = setTimeout(performSync, 45000);
-      const interval = setInterval(performSync, 20 * 60 * 1000); // Sync every 20m
+      const initialTimer = setTimeout(performSync, 30000);
+      const interval = setInterval(performSync, 15 * 60 * 1000); 
       
       return () => {
         isSyncing.current = false;

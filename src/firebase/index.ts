@@ -1,7 +1,8 @@
 'use client';
 /**
- * Barrel file for Firebase functionality.
- * Initialization logic moved to init.ts to avoid circular dependencies.
+ * @fileOverview Barrel file for Firebase functionality.
+ * This file centralizes exports for the application to ensure consistent 
+ * access to hooks, providers, and initialization logic.
  */
 
 export * from './init';

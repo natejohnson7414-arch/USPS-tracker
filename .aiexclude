@@ -1,0 +1,23 @@
+# Dependency directories
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# Large assets and media
+public/assets/
+public/images/
+*.mp4
+*.zip
+
+# Sensitive or large data files
+*.json
+*.csv
+*.log
+.env*
+
+# Git and IDE metadata
+.git/
+.vscode/
+.firebase/
