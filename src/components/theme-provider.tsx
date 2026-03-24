@@ -15,6 +15,7 @@ export function ThemeProvider({
   children,
   defaultTheme = "system",
   storageKey = "usps-tracker-theme",
+  ...props
 }: {
   children: React.ReactNode
   defaultTheme?: Theme
@@ -23,7 +24,7 @@ export function ThemeProvider({
   const [theme, setTheme] = React.useState<Theme>("light")
   const [mounted, setMounted] = React.useState(false)
 
-  // Initialization
+  // Initialization - defer to client-side hydration
   React.useEffect(() => {
     const savedTheme = localStorage.getItem(storageKey) as Theme | null
     if (savedTheme) {
@@ -64,7 +65,7 @@ export function ThemeProvider({
   )
 
   return (
-    <ThemeProviderContext.Provider value={value}>
+    <ThemeProviderContext.Provider value={value} {...props}>
       {children}
     </ThemeProviderContext.Provider>
   )

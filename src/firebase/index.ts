@@ -1,8 +1,9 @@
-'use client';
 /**
  * @fileOverview Barrel file for Firebase functionality.
  * This file centralizes exports for the application to ensure consistent 
  * access to hooks, providers, and initialization logic.
+ * 
+ * Note: No 'use client' directive here to allow clean module resolution in RSCs.
  */
 
 export * from './init';
