@@ -11,11 +11,14 @@ interface ThemeProviderState {
 
 const ThemeProviderContext = React.createContext<ThemeProviderState | undefined>(undefined)
 
+/**
+ * Provider for application theme management.
+ * Optimized to handle hydration and prevent prop-leakage to the Context Provider.
+ */
 export function ThemeProvider({
   children,
   defaultTheme = "system",
   storageKey = "usps-tracker-theme",
-  ...props
 }: {
   children: React.ReactNode
   defaultTheme?: Theme
@@ -24,7 +27,7 @@ export function ThemeProvider({
   const [theme, setTheme] = React.useState<Theme>("light")
   const [mounted, setMounted] = React.useState(false)
 
-  // Initialization - defer to client-side hydration
+  // Initialization - defer to client-side hydration to prevent mismatch
   React.useEffect(() => {
     const savedTheme = localStorage.getItem(storageKey) as Theme | null
     if (savedTheme) {
@@ -35,7 +38,7 @@ export function ThemeProvider({
     setMounted(true)
   }, [defaultTheme, storageKey])
 
-  // React to theme changes
+  // React to theme changes on the root element
   React.useEffect(() => {
     if (!mounted) return
 
@@ -65,7 +68,7 @@ export function ThemeProvider({
   )
 
   return (
-    <ThemeProviderContext.Provider value={value} {...props}>
+    <ThemeProviderContext.Provider value={value}>
       {children}
     </ThemeProviderContext.Provider>
   )

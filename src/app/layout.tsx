@@ -30,8 +30,8 @@ export const metadata: Metadata = {
 
 /**
  * Root layout component.
- * Note: This is a Server Component. Providers wrap the children to establish
- * the client-side context for Firebase, Theme, and UI notifications.
+ * Providers are imported directly to avoid circular dependency loops through barrel files
+ * which can cause "undefined (reading 'call')" errors in Next.js 15.
  */
 export default function RootLayout({
   children,

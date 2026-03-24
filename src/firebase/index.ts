@@ -1,9 +1,6 @@
 /**
  * @fileOverview Barrel file for Firebase functionality.
- * This file centralizes exports for the application to ensure consistent 
- * access to hooks, providers, and initialization logic.
- * 
- * Note: No 'use client' directive here to allow clean module resolution in RSCs.
+ * Optimized to serve as a pass-through for client boundary modules.
  */
 
 export * from './init';
