@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useEffect, useCallback, useRef } from 'react';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase/provider';
 import { collection, query, where, getDocs, limit, doc, getDoc, or } from 'firebase/firestore';
 import { useTechnician } from '@/hooks/use-technician';
 import { getActiveUploadCount } from '@/firebase/storage';
