@@ -279,7 +279,10 @@ export function WorkOrderDetails({
   useEffect(() => {
     setIsClient(true);
     if (db && workOrder.workSiteId) {
-        getAssetsBySiteId(db, workOrder.workSiteId).then(setSiteAssets);
+        getAssetsBySiteId(db, workOrder.workSiteId).then(assets => {
+            const sortedAssets = [...assets].sort((a, b) => a.name.localeCompare(b.name));
+            setSiteAssets(sortedAssets);
+        });
     }
   }, [db, workOrder.workSiteId]);
 
@@ -417,7 +420,7 @@ export function WorkOrderDetails({
               )}
             </div>
           </div>
-           {isTechnician && workOrder.workSite && (
+           {isTechnician && workOrder.status !== 'Completed' && workOrder.workSite && (
               <div className="flex justify-between items-center pt-4">
                   <div><p className="text-sm text-muted-foreground">{workOrder.workSite.address}</p></div>
                    <div className="flex items-center gap-2">

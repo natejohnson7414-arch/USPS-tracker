@@ -198,7 +198,10 @@ export function WorkOrderAdminDetails({
   useEffect(() => {
     setIsClient(true);
     if (db && workOrder.workSiteId) {
-        getAssetsBySiteId(db, workOrder.workSiteId).then(setSiteAssets);
+        getAssetsBySiteId(db, workOrder.workSiteId).then(assets => {
+            const sortedAssets = [...assets].sort((a, b) => a.name.localeCompare(b.name));
+            setSiteAssets(sortedAssets);
+        });
     }
   }, [db, workOrder.workSiteId]);
 
