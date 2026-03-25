@@ -332,7 +332,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
             <CardHeader><CardTitle>Basic Information</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Asset Name *</Label>
+                <Label htmlFor="name">Equipment Type *</Label>
                 <Input id="name" value={formData.name || ''} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Roof Top Unit 1" required />
               </div>
               <div className="grid grid-cols-2 gap-4">

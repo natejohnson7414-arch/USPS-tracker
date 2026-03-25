@@ -211,7 +211,7 @@ export default function WorkSiteDetailsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Tag</TableHead>
-                      <TableHead>Asset Name</TableHead>
+                      <TableHead>Equipment Type</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Criticality</TableHead>
                       <TableHead className="text-right">Action</TableHead>
