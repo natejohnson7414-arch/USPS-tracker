@@ -55,11 +55,15 @@ export default function WorkSiteDetailsPage() {
       ]);
       
       setSite(s || null);
-      setAssets(a);
+      
+      // Alphabetize asset list for consistent registry view
+      const sortedAssets = [...a].sort((a, b) => a.name.localeCompare(b.name));
+      setAssets(sortedAssets);
+      
       setPmTemplates(t);
 
       const schedulesMap: Record<string, PmSchedule[]> = {};
-      for (const asset of a) {
+      for (const asset of sortedAssets) {
         const schedules = await getPmSchedulesForAsset(db, asset.id);
         schedulesMap[asset.id] = schedules;
       }

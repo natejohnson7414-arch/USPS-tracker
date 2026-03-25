@@ -1,13 +1,15 @@
-
 'use client';
 
-import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
+import { useDoc } from '@/firebase/firestore/use-doc';
+import { useCollection } from '@/firebase/firestore/use-collection';
 import type { Technician, Role } from '@/lib/types';
 import { doc, collection } from 'firebase/firestore';
 
 /**
  * Hook to retrieve the current user's technician profile and role.
  * Uses real-time listeners to ensure UI consistency when data changes (like default view preferences).
+ * Direct imports are used to avoid circular dependencies through the Firebase barrel file.
  */
 export function useTechnician() {
   const { user, isUserLoading } = useUser();

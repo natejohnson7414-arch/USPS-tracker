@@ -280,6 +280,7 @@ export function WorkOrderDetails({
     setIsClient(true);
     if (db && workOrder.workSiteId) {
         getAssetsBySiteId(db, workOrder.workSiteId).then(assets => {
+            // Alphabetize the asset list for clear field selection
             const sortedAssets = [...assets].sort((a, b) => a.name.localeCompare(b.name));
             setSiteAssets(sortedAssets);
         });

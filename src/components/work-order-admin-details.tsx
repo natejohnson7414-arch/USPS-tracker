@@ -199,6 +199,7 @@ export function WorkOrderAdminDetails({
     setIsClient(true);
     if (db && workOrder.workSiteId) {
         getAssetsBySiteId(db, workOrder.workSiteId).then(assets => {
+            // Alphabetize asset list for registry selection
             const sortedAssets = [...assets].sort((a, b) => a.name.localeCompare(b.name));
             setSiteAssets(sortedAssets);
         });
