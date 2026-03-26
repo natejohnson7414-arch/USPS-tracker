@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -19,9 +20,7 @@ import { MaterialsReportDialog } from '@/components/materials-report-dialog';
 import { format, addMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO, differenceInMonths } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from 'recharts';
-
-export default function AssetsPageContent() {
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from 'recharts';text-2xlexport default function AssetsPageContent() {
   const db = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
