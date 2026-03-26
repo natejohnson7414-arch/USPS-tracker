@@ -285,14 +285,14 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
 
       if (asset?.id) {
         await updateDocumentNonBlocking(doc(db, 'assets', asset.id), data);
-        toast({ title: 'Asset Updated' });
+        toast({ title: 'Equipment Updated' });
       } else {
         const newData = {
           ...data,
           createdAt: new Date().toISOString(),
         };
         await addDocumentNonBlocking(collection(db, 'assets'), newData);
-        toast({ title: 'Asset Created' });
+        toast({ title: 'Equipment Created' });
       }
 
       const workOrderId = searchParams.get('workOrderId');
@@ -303,7 +303,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
       }
     } catch (error) {
       console.error('Error saving asset:', error);
-      toast({ title: 'Error saving asset', variant: 'destructive' });
+      toast({ title: 'Error saving equipment', variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }
@@ -359,7 +359,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>PM Materials (Filters, Belts, etc.)</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Maintenance Materials (Filters, Belts, etc.)</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
                 {formData.materials?.map((mat, idx) => (
@@ -433,12 +433,12 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>Equipment Photos</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Documentation Photos</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {formData.photoUrls?.map((photo, idx) => (
                   <div key={idx} className="relative aspect-square rounded-md overflow-hidden border">
-                    <Image src={getThumbUrl(photo)} alt={`Asset photo ${idx + 1}`} fill sizes="150px" className="object-cover" />
+                    <Image src={getThumbUrl(photo)} alt={`Equipment photo ${idx + 1}`} fill sizes="150px" className="object-cover" />
                     <Button 
                       type="button" 
                       variant="destructive" 
@@ -516,12 +516,12 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="notes">Asset Notes</Label>
+                <Label htmlFor="notes">Unit Notes</Label>
                 <Textarea 
                   id="notes" 
                   value={formData.notes || ''} 
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })} 
-                  placeholder="Record any specific asset notes here (access, safety, etc.)"
+                  placeholder="Record any unit-specific notes here (access, safety, etc.)"
                   rows={4}
                 />
               </div>
@@ -587,7 +587,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>Customized Specifications (Tag Missing Data)</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Customized Specifications</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
                 {Object.entries(formData.customFields || {}).map(([key, value]) => (
@@ -625,7 +625,7 @@ function AssetFormInner({ asset, onCancel }: AssetFormProps) {
           </Button>
           <Button type="submit" disabled={isSaving}>
             {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            {asset ? 'Update Asset' : 'Create Asset'}
+            {asset ? 'Update Equipment' : 'Create Equipment'}
           </Button>
         </div>
       </div>

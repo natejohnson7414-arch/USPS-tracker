@@ -188,7 +188,7 @@ export default function AssetDetailsPage() {
   };
 
   if (isLoading) return <MainLayout><div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div></MainLayout>;
-  if (!asset) return <MainLayout><div className="container py-12 text-center"><AlertCircle className="h-12 w-12 mx-auto mb-4 text-destructive" /><h1 className="text-2xl font-bold">Asset Not Found</h1></div></MainLayout>;
+  if (!asset) return <MainLayout><div className="container py-12 text-center"><AlertCircle className="h-12 w-12 mx-auto mb-4 text-destructive" /><h1 className="text-2xl font-bold">Equipment Not Found</h1></div></MainLayout>;
 
   const metrics = calculateAssetMetrics(history);
 
@@ -295,20 +295,20 @@ export default function AssetDetailsPage() {
 
               <TabsContent value="photos">
                 <Card>
-                  <CardHeader><CardTitle>Asset Documentation</CardTitle></CardHeader>
+                  <CardHeader><CardTitle>Equipment Documentation</CardTitle></CardHeader>
                   <CardContent>
                     {asset.photoUrls && asset.photoUrls.length > 0 ? (
                       <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
                         {asset.photoUrls.map((photo, idx) => (
                           <div key={getPhotoUrl(photo)} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto(typeof photo === 'string' ? { url: photo } : photo)}>
-                            <Image src={getThumbUrl(photo)} alt={`Asset photo ${idx + 1}`} fill sizes="(max-width: 768px) 25vw, 12vw" className="object-cover" />
+                            <Image src={getThumbUrl(photo)} alt={`Equipment photo ${idx + 1}`} fill sizes="(max-width: 768px) 25vw, 12vw" className="object-cover" />
                             <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Maximize2 className="text-white h-5 w-5" /></div>
                           </div>
                         ))}
                       </div>
                     ) : (
                       <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
-                        <Camera className="h-12 w-12 mx-auto mb-4 opacity-20" /><p>No photos available for this asset.</p>
+                        <Camera className="h-12 w-12 mx-auto mb-4 opacity-20" /><p>No photos available for this unit.</p>
                         <Button variant="link" onClick={() => setPhotoSheetOpen(true)} className="mt-2">Add Photo Now</Button>
                       </div>
                     )}
@@ -333,7 +333,7 @@ export default function AssetDetailsPage() {
                           </div>
                         ))}
                       </div>
-                    ) : <div className="text-center py-12 text-muted-foreground">No service history recorded for this asset.</div>}
+                    ) : <div className="text-center py-12 text-muted-foreground">No service history recorded for this unit.</div>}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -347,7 +347,7 @@ export default function AssetDetailsPage() {
 
       <Sheet open={photoSheetOpen} onOpenChange={setPhotoSheetOpen}>
         <SheetContent side="bottom">
-          <SheetHeader><SheetTitle>Add Asset Photos</SheetTitle></SheetHeader>
+          <SheetHeader><SheetTitle>Add Equipment Photos</SheetTitle></SheetHeader>
           <div className="grid gap-4 py-6">
             <Button variant="outline" className="justify-start h-14" onClick={() => takePhotoInputRef.current?.click()}><Camera className="mr-4 h-6 w-6" /> Take Photo</Button>
             <Button variant="outline" className="justify-start h-14" onClick={() => chooseFromLibraryInputRef.current?.click()}><Library className="mr-4 h-6 w-6" /> Choose from Library</Button>
@@ -358,10 +358,10 @@ export default function AssetDetailsPage() {
       <Dialog open={!!viewingPhoto} onOpenChange={() => setViewingPhoto(null)}>
         <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/95 border-0 flex flex-col items-stretch h-[90vh]">
           <DialogHeader className="p-4 bg-background/10 backdrop-blur-sm border-b border-white/10 absolute top-0 w-full z-10">
-            <DialogTitle className="text-white text-sm font-bold uppercase tracking-widest">Asset Documentation Preview</DialogTitle>
-            <DialogDescription className="sr-only">High resolution preview of asset documentation</DialogDescription>
+            <DialogTitle className="text-white text-sm font-bold uppercase tracking-widest">Equipment Documentation Preview</DialogTitle>
+            <DialogDescription className="sr-only">High resolution preview of equipment documentation</DialogDescription>
           </DialogHeader>
-          <div className="flex-1 relative flex items-center justify-center p-4">{viewingPhoto && <Image src={viewingPhoto.url} alt="Asset photo preview" fill className="object-contain" priority />}</div>
+          <div className="flex-1 relative flex items-center justify-center p-4">{viewingPhoto && <Image src={viewingPhoto.url} alt="Equipment photo preview" fill className="object-contain" priority />}</div>
           <div className="p-4 bg-background flex justify-between items-center border-t">
             <Button variant="outline" size="sm" onClick={() => setViewingPhoto(null)}>Close</Button>
             <div className="flex items-center gap-2">

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -20,7 +19,9 @@ import { MaterialsReportDialog } from '@/components/materials-report-dialog';
 import { format, addMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO, differenceInMonths } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from 'recharts';text-2xlexport default function AssetsPageContent() {
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from 'recharts';
+
+export default function AssetsPageContent() {
   const db = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
@@ -159,7 +160,7 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Assets</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Equipment</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{assets.length}</div>
@@ -330,11 +331,11 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from 
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>Asset Registry</CardTitle>
+                  <CardTitle>Equipment Registry</CardTitle>
                   <div className="relative w-64">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Search assets..."
+                      placeholder="Search equipment..."
                       className="pl-8"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
@@ -357,7 +358,7 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from 
                   </TableHeader>
                   <TableBody>
                     {isLoading ? (
-                      <TableRow><TableCell colSpan={7} className="text-center py-8">Loading assets...</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7} className="text-center py-8">Loading equipment...</TableCell></TableRow>
                     ) : filteredAssets.length > 0 ? (
                       filteredAssets.map(asset => {
                         const nextPm = schedules.find(s => s.assetId === asset.id && s.status === 'active');
@@ -394,7 +395,7 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from 
                         );
                       })
                     ) : (
-                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No assets found.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No equipment found.</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
@@ -494,7 +495,7 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from 
                       Maintenance is grouped by Master Site Job. Consolidated master work orders reduce call-in/out overhead.
                     </p>
                   </CardContent>
-                </div>
+                </Card>
               </div>
             </div>
           </TabsContent>
