@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -136,8 +137,8 @@ export default function AssetsPageContent() {
       <div className="container mx-auto py-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Assets & PM</h1>
-            <p className="text-muted-foreground">Manage equipment registry and seasonal maintenance cycles.</p>
+            <h1 className="text-3xl font-bold tracking-tight">Equipment Registry & PM</h1>
+            <p className="text-muted-foreground">Manage service history and seasonal maintenance cycles.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button onClick={handleGeneratePmOrders} disabled={isGenerating} variant="outline" className="bg-primary/5 border-primary/20 text-primary">
@@ -151,7 +152,7 @@ export default function AssetsPageContent() {
             <Button asChild>
               <Link href="/assets/new">
                 <PlusCircle className="mr-2 h-4 w-4" />
-                Add Asset
+                Add Equipment
               </Link>
             </Button>
           </div>
@@ -160,7 +161,7 @@ export default function AssetsPageContent() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Equipment</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Units</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{assets.length}</div>
