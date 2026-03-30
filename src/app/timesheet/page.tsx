@@ -209,14 +209,17 @@ export default function TimesheetPage() {
                                                     {groupedEntries[date].map((entry, index) => (
                                                         <div key={entry.id} className={`flex items-center justify-between p-3 ${index < groupedEntries[date].length - 1 ? 'border-b' : ''}`}>
                                                             <div>
-                                                                <p className="font-medium">
+                                                                <div className="font-medium">
                                                                     {entry.workOrderId ? (
-                                                                        <span>{entry.workOrder?.jobName || `Job #${entry.workOrderId}`}</span>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded border text-muted-foreground uppercase font-bold">#{entry.workOrderId}</span>
+                                                                            <span>{entry.workOrder?.jobName || 'Work Order'}</span>
+                                                                        </div>
                                                                     ) : (
                                                                         <span className="text-gray-500">Non-Productive</span>
                                                                     )}
-                                                                </p>
-                                                                {entry.notes && <p className="text-sm text-muted-foreground">{entry.notes}</p>}
+                                                                </div>
+                                                                {entry.notes && <p className="text-sm text-muted-foreground mt-1">{entry.notes}</p>}
                                                             </div>
                                                             <div className="flex items-center gap-4">
                                                                 <div className="text-right">
