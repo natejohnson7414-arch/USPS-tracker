@@ -5,7 +5,7 @@ import { useParams, notFound, useSearchParams, useRouter } from 'next/navigation
 import { format, isSameDay } from 'date-fns';
 import { useFirestore } from '@/firebase';
 import { getWorkOrderById } from '@/lib/data';
-import type { WorkOrder, Acknowledgement, WorkOrderNote } from '@/lib/types';
+import type { WorkOrder, Acknowledgement, WorkOrderNote, PhotoMetadata } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Download, Loader2, Printer, ArrowLeft } from 'lucide-react';
@@ -23,7 +23,9 @@ export default function WorkOrderAcknowledgmentPage() {
     const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
     const [filteredAcks, setFilteredAcks] = useState<Acknowledgement[]>([]);
     const [filteredNotes, setFilteredNotes] = useState<WorkOrderNote[]>([]);
-    const [filteredPhotos, setFilteredPhotos] = useState<string[]>([]);
+    const [beforePhotos, setBeforePhotos] = useState<string[]>([]);
+    const [afterPhotos, setAfterPhotos] = useState<string[]>([]);
+    const [notePhotos, setNotePhotos] = useState<string[]>([]);
     
     const [isLoading, setIsLoading] = useState(true);
     const [isDownloading, setIsDownloading] = useState(false);
@@ -60,9 +62,14 @@ export default function WorkOrderAcknowledgmentPage() {
                 });
                 setFilteredNotes(notes);
 
-                const photos = notes.flatMap(note => note.photoUrls || []);
-                setFilteredPhotos(photos);
-
+                // Collect and normalize all photo sources
+                const before = (wo.beforePhotoUrls || []).map(p => typeof p === 'string' ? p : p.url);
+                const after = (wo.afterPhotoUrls || []).map(p => typeof p === 'string' ? p : p.url);
+                const notePhotosList = notes.flatMap(note => (note.photoUrls || []).map(p => typeof p === 'string' ? p : p.url));
+                
+                setBeforePhotos(before);
+                setAfterPhotos(after);
+                setNotePhotos(notePhotosList);
 
             } catch (err) {
                 console.error("Error generating acknowledgment:", err);
@@ -156,8 +163,14 @@ export default function WorkOrderAcknowledgmentPage() {
     }
 
     const photosPerPage = 6;
-    const photoChunks = Array.from({ length: Math.ceil(filteredPhotos.length / photosPerPage) }, (_, i) =>
-        filteredPhotos.slice(i * photosPerPage, i * photosPerPage + photosPerPage)
+    const beforePhotoChunks = Array.from({ length: Math.ceil(beforePhotos.length / photosPerPage) }, (_, i) =>
+        beforePhotos.slice(i * photosPerPage, i * photosPerPage + photosPerPage)
+    );
+    const afterPhotoChunks = Array.from({ length: Math.ceil(afterPhotos.length / photosPerPage) }, (_, i) =>
+        afterPhotos.slice(i * photosPerPage, i * photosPerPage + photosPerPage)
+    );
+    const notePhotoChunks = Array.from({ length: Math.ceil(notePhotos.length / photosPerPage) }, (_, i) =>
+        notePhotos.slice(i * photosPerPage, i * photosPerPage + photosPerPage)
     );
 
     return (
@@ -235,10 +248,52 @@ export default function WorkOrderAcknowledgmentPage() {
                     </section>
                 </div>
 
-                {photoChunks.map((chunk, pageIndex) => (
-                    <div key={pageIndex} className="pdf-page bg-white text-black font-sans p-8 mb-8" style={{ minHeight: '11in' }}>
+                {beforePhotoChunks.map((chunk, pageIndex) => (
+                    <div key={`before-${pageIndex}`} className="pdf-page bg-white text-black font-sans p-8 mb-8" style={{ minHeight: '11in' }}>
                         <header className="flex justify-between items-center mb-8">
-                            <h2 className="text-xl font-semibold">Photos from Notes {photoChunks.length > 1 ? `(Page ${pageIndex + 1})` : ''}</h2>
+                            <h2 className="text-xl font-semibold">Before Work Photos {beforePhotoChunks.length > 1 ? `(Page ${pageIndex + 1})` : ''}</h2>
+                            <p className="text-sm text-gray-500">Job # {workOrder.id}</p>
+                        </header>
+                        <div className="grid grid-cols-2 gap-4">
+                            {chunk.map((url, index) => (
+                                <div key={index} className="border p-2 rounded-md flex flex-col items-center justify-center bg-gray-50" style={{ height: '280px' }}>
+                                    <img 
+                                        src={proxiedUrl(url)} 
+                                        alt={`Before photo ${pageIndex * photosPerPage + index + 1}`} 
+                                        className="max-w-full max-h-[240px] object-contain" 
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-2">Before Photo {pageIndex * photosPerPage + index + 1}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+
+                {afterPhotoChunks.map((chunk, pageIndex) => (
+                    <div key={`after-${pageIndex}`} className="pdf-page bg-white text-black font-sans p-8 mb-8" style={{ minHeight: '11in' }}>
+                        <header className="flex justify-between items-center mb-8">
+                            <h2 className="text-xl font-semibold">After Work Photos {afterPhotoChunks.length > 1 ? `(Page ${pageIndex + 1})` : ''}</h2>
+                            <p className="text-sm text-gray-500">Job # {workOrder.id}</p>
+                        </header>
+                        <div className="grid grid-cols-2 gap-4">
+                            {chunk.map((url, index) => (
+                                <div key={index} className="border p-2 rounded-md flex flex-col items-center justify-center bg-gray-50" style={{ height: '280px' }}>
+                                    <img 
+                                        src={proxiedUrl(url)} 
+                                        alt={`After photo ${pageIndex * photosPerPage + index + 1}`} 
+                                        className="max-w-full max-h-[240px] object-contain" 
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-2">After Photo {pageIndex * photosPerPage + index + 1}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+
+                {notePhotoChunks.map((chunk, pageIndex) => (
+                    <div key={`note-photos-${pageIndex}`} className="pdf-page bg-white text-black font-sans p-8 mb-8" style={{ minHeight: '11in' }}>
+                        <header className="flex justify-between items-center mb-8">
+                            <h2 className="text-xl font-semibold">Field Photos {notePhotoChunks.length > 1 ? `(Page ${pageIndex + 1})` : ''}</h2>
                             <p className="text-sm text-gray-500">Job # {workOrder.id} - {format(acknowledgmentDate, 'yyyy-MM-dd')}</p>
                         </header>
                         <div className="grid grid-cols-2 gap-4">
