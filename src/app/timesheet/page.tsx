@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Trash2, ChevronLeft, ChevronRight, Hash } from 'lucide-react';
 import { useFirestore, useUser, addDocumentNonBlocking, deleteDocumentNonBlocking, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
 import type { TimeEntry, WorkOrder } from '@/lib/types';
@@ -108,7 +108,7 @@ export default function TimesheetPage() {
             
             toast({ title: 'Time Entry Saved' });
             resetForm();
-            fetchTimeEntries(); // Refresh the list
+            fetchTimeEntries(); 
 
         } catch (error) {
              if (error instanceof Error && !error.message.startsWith('Missing or insufficient permissions:')) {
@@ -123,7 +123,6 @@ export default function TimesheetPage() {
     const handleDeleteEntry = async (entryId: string) => {
         if (!db) return;
         
-        // Optimistic update
         setTimeEntries(prev => prev.filter(entry => entry.id !== entryId));
 
         const entryRef = doc(db, 'time_entries', entryId);
@@ -132,7 +131,7 @@ export default function TimesheetPage() {
             toast({ title: 'Entry Deleted' });
         } catch (error) {
             toast({ title: 'Delete Failed', variant: 'destructive' });
-            fetchTimeEntries(); // Re-fetch to revert optimistic update
+            fetchTimeEntries(); 
         }
     };
 
@@ -208,23 +207,26 @@ export default function TimesheetPage() {
                                                 <div className="border rounded-md">
                                                     {groupedEntries[date].map((entry, index) => (
                                                         <div key={entry.id} className={`flex items-center justify-between p-3 ${index < groupedEntries[date].length - 1 ? 'border-b' : ''}`}>
-                                                            <div>
-                                                                <div className="font-medium">
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="font-medium flex items-center flex-wrap gap-2">
                                                                     {entry.workOrderId ? (
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded border text-muted-foreground uppercase font-bold">#{entry.workOrderId}</span>
-                                                                            <span>{entry.workOrder?.jobName || 'Work Order'}</span>
-                                                                        </div>
+                                                                        <>
+                                                                            <Badge variant="outline" className="font-mono text-[10px] uppercase font-bold shrink-0">
+                                                                                <Hash className="h-2.5 w-2.5 mr-0.5" />
+                                                                                {entry.workOrderId}
+                                                                            </Badge>
+                                                                            <span className="truncate">{entry.workOrder?.jobName || 'Work Order'}</span>
+                                                                        </>
                                                                     ) : (
-                                                                        <span className="text-gray-500">Non-Productive</span>
+                                                                        <span className="text-muted-foreground italic">Non-Productive</span>
                                                                     )}
                                                                 </div>
-                                                                {entry.notes && <p className="text-sm text-muted-foreground mt-1">{entry.notes}</p>}
+                                                                {entry.notes && <p className="text-sm text-muted-foreground mt-1 truncate">{entry.notes}</p>}
                                                             </div>
-                                                            <div className="flex items-center gap-4">
+                                                            <div className="flex items-center gap-4 shrink-0 ml-4">
                                                                 <div className="text-right">
                                                                     <p className="font-bold">{entry.hours.toFixed(2)} hrs</p>
-                                                                    <p className="text-xs text-muted-foreground">{entry.timeType}</p>
+                                                                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{entry.timeType}</p>
                                                                 </div>
                                                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteEntry(entry.id)}>
                                                                     <Trash2 className="h-4 w-4" />

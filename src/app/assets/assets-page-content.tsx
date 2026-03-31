@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Package, PlusCircle, Search, CalendarClock, TrendingUp, AlertTriangle, Loader2, FileBarChart, ChevronRight, Building, Box, Sparkles, Wrench, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase/provider';
 import { getAssets, getAssetPmSchedules, generatePmWorkOrdersForMonth, getPmWorkOrders, seedDatabase, getActiveContracts } from '@/lib/data';
 import type { Asset, AssetPmSchedule, PmWorkOrder, MaintenanceContract } from '@/lib/types';
 import { generateLaborForecast, type LaborForecast } from '@/lib/reporting-service';
@@ -496,7 +496,7 @@ export default function AssetsPageContent() {
                       Maintenance is grouped by Master Site Job. Consolidated master work orders reduce call-in/out overhead.
                     </p>
                   </CardContent>
-                </Card>
+                </div>
               </div>
             </div>
           </TabsContent>

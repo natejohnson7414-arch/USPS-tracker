@@ -4,9 +4,9 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, notFound, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
-import { useFirestore } from '@/firebase';
+import { useFirestore } from '@/firebase/provider';
 import { getWorkOrderById, getTimeEntriesByWorkOrder, getTechnicians } from '@/lib/data';
-import type { WorkOrder, TimeEntry, Technician } from '@/lib/types';
+import type { WorkOrder, TimeEntry, Technician, PhotoMetadata } from '@/lib/types';
 import { summarizeNotes } from '@/ai/flows/summarize-notes-flow';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -53,15 +53,12 @@ export default function WorkOrderReportPage() {
                 }
                 setWorkOrder(wo);
                 
-                // 1. Check for manual override from the office
                 if (wo.customWorkPerformedSummary) {
                     setSummarizedDescription(wo.customWorkPerformedSummary);
                     setIsLoading(false);
                     return;
                 }
 
-                // 2. Aggregate filtered info for the AI (excluding items marked by admin)
-                // We correctly resolve technician names here for the AI to have context
                 const contentParts = [
                     `Job Specification: ${wo.description}`,
                     ...wo.notes.filter(n => !n.excludeFromReport).map(n => `Technician Note: ${n.text}`),
@@ -110,6 +107,7 @@ export default function WorkOrderReportPage() {
                     scale: 1.5,
                     useCORS: true, 
                     allowTaint: true,
+                    logging: false,
                 });
     
                 const imgData = canvas.toDataURL('image/jpeg', 0.8);
@@ -175,9 +173,6 @@ export default function WorkOrderReportPage() {
         };
     }, [handleDownload]);
 
-
-    const action = searchParams.get('action');
-
     if (isLoading) {
         return (
             <div className="flex h-screen items-center justify-center bg-gray-100">
@@ -204,7 +199,12 @@ export default function WorkOrderReportPage() {
         notFound();
     }
 
-    const proxiedUrl = (url: string) => `/api/image-proxy?url=${encodeURIComponent(url)}`;
+    const proxiedUrl = (url: string | PhotoMetadata) => {
+        const targetUrl = typeof url === 'string' ? url : url.url;
+        if (!targetUrl) return '';
+        if (targetUrl.startsWith('data:')) return targetUrl;
+        return `/api/image-proxy?url=${encodeURIComponent(targetUrl)}`;
+    };
     
     const latestAck = workOrder.acknowledgements && workOrder.acknowledgements.length > 0 
         ? workOrder.acknowledgements[workOrder.acknowledgements.length - 1] 
@@ -233,7 +233,7 @@ export default function WorkOrderReportPage() {
 
     return (
         <div className="bg-gray-100 min-h-screen py-8">
-            {!action && !isInIframe && (
+            {!searchParams.get('action') && !isInIframe && (
                 <div id="action-buttons" className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-2 print:hidden">
                     <Button onClick={handlePrint}>
                         <Printer className="mr-2 h-4 w-4" />
@@ -309,7 +309,7 @@ export default function WorkOrderReportPage() {
                             <div className="w-1/3 flex items-center pr-4 text-sm"><p>Signature:</p></div>
                             <div className="w-2/3 border-2 border-black p-2 -ml-px -mt-px min-h-[3rem] flex items-center">
                                 {!!displaySignatureUrl && (
-                                    <img src={proxiedUrl(displaySignatureUrl)} alt="Customer Signature" style={{ objectFit: 'contain', maxHeight: '100%', maxWidth: '150px' }} />
+                                    <img src={proxiedUrl(displaySignatureUrl)} alt="Customer Signature" crossOrigin="anonymous" style={{ objectFit: 'contain', maxHeight: '100%', maxWidth: '150px' }} />
                                 )}
                             </div>
                         </div>
@@ -332,17 +332,17 @@ export default function WorkOrderReportPage() {
             {beforePhotoChunks.map((chunk, pageIndex) => (
                 <div key={`before-page-${pageIndex}`} className="pdf-page p-8" style={{ minHeight: '11in' }}>
                     <header className="flex justify-between items-center mb-8">
-                         <h1 className="font-bold text-xl">Before Photos {beforePhotoChunks.length > 1 ? `(Page ${pageIndex + 1})` : ''}</h1>
+                         <h1 className="font-bold text-xl text-primary">BEFORE PHOTOS {beforePhotoChunks.length > 1 ? `(PAGE ${pageIndex + 1})` : ''}</h1>
                          <p className="text-sm text-gray-600">Work Order # {workOrder.id}</p>
                     </header>
                     <main>
                          <div className="grid grid-cols-2 gap-8">
                             {chunk.map((url, index) => (
                                 <div key={index} className="space-y-2">
-                                    <div className="w-full border rounded-lg overflow-hidden flex items-center justify-center bg-gray-50" style={{ height: '280px' }}>
-                                        {!!url && <img src={proxiedUrl(url)} alt={`Before photo ${pageIndex * photosPerPage + index + 1}`} className="max-w-full max-h-full object-contain" />}
+                                    <div className="w-full border-2 border-muted rounded-lg overflow-hidden flex items-center justify-center bg-gray-50" style={{ height: '320px' }}>
+                                        {!!url && <img src={proxiedUrl(url)} alt={`Before photo ${pageIndex * photosPerPage + index + 1}`} crossOrigin="anonymous" className="max-w-full max-h-full object-contain" />}
                                     </div>
-                                    <p className="text-center text-sm text-gray-500">Before Photo {pageIndex * photosPerPage + index + 1}</p>
+                                    <p className="text-center text-[10px] font-black uppercase text-muted-foreground tracking-widest">Before Photo {pageIndex * photosPerPage + index + 1}</p>
                                 </div>
                             ))}
                         </div>
@@ -353,17 +353,17 @@ export default function WorkOrderReportPage() {
             {afterPhotoChunks.map((chunk, pageIndex) => (
                 <div key={`after-page-${pageIndex}`} className="pdf-page p-8" style={{ minHeight: '11in' }}>
                     <header className="flex justify-between items-center mb-8">
-                         <h1 className="font-bold text-xl">After Photos {afterPhotoChunks.length > 1 ? `(Page ${pageIndex + 1})` : ''}</h1>
+                         <h1 className="font-bold text-xl text-primary">AFTER PHOTOS {afterPhotoChunks.length > 1 ? `(PAGE ${pageIndex + 1})` : ''}</h1>
                          <p className="text-sm text-gray-600">Work Order # {workOrder.id}</p>
                     </header>
                     <main>
                          <div className="grid grid-cols-2 gap-8">
                             {chunk.map((url, index) => (
                                 <div key={index} className="space-y-2">
-                                    <div className="w-full border rounded-lg overflow-hidden flex items-center justify-center bg-gray-50" style={{ height: '280px' }}>
-                                        {!!url && <img src={proxiedUrl(url)} alt={`After photo ${pageIndex * photosPerPage + index + 1}`} className="max-w-full max-h-full object-contain" />}
+                                    <div className="w-full border-2 border-muted rounded-lg overflow-hidden flex items-center justify-center bg-gray-50" style={{ height: '320px' }}>
+                                        {!!url && <img src={proxiedUrl(url)} alt={`After photo ${pageIndex * photosPerPage + index + 1}`} crossOrigin="anonymous" className="max-w-full max-h-full object-contain" />}
                                     </div>
-                                    <p className="text-center text-sm text-gray-500">After Photo {pageIndex * photosPerPage + index + 1}</p>
+                                    <p className="text-center text-[10px] font-black uppercase text-muted-foreground tracking-widest">After Photo {pageIndex * photosPerPage + index + 1}</p>
                                 </div>
                             ))}
                         </div>
@@ -374,17 +374,17 @@ export default function WorkOrderReportPage() {
             {activityPhotoChunks.map((chunk, pageIndex) => (
                 <div key={`activity-page-${pageIndex}`} className="pdf-page p-8" style={{ minHeight: '11in' }}>
                     <header className="flex justify-between items-center mb-8">
-                         <h1 className="font-bold text-xl">Activity Photos {activityPhotoChunks.length > 1 ? `(Page ${pageIndex + 1})` : ''}</h1>
+                         <h1 className="font-bold text-xl text-primary">DOCUMENTATION PHOTOS {activityPhotoChunks.length > 1 ? `(PAGE ${pageIndex + 1})` : ''}</h1>
                          <p className="text-sm text-gray-600">Work Order # {workOrder.id}</p>
                     </header>
                     <main>
                          <div className="grid grid-cols-2 gap-8">
                             {chunk.map((url, index) => (
                                 <div key={index} className="space-y-2">
-                                    <div className="w-full border rounded-lg overflow-hidden flex items-center justify-center bg-gray-50" style={{ height: '280px' }}>
-                                        {!!url && <img src={proxiedUrl(url)} alt={`Activity photo ${pageIndex * photosPerPage + index + 1}`} className="max-w-full max-h-full object-contain" />}
+                                    <div className="w-full border-2 border-muted rounded-lg overflow-hidden flex items-center justify-center bg-gray-50" style={{ height: '320px' }}>
+                                        {!!url && <img src={proxiedUrl(url)} alt={`Activity photo ${pageIndex * photosPerPage + index + 1}`} crossOrigin="anonymous" className="max-w-full max-h-full object-contain" />}
                                     </div>
-                                    <p className="text-center text-sm text-gray-500">Activity Photo {pageIndex * photosPerPage + index + 1}</p>
+                                    <p className="text-center text-[10px] font-black uppercase text-muted-foreground tracking-widest">Documentation Photo {pageIndex * photosPerPage + index + 1}</p>
                                 </div>
                             ))}
                         </div>

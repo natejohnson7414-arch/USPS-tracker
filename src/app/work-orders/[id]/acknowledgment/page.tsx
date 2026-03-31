@@ -4,7 +4,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, notFound, useSearchParams, useRouter } from 'next/navigation';
 import { format, isSameDay } from 'date-fns';
-import { useFirestore } from '@/firebase';
+import { useFirestore } from '@/firebase/provider';
 import { getWorkOrderById } from '@/lib/data';
 import type { WorkOrder, Acknowledgement, WorkOrderNote, PhotoMetadata } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -63,7 +63,6 @@ export default function WorkOrderAcknowledgmentPage() {
                 });
                 setFilteredNotes(notes);
 
-                // Collect and normalize all photo sources for documentation
                 const before = (wo.beforePhotoUrls || []).map(p => typeof p === 'string' ? p : p.url);
                 const after = (wo.afterPhotoUrls || []).map(p => typeof p === 'string' ? p : p.url);
                 const notePhotosList = notes.flatMap(note => (note.photoUrls || []).map(p => typeof p === 'string' ? p : p.url));
@@ -135,7 +134,11 @@ export default function WorkOrderAcknowledgmentPage() {
         window.print();
     }
     
-    const proxiedUrl = (url: string) => `/api/image-proxy?url=${encodeURIComponent(url)}`;
+    const proxiedUrl = (url: string) => {
+        if (!url) return '';
+        if (url.startsWith('data:')) return url;
+        return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+    };
     
     useEffect(() => {
         if (!isLoading && workOrder && searchParams.get('action') === 'download') {
