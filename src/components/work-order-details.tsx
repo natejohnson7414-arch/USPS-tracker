@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -560,7 +561,7 @@ export function WorkOrderDetails({
                               <Badge variant="outline" className="font-mono text-[10px]">{asset.assetTag}</Badge>
                               {isLinked && <Badge className="h-5 text-[10px] bg-primary text-primary-foreground">Linked to Job</Badge>}
                             </div>
-                            <p className="text-xs text-muted-foreground mt-1">{asset.manufacturer} {asset.model} • <span className="capitalize">{asset.status}</span></p>
+                            <p className="text-xs text-muted-foreground mt-1">Type: {asset.name} • {asset.manufacturer} {asset.model} • <span className="capitalize">{asset.status}</span></p>
                           </Link>
                           <div className="flex items-center gap-2">
                             <Button asChild variant="ghost" size="icon" className="h-8 w-8" title="View History">

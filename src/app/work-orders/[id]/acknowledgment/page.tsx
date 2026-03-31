@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -62,7 +63,7 @@ export default function WorkOrderAcknowledgmentPage() {
                 });
                 setFilteredNotes(notes);
 
-                // Collect and normalize all photo sources
+                // Collect and normalize all photo sources for documentation
                 const before = (wo.beforePhotoUrls || []).map(p => typeof p === 'string' ? p : p.url);
                 const after = (wo.afterPhotoUrls || []).map(p => typeof p === 'string' ? p : p.url);
                 const notePhotosList = notes.flatMap(note => (note.photoUrls || []).map(p => typeof p === 'string' ? p : p.url));
@@ -97,7 +98,8 @@ export default function WorkOrderAcknowledgmentPage() {
                 const canvas = await html2canvas(page, { 
                     scale: 2, 
                     useCORS: true, 
-                    logging: false
+                    logging: false,
+                    allowTaint: true,
                 });
                 
                 const imgData = canvas.toDataURL('image/png');
@@ -137,7 +139,7 @@ export default function WorkOrderAcknowledgmentPage() {
     
     useEffect(() => {
         if (!isLoading && workOrder && searchParams.get('action') === 'download') {
-            const timer = setTimeout(() => handleDownload(), 1500);
+            const timer = setTimeout(() => handleDownload(), 2000);
             return () => clearTimeout(timer);
         }
     }, [isLoading, workOrder, searchParams, handleDownload]);
@@ -222,7 +224,12 @@ export default function WorkOrderAcknowledgmentPage() {
                                 <div className="grid grid-cols-3 gap-4 items-center">
                                     <div className="font-medium">{workOrder.contactInfo || 'Customer Signature'}</div>
                                     <div className="bg-gray-100 p-2 rounded-md col-span-2">
-                                        <img src={proxiedUrl(workOrder.customerSignatureUrl)} alt={`Signature`} className="max-h-16 mx-auto" />
+                                        <img 
+                                            src={proxiedUrl(workOrder.customerSignatureUrl)} 
+                                            alt={`Signature`} 
+                                            className="max-h-16 mx-auto" 
+                                            crossOrigin="anonymous"
+                                        />
                                     </div>
                                 </div>
                             ) : filteredAcks.length > 0 ? (
@@ -230,7 +237,12 @@ export default function WorkOrderAcknowledgmentPage() {
                                     <div key={index} className="grid grid-cols-3 gap-4 items-center">
                                         <div className="font-medium">{ack.name}</div>
                                         <div className="bg-gray-100 p-2 rounded-md col-span-2">
-                                            <img src={proxiedUrl(ack.signatureUrl)} alt={`${ack.name}'s signature`} className="max-h-16 mx-auto" />
+                                            <img 
+                                                src={proxiedUrl(ack.signatureUrl)} 
+                                                alt={`${ack.name}'s signature`} 
+                                                className="max-h-16 mx-auto" 
+                                                crossOrigin="anonymous"
+                                            />
                                         </div>
                                     </div>
                                 ))
@@ -267,6 +279,7 @@ export default function WorkOrderAcknowledgmentPage() {
                                         src={proxiedUrl(url)} 
                                         alt={`Before photo ${pageIndex * photosPerPage + index + 1}`} 
                                         className="max-w-full max-h-[240px] object-contain" 
+                                        crossOrigin="anonymous"
                                     />
                                     <p className="text-xs text-muted-foreground mt-2">Before Photo {pageIndex * photosPerPage + index + 1}</p>
                                 </div>
@@ -288,6 +301,7 @@ export default function WorkOrderAcknowledgmentPage() {
                                         src={proxiedUrl(url)} 
                                         alt={`After photo ${pageIndex * photosPerPage + index + 1}`} 
                                         className="max-w-full max-h-[240px] object-contain" 
+                                        crossOrigin="anonymous"
                                     />
                                     <p className="text-xs text-muted-foreground mt-2">After Photo {pageIndex * photosPerPage + index + 1}</p>
                                 </div>
@@ -309,6 +323,7 @@ export default function WorkOrderAcknowledgmentPage() {
                                         src={proxiedUrl(url)} 
                                         alt={`Daily photo ${pageIndex * photosPerPage + index + 1}`} 
                                         className="max-w-full max-h-[240px] object-contain" 
+                                        crossOrigin="anonymous"
                                     />
                                     <p className="text-xs text-muted-foreground mt-2">Photo {pageIndex * photosPerPage + index + 1}</p>
                                 </div>

@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
             headers: {
                 'Content-Type': contentType,
                 'Cache-Control': 'public, max-age=31536000, immutable',
+                'Access-Control-Allow-Origin': '*',
             },
         });
         
@@ -32,5 +33,3 @@ export async function GET(req: NextRequest) {
         return new NextResponse('Error proxying image', { status: 500 });
     }
 }
-
-    
