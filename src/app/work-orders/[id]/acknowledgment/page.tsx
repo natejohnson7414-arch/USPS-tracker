@@ -97,7 +97,6 @@ export default function WorkOrderAcknowledgmentPage() {
                 const canvas = await html2canvas(page, { 
                     scale: 2, 
                     useCORS: true, 
-                    allowTaint: true,
                     logging: false
                 });
                 
@@ -135,6 +134,13 @@ export default function WorkOrderAcknowledgmentPage() {
     }
     
     const proxiedUrl = (url: string) => `/api/image-proxy?url=${encodeURIComponent(url)}`;
+    
+    useEffect(() => {
+        if (!isLoading && workOrder && searchParams.get('action') === 'download') {
+            const timer = setTimeout(() => handleDownload(), 1500);
+            return () => clearTimeout(timer);
+        }
+    }, [isLoading, workOrder, searchParams, handleDownload]);
     
     if (isLoading) {
         return (
