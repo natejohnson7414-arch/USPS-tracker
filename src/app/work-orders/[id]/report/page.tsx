@@ -5,8 +5,8 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, notFound, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { useFirestore } from '@/firebase/provider';
-import { getWorkOrderById, getTimeEntriesByWorkOrder, getTechnicians } from '@/lib/data';
-import type { WorkOrder, TimeEntry, Technician, PhotoMetadata } from '@/lib/types';
+import { getWorkOrderById, getTimeEntriesByWorkOrder, getTechnicians, getQuotesByWorkOrderId } from '@/lib/data';
+import type { WorkOrder, TimeEntry, Technician, PhotoMetadata, Quote } from '@/lib/types';
 import { summarizeNotes } from '@/ai/flows/summarize-notes-flow';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -97,6 +97,16 @@ export default function WorkOrderReportPage() {
         setIsDownloading(true);
     
         try {
+            // Pre-load images to ensure they are rendered correctly by canvas
+            const images = Array.from(content.getElementsByTagName('img'));
+            await Promise.all(images.map(img => {
+                if (img.complete) return Promise.resolve();
+                return new Promise(resolve => {
+                    img.onload = resolve;
+                    img.onerror = resolve;
+                });
+            }));
+
             const pages = content.querySelectorAll('.pdf-page') as NodeListOf<HTMLElement>;
             let pdf: jsPDF | null = null;
     

@@ -1,4 +1,4 @@
-'use client';
+
 /**
  * @fileOverview Barrel file for Firebase functionality.
  * Optimized to serve as a pass-through for client boundary modules.
