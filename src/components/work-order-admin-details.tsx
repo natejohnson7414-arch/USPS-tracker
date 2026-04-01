@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, ClipboardCheck, CheckCircle2, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText, Download, AlertCircle, Save, Package, ChevronRight, Filter, Receipt, Sparkles, Maximize2 } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, ClipboardCheck, CheckCircle2, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText, Download, AlertCircle, Save, Package, ChevronRight, Filter, Receipt, Sparkles, Maximize2, UserCircle, Phone, Mail } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
@@ -200,7 +200,6 @@ export function WorkOrderAdminDetails({
     setIsClient(true);
     if (db && workOrder.workSiteId) {
         getAssetsBySiteId(db, workOrder.workSiteId).then(assets => {
-            // Alphabetize asset list for consistent documented view
             const sortedAssets = [...assets].sort((a, b) => a.name.localeCompare(b.name));
             setSiteAssets(sortedAssets);
         });
@@ -381,7 +380,20 @@ export function WorkOrderAdminDetails({
                   <div className="flex justify-between items-start"><span className="text-muted-foreground">Bill To</span><div className="text-right"><p className="font-medium">{workOrder.client?.name || workOrder.billTo || 'N/A'}</p>{workOrder.client?.address && <p className="text-xs text-muted-foreground">{workOrder.client.address}</p>}</div></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">PO #</span><span className="font-medium">{workOrder.poNumber || 'N/A'}</span></div>
                   <div className="flex justify-between items-start"><span className="text-muted-foreground">Contact</span><span className="font-medium text-right whitespace-pre-wrap">{workOrder.contactInfo || 'N/A'}</span></div>
-                  <Separator/><div className="flex justify-between items-start"><span className="text-muted-foreground">Job Site</span><div className="text-right"><p className="font-medium">{workOrder.workSite?.name || 'N/A'}</p>{workOrder.workSite?.address && <p className="text-xs text-muted-foreground">{workOrder.workSite.address}</p>}</div></div>
+                  <Separator/>
+                  <div className="flex justify-between items-start"><span className="text-muted-foreground">Job Site</span><div className="text-right"><p className="font-medium">{workOrder.workSite?.name || 'N/A'}</p>{workOrder.workSite?.address && <p className="text-xs text-muted-foreground">{workOrder.workSite.address}</p>}</div></div>
+                  
+                  {workOrder.workSite?.contact && (
+                    <div className="flex justify-between items-start pt-2">
+                      <span className="text-muted-foreground">Site Contact</span>
+                      <div className="text-right space-y-1">
+                        <p className="font-bold flex items-center justify-end gap-1.5"><UserCircle className="h-3.5 w-3.5" />{workOrder.workSite.contact.name}</p>
+                        {workOrder.workSite.contact.phone && <a href={`tel:${workOrder.workSite.contact.phone}`} className="text-primary hover:underline block flex items-center justify-end gap-1.5"><Phone className="h-3 w-3" />{workOrder.workSite.contact.phone}</a>}
+                        {workOrder.workSite.contact.email && <a href={`mailto:${workOrder.workSite.contact.email}`} className="text-primary hover:underline block flex items-center justify-end gap-1.5"><Mail className="h-3 w-3" />{workOrder.workSite.contact.email}</a>}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex justify-between"><span className="text-muted-foreground">Assigned To</span>{assignedTechnician ? <div className="flex items-center gap-2 font-medium"><span>{assignedTechnician.name}</span></div> : <span className="font-medium">Unassigned</span>}</div>
                    <Separator/><div className="flex justify-between"><span className="text-muted-foreground">Schedule Date</span><span className="font-medium">{workOrder.serviceScheduleDate ? format(new Date(workOrder.serviceScheduleDate), 'MMM d, yyyy') : 'N/A'}</span></div>
                     <div className="flex justify-between"><span className="text-muted-foreground">Quoted Amount</span><span className="font-medium">{workOrder.quotedAmount ? `$${workOrder.quotedAmount.toFixed(2)}` : 'N/A'}</span></div>

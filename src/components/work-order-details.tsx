@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, ReceiptText, AlertCircle, CheckCircle2, Package, ChevronRight, Receipt, Maximize2, Download } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, ClipboardCheck, Clock, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, ReceiptText, AlertCircle, CheckCircle2, Package, ChevronRight, Receipt, Maximize2, Download, UserCircle, Phone, Mail } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
@@ -281,7 +281,6 @@ export function WorkOrderDetails({
     setIsClient(true);
     if (db && workOrder.workSiteId) {
         getAssetsBySiteId(db, workOrder.workSiteId).then(assets => {
-            // Alphabetize the asset list for clear field selection
             const sortedAssets = [...assets].sort((a, b) => a.name.localeCompare(b.name));
             setSiteAssets(sortedAssets);
         });
@@ -340,7 +339,6 @@ export function WorkOrderDetails({
     if (!viewingPhoto) return;
     const targetUrl = viewingPhoto.url;
     
-    // Find the original photo object to pass to delete logic
     const findPhoto = (list: (string | PhotoMetadata)[] | undefined) => 
       list?.find(p => (typeof p === 'string' ? p : p.url) === targetUrl);
 
@@ -360,19 +358,14 @@ export function WorkOrderDetails({
   const getPhotoUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.url;
   const getThumbUrl = (p: string | PhotoMetadata) => typeof p === 'string' ? p : p.thumbnailUrl || p.url;
   
-  // Use image proxy for high-res previews to resolve CORS/loading issues
   const getProxiedUrl = (url: string) => `/api/image-proxy?url=${encodeURIComponent(url)}`;
 
-  // Wrapped AddActivity to also sync involvedTechnicianIds
   const handleAddActivityWithSync = (activityData: any) => {
     if (!db || !workOrder) return;
-    
-    // Architecturally sync involved technicians list
     const woRef = doc(db, 'work_orders', workOrder.id);
     updateDocumentNonBlocking(woRef, {
         involvedTechnicianIds: arrayUnion(activityData.technicianId)
     });
-    
     onAddActivity(activityData);
   };
 
@@ -423,9 +416,36 @@ export function WorkOrderDetails({
             </div>
           </div>
            {isTechnician && workOrder.status !== 'Completed' && workOrder.workSite && (
-              <div className="flex justify-between items-center pt-4">
-                  <div><p className="text-sm text-muted-foreground">{workOrder.workSite.address}</p></div>
-                   <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center pt-4 gap-4">
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                      <MapPin className="h-4 w-4" /> {workOrder.workSite.address}
+                    </p>
+                    {workOrder.workSite.contact && (
+                      <div className="bg-muted/50 p-3 rounded-md space-y-2 border border-muted">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Site Contact Information</p>
+                        <div className="flex flex-wrap gap-x-6 gap-y-2">
+                          <div className="flex items-center gap-2 text-sm font-bold">
+                            <UserCircle className="h-4 w-4 text-primary" />
+                            {workOrder.workSite.contact.name}
+                          </div>
+                          {workOrder.workSite.contact.phone && (
+                            <a href={`tel:${workOrder.workSite.contact.phone}`} className="flex items-center gap-2 text-sm text-primary hover:underline">
+                              <Phone className="h-4 w-4" />
+                              {workOrder.workSite.contact.phone}
+                            </a>
+                          )}
+                          {workOrder.workSite.contact.email && (
+                            <a href={`mailto:${workOrder.workSite.contact.email}`} className="flex items-center gap-2 text-sm text-primary hover:underline">
+                              <Mail className="h-4 w-4" />
+                              {workOrder.workSite.contact.email}
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                   <div className="flex items-center gap-2 shrink-0">
                       {workOrder.checkInOutURL && (
                           <div className="flex flex-col items-center">
                               <Button asChild variant="outline" size="icon"><a href={getLinkUrl(workOrder.checkInOutURL)} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /><span className="sr-only">Check-in</span></a></Button>
