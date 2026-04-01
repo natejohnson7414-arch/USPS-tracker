@@ -221,7 +221,7 @@ export default function AssetsPageContent() {
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1">
-                            <span className="text-sm font-bold">{wo.assetTasks.length} Units</span>
+                            <span className="text-sm font-bold">{wo.assetTasks.length} Pieces of Equipment</span>
                             <div className="flex flex-wrap gap-1">
                               {wo.assetTasks.slice(0, 3).map((g, i) => (
                                 <Badge key={i} variant="outline" className="text-[10px] py-0">{g.assetTag}</Badge>
@@ -306,7 +306,7 @@ export default function AssetsPageContent() {
                                       <div className="space-y-1">
                                         <p className="font-bold text-sm truncate max-w-[180px]">{site.name}</p>
                                         <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                                          <span className="flex items-center gap-1"><Package className="h-3 w-3" /> {site.count} Units</span>
+                                          <span className="flex items-center gap-1"><Package className="h-3 w-3" /> {site.count} Pieces</span>
                                           <span className="flex items-center gap-1 font-semibold text-foreground"><Wrench className="h-3 w-3" /> {site.totalHours} hrs</span>
                                         </div>
                                       </div>
@@ -496,7 +496,7 @@ export default function AssetsPageContent() {
                       Maintenance is grouped by Master Site Job. Consolidated master work orders reduce call-in/out overhead.
                     </p>
                   </CardContent>
-                </div>
+                </Card>
               </div>
             </div>
           </TabsContent>

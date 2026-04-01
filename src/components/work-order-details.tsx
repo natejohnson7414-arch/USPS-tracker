@@ -422,7 +422,7 @@ export function WorkOrderDetails({
                       <MapPin className="h-4 w-4" /> {workOrder.workSite.address}
                     </p>
                     {workOrder.workSite.contact && (
-                      <div className="bg-muted/50 p-3 rounded-md space-y-2 border border-muted">
+                      <div className="bg-muted/50 p-3 rounded-md space-y-2 border border-muted mt-2">
                         <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Site Contact Information</p>
                         <div className="flex flex-wrap gap-x-6 gap-y-2">
                           <div className="flex items-center gap-2 text-sm font-bold">
@@ -581,7 +581,7 @@ export function WorkOrderDetails({
                               <Badge variant="outline" className="font-mono text-[10px]">{asset.assetTag}</Badge>
                               {isLinked && <Badge className="h-5 text-[10px] bg-primary text-primary-foreground">Linked to Job</Badge>}
                             </div>
-                            <p className="text-xs text-muted-foreground mt-1">Type: {asset.name} • {asset.manufacturer} {asset.model} • <span className="capitalize">{asset.status}</span></p>
+                            <p className="text-xs text-muted-foreground mt-1">Equipment Type: {asset.name} • {asset.manufacturer} {asset.model} • <span className="capitalize">{asset.status}</span></p>
                           </Link>
                           <div className="flex items-center gap-2">
                             <Button asChild variant="ghost" size="icon" className="h-8 w-8" title="View History">

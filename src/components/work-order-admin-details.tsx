@@ -472,7 +472,7 @@ export function WorkOrderAdminDetails({
                               <Badge variant="outline" className="font-mono text-[10px]">{asset.assetTag}</Badge>
                               {isLinked && <Badge className="h-5 text-[10px] bg-primary text-primary-foreground">Linked to Job</Badge>}
                             </div>
-                            <p className="text-xs text-muted-foreground mt-1">Type: {asset.name} • {asset.manufacturer} {asset.model} • {asset.status}</p>
+                            <p className="text-xs text-muted-foreground mt-1">Equipment Type: {asset.name} • {asset.manufacturer} {asset.model} • {asset.status}</p>
                           </Link>
                           <div className="flex items-center gap-2">
                             <Button asChild variant="ghost" size="icon" className="h-8 w-8">
