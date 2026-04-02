@@ -43,6 +43,7 @@ import { identifyDuplicateSites, mergeSitesAction, type DuplicateSiteGroup } fro
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 
 function WorkSiteItem({ site, onEdit, onDelete }: { site: WorkSite, onEdit: () => void, onDelete: () => void }) {
     return (
