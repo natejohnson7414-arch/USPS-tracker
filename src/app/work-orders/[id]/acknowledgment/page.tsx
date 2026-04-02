@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -89,6 +88,16 @@ export default function WorkOrderAcknowledgmentPage() {
         setIsDownloading(true);
     
         try {
+            // Pre-load images to ensure they are rendered correctly by canvas
+            const images = Array.from(content.getElementsByTagName('img'));
+            await Promise.all(images.map(img => {
+                if (img.complete) return Promise.resolve();
+                return new Promise(resolve => {
+                    img.onload = resolve;
+                    img.onerror = resolve;
+                });
+            }));
+
             const pages = content.querySelectorAll('.pdf-page') as NodeListOf<HTMLElement>;
             let pdf: jsPDF | null = null;
 

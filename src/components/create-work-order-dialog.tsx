@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -23,7 +22,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from './ui/textarea';
 import { DatePicker } from './ui/date-picker';
-import { Loader2, PlusCircle, FileUp, Building } from 'lucide-react';
+import { Loader2, PlusCircle, FileUp, Building, Search } from 'lucide-react';
 import type { Technician, WorkOrder, WorkSite, Client } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
@@ -87,6 +86,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
   const [manualPhone, setManualPhone] = useState('');
   const [manualWorkOrder, setManualWorkOrder] = useState('');
 
+  const [siteSearchTerm, setSiteSearchTerm] = useState('');
   const [errors, setErrors] = useState<{ jobId?: boolean, workSiteId?: boolean, description?: boolean }>({});
 
   const resetForm = () => {
@@ -117,6 +117,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
     setExtractedState(null);
     setNewSiteName('');
     setSourcePdfFile(null);
+    setSiteSearchTerm('');
     
     setCheckInType('none');
     setEmcorWorkOrder('');
@@ -125,6 +126,15 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
     setManualWorkOrder('');
     setErrors({});
   };
+
+  const filteredAndSortedSites = useMemo(() => {
+    return [...workSites]
+      .filter(site =>
+        (site.name?.toLowerCase().includes(siteSearchTerm.toLowerCase()) || '') ||
+        (site.address?.toLowerCase().includes(siteSearchTerm.toLowerCase()) || '')
+      )
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [workSites, siteSearchTerm]);
   
   const handlePdfUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -524,18 +534,32 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
             ) : (
                 <div className="grid gap-2">
                     <Label htmlFor="workSite">Job Site / Name</Label>
-                    <Select onValueChange={setWorkSiteId} value={workSiteId} disabled={isSubmitting}>
-                    <SelectTrigger className={cn(errors.workSiteId && "border-destructive")}>
-                        <SelectValue placeholder="Select a work site" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {workSites.map(site => (
-                        <SelectItem key={site.id} value={site.id}>
-                            {site.name} - {site.address}
-                        </SelectItem>
-                        ))}
-                    </SelectContent>
-                    </Select>
+                    <div className="space-y-2">
+                        <div className="relative">
+                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                                placeholder="Search sites..." 
+                                value={siteSearchTerm}
+                                onChange={(e) => setSiteSearchTerm(e.target.value)}
+                                className="pl-8 h-9 text-sm bg-white"
+                            />
+                        </div>
+                        <Select onValueChange={setWorkSiteId} value={workSiteId} disabled={isSubmitting}>
+                            <SelectTrigger className={cn(errors.workSiteId && "border-destructive", "bg-white")}>
+                                <SelectValue placeholder="Select a work site" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {filteredAndSortedSites.map(site => (
+                                <SelectItem key={site.id} value={site.id}>
+                                    {site.name} - {site.address}
+                                </SelectItem>
+                                ))}
+                                {filteredAndSortedSites.length === 0 && (
+                                    <div className="p-4 text-center text-sm text-muted-foreground">No sites found.</div>
+                                )}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
             )}
 
@@ -675,7 +699,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
         <DialogFooter className="pr-6">
           <Button onClick={() => setOpen(false)} variant="outline" disabled={isSubmitting}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={isSubmitting || showCreateSitePrompt}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
             {isSubmitting ? 'Creating...' : 'Create Order'}
           </Button>
         </DialogFooter>

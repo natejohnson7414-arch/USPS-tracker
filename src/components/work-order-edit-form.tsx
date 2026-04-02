@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { WorkOrder, Technician, WorkSite, Client } from '@/lib/types';
 import { useFirestore, updateDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { getDoc, getDocs, collection, doc, writeBatch } from 'firebase/firestore';
@@ -15,8 +14,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Save, Ban } from 'lucide-react';
+import { Loader2, Save, Ban, Search } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { cn } from '@/lib/utils';
 
 interface WorkOrderEditFormProps {
     workOrder: WorkOrder;
@@ -63,6 +63,8 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
     const [manualPhone, setManualPhone] = useState('');
     const [manualWorkOrder, setManualWorkOrder] = useState('');
 
+    const [siteSearchTerm, setSiteSearchTerm] = useState('');
+
     useEffect(() => {
         if (workOrder) {
             const url = workOrder.checkInOutURL;
@@ -83,6 +85,15 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
             }
         }
     }, [workOrder]);
+
+    const filteredAndSortedSites = useMemo(() => {
+        return [...workSites]
+          .filter(site =>
+            (site.name?.toLowerCase().includes(siteSearchTerm.toLowerCase()) || '') ||
+            (site.address?.toLowerCase().includes(siteSearchTerm.toLowerCase()) || '')
+          )
+          .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    }, [workSites, siteSearchTerm]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -353,10 +364,26 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
                             <Separator />
                             <div className="space-y-2">
                                 <Label>Job Site</Label>
-                                <Select value={workSiteId} onValueChange={setWorkSiteId}>
-                                    <SelectTrigger><SelectValue placeholder="Select work site..." /></SelectTrigger>
-                                    <SelectContent>{workSites.map(ws => <SelectItem key={ws.id} value={ws.id}>{ws.name}</SelectItem>)}</SelectContent>
-                                </Select>
+                                <div className="space-y-2">
+                                    <div className="relative">
+                                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                        <Input 
+                                            placeholder="Search sites..." 
+                                            value={siteSearchTerm}
+                                            onChange={(e) => setSiteSearchTerm(e.target.value)}
+                                            className="pl-8 h-9 text-sm"
+                                        />
+                                    </div>
+                                    <Select value={workSiteId} onValueChange={setWorkSiteId}>
+                                        <SelectTrigger><SelectValue placeholder="Select work site..." /></SelectTrigger>
+                                        <SelectContent>
+                                            {filteredAndSortedSites.map(ws => <SelectItem key={ws.id} value={ws.id}>{ws.name}</SelectItem>)}
+                                            {filteredAndSortedSites.length === 0 && (
+                                                <div className="p-4 text-center text-sm text-muted-foreground">No sites found.</div>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                              <div className="space-y-2">
                                 <Label>Assigned To</Label>
