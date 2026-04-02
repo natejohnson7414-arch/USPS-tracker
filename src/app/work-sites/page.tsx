@@ -42,6 +42,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { identifyDuplicateSites, mergeSitesAction, type DuplicateSiteGroup } from '@/lib/site-service';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 function WorkSiteItem({ site, onEdit, onDelete }: { site: WorkSite, onEdit: () => void, onDelete: () => void }) {
     return (
