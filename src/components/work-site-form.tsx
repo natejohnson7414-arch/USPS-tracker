@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import type { WorkSite } from '@/lib/types';
-import { useFirestore, addDocumentNonBlocking } from '@/firebase';
+import { useFirestore, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
@@ -115,7 +115,16 @@ export function WorkSiteForm({ site, onFormSaved, onCancel }: WorkSiteFormProps)
                 toast({ title: "Work Site Updated", description: `Successfully updated "${name}" and related work orders.`});
 
             } else { // Creating new site
-                await addDocumentNonBlocking(collection(db, 'work_sites'), siteData);
+                // Determine deterministic ID: city-state-address to prevent duplicates
+                const generatedId = `${city}-${state}-${address}`
+                    .toLowerCase()
+                    .trim()
+                    .replace(/[^a-z0-9]/g, '-')
+                    .replace(/-+/g, '-')
+                    .replace(/^-|-$/g, '');
+
+                const siteRef = doc(db, 'work_sites', generatedId);
+                await setDocumentNonBlocking(siteRef, siteData, { merge: true });
                 toast({ title: "Work Site Created", description: `Successfully created "${name}".`});
             }
             

@@ -224,7 +224,6 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
     }
     setIsSubmitting(true);
     try {
-        const workSitesRef = collection(db, 'work_sites');
         const newSiteData: Omit<WorkSite, 'id'> = {
             name: newSiteName,
             address: extractedAddress,
@@ -233,10 +232,19 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
             zip: '',
         };
 
-        const docRef = await addDocumentNonBlocking(workSitesRef, newSiteData);
+        // Determine deterministic ID: city-state-address to prevent duplicates
+        const generatedId = `${extractedCity}-${extractedState}-${extractedAddress}`
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9]/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '');
+
+        const siteRef = doc(db, 'work_sites', generatedId);
+        await setDocumentNonBlocking(siteRef, newSiteData, { merge: true });
         
         const newSite: WorkSite = {
-            id: docRef.id,
+            id: generatedId,
             ...newSiteData
         }
 
