@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -209,33 +210,36 @@ export default function AssetsPageContent() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {pmWorkOrders.filter(wo => wo.status !== 'Completed').map(wo => (
-                      <TableRow key={wo.id}>
-                        <TableCell><Badge variant={wo.status === 'In Progress' ? 'default' : 'secondary'}>{wo.status}</Badge></TableCell>
-                        <TableCell>
-                          <div className="font-medium flex items-center gap-2">
-                            <Building className="h-4 w-4 text-muted-foreground" />
-                            {wo.workSiteName}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1">
-                            <span className="text-sm font-bold">{wo.assetTasks.length} Pieces of Equipment</span>
-                            <div className="flex flex-wrap gap-1">
-                              {wo.assetTasks.slice(0, 3).map((g, i) => (
-                                <Badge key={i} variant="outline" className="text-[10px] py-0">{g.assetTag}</Badge>
-                              ))}
-                              {wo.assetTasks.length > 3 && <span className="text-[10px] text-muted-foreground">+{wo.assetTasks.length - 3} more</span>}
+                    {pmWorkOrders.filter(wo => wo.status !== 'Completed').map(wo => {
+                      const technician = technicians.find(t => t.id === wo.assignedTechnicianId);
+                      return (
+                        <TableRow key={wo.id}>
+                          <TableCell><Badge variant={wo.status === 'In Progress' ? 'default' : 'secondary'}>{wo.status}</Badge></TableCell>
+                          <TableCell>
+                            <div className="font-medium flex items-center gap-2">
+                              <Building className="h-4 w-4 text-muted-foreground" />
+                              {wo.workSiteName}
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button asChild size="sm">
-                            <Link href={`/pm-work-orders/${wo.id}`}>Open Master Checklists</Link>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-sm font-bold">{wo.assetTasks.length} Pieces of Equipment</span>
+                              <div className="flex flex-wrap gap-1">
+                                {wo.assetTasks.slice(0, 3).map((g, i) => (
+                                  <Badge key={i} variant="outline" className="text-[10px] py-0">{g.assetTag}</Badge>
+                                ))}
+                                {wo.assetTasks.length > 3 && <span className="text-[10px] text-muted-foreground">+{wo.assetTasks.length - 3} more</span>}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button asChild size="sm">
+                              <Link href={`/pm-work-orders/${wo.id}`}>Open Master Checklists</Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                     {pmWorkOrders.filter(wo => wo.status !== 'Completed').length === 0 && (
                       <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No master PM work orders generated for the current period.</TableCell></TableRow>
                     )}
@@ -495,7 +499,7 @@ export default function AssetsPageContent() {
                       Maintenance is grouped by Master Site Job. Consolidated master work orders reduce call-in/out overhead.
                     </p>
                   </CardContent>
-                </div>
+                </Card>
               </div>
             </div>
           </TabsContent>
