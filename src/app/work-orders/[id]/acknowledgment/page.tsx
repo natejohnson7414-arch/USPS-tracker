@@ -88,7 +88,7 @@ export default function WorkOrderAcknowledgmentPage() {
         setIsDownloading(true);
     
         try {
-            // Pre-load images to ensure they are rendered correctly by canvas
+            // Pre-load all images explicitly to ensure canvas capture works
             const images = Array.from(content.getElementsByTagName('img'));
             await Promise.all(images.map(img => {
                 if (img.complete) return Promise.resolve();
@@ -110,21 +110,21 @@ export default function WorkOrderAcknowledgmentPage() {
                     allowTaint: true,
                 });
                 
-                const imgData = canvas.toDataURL('image/png');
-                const pdfWidth = canvas.width;
-                const pdfHeight = canvas.height;
+                const imgData = canvas.toDataURL('image/jpeg', 0.8);
+                const pdfWidth = 612; // 8.5" at 72dpi
+                const pdfHeight = 792; // 11" at 72dpi
 
                 if (i === 0) {
                     pdf = new jsPDF({
-                        orientation: pdfWidth > pdfHeight ? 'l' : 'p',
+                        orientation: 'p',
                         unit: 'pt',
-                        format: [pdfWidth, pdfHeight]
+                        format: 'letter'
                     });
                 } else {
-                    pdf!.addPage([pdfWidth, pdfHeight], pdfWidth > pdfHeight ? 'l' : 'p');
+                    pdf!.addPage('letter', 'p');
                 }
                 
-                pdf!.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf!.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
             }
 
             if (pdf) {
@@ -133,7 +133,7 @@ export default function WorkOrderAcknowledgmentPage() {
     
         } catch (e) {
             console.error("Error generating PDF:", e);
-            setError("Failed to generate PDF.");
+            setError("Failed to generate PDF archive.");
         } finally {
             setIsDownloading(false);
         }
@@ -151,7 +151,7 @@ export default function WorkOrderAcknowledgmentPage() {
     
     useEffect(() => {
         if (!isLoading && workOrder && searchParams.get('action') === 'download') {
-            const timer = setTimeout(() => handleDownload(), 2000);
+            const timer = setTimeout(() => handleDownload(), 2500);
             return () => clearTimeout(timer);
         }
     }, [isLoading, workOrder, searchParams, handleDownload]);
@@ -160,7 +160,8 @@ export default function WorkOrderAcknowledgmentPage() {
         return (
             <div className="flex h-screen items-center justify-center bg-gray-100">
                 <div className="p-8 bg-white shadow-lg rounded-lg text-center">
-                    <p className="text-lg font-medium">Generating Document...</p>
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary mb-4" />
+                    <p className="text-lg font-medium">Generating Document Documentation...</p>
                     <Skeleton className="w-full h-96 mt-4" />
                 </div>
             </div>
@@ -215,85 +216,87 @@ export default function WorkOrderAcknowledgmentPage() {
             <div className="mx-auto" style={{ width: '8.5in' }} ref={printRef}>
                 <div className="pdf-page bg-white text-black font-sans p-8 mb-8" style={{ minHeight: '11in' }}>
                     <header className="text-center mb-8">
-                        <h1 className="text-2xl font-bold">Daily Work Acknowledgment</h1>
-                        <p className="text-lg">{format(acknowledgmentDate, 'PPPP')}</p>
+                        <h1 className="text-2xl font-bold uppercase tracking-tight">Daily Work Acknowledgment</h1>
+                        <p className="text-lg text-muted-foreground">{format(acknowledgmentDate, 'PPPP')}</p>
                     </header>
 
                     <section className="mb-8">
-                        <h2 className="text-xl font-semibold border-b pb-2 mb-4">Work Order Details</h2>
-                        <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-                            <div className="font-bold">Job #:</div><div>{workOrder.id}</div>
-                            <div className="font-bold">Job Name:</div><div>{workOrder.jobName}</div>
-                            <div className="font-bold">Job Site:</div><div>{workOrder.workSite?.name || 'N/A'}</div>
-                            <div className="font-bold">Address:</div><div>{workOrder.workSite?.address || 'N/A'}</div>
+                        <h2 className="text-xl font-bold border-b-2 border-black pb-2 mb-4 uppercase text-[12px] tracking-widest">Work Order Details</h2>
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
+                            <div className="font-bold uppercase text-[10px] text-muted-foreground">Job #:</div><div className="font-mono font-bold">{workOrder.id}</div>
+                            <div className="font-bold uppercase text-[10px] text-muted-foreground">Job Name:</div><div>{workOrder.jobName}</div>
+                            <div className="font-bold uppercase text-[10px] text-muted-foreground">Job Site:</div><div>{workOrder.workSite?.name || 'N/A'}</div>
+                            <div className="font-bold uppercase text-[10px] text-muted-foreground">Address:</div><div className="text-xs">{workOrder.workSite?.address || 'N/A'}</div>
                         </div>
                     </section>
 
                     <section className="mb-8">
-                        <h2 className="text-xl font-semibold border-b pb-2 mb-4">Signatures</h2>
-                        <div className="space-y-4">
+                        <h2 className="text-xl font-bold border-b-2 border-black pb-2 mb-4 uppercase text-[12px] tracking-widest">Signatures & Verification</h2>
+                        <div className="space-y-6">
                             {workOrder.customerSignatureUrl ? (
-                                <div className="grid grid-cols-3 gap-4 items-center">
-                                    <div className="font-medium">{workOrder.contactInfo || 'Customer Signature'}</div>
-                                    <div className="bg-gray-100 p-2 rounded-md col-span-2">
+                                <div className="grid grid-cols-3 gap-4 items-center border p-4 rounded-lg bg-slate-50/50">
+                                    <div className="font-bold uppercase text-[10px] text-muted-foreground">{workOrder.contactInfo || 'Customer Signature'}</div>
+                                    <div className="bg-white p-2 border rounded-md col-span-2 flex items-center justify-center min-h-[80px]">
                                         <img 
                                             src={proxiedUrl(workOrder.customerSignatureUrl)} 
                                             alt={`Signature`} 
-                                            className="max-h-16 mx-auto" 
+                                            className="max-h-16" 
                                             crossOrigin="anonymous"
                                         />
                                     </div>
                                 </div>
                             ) : filteredAcks.length > 0 ? (
                                 filteredAcks.map((ack, index) => (
-                                    <div key={index} className="grid grid-cols-3 gap-4 items-center">
-                                        <div className="font-medium">{ack.name}</div>
-                                        <div className="bg-gray-100 p-2 rounded-md col-span-2">
+                                    <div key={index} className="grid grid-cols-3 gap-4 items-center border p-4 rounded-lg bg-slate-50/50">
+                                        <div className="font-bold uppercase text-[10px] text-muted-foreground">{ack.name}</div>
+                                        <div className="bg-white p-2 border rounded-md col-span-2 flex items-center justify-center min-h-[80px]">
                                             <img 
                                                 src={proxiedUrl(ack.signatureUrl)} 
                                                 alt={`${ack.name}'s signature`} 
-                                                className="max-h-16 mx-auto" 
+                                                className="max-h-16" 
                                                 crossOrigin="anonymous"
                                             />
                                         </div>
                                     </div>
                                 ))
                             ) : (
-                                <p className="text-gray-500">No signatures available.</p>
+                                <div className="text-center py-10 border-2 border-dashed rounded-lg">
+                                    <p className="text-sm text-muted-foreground italic">No signatures recorded for this date.</p>
+                                </div>
                             )}
                         </div>
                     </section>
                     
                     <section className="mb-8">
-                        <h2 className="text-xl font-semibold border-b pb-2 mb-4">Notes</h2>
+                        <h2 className="text-xl font-bold border-b-2 border-black pb-2 mb-4 uppercase text-[12px] tracking-widest">Daily Field Notes</h2>
                          {filteredNotes.length > 0 ? (
-                            <ul className="list-disc pl-5 space-y-2">
+                            <ul className="space-y-3">
                                 {filteredNotes.map((note) => (
-                                    <li key={note.id} className="text-sm">{note.text}</li>
+                                    <li key={note.id} className="text-sm border-l-4 border-primary pl-4 py-1 bg-slate-50/30">{note.text}</li>
                                 ))}
                             </ul>
                         ) : (
-                            <p className="text-gray-500">No notes for this date.</p>
+                            <p className="text-sm text-muted-foreground italic">No descriptive notes logged for this session.</p>
                         )}
                     </section>
                 </div>
 
                 {beforePhotoChunks.map((chunk, pageIndex) => (
                     <div key={`before-${pageIndex}`} className="pdf-page bg-white text-black font-sans p-8 mb-8" style={{ minHeight: '11in' }}>
-                        <header className="flex justify-between items-center mb-8">
-                            <h2 className="text-xl font-semibold">Before Work Photos {beforePhotoChunks.length > 1 ? `(Page ${pageIndex + 1})` : ''}</h2>
-                            <p className="text-sm text-gray-500">Job # {workOrder.id}</p>
+                        <header className="flex justify-between items-center mb-8 border-b-2 pb-2 border-primary">
+                            <h2 className="text-xl font-bold uppercase tracking-tighter text-primary">BEFORE WORK PHOTOS {beforePhotoChunks.length > 1 ? `(Page ${pageIndex + 1})` : ''}</h2>
+                            <p className="text-xs font-mono font-bold">Job # {workOrder.id}</p>
                         </header>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-6">
                             {chunk.map((url, index) => (
-                                <div key={index} className="border p-2 rounded-md flex flex-col items-center justify-center bg-gray-50" style={{ height: '280px' }}>
+                                <div key={index} className="border p-2 rounded-md flex flex-col items-center justify-center bg-gray-50 shadow-sm" style={{ height: '320px' }}>
                                     <img 
                                         src={proxiedUrl(url)} 
                                         alt={`Before photo ${pageIndex * photosPerPage + index + 1}`} 
-                                        className="max-w-full max-h-[240px] object-contain" 
+                                        className="max-w-full max-h-[280px] object-contain" 
                                         crossOrigin="anonymous"
                                     />
-                                    <p className="text-xs text-muted-foreground mt-2">Before Photo {pageIndex * photosPerPage + index + 1}</p>
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-2">Before Photo {pageIndex * photosPerPage + index + 1}</p>
                                 </div>
                             ))}
                         </div>
@@ -302,20 +305,20 @@ export default function WorkOrderAcknowledgmentPage() {
 
                 {afterPhotoChunks.map((chunk, pageIndex) => (
                     <div key={`after-${pageIndex}`} className="pdf-page bg-white text-black font-sans p-8 mb-8" style={{ minHeight: '11in' }}>
-                        <header className="flex justify-between items-center mb-8">
-                            <h2 className="text-xl font-semibold">After Work Photos {afterPhotoChunks.length > 1 ? `(Page ${pageIndex + 1})` : ''}</h2>
-                            <p className="text-sm text-gray-500">Job # {workOrder.id}</p>
+                        <header className="flex justify-between items-center mb-8 border-b-2 pb-2 border-primary">
+                            <h2 className="text-xl font-bold uppercase tracking-tighter text-primary">AFTER WORK PHOTOS {afterPhotoChunks.length > 1 ? `(Page ${pageIndex + 1})` : ''}</h2>
+                            <p className="text-xs font-mono font-bold">Job # {workOrder.id}</p>
                         </header>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-6">
                             {chunk.map((url, index) => (
-                                <div key={index} className="border p-2 rounded-md flex flex-col items-center justify-center bg-gray-50" style={{ height: '280px' }}>
+                                <div key={index} className="border p-2 rounded-md flex flex-col items-center justify-center bg-gray-50 shadow-sm" style={{ height: '320px' }}>
                                     <img 
                                         src={proxiedUrl(url)} 
                                         alt={`After photo ${pageIndex * photosPerPage + index + 1}`} 
-                                        className="max-w-full max-h-[240px] object-contain" 
+                                        className="max-w-full max-h-[280px] object-contain" 
                                         crossOrigin="anonymous"
                                     />
-                                    <p className="text-xs text-muted-foreground mt-2">After Photo {pageIndex * photosPerPage + index + 1}</p>
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-2">After Photo {pageIndex * photosPerPage + index + 1}</p>
                                 </div>
                             ))}
                         </div>
@@ -324,20 +327,20 @@ export default function WorkOrderAcknowledgmentPage() {
 
                 {notePhotoChunks.map((chunk, pageIndex) => (
                     <div key={`note-photos-${pageIndex}`} className="pdf-page bg-white text-black font-sans p-8 mb-8" style={{ minHeight: '11in' }}>
-                        <header className="flex justify-between items-center mb-8">
-                            <h2 className="text-xl font-semibold">Field Photos {notePhotoChunks.length > 1 ? `(Page ${pageIndex + 1})` : ''}</h2>
-                            <p className="text-sm text-gray-500">Job # {workOrder.id} - {format(acknowledgmentDate, 'yyyy-MM-dd')}</p>
+                        <header className="flex justify-between items-center mb-8 border-b-2 pb-2 border-primary">
+                            <h2 className="text-xl font-bold uppercase tracking-tighter text-primary">DAILY DOCUMENTATION {notePhotoChunks.length > 1 ? `(Page ${pageIndex + 1})` : ''}</h2>
+                            <p className="text-xs font-mono font-bold">Job # {workOrder.id}</p>
                         </header>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-6">
                             {chunk.map((url, index) => (
-                                <div key={index} className="border p-2 rounded-md flex flex-col items-center justify-center bg-gray-50" style={{ height: '280px' }}>
+                                <div key={index} className="border p-2 rounded-md flex flex-col items-center justify-center bg-gray-50 shadow-sm" style={{ height: '320px' }}>
                                     <img 
                                         src={proxiedUrl(url)} 
                                         alt={`Daily photo ${pageIndex * photosPerPage + index + 1}`} 
-                                        className="max-w-full max-h-[240px] object-contain" 
+                                        className="max-w-full max-h-[280px] object-contain" 
                                         crossOrigin="anonymous"
                                     />
-                                    <p className="text-xs text-muted-foreground mt-2">Photo {pageIndex * photosPerPage + index + 1}</p>
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-2">Daily Photo {pageIndex * photosPerPage + index + 1}</p>
                                 </div>
                             ))}
                         </div>

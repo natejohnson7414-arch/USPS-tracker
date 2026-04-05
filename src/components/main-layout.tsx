@@ -1,8 +1,7 @@
-
 'use client';
 import React from 'react';
 import { Header } from './header';
-import { useUser } from '@/firebase';
+import { useUser } from '@/firebase/provider';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTechnician } from '@/hooks/use-technician';
 

@@ -11,8 +11,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, User, Users, Clock, Loader2, RefreshCw, Wifi, WifiOff, CheckCircle2, AlertCircle, Settings } from 'lucide-react';
-import { useAuth, useUser, useFirestore, useFirebase } from '@/firebase';
+import { LogOut, User, Users, Clock, Loader2, RefreshCw, WifiOff, CheckCircle2, Settings } from 'lucide-react';
+import { useAuth, useUser, useFirestore, useFirebase } from '@/firebase/provider';
 import { signOut } from 'firebase/auth';
 import { Sidebar } from './sidebar';
 import { useTechnician } from '@/hooks/use-technician';

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Package, PlusCircle, Search, CalendarClock, TrendingUp, AlertTriangle, Loader2, FileBarChart, ChevronRight, Building, Box, Sparkles, Wrench, Users } from 'lucide-react';
+import { Package, PlusCircle, Search, CalendarClock, TrendingUp, AlertTriangle, Loader2, FileBarChart, ChevronRight, Building, Sparkles, Wrench, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useFirestore, useUser } from '@/firebase/provider';
 import { getAssets, getAssetPmSchedules, generatePmWorkOrdersForMonth, getPmWorkOrders, seedDatabase, getActiveContracts, getTechnicians } from '@/lib/data';
@@ -52,7 +52,6 @@ export default function AssetsPageContent() {
           getTechnicians(db)
         ]);
         
-        // Filter schedules by active contracts immediately
         const contractSiteIds = new Set(c.map(contract => contract.siteId));
         const validSchedules = s.filter(sch => sch.siteId && contractSiteIds.has(sch.siteId));
         
@@ -518,7 +517,7 @@ export default function AssetsPageContent() {
                       Maintenance is grouped by Master Site Job. Consolidated master work orders reduce call-in/out overhead.
                     </p>
                   </CardContent>
-                </div>
+                </Card>
               </div>
             </div>
           </TabsContent>
