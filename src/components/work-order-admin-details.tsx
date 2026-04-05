@@ -370,7 +370,7 @@ export function WorkOrderAdminDetails({
                         {workOrder.checkInWorkOrderNumber && <p className="text-xs text-muted-foreground mt-1 max-w-[60px] truncate" title={workOrder.checkInWorkOrderNumber}>WO: {workOrder.checkInWorkOrderNumber}</p>}
                       </div>
                     )}
-                    {workOrder.workSite && <Button variant="outline" size="icon" onClick={() => onDirectionsClick(workOrder.workSite!)}><Map className="h-4 w-4" /><span className="sr-only">Get Directions</span></Button>}
+                    {workOrder.workSite && <Button variant="outline" size="icon" onClick={() => onDirectionsClick(workOrder.workSite!)}><MapPin className="h-4 w-4" /><span className="sr-only">Get Directions</span></Button>}
                   </div>
                 </div>
               </CardHeader>
