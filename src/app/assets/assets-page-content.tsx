@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -517,7 +518,7 @@ export default function AssetsPageContent() {
                       Maintenance is grouped by Master Site Job. Consolidated master work orders reduce call-in/out overhead.
                     </p>
                   </CardContent>
-                </Card>
+                </div>
               </div>
             </div>
           </TabsContent>
