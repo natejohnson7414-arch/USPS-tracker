@@ -242,7 +242,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
             zip: '',
         };
 
-        // Determine deterministic ID: city-state-address to prevent duplicates
+        // Deterministic ID: city-state-address to prevent duplicates
         const generatedId = `${extractedCity}-${extractedState}-${extractedAddress}`
             .toLowerCase()
             .trim()

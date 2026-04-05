@@ -186,7 +186,7 @@ export default function AssetsPageContent() {
             <CardContent>
               <div className="text-2xl font-bold text-destructive">{assets.filter(a => a.criticality === 'high').length}</div>
             </CardContent>
-          </div>
+          </Card>
         </div>
 
         <Tabs defaultValue="calendar">
