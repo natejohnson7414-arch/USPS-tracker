@@ -7,7 +7,8 @@ import {
   getFirestore, 
   persistentLocalCache, 
   memoryLocalCache,
-  Firestore
+  Firestore,
+  persistentMultipleTabManager
 } from 'firebase/firestore'
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { firebaseConfig } from '@/firebase/config';
@@ -47,12 +48,13 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
           firestore = getFirestore(app);
         } else {
           try {
-            // Try to initialize with persistent cache (IndexedDB)
-            // This is the safer approach for modern browsers and handled Safari/iPhone restrictions gracefully.
+            // Use Multiple Tab Manager to allow shared offline access across browser tabs
             firestore = initializeFirestore(app, {
-              localCache: persistentLocalCache({}),
+              localCache: persistentLocalCache({
+                tabManager: persistentMultipleTabManager(),
+              }),
             });
-            console.log("[Firebase] Firestore persistence enabled");
+            console.log("[Firebase] Firestore persistence with multi-tab sync enabled");
           } catch (e: any) {
             // Fallback to memory cache if persistent initialization fails (e.g., Safari private mode)
             console.warn("[Firebase] Persistent cache failed, falling back to memory cache:", e.message);
