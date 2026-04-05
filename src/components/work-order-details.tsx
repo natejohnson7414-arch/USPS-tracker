@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -424,7 +423,7 @@ export function WorkOrderDetails({
                     {workOrder.workSite.contact && (
                       <div className="bg-muted/50 p-3 rounded-md space-y-2 border border-muted mt-2">
                         <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Site Contact Information</p>
-                        <div className="flex flex-wrap gap-x-6 gap-y-2">
+                        <div className="flex wrap gap-x-6 gap-y-2">
                           <div className="flex items-center gap-2 text-sm font-bold">
                             <UserCircle className="h-4 w-4 text-primary" />
                             {workOrder.workSite.contact.name}

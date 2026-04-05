@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -10,8 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Package, PlusCircle, Search, CalendarClock, TrendingUp, AlertTriangle, Loader2, FileBarChart, ChevronRight, Building, Box, Sparkles, Wrench, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useFirestore, useUser } from '@/firebase/provider';
-import { getAssets, getAssetPmSchedules, generatePmWorkOrdersForMonth, getPmWorkOrders, seedDatabase, getActiveContracts } from '@/lib/data';
-import type { Asset, AssetPmSchedule, PmWorkOrder, MaintenanceContract } from '@/lib/types';
+import { getAssets, getAssetPmSchedules, generatePmWorkOrdersForMonth, getPmWorkOrders, seedDatabase, getActiveContracts, getTechnicians } from '@/lib/data';
+import type { Asset, AssetPmSchedule, PmWorkOrder, MaintenanceContract, Technician } from '@/lib/types';
 import { generateLaborForecast, type LaborForecast } from '@/lib/reporting-service';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +20,7 @@ import { format, addMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from 'recharts';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function AssetsPageContent() {
   const db = useFirestore();
@@ -28,6 +28,7 @@ export default function AssetsPageContent() {
   const { toast } = useToast();
   
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [schedules, setSchedules] = useState<AssetPmSchedule[]>([]);
   const [activeContracts, setActiveContracts] = useState<MaintenanceContract[]>([]);
   const [laborForecast, setLaborForecast] = useState<LaborForecast[]>([]);
@@ -42,12 +43,13 @@ export default function AssetsPageContent() {
       setIsLoading(true);
       try {
         await seedDatabase(db);
-        const [a, s, l, pwo, c] = await Promise.all([
+        const [a, s, l, pwo, c, techs] = await Promise.all([
           getAssets(db),
           getAssetPmSchedules(db),
           generateLaborForecast(db),
           getPmWorkOrders(db),
-          getActiveContracts(db)
+          getActiveContracts(db),
+          getTechnicians(db)
         ]);
         
         // Filter schedules by active contracts immediately
@@ -55,6 +57,7 @@ export default function AssetsPageContent() {
         const validSchedules = s.filter(sch => sch.siteId && contractSiteIds.has(sch.siteId));
         
         setAssets(a);
+        setTechnicians(techs);
         setSchedules(validSchedules);
         setActiveContracts(c);
         setLaborForecast(l);
@@ -132,6 +135,8 @@ export default function AssetsPageContent() {
     });
   }, [schedules]);
 
+  const getTechnician = (id?: string) => technicians.find(t => t.id === id);
+
   return (
     <MainLayout>
       <div className="container mx-auto py-8">
@@ -206,12 +211,13 @@ export default function AssetsPageContent() {
                       <TableHead>Job Status</TableHead>
                       <TableHead>Location</TableHead>
                       <TableHead>Scope</TableHead>
+                      <TableHead>Assigned To</TableHead>
                       <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {pmWorkOrders.filter(wo => wo.status !== 'Completed').map(wo => {
-                      const technician = technicians.find(t => t.id === wo.assignedTechnicianId);
+                      const technician = getTechnician(wo.assignedTechnicianId);
                       return (
                         <TableRow key={wo.id}>
                           <TableCell><Badge variant={wo.status === 'In Progress' ? 'default' : 'secondary'}>{wo.status}</Badge></TableCell>
@@ -232,6 +238,19 @@ export default function AssetsPageContent() {
                               </div>
                             </div>
                           </TableCell>
+                          <TableCell>
+                            {technician ? (
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-6 w-6">
+                                  <AvatarImage src={technician.avatarUrl} alt={technician.name} />
+                                  <AvatarFallback>{technician.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <span className="text-sm">{technician.name}</span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground italic">Unassigned</span>
+                            )}
+                          </TableCell>
                           <TableCell className="text-right">
                             <Button asChild size="sm">
                               <Link href={`/pm-work-orders/${wo.id}`}>Open Master Checklists</Link>
@@ -241,7 +260,7 @@ export default function AssetsPageContent() {
                       );
                     })}
                     {pmWorkOrders.filter(wo => wo.status !== 'Completed').length === 0 && (
-                      <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No master PM work orders generated for the current period.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No master PM work orders generated for the current period.</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
@@ -485,7 +504,7 @@ export default function AssetsPageContent() {
                   </CardHeader>
                   <CardContent className="text-sm">
                     <p className="text-muted-foreground">
-                      The peak labor requirement is <span className="font-bold text-foreground">{Math.max(...laborForecast.map(f => f.hours))} hours</span>. 
+                      The peak labor requirement is <span className="font-bold text-foreground">{laborForecast.length > 0 ? Math.max(...laborForecast.map(f => f.hours)) : 0} hours</span>. 
                       Ensure your team has the available bandwidth for these months.
                     </p>
                   </CardContent>
