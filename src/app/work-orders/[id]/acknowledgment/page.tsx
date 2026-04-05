@@ -88,7 +88,7 @@ export default function WorkOrderAcknowledgmentPage() {
         setIsDownloading(true);
     
         try {
-            // Pre-load all images explicitly to ensure canvas capture works
+            // Pre-load all images explicitly to ensure canvas capture works with CORS
             const images = Array.from(content.getElementsByTagName('img'));
             await Promise.all(images.map(img => {
                 if (img.complete) return Promise.resolve();
@@ -161,7 +161,7 @@ export default function WorkOrderAcknowledgmentPage() {
             <div className="flex h-screen items-center justify-center bg-gray-100">
                 <div className="p-8 bg-white shadow-lg rounded-lg text-center">
                     <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary mb-4" />
-                    <p className="text-lg font-medium">Generating Document Documentation...</p>
+                    <p className="text-lg font-medium">Generating Documentation...</p>
                     <Skeleton className="w-full h-96 mt-4" />
                 </div>
             </div>

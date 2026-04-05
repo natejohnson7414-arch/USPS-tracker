@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -187,7 +186,7 @@ export default function AssetsPageContent() {
             <CardContent>
               <div className="text-2xl font-bold text-destructive">{assets.filter(a => a.criticality === 'high').length}</div>
             </CardContent>
-          </Card>
+          </div>
         </div>
 
         <Tabs defaultValue="calendar">
@@ -518,7 +517,7 @@ export default function AssetsPageContent() {
                       Maintenance is grouped by Master Site Job. Consolidated master work orders reduce call-in/out overhead.
                     </p>
                   </CardContent>
-                </div>
+                </Card>
               </div>
             </div>
           </TabsContent>

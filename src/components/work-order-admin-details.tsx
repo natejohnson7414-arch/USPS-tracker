@@ -504,34 +504,34 @@ export function WorkOrderAdminDetails({
         <TabsContent value="media" className="mt-0">
           <div className="space-y-8">
               <Card className="rounded-t-none">
-                  <CardHeader><CardTitle>Job Photos</CardTitle></CardHeader>
-                  <CardContent className="space-y-6">
-                      <div>
-                          <h3 className="font-medium mb-2">Before Photos</h3>
-                          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 mb-4">
+                <CardHeader><CardTitle>Job Photos</CardTitle></CardHeader>
+                <CardContent className="space-y-6">
+                    <div>
+                        <h3 className="font-medium mb-2">Before Photos</h3>
+                        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 mb-4">
                             {(workOrder.beforePhotoUrls || []).map((photo) => (
                               <div key={getPhotoUrl(photo)} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url: getPhotoUrl(photo), type: 'before' })}>
                                 <Image src={getThumbUrl(photo)} alt={`Before photo`} fill sizes="(max-width: 768px) 25vw, 12vw" className="object-cover" />
                                 <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Maximize2 className="text-white h-5 w-5" /></div>
                               </div>
                             ))}
-                          </div>
-                          {!isCompleted && <Button variant="outline" onClick={() => setPhotoSheetTarget('before')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add Before Photos</Button>}
-                      </div>
-                      <Separator />
-                      <div>
-                          <h3 className="font-medium mb-2">After Photos</h3>
-                          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 mb-4">
+                        </div>
+                        {!isCompleted && <Button variant="outline" onClick={() => setPhotoSheetTarget('before')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add Before Photos</Button>}
+                    </div>
+                    <Separator />
+                    <div>
+                        <h3 className="font-medium mb-2">After Photos</h3>
+                        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 mb-4">
                             {(workOrder.afterPhotoUrls || []).map((photo) => (
                               <div key={getPhotoUrl(photo)} className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer" onClick={() => setViewingPhoto({ url: getPhotoUrl(photo), type: 'after' })}>
                                 <Image src={getThumbUrl(photo)} alt={`After photo`} fill sizes="(max-width: 768px) 25vw, 12vw" className="object-cover" />
                                 <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Maximize2 className="text-white h-5 w-5" /></div>
                               </div>
                             ))}
-                          </div>
-                          {!isCompleted && <Button variant="outline" onClick={() => setPhotoSheetTarget('after')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add After Photos</Button>}
-                      </div>
-                  </CardContent>
+                        </div>
+                        {!isCompleted && <Button variant="outline" onClick={() => setPhotoSheetTarget('after')} disabled={isSavingPhotos}><Camera className="mr-2 h-4 w-4" /> Add After Photos</Button>}
+                    </div>
+                </CardContent>
               </Card>
               <Card>
                 <CardHeader><CardTitle className="flex items-center gap-2"><ReceiptText /> Receipts &amp; Packing Slips</CardTitle></CardHeader>

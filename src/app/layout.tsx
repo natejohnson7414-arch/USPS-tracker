@@ -30,8 +30,7 @@ export const metadata: Metadata = {
 
 /**
  * Root layout component.
- * Providers are imported directly to avoid circular dependency loops through barrel files
- * which can cause "undefined (reading 'call')" errors in Next.js 15.
+ * Flattened imports to resolve circular dependency loops in Next.js 15.
  */
 export default function RootLayout({
   children,

@@ -32,7 +32,6 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
 
-    // Initialize state directly from props. This is safe because the form is remounted each time it's opened.
     const [jobId, setJobId] = useState(workOrder.id);
     const [description, setDescription] = useState(workOrder.description ?? '');
     const [status, setStatus] = useState<WorkOrder['status']>(workOrder.status ?? 'Open');
@@ -56,7 +55,6 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
     const [customerPO, setCustomerPO] = useState(workOrder.customerPO ?? '');
     const [estimator, setEstimator] = useState(workOrder.estimator ?? '');
     
-    // State for check-in logic needs a useEffect because it's more complex.
     const [checkInType, setCheckInType] = useState<'none' | 'emcor' | 'weblink' | 'manual'>('none');
     const [emcorWorkOrder, setEmcorWorkOrder] = useState('');
     const [webLinkUrl, setWebLinkUrl] = useState('');
@@ -97,10 +95,7 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!db) {
-            toast({ title: "Database error", variant: "destructive" });
-            return;
-        }
+        if (!db) return;
 
         setIsLoading(true);
 
@@ -122,20 +117,15 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
                 }
                 finalCheckInWorkOrderNumber = manualWorkOrder;
                 break;
-            default:
-                break;
         }
 
         const selectedWorkSite = workSites.find(ws => ws.id === workSiteId);
         const selectedClient = clients.find(c => c.id === clientId);
 
-        // Architecturally sync involvedTechnicianIds if assigned lead changed
         const currentInvolved = new Set(workOrder.involvedTechnicianIds || []);
-        if (assignedTechnicianId) {
-            currentInvolved.add(assignedTechnicianId);
-        }
+        if (assignedTechnicianId) currentInvolved.add(assignedTechnicianId);
 
-        const cleanedData: Omit<WorkOrder, 'id' | 'notes' | 'activities' | 'work_history' | 'beforePhotoUrls' | 'afterPhotoUrls'> = {
+        const cleanedData: any = {
             jobName: selectedWorkSite?.name,
             description,
             status,
@@ -148,15 +138,15 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
             poNumber,
             contactInfo,
             serviceScheduleDate: serviceScheduleDate?.toISOString(),
-            quotedAmount: quotedAmount ? parseFloat(quotedAmount) : undefined,
+            quotedAmount: quotedAmount ? parseFloat(quotedAmount) : null,
             timeAndMaterial,
             permit,
-            permitCost: permitCost ? parseFloat(permitCost) : undefined,
-            permitFiled: permitFiled?.toISOString(),
+            permitCost: permitCost ? parseFloat(permitCost) : null,
+            permitFiled: permitFiled?.toISOString() || null,
             coi,
-            coiRequested: coiRequested?.toISOString(),
+            coiRequested: coiRequested?.toISOString() || null,
             certifiedPayroll,
-            certifiedPayrollRequested: certifiedPayrollRequested?.toISOString(),
+            certifiedPayrollRequested: certifiedPayrollRequested?.toISOString() || null,
             intercoPO,
             customerPO,
             estimator,
@@ -164,105 +154,42 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
             checkInWorkOrderNumber: finalCheckInWorkOrderNumber,
         };
 
-        Object.keys(cleanedData).forEach(key => {
-            const k = key as keyof typeof cleanedData;
-            if ((cleanedData as any)[k] === undefined) {
-              (cleanedData as any)[k] = null;
-            }
-        });
-        
-        // Handle Job ID change
         if (jobId !== workOrder.id) {
-            if (!jobId) {
-                toast({ title: "Job # cannot be empty.", variant: "destructive"});
-                setIsLoading(false);
-                return;
-            }
-    
             const newDocRef = doc(db, 'work_orders', jobId);
             const oldDocRef = doc(db, 'work_orders', workOrder.id);
-            
             try {
-                // 1. Check for duplicate
                 const newDocSnap = await getDoc(newDocRef);
                 if (newDocSnap.exists()) {
-                    toast({ title: "Duplicate Job Number", description: `A work order with Job # "${jobId}" already exists.`, variant: "destructive" });
+                    toast({ title: "Duplicate Job Number", variant: "destructive" });
                     setIsLoading(false);
                     return;
                 }
-    
-                // 2. Move subcollections and main doc in a batch
                 const batch = writeBatch(db);
-    
-                // Copy 'updates' subcollection
                 const updatesColRef = collection(oldDocRef, 'updates');
                 const updatesSnap = await getDocs(updatesColRef);
-                updatesSnap.docs.forEach(d => {
-                    batch.set(doc(newDocRef, 'updates', d.id), d.data());
-                    batch.delete(d.ref);
-                });
-    
-                // Copy 'activities' subcollection
+                updatesSnap.docs.forEach(d => batch.set(doc(newDocRef, 'updates', d.id), d.data()));
                 const activitiesColRef = collection(oldDocRef, 'activities');
                 const activitiesSnap = await getDocs(activitiesColRef);
-                activitiesSnap.docs.forEach(d => {
-                    batch.set(doc(newDocRef, 'activities', d.id), d.data());
-                    batch.delete(d.ref);
-                });
-                
-                const finalDataForNewDoc = {
-                    ...workOrder,
-                    ...cleanedData,
-                    id: jobId,
-                }
-
-                // Remove populated fields that should not be stored in Firestore
-                delete (finalDataForNewDoc as any).client;
-                delete (finalDataForNewDoc as any).workSite;
-                
-                // Set new main doc with new ID and delete old one
-                batch.set(newDocRef, finalDataForNewDoc);
+                activitiesSnap.docs.forEach(d => batch.set(doc(newDocRef, 'activities', d.id), d.data()));
+                batch.set(newDocRef, { ...workOrder, ...cleanedData, id: jobId });
                 batch.delete(oldDocRef);
-    
                 await batch.commit();
-    
-                toast({ title: "Work Order Saved", description: `Job number has been updated to ${jobId}.` });
                 onFormSaved(jobId);
-    
-            } catch (error) {
-                 if (error instanceof Error && !error.message.includes('permission-error')) {
-                    console.error("Error updating work order ID:", error);
-                    toast({ title: "Save Failed", description: "Could not update the job number.", variant: "destructive" });
-                }
-                setIsLoading(false);
-            }
-    
-        } else { // Job ID did not change, just update
+            } catch (error) { setIsLoading(false); }
+        } else {
             try {
                 await updateDocumentNonBlocking(doc(db, 'work_orders', workOrder.id), cleanedData);
-                toast({ title: "Work Order Saved", description: "Changes have been saved successfully." });
                 onFormSaved();
-            } catch (error) {
-                console.error("Error saving work order", error);
-                if (error instanceof Error && !error.message.includes('permission-error')) {
-                    toast({ title: "Save Failed", description: "Could not save changes.", variant: "destructive" });
-                }
-            } finally {
-                setIsLoading(false);
-            }
+            } catch (error) { setIsLoading(false); }
         }
     };
-
-    const isCompleteDisabled = status !== 'Review' && workOrder.status !== 'Completed';
 
     return (
         <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2">
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Editing Work Order</CardTitle>
-                        </CardHeader>
+                        <CardHeader><CardTitle>Editing Work Order</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="edit-job-id">Job #</Label>
@@ -277,30 +204,22 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
                 </div>
                 <div className="space-y-8">
                      <Card>
-                        <CardHeader>
-                            <CardTitle>Details</CardTitle>
-                        </CardHeader>
+                        <CardHeader><CardTitle>Details</CardTitle></CardHeader>
                         <CardContent className="space-y-4 text-sm">
                             <div className="space-y-2">
                                 <Label>Status</Label>
-                                <Select value={status} onValueChange={(v: WorkOrder['status']) => setStatus(v)}>
+                                <Select value={status} onValueChange={(v: any) => setStatus(v)}>
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Open">Open</SelectItem>
                                         <SelectItem value="In Progress">In Progress</SelectItem>
                                         <SelectItem value="On Hold">On Hold</SelectItem>
                                         <SelectItem value="Review">Review</SelectItem>
-                                        <SelectItem value="Completed" disabled={isCompleteDisabled}>Completed</SelectItem>
+                                        <SelectItem value="Completed">Completed</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                {isCompleteDisabled && (
-                                    <p className="text-xs text-muted-foreground">A job must be in 'Review' status before it can be completed.</p>
-                                )}
                             </div>
-                             <div className="space-y-2">
-                                <Label>Date</Label>
-                                <DatePicker date={createdDate} setDate={setCreatedDate} />
-                            </div>
+                             <div className="space-y-2"><Label>Date</Label><DatePicker date={createdDate} setDate={setCreatedDate} /></div>
                              <div className="space-y-2">
                                 <Label>Bill To</Label>
                                 <Select value={clientId} onValueChange={setClientId}>
@@ -308,80 +227,23 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
                                     <SelectContent>{clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                                 </Select>
                             </div>
-                             <div className="space-y-2">
-                                <Label>PO #</Label>
-                                <Input value={poNumber} onChange={e => setPoNumber(e.target.value)} />
-                            </div>
+                             <div className="space-y-2"><Label>PO #</Label><Input value={poNumber} onChange={e => setPoNumber(e.target.value)} /></div>
                             <div className="space-y-3 rounded-md border p-4">
                                 <Label>Check-in/Out</Label>
                                 <RadioGroup value={checkInType} onValueChange={(v) => setCheckInType(v as any)}>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="none" id="edit-checkin-none" />
-                                        <Label htmlFor="edit-checkin-none">None</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="emcor" id="edit-checkin-emcor" />
-                                        <Label htmlFor="edit-checkin-emcor">EMCOR Call-In/Out</Label>
-                                    </div>
-                                    {checkInType === 'emcor' && (
-                                        <div className="pl-6 pt-2">
-                                            <Label htmlFor="edit-emcor-wo">EMCOR Work Order #</Label>
-                                            <Input id="edit-emcor-wo" value={emcorWorkOrder} onChange={(e) => setEmcorWorkOrder(e.target.value)} />
-                                        </div>
-                                    )}
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="weblink" id="edit-checkin-weblink" />
-                                        <Label htmlFor="edit-checkin-weblink">Web Link</Label>
-                                    </div>
-                                    {checkInType === 'weblink' && (
-                                        <div className="pl-6 pt-2">
-                                            <Label htmlFor="edit-weblink-url">URL</Label>
-                                            <Input id="edit-weblink-url" value={webLinkUrl} onChange={(e) => setWebLinkUrl(e.target.value)} placeholder="https://example.com" />
-                                        </div>
-                                    )}
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="manual" id="edit-checkin-manual" />
-                                        <Label htmlFor="edit-checkin-manual">Manual Phone Check-in</Label>
-                                    </div>
-                                    {checkInType === 'manual' && (
-                                        <div className="space-y-2 pl-6 pt-2">
-                                            <div>
-                                                <Label htmlFor="edit-manual-phone">Phone Number</Label>
-                                                <Input id="edit-manual-phone" type="tel" value={manualPhone} onChange={(e) => setManualPhone(e.target.value)} />
-                                            </div>
-                                            <div>
-                                                <Label htmlFor="edit-manual-wo">Work Order #</Label>
-                                                <Input id="edit-manual-wo" value={manualWorkOrder} onChange={(e) => setManualWorkOrder(e.target.value)} />
-                                            </div>
-                                        </div>
-                                    )}
+                                    <div className="flex items-center space-x-2"><RadioGroupItem value="none" id="edit-checkin-none" /><Label htmlFor="edit-checkin-none">None</Label></div>
+                                    <div className="flex items-center space-x-2"><RadioGroupItem value="emcor" id="edit-checkin-emcor" /><Label htmlFor="edit-checkin-emcor">EMCOR Call-In/Out</Label></div>
+                                    {checkInType === 'emcor' && <div className="pl-6 pt-2"><Label>EMCOR WO #</Label><Input value={emcorWorkOrder} onChange={(e) => setEmcorWorkOrder(e.target.value)} /></div>}
                                 </RadioGroup>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Contact Info</Label>
-                                <Textarea value={contactInfo} onChange={e => setContactInfo(e.target.value)} />
                             </div>
                             <Separator />
                             <div className="space-y-2">
                                 <Label>Job Site</Label>
                                 <div className="space-y-2">
-                                    <div className="relative">
-                                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                        <Input 
-                                            placeholder="Search sites..." 
-                                            value={siteSearchTerm}
-                                            onChange={(e) => setSiteSearchTerm(e.target.value)}
-                                            className="pl-8 h-9 text-sm"
-                                        />
-                                    </div>
+                                    <div className="relative"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Search sites..." value={siteSearchTerm} onChange={(e) => setSiteSearchTerm(e.target.value)} className="pl-8 h-9 text-sm"/></div>
                                     <Select value={workSiteId} onValueChange={setWorkSiteId}>
                                         <SelectTrigger><SelectValue placeholder="Select work site..." /></SelectTrigger>
-                                        <SelectContent>
-                                            {filteredAndSortedSites.map(ws => <SelectItem key={ws.id} value={ws.id}>{ws.name}</SelectItem>)}
-                                            {filteredAndSortedSites.length === 0 && (
-                                                <div className="p-4 text-center text-sm text-muted-foreground">No sites found.</div>
-                                            )}
-                                        </SelectContent>
+                                        <SelectContent>{filteredAndSortedSites.map(ws => <SelectItem key={ws.id} value={ws.id}>{ws.name}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
                             </div>
@@ -392,76 +254,14 @@ export function WorkOrderEditForm({ workOrder, technicians, workSites, clients, 
                                     <SelectContent>{technicians.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
                                 </Select>
                             </div>
-                            <Separator />
-                             <div className="space-y-2">
-                                <Label>Service Schedule Date</Label>
-                                <DatePicker date={serviceScheduleDate} setDate={setServiceScheduleDate} />
-                            </div>
-                             <div className="space-y-2">
-                                <Label>Quoted Amount</Label>
-                                <Input type="text" value={quotedAmount} onChange={e => setQuotedAmount(e.target.value)} />
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <Checkbox id="timeAndMaterial" checked={timeAndMaterial} onCheckedChange={(c) => setTimeAndMaterial(!!c)} />
-                                <Label htmlFor="timeAndMaterial">Time & Material</Label>
-                            </div>
-                             <Separator />
-                             <div className="flex items-center space-x-2">
-                                <Checkbox id="permit" checked={permit} onCheckedChange={(c) => setPermit(!!c)} />
-                                <Label htmlFor="permit">Permit</Label>
-                            </div>
-                             <div className="space-y-2">
-                                <Label>Permit Cost</Label>
-                                <Input type="text" value={permitCost} onChange={e => setPermitCost(e.target.value)} />
-                            </div>
-                             <div className="space-y-2">
-                                <Label>Permit Filed</Label>
-                                <DatePicker date={permitFiled} setDate={setPermitFiled} />
-                            </div>
-                             <Separator />
-                             <div className="flex items-center space-x-2">
-                                <Checkbox id="coi" checked={coi} onCheckedChange={(c) => setCoi(!!c)} />
-                                <Label htmlFor="coi">COI</Label>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>COI Requested</Label>
-                                <DatePicker date={coiRequested} setDate={setCoiRequested} />
-                            </div>
-                            <Separator />
-                             <div className="flex items-center space-x-2">
-                                <Checkbox id="certifiedPayroll" checked={certifiedPayroll} onCheckedChange={(c) => setCertifiedPayroll(!!c)} />
-                                <Label htmlFor="certifiedPayroll">Certified Payroll</Label>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Certified Payroll Requested</Label>
-                                <DatePicker date={certifiedPayrollRequested} setDate={setCertifiedPayrollRequested} />
-                            </div>
-                            <Separator />
-                            <div className="space-y-2">
-                                <Label>Interco PO#</Label>
-                                <Input value={intercoPO} onChange={e => setIntercoPO(e.target.value)} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Customer PO#</Label>
-                                <Input value={customerPO} onChange={e => setCustomerPO(e.target.value)} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Estimator/Requested By</Label>
-                                <Input value={estimator} onChange={e => setEstimator(e.target.value)} />
-                            </div>
                         </CardContent>
                     </Card>
                 </div>
             </div>
              <div className="fixed bottom-0 left-0 w-full bg-background border-t shadow-lg">
                 <div className="container mx-auto py-3 px-4 flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
-                      <Ban className="mr-2 h-4 w-4" /> Cancel
-                    </Button>
-                    <Button type="submit" disabled={isLoading}>
-                      {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                      Save Changes
-                    </Button>
+                    <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}><Ban className="mr-2 h-4 w-4" /> Cancel</Button>
+                    <Button type="submit" disabled={isLoading}>{isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save Changes</Button>
                 </div>
              </div>
         </form>

@@ -45,7 +45,6 @@ export function WorkSiteForm({ site, onFormSaved, onCancel }: WorkSiteFormProps)
             setContactEmail(site.contact?.email || '');
             setNotes(site.notes || '');
         } else {
-            // Reset form for creating a new site
             setName('');
             setAddress('');
             setCity('');
@@ -94,25 +93,18 @@ export function WorkSiteForm({ site, onFormSaved, onCancel }: WorkSiteFormProps)
             if (site) { // Editing existing site
                 const siteRef = doc(db, 'work_sites', site.id);
                 const batch = writeBatch(db);
-                
-                // 1. Update the work site document itself
                 batch.update(siteRef, siteData);
 
-                // 2. If the name changed, find and update related work orders
                 if (site.name !== name) {
                     const workOrdersQuery = query(collection(db, 'work_orders'), where("workSiteId", "==", site.id));
                     const workOrdersSnapshot = await getDocs(workOrdersQuery);
-                    
                     workOrdersSnapshot.forEach(workOrderDoc => {
                         const workOrderRef = doc(db, 'work_orders', workOrderDoc.id);
                         batch.update(workOrderRef, { jobName: name });
                     });
                 }
-                
-                // 3. Commit the batch
                 await batch.commit();
-                toast({ title: "Work Site Updated", description: `Successfully updated "${name}" and related work orders.`});
-
+                toast({ title: "Work Site Updated" });
             } else { // Creating new site
                 // Determine deterministic ID: city-state-address to prevent duplicates
                 const generatedId = `${city}-${state}-${address}`
@@ -124,16 +116,11 @@ export function WorkSiteForm({ site, onFormSaved, onCancel }: WorkSiteFormProps)
 
                 const siteRef = doc(db, 'work_sites', generatedId);
                 await setDocumentNonBlocking(siteRef, siteData, { merge: true });
-                toast({ title: "Work Site Created", description: `Successfully created "${name}".`});
+                toast({ title: "Work Site Created" });
             }
-            
             onFormSaved();
-
         } catch (error) {
-            if (error instanceof Error && !error.message.includes('permission-error')) {
-                console.error("Error saving work site:", error);
-                toast({ title: "Error", description: `Could not ${site ? 'update' : 'create'} work site. Please try again.`, variant: 'destructive' });
-            }
+            console.error("Error saving work site:", error);
         } finally {
             setIsLoading(false);
         }
@@ -186,7 +173,7 @@ export function WorkSiteForm({ site, onFormSaved, onCancel }: WorkSiteFormProps)
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="notes">Site Notes</Label>
-                            <Textarea id="notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g., Access code is 1234. Beware of dog." />
+                            <Textarea id="notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g., Access code is 1234..." />
                         </div>
                     </div>
                 </CardContent>
