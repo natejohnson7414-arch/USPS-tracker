@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -339,7 +338,7 @@ export default function WorkOrderReportPage() {
                 </main>
             </div>
 
-            {beforePhotoChunks.map((chunk, pageIndex) => (
+            {beforePhotos.length > 0 && beforePhotoChunks.map((chunk, pageIndex) => (
                 <div key={`before-page-${pageIndex}`} className="pdf-page p-8" style={{ minHeight: '11in' }}>
                     <header className="flex justify-between items-center mb-8">
                          <h1 className="font-bold text-xl text-primary">BEFORE PHOTOS {beforePhotoChunks.length > 1 ? `(PAGE ${pageIndex + 1})` : ''}</h1>
@@ -360,7 +359,7 @@ export default function WorkOrderReportPage() {
                 </div>
             ))}
             
-            {afterPhotoChunks.map((chunk, pageIndex) => (
+            {afterPhotos.length > 0 && afterPhotoChunks.map((chunk, pageIndex) => (
                 <div key={`after-page-${pageIndex}`} className="pdf-page p-8" style={{ minHeight: '11in' }}>
                     <header className="flex justify-between items-center mb-8">
                          <h1 className="font-bold text-xl text-primary">AFTER PHOTOS {afterPhotoChunks.length > 1 ? `(PAGE ${pageIndex + 1})` : ''}</h1>
@@ -381,7 +380,7 @@ export default function WorkOrderReportPage() {
                 </div>
             ))}
 
-            {activityPhotoChunks.map((chunk, pageIndex) => (
+            {activityPhotos.length > 0 && activityPhotoChunks.map((chunk, pageIndex) => (
                 <div key={`activity-page-${pageIndex}`} className="pdf-page p-8" style={{ minHeight: '11in' }}>
                     <header className="flex justify-between items-center mb-8">
                          <h1 className="font-bold text-xl text-primary">DOCUMENTATION PHOTOS {activityPhotoChunks.length > 1 ? `(PAGE ${pageIndex + 1})` : ''}</h1>

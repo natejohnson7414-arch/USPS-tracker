@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -12,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { StatusBadge } from './status-badge';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Camera, FileText, X, Video, Library, Loader2, Map, ClipboardCheck, CheckCircle2, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText, Download, AlertCircle, Save, Package, ChevronRight, Filter, Receipt, Sparkles, Maximize2, UserCircle, Phone, Mail } from 'lucide-react';
+import { Camera, FileText, X, Video, Library, Loader2, Map, MapPin, ClipboardCheck, CheckCircle2, Link as LinkIcon, Trash2, CalendarClock, PlusCircle, FileCog, Upload, File, Image as ImageIcon, ReceiptText, Download, AlertCircle, Save, Package, ChevronRight, Filter, Receipt, Sparkles, Maximize2, UserCircle, Phone, Mail } from 'lucide-react';
 import { NoteActivityItem } from './note-activity-item';
 import { TimeActivityItem } from './time-activity-item';
 import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
