@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -22,11 +21,12 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { useFirestore } from '@/firebase';
+import { Input } from '@/components/ui/input';
+import { useFirestore } from '@/firebase/provider';
 import { getWorkSites } from '@/lib/data';
 import type { WorkSite } from '@/lib/types';
 import { generateMaterialsReport, type MaterialReportGroup } from '@/lib/reporting-service';
-import { Loader2, Printer, X, Download, FileText } from 'lucide-react';
+import { Loader2, Printer, X, Download, FileText, Search } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import {
@@ -58,14 +58,24 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [selectedSiteIds, setSelectedSiteIds] = useState<string[]>([]);
   const [groupBy, setGroupBy] = useState<'site' | 'category'>('site');
+  const [siteSearchTerm, setSiteSearchTerm] = useState('');
   
   const [reportData, setReportData] = useState<MaterialReportGroup[] | null>(null);
 
   useEffect(() => {
     if (db && isOpen) {
-      getWorkSites(db).then(setWorkSites);
+      getWorkSites(db).then(sites => {
+        setWorkSites([...sites].sort((a, b) => a.name.localeCompare(b.name)));
+      });
     }
   }, [db, isOpen]);
+
+  const filteredSites = useMemo(() => {
+    return workSites.filter(site => 
+      site.name.toLowerCase().includes(siteSearchTerm.toLowerCase()) ||
+      site.address.toLowerCase().includes(siteSearchTerm.toLowerCase())
+    );
+  }, [workSites, siteSearchTerm]);
 
   const handleToggleSite = (siteId: string) => {
     setSelectedSiteIds(prev => 
@@ -74,7 +84,16 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
   };
 
   const handleSelectAllSites = (checked: boolean) => {
-    setSelectedSiteIds(checked ? workSites.map(s => s.id) : []);
+    if (siteSearchTerm) {
+      const filteredIds = filteredSites.map(s => s.id);
+      if (checked) {
+        setSelectedSiteIds(prev => Array.from(new Set([...prev, ...filteredIds])));
+      } else {
+        setSelectedSiteIds(prev => prev.filter(id => !filteredIds.includes(id)));
+      }
+    } else {
+      setSelectedSiteIds(checked ? workSites.map(s => s.id) : []);
+    }
   };
 
   const handleGenerate = async () => {
@@ -99,7 +118,13 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
   const years = Array.from({ length: 5 }, (_, i) => (new Date().getFullYear() + i).toString());
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      onOpenChange(open);
+      if (!open) {
+        setReportData(null);
+        setSiteSearchTerm('');
+      }
+    }}>
       <DialogContent className={cn("max-w-4xl transition-all duration-300", reportData ? "h-[90vh]" : "h-auto")}>
         <DialogHeader>
           <DialogTitle>PM Materials Forecast Report</DialogTitle>
@@ -202,31 +227,48 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
             </div>
 
             <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <Label>Filter Locations</Label>
+              <div className="flex justify-between items-center mb-2">
+                <Label className="text-base font-bold">Target Locations</Label>
                 <div className="flex items-center gap-2">
                   <Checkbox 
                     id="all-sites" 
                     checked={selectedSiteIds.length === workSites.length && workSites.length > 0} 
                     onCheckedChange={handleSelectAllSites} 
                   />
-                  <label htmlFor="all-sites" className="text-xs text-muted-foreground cursor-pointer">Select All Sites</label>
+                  <label htmlFor="all-sites" className="text-xs text-muted-foreground cursor-pointer">
+                    {siteSearchTerm ? 'Select Filtered' : 'Select All Sites'}
+                  </label>
                 </div>
               </div>
-              <ScrollArea className="h-48 border rounded-md p-2">
+              
+              <div className="relative mb-2">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Search sites by name or address..." 
+                  className="pl-8 h-9 text-sm"
+                  value={siteSearchTerm}
+                  onChange={(e) => setSiteSearchTerm(e.target.value)}
+                />
+              </div>
+
+              <ScrollArea className="h-48 border rounded-md p-2 bg-muted/10">
                 <div className="space-y-2">
-                  {workSites.map(site => (
-                    <div key={site.id} className="flex items-center space-x-2">
+                  {filteredSites.map(site => (
+                    <div key={site.id} className="flex items-center space-x-2 p-1 hover:bg-background rounded-sm transition-colors">
                       <Checkbox 
                         id={`site-${site.id}`} 
                         checked={selectedSiteIds.includes(site.id)} 
                         onCheckedChange={() => handleToggleSite(site.id)} 
                       />
-                      <label htmlFor={`site-${site.id}`} className="text-sm font-medium leading-none cursor-pointer">
+                      <label htmlFor={`site-${site.id}`} className="text-sm font-medium leading-none cursor-pointer flex-1">
                         {site.name}
+                        <span className="block text-[10px] text-muted-foreground">{site.address}</span>
                       </label>
                     </div>
                   ))}
+                  {filteredSites.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-8">No sites match your search.</p>
+                  )}
                 </div>
               </ScrollArea>
             </div>
@@ -251,7 +293,7 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
           {!reportData && (
             <Button onClick={handleGenerate} disabled={isLoading} className="w-full">
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Generate Report
+              Generate Forecast
             </Button>
           )}
         </DialogFooter>
