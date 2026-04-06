@@ -96,7 +96,6 @@ export default function WorkSitesPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortBy, setSortBy] = useState('name');
     
-    // Merge Logic State
     const [isMerging, setIsMerging] = useState(false);
     const [selectedMasterIds, setSelectedMasterIds] = useState<Record<string, string>>({});
 

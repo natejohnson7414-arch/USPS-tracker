@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 
 /**
  * Root layout component.
- * Flattened imports to resolve circular dependency loops in Next.js 15.
+ * Simplified imports to resolve circular dependency loops in Next.js 15 runtime.
  */
 export default function RootLayout({
   children,

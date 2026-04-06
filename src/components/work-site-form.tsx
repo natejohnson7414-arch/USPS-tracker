@@ -106,7 +106,7 @@ export function WorkSiteForm({ site, onFormSaved, onCancel }: WorkSiteFormProps)
                 await batch.commit();
                 toast({ title: "Work Site Updated" });
             } else { // Creating new site
-                // Deterministic ID: city-state-address to prevent duplicates
+                // Deterministic ID city-state-address format prevents duplicate docs
                 const generatedId = `${city}-${state}-${address}`
                     .toLowerCase()
                     .trim()

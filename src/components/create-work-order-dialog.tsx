@@ -25,12 +25,11 @@ import { DatePicker } from './ui/date-picker';
 import { Loader2, PlusCircle, FileUp, Building, Search } from 'lucide-react';
 import type { Technician, WorkOrder, WorkSite, Client } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
+import { useFirestore, setDocumentNonBlocking } from '@/firebase';
 import { uploadImage } from '@/firebase/storage';
 import { doc, collection } from 'firebase/firestore';
 import { Checkbox } from './ui/checkbox';
 import { extractWorkOrderInfo } from '@/ai/flows/extract-work-order-flow';
-import { Card, CardContent, CardHeader } from './ui/card';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { ScrollArea } from './ui/scroll-area';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
@@ -42,6 +41,11 @@ interface CreateWorkOrderDialogProps {
   clients: Client[];
   onWorkSiteAdded: (newSite: WorkSite) => void;
 }
+
+/**
+ * Normalization helper to improve duplicate detection accuracy.
+ */
+const normalize = (val: string) => (val || '').toLowerCase().trim().replace(/\s+/g, ' ');
 
 export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkSiteAdded }: CreateWorkOrderDialogProps) {
   const db = useFirestore();
@@ -130,8 +134,8 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
   const filteredAndSortedSites = useMemo(() => {
     return [...workSites]
       .filter(site =>
-        (site.name?.toLowerCase().includes(siteSearchTerm.toLowerCase()) || '') ||
-        (site.address?.toLowerCase().includes(siteSearchTerm.toLowerCase()) || '')
+        (normalize(site.name).includes(normalize(siteSearchTerm)) || '') ||
+        (normalize(site.address).includes(normalize(siteSearchTerm)) || '')
       )
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [workSites, siteSearchTerm]);
@@ -153,12 +157,16 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
             try {
               const extractedData = await extractWorkOrderInfo({ pdfDataUri: dataUri });
 
-              const matchedClient = clients.find(c => c.name.toLowerCase().includes(extractedData.billTo?.toLowerCase() || ''));
+              // Improved Duplicate Inspection Logic
+              const extractedAddrNormalized = normalize(extractedData.jobSiteAddress || '');
+              const extractedNameNormalized = normalize(extractedData.jobName || '');
+
+              const matchedClient = clients.find(c => normalize(c.name).includes(normalize(extractedData.billTo || '')));
               if (matchedClient) setClientId(matchedClient.id);
 
               const matchedWorkSite = workSites.find(ws => 
-                  (ws.address && extractedData.jobSiteAddress && ws.address.toLowerCase() === extractedData.jobSiteAddress.toLowerCase()) ||
-                  (ws.name && extractedData.jobName && ws.name.toLowerCase() === extractedData.jobName.toLowerCase())
+                  (extractedAddrNormalized.length > 0 && normalize(ws.address) === extractedAddrNormalized) ||
+                  (extractedNameNormalized.length > 0 && normalize(ws.name) === extractedNameNormalized)
               );
 
               if (matchedWorkSite) {
@@ -242,7 +250,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
             zip: '',
         };
 
-        // Deterministic ID: city-state-address to prevent duplicates
+        // Deterministic ID format city-state-address automatically prevents duplicate docs
         const generatedId = `${extractedCity}-${extractedState}-${extractedAddress}`
             .toLowerCase()
             .trim()
@@ -439,7 +447,6 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] -mr-6">
         <div className="grid gap-4 py-4 md:grid-cols-2 md:gap-6 pr-6">
-          {/* Left Column */}
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
@@ -606,7 +613,6 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
                 <DatePicker date={certifiedPayrollRequested} setDate={setCertifiedPayrollRequested} />
             </div>
           </div>
-          {/* Right Column */}
           <div className="space-y-4">
             <div className="space-y-3 rounded-md border p-4">
               <Label>Check-in/Out</Label>
@@ -661,7 +667,7 @@ export function CreateWorkOrderDialog({ technicians, workSites, clients, onWorkS
                 <Label htmlFor="contactInfo">Contact Info</Label>
                 <Textarea id="contactInfo" value={contactInfo} onChange={e => setContactInfo(e.target.value)} />
             </div>
-            <div className="h-20"></div> {/* Spacer */}
+            <div className="h-20"></div>
              <div className="grid gap-2">
                 <Label htmlFor="quotedAmount">Quoted Amount</Label>
                 <Input id="quotedAmount" type="number" value={quotedAmount ?? ''} onChange={e => setQuotedAmount(e.target.value ? Number(e.target.value) : undefined)} />
