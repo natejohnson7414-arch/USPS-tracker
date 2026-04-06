@@ -4,10 +4,10 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { List, PlusCircle, MoreHorizontal, Ban, Search, MapPin, AlertTriangle, CheckCircle2, Loader2, Sparkles, Info } from 'lucide-react';
+import { List, PlusCircle, MoreHorizontal, Ban, Search, MapPin, AlertTriangle, CheckCircle2, Loader2, Sparkles, Info, X } from 'lucide-react';
 import { WorkSiteForm } from '@/components/work-site-form';
 import type { WorkSite } from '@/lib/types';
-import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, useUser } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, useUser } from '@/firebase/provider';
 import { collection, query, doc, orderBy } from 'firebase/firestore';
 import Link from 'next/link';
 import {
