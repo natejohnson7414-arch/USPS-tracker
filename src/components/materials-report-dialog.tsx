@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -38,6 +38,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import { useToast } from '@/hooks/use-toast';
 
 interface MaterialsReportDialogProps {
   isOpen: boolean;
@@ -51,7 +54,9 @@ const months = [
 
 export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportDialogProps) {
   const db = useFirestore();
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [workSites, setWorkSites] = useState<WorkSite[]>([]);
   
   const [selectedMonth, setSelectedMonth] = useState((new Date().getMonth() + 1).toString());
@@ -61,6 +66,7 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
   const [siteSearchTerm, setSiteSearchTerm] = useState('');
   
   const [reportData, setReportData] = useState<MaterialReportGroup[] | null>(null);
+  const reportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (db && isOpen) {
@@ -115,7 +121,43 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
     }
   };
 
-  const years = Array.from({ length: 5 }, (_, i) => (new Date().getFullYear() + i).toString());
+  const handleDownloadPdf = async () => {
+    if (!reportRef.current || !reportData) return;
+    
+    setIsExporting(true);
+    const toastId = toast({ title: "Generating PDF...", description: "Converting report to document format." });
+
+    try {
+      const element = reportRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const pdf = new jsPDF({
+        orientation: 'p',
+        unit: 'px',
+        format: [canvas.width / 2, canvas.height / 2]
+      });
+
+      pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width / 2, canvas.height / 2);
+      pdf.save(`PM-Materials-Report-${selectedYear}-${selectedMonth}.pdf`);
+      
+      toastId.update({ id: toastId.id, title: "Download Started", description: "Your PDF has been generated." });
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      toastId.update({ id: toastId.id, title: "Export Failed", description: "Could not create PDF document.", variant: 'destructive' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
@@ -126,7 +168,31 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
       }
     }}>
       <DialogContent className={cn("max-w-4xl transition-all duration-300", reportData ? "h-[90vh]" : "h-auto")}>
-        <DialogHeader>
+        <style jsx global>{`
+          @media print {
+            body * {
+              visibility: hidden;
+            }
+            .printable-report, .printable-report * {
+              visibility: visible;
+            }
+            .printable-report {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+              padding: 0 !important;
+              margin: 0 !important;
+              box-shadow: none !important;
+              border: none !important;
+            }
+            .no-print {
+              display: none !important;
+            }
+          }
+        `}</style>
+        
+        <DialogHeader className="no-print">
           <DialogTitle>PM Materials Inventory Report</DialogTitle>
           <DialogDescription>
             Lists all material requirements for assets at selected sites. Highlights equipment under an active maintenance contract.
@@ -135,20 +201,29 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
 
         {reportData ? (
           <div className="flex-1 flex flex-col min-h-0 space-y-4">
-            <div className="flex justify-between items-center bg-muted/50 p-2 rounded-md">
+            <div className="flex justify-between items-center bg-muted/50 p-2 rounded-md no-print">
               <span className="text-sm font-medium">
                 Materials List - Grouped by {groupBy}
               </span>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="h-4 w-4 mr-2" />Print</Button>
+                <Button variant="outline" size="sm" onClick={handlePrint}>
+                  <Printer className="h-4 w-4 mr-2" />Print
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleDownloadPdf} disabled={isExporting}>
+                  {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                  Download PDF
+                </Button>
               </div>
             </div>
             
-            <ScrollArea className="flex-1 border rounded-md p-6 bg-white shadow-inner printable-report">
-              <div className="space-y-10 max-w-3xl mx-auto">
+            <ScrollArea className="flex-1 border rounded-md bg-white shadow-inner printable-report overflow-visible">
+              <div ref={reportRef} className="p-8 space-y-10 max-w-3xl mx-auto bg-white">
                 <div className="text-center space-y-1">
                   <h1 className="text-2xl font-bold uppercase tracking-tight">PM MATERIALS REQUIREMENTS</h1>
                   <p className="text-muted-foreground">Comprehensive Inventory for Selected Locations</p>
+                  <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest pt-2">
+                    Report Date: {format(new Date(), 'PPpp')}
+                  </p>
                 </div>
 
                 {reportData.map((group, idx) => (
@@ -168,8 +243,8 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
                       </TableHeader>
                       <TableBody>
                         {group.items.map((item, i) => (
-                          <TableRow key={i}>
-                            <TableCell className="font-medium">
+                          <TableRow key={i} className="break-inside-avoid">
+                            <TableCell className="font-medium align-top">
                               <div className="text-sm">{item.name}</div>
                               <div className="text-[10px] text-muted-foreground mt-2 space-y-1.5">
                                 <p className="font-bold uppercase tracking-wider text-[9px]">Affected Equipment:</p>
@@ -195,9 +270,9 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
                                 ))}
                               </div>
                             </TableCell>
-                            <TableCell><Badge variant="outline" className="text-[10px]">{item.category}</Badge></TableCell>
-                            <TableCell className="text-right font-bold">{item.quantity}</TableCell>
-                            <TableCell className="text-muted-foreground">{item.uom}</TableCell>
+                            <TableCell className="align-top"><Badge variant="outline" className="text-[10px]">{item.category}</Badge></TableCell>
+                            <TableCell className="text-right font-bold align-top">{item.quantity}</TableCell>
+                            <TableCell className="text-muted-foreground align-top">{item.uom}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -278,7 +353,7 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
           </div>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="no-print">
           {!reportData && (
             <Button onClick={handleGenerate} disabled={isLoading} className="w-full">
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
