@@ -4,7 +4,6 @@ import React, { DependencyList, createContext, useContext, ReactNode, useMemo, u
 import { FirebaseApp } from 'firebase/app';
 import { Firestore, onSnapshotsInSync } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
-import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -58,6 +57,7 @@ export const FirebaseContext = createContext<FirebaseContextState | undefined>(u
 
 /**
  * FirebaseProvider manages and provides Firebase services and user authentication state.
+ * Note: FirebaseErrorListener is rendered by the ClientProvider to avoid circular imports.
  */
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
@@ -93,7 +93,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   useEffect(() => {
     if (!firestore) return;
     
-    // Track snapshots sync state to show status in header
     const unsubscribe = onSnapshotsInSync(firestore, () => {
       setIsSyncing(false);
     });
@@ -101,14 +100,12 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     return () => unsubscribe();
   }, [firestore]);
 
-  // Effect to subscribe to Firebase auth state changes
   useEffect(() => {
     if (!auth) { 
       setUserAuthState({ user: null, isUserLoading: false, userError: new Error("Auth service not provided.") });
       return;
     }
 
-    // Don't set loading if we already have a user from a previous render (HMR resilience)
     if (!userAuthState.user) {
         setUserAuthState(prev => ({ ...prev, isUserLoading: true }));
     }
@@ -126,7 +123,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     return () => unsubscribe();
   }, [auth]);
 
-  // Memoize the context value
   const contextValue = useMemo((): FirebaseContextState => {
     const servicesAvailable = !!(firebaseApp && firestore && auth);
     return {
@@ -144,7 +140,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
   return (
     <FirebaseContext.Provider value={contextValue}>
-      <FirebaseErrorListener />
       {children}
     </FirebaseContext.Provider>
   );

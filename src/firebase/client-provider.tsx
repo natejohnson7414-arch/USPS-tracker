@@ -5,6 +5,7 @@ import { FirebaseProvider } from './provider';
 import { initializeFirebase, type FirebaseServices } from './init';
 import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 interface FirebaseClientProviderProps {
   children: ReactNode;
@@ -12,7 +13,7 @@ interface FirebaseClientProviderProps {
 
 /**
  * Handles async initialization of Firebase services with robust error recovery.
- * De-coupled from the main barrel to prevent circular module resolution issues.
+ * Renders FirebaseErrorListener here to avoid circular dependency loops in the core provider.
  */
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
   const [firebaseServices, setFirebaseServices] = useState<FirebaseServices | null>(null);
@@ -56,7 +57,6 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     startServices();
   }, []);
 
-  // Prevent server-side render content mismatch
   if (!hasHydrated) return null;
 
   if (error) {
@@ -94,6 +94,7 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
       auth={firebaseServices.auth}
       firestore={firebaseServices.firestore}
     >
+      <FirebaseErrorListener />
       {children}
     </FirebaseProvider>
   );
