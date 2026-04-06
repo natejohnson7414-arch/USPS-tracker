@@ -8,10 +8,11 @@ import { WorkOrderTableToolbar } from '@/components/work-order-table-toolbar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Building, Package, ChevronRight, CalendarClock, AlertCircle, User, MapPin } from 'lucide-react';
+import { Building, Package, ChevronRight, CalendarClock, AlertCircle, User, MapPin, FileBarChart } from 'lucide-react';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { MaterialsReportDialog } from '@/components/materials-report-dialog';
 
 interface DashboardClientProps {
   initialWorkOrders: WorkOrder[];
@@ -40,6 +41,7 @@ export function DashboardClient({
 }: DashboardClientProps) {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isReportOpen, setIsReportOpen] = useState(false);
 
   useEffect(() => {
     setWorkOrders(initialWorkOrders);
@@ -74,6 +76,12 @@ export function DashboardClient({
       <div className="space-y-8">
         <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold tracking-tight">Work Order Dashboard</h1>
+            {currentUserRole?.name === 'Technician' && (
+                <Button onClick={() => setIsReportOpen(true)} variant="outline" className="bg-primary/5 border-primary/20 text-primary">
+                    <FileBarChart className="mr-2 h-4 w-4" />
+                    PM Materials
+                </Button>
+            )}
         </div>
 
         <WorkOrderTableToolbar
@@ -154,6 +162,7 @@ export function DashboardClient({
             <WorkOrderTable workOrders={filteredWorkOrders} technicians={technicians} workSites={initialWorkSites} />
         </section>
       </div>
+      <MaterialsReportDialog isOpen={isReportOpen} onOpenChange={setIsReportOpen} />
     </div>
   );
 }
