@@ -24,9 +24,9 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Input } from '@/components/ui/input';
 import { useFirestore } from '@/firebase/provider';
 import { getWorkSites } from '@/lib/data';
-import type { WorkSite } from '@/lib/types';
-import { generateMaterialsReport, type MaterialReportGroup } from '@/lib/reporting-service';
-import { Loader2, Printer, X, Download, FileText, Search } from 'lucide-react';
+import type { WorkSite, MaterialReportGroup } from '@/lib/types';
+import { generateMaterialsReport } from '@/lib/reporting-service';
+import { Loader2, Printer, X, Download, FileText, Search, CheckCircle2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import {
@@ -127,9 +127,9 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
     }}>
       <DialogContent className={cn("max-w-4xl transition-all duration-300", reportData ? "h-[90vh]" : "h-auto")}>
         <DialogHeader>
-          <DialogTitle>PM Materials Forecast Report</DialogTitle>
+          <DialogTitle>PM Materials Inventory Report</DialogTitle>
           <DialogDescription>
-            Generate a list of materials required for PM work orders due in a specific month.
+            Lists all material requirements for assets at selected sites. Highlights equipment under an active maintenance contract.
           </DialogDescription>
         </DialogHeader>
 
@@ -137,7 +137,7 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
           <div className="flex-1 flex flex-col min-h-0 space-y-4">
             <div className="flex justify-between items-center bg-muted/50 p-2 rounded-md">
               <span className="text-sm font-medium">
-                {months[parseInt(selectedMonth) - 1]} {selectedYear} - Grouped by {groupBy}
+                Materials List - Grouped by {groupBy}
               </span>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="h-4 w-4 mr-2" />Print</Button>
@@ -148,7 +148,7 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
               <div className="space-y-10 max-w-3xl mx-auto">
                 <div className="text-center space-y-1">
                   <h1 className="text-2xl font-bold uppercase tracking-tight">PM MATERIALS REQUIREMENTS</h1>
-                  <p className="text-muted-foreground">{months[parseInt(selectedMonth) - 1]} {selectedYear} Forecast</p>
+                  <p className="text-muted-foreground">Comprehensive Inventory for Selected Locations</p>
                 </div>
 
                 {reportData.map((group, idx) => (
@@ -174,10 +174,20 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
                               <div className="text-[10px] text-muted-foreground mt-2 space-y-1.5">
                                 <p className="font-bold uppercase tracking-wider text-[9px]">Affected Equipment:</p>
                                 {item.affectedAssets.map((asset, aIdx) => (
-                                  <div key={aIdx} className="flex flex-col gap-0.5 border-l-2 pl-2 py-0.5">
-                                    <span className="font-mono bg-muted px-1 rounded inline-block w-fit">{asset.tag} - {asset.name}</span>
+                                  <div key={aIdx} className={cn(
+                                    "flex flex-col gap-0.5 border-l-2 pl-2 py-0.5 transition-colors",
+                                    asset.hasContract ? "border-green-500 bg-green-50/50" : "border-muted"
+                                  )}>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-mono bg-muted px-1 rounded inline-block w-fit">{asset.tag} - {asset.name}</span>
+                                      {asset.hasContract && (
+                                        <Badge variant="outline" className="h-4 text-[8px] bg-green-600 text-white border-0 uppercase font-black px-1.5 flex items-center gap-1">
+                                          <CheckCircle2 className="h-2 w-2" /> Contracted
+                                        </Badge>
+                                      )}
+                                    </div>
                                     {asset.notes && (
-                                      <span className="bg-yellow-200 text-black px-1.5 py-0.5 rounded italic inline-block w-fit">
+                                      <span className="bg-yellow-200 text-black px-1.5 py-0.5 rounded italic inline-block w-fit text-[9px]">
                                         Note: {asset.notes}
                                       </span>
                                     )}
@@ -197,7 +207,7 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
 
                 {reportData.length === 0 && (
                   <div className="text-center py-20 text-muted-foreground">
-                    No PM materials found for the selected criteria.
+                    No equipment or materials found for the selected sites.
                   </div>
                 )}
               </div>
@@ -205,27 +215,6 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
           </div>
         ) : (
           <div className="grid gap-6 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Select Month</Label>
-                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {months.map((m, i) => <SelectItem key={m} value={(i + 1).toString()}>{m}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Select Year</Label>
-                <Select value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
             <div className="space-y-3">
               <div className="flex justify-between items-center mb-2">
                 <Label className="text-base font-bold">Target Locations</Label>
@@ -278,11 +267,11 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
               <RadioGroup value={groupBy} onValueChange={(v: any) => setGroupBy(v)} className="flex gap-4">
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="site" id="group-site" />
-                  <Label htmlFor="group-site">By Site (Distribution List)</Label>
+                  <Label htmlFor="group-site">By Site</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="category" id="group-cat" />
-                  <Label htmlFor="group-cat">By Material Type (Bulk List)</Label>
+                  <Label htmlFor="group-cat">By Material Category</Label>
                 </div>
               </RadioGroup>
             </div>
@@ -293,7 +282,7 @@ export function MaterialsReportDialog({ isOpen, onOpenChange }: MaterialsReportD
           {!reportData && (
             <Button onClick={handleGenerate} disabled={isLoading} className="w-full">
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Generate Forecast
+              Generate Comprehensive Report
             </Button>
           )}
         </DialogFooter>

@@ -324,7 +324,7 @@ export type PmAssetTaskGroup = {
 
 export type PmWorkOrder = {
   id: string;
-  status: 'Scheduled' | 'In Progress' | 'Submitted For Review' | 'Completed';
+  status: 'In Progress' | 'Submitted For Review' | 'Completed' | 'Scheduled';
   workSiteId: string;
   workSiteName: string;
   scheduledMonth: number;
@@ -384,3 +384,14 @@ export type MaintenanceContract = {
   // Denormalized
   siteName?: string;
 };
+
+export interface MaterialReportGroup {
+  groupName: string;
+  items: {
+    name: string;
+    category: string;
+    quantity: number;
+    uom: string;
+    affectedAssets: { name: string; tag: string; notes?: string; hasContract: boolean }[];
+  }[];
+}

@@ -1,33 +1,8 @@
 'use client';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import type { AssetPmSchedule, PmTemplate, RequiredMaterial, WorkSite, Asset, AssetMaterial, MaintenanceContract } from '@/lib/types';
+import type { AssetPmSchedule, PmTemplate, RequiredMaterial, WorkSite, Asset, AssetMaterial, MaintenanceContract, MaterialReportGroup } from '@/lib/types';
 import { getAssetPmSchedules, getPmTemplates, getWorkSites, getAssets, getActiveContracts } from './data';
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, addMonths, differenceInMonths } from 'date-fns';
-
-export interface MaterialForecast {
-  materialId: string;
-  name: string;
-  quantity: number;
-  uom: string;
-  category: string;
-}
-
-export interface SiteForecast {
-  siteId: string;
-  siteName: string;
-  materials: MaterialForecast[];
-}
-
-export interface MaterialReportGroup {
-  groupName: string;
-  items: {
-    name: string;
-    category: string;
-    quantity: number;
-    uom: string;
-    affectedAssets: { name: string; tag: string; notes?: string }[];
-  }[];
-}
 
 export interface LaborForecast {
   month: string;
@@ -104,9 +79,8 @@ export const generateLaborForecast = async (db: any): Promise<LaborForecast[]> =
 };
 
 /**
- * Generates a material forecast report based on PM schedules due in a specific month.
- * Handles replaceable schedule logic to project future requirements.
- * Only includes sites with active Maintenance Contracts.
+ * Generates a material report for selected sites.
+ * Pulls all materials for assets at the selected sites and flags those with active contracts.
  */
 export const generateMaterialsReport = async (
   db: any, 
@@ -115,12 +89,7 @@ export const generateMaterialsReport = async (
   siteIds: string[], 
   groupBy: 'site' | 'category'
 ): Promise<MaterialReportGroup[]> => {
-  const targetDate = new Date(year, month - 1, 1);
-  const start = startOfMonth(targetDate);
-  const end = endOfMonth(targetDate);
-
-  const [schedules, assets, sites, activeContracts] = await Promise.all([
-    getAssetPmSchedules(db),
+  const [assets, sites, activeContracts] = await Promise.all([
     getAssets(db),
     getWorkSites(db),
     getActiveContracts(db)
@@ -128,28 +97,24 @@ export const generateMaterialsReport = async (
 
   const contractSiteIds = new Set(activeContracts.map(c => c.siteId));
 
-  // Filter schedules by contract AND recurrence
-  const dueSchedules = getDueSchedulesForMonth(schedules, start, end).filter(s => {
-    const asset = assets.find(a => a.id === s.assetId);
-    if (!asset || !contractSiteIds.has(asset.siteId)) return false;
-    return (siteIds.length === 0 || siteIds.includes(asset.siteId));
-  });
+  // Filter assets by selected siteIds
+  const targetAssets = assets.filter(a => siteIds.length === 0 || siteIds.includes(a.siteId));
 
   const reportGroups = new Map<string, MaterialReportGroup>();
 
-  dueSchedules.forEach(schedule => {
-    const asset = assets.find(a => a.id === schedule.assetId);
-    if (!asset || !asset.materials || asset.materials.length === 0) return;
+  targetAssets.forEach(asset => {
+    if (!asset.materials || asset.materials.length === 0) return;
 
     const groupKey = groupBy === 'site' 
       ? (sites.find(s => s.id === asset.siteId)?.name || 'Unknown Site')
-      : 'Material Forecast';
+      : 'System-wide Material Inventory';
 
     if (!reportGroups.has(groupKey)) {
       reportGroups.set(groupKey, { groupName: groupKey, items: [] });
     }
 
     const group = reportGroups.get(groupKey)!;
+    const hasContract = contractSiteIds.has(asset.siteId);
 
     asset.materials.forEach((mat: AssetMaterial) => {
       const normalizedName = mat.name.toLowerCase().trim().replace(/\s+/g, ' ');
@@ -165,7 +130,8 @@ export const generateMaterialsReport = async (
           item.affectedAssets.push({ 
             name: asset.name, 
             tag: asset.assetTag,
-            notes: asset.notes
+            notes: asset.notes,
+            hasContract
           });
         }
       } else {
@@ -177,7 +143,8 @@ export const generateMaterialsReport = async (
           affectedAssets: [{ 
             name: asset.name, 
             tag: asset.assetTag,
-            notes: asset.notes
+            notes: asset.notes,
+            hasContract
           }]
         });
       }
@@ -186,7 +153,7 @@ export const generateMaterialsReport = async (
 
   if (groupBy === 'category') {
     const categoryGroups = new Map<string, MaterialReportGroup>();
-    const masterGroup = reportGroups.get('Material Forecast');
+    const masterGroup = reportGroups.get('System-wide Material Inventory');
     if (masterGroup) {
       masterGroup.items.forEach(item => {
         if (!categoryGroups.has(item.category)) {
