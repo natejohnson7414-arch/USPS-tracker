@@ -229,7 +229,7 @@ export default function AssetsPageContent() {
                           <TableCell>
                             <div className="flex flex-col gap-1">
                               <span className="text-sm font-bold">{wo.assetTasks.length} Pieces of Equipment</span>
-                              <div className="flex flex-wrap gap-1">
+                              <div className="flex wrap gap-1">
                                 {wo.assetTasks.slice(0, 3).map((g, i) => (
                                   <Badge key={i} variant="outline" className="text-[10px] py-0">{g.assetTag}</Badge>
                                 ))}
@@ -517,7 +517,7 @@ export default function AssetsPageContent() {
                       Maintenance is grouped by Master Site Job. Consolidated master work orders reduce call-in/out overhead.
                     </p>
                   </CardContent>
-                </div>
+                </Card>
               </div>
             </div>
           </TabsContent>
